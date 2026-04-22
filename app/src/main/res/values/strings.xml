@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Android Tuner</string>
+    <string name="tile_label">Performance</string>
+</resources>
