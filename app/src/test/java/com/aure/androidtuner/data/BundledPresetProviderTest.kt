@@ -18,8 +18,8 @@ class BundledPresetProviderTest {
             ),
         )
 
-        assertEquals(listOf("Small Underclock", "Medium Underclock", "Large Underclock", "Reset / Stock"), profiles.map { it.name })
-        assertTrue(profiles.last().isResetProfile)
+        assertEquals(listOf("Small Underclock", "Medium Underclock", "Large Underclock"), profiles.map { it.name })
+        assertTrue(profiles.none { it.isResetProfile })
     }
 
     @Test
