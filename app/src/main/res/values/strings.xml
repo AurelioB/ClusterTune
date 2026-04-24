@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">Android Tuner</string>
-    <string name="tile_label">Performance</string>
+    <string name="tile_label">CPU Tuner</string>
+    <string name="tile_title">CPU Tuner</string>
+    <string name="tile_state_manual">Manual</string>
+    <string name="tile_state_unavailable">Unavailable</string>
 </resources>

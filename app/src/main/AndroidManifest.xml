@@ -21,14 +21,19 @@
         <activity
             android:name=".TileControlActivity"
             android:excludeFromRecents="true"
-            android:exported="false"
+            android:exported="true"
             android:launchMode="singleTop"
-            android:theme="@style/Theme.AndroidTuner.TileDialog" />
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:theme="@style/Theme.AndroidTuner.TileDialog">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
+            </intent-filter>
+        </activity>
 
         <service
             android:name=".tile.PerformanceTileService"
             android:exported="true"
-            android:icon="@drawable/ic_tuner"
+            android:icon="@drawable/ic_tile_underclock"
             android:label="@string/tile_label"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
