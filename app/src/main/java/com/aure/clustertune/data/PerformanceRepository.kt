@@ -123,7 +123,7 @@ class PerformanceRepository(
                     }
                 }
                 val actualValues = policies.associate { it.id to it.currentMaxFreq }
-                val detectedStockValues = actualValues
+                val detectedStockValues = stockValuesForPolicies(policies)
                 val currentBootId = bootIdReader.currentBootId()
                 val stockBootstrap = resolveStockBootstrap(
                     bootId = currentBootId,
@@ -456,7 +456,20 @@ class PerformanceRepository(
         val bootId = bootIdReader.currentBootId()
         val storedBootId = profileStorage.stockBootId.first()
         val storedValues = profileStorage.initialStockValues.first()
-        if (storedBootId == bootId && storedValues.isNotEmpty()) {
+        val initialPolicies = detector.detectPolicies()
+        val detectedStockValues = stockValuesForPolicies(initialPolicies)
+        if (
+            storedBootId == bootId &&
+            storedValues.isNotEmpty() &&
+            !storedStockValuesNeedRepair(storedValues, detectedStockValues)
+        ) {
+            return Result.success(Unit)
+        }
+        if (detectedStockValues.isNotEmpty()) {
+            profileStorage.persistInitialStockValues(repairStockValues(storedValues, detectedStockValues))
+            profileStorage.persistStockBootId(bootId)
+            cachedPolicies = initialPolicies
+            refreshStructure()
             return Result.success(Unit)
         }
 
@@ -464,7 +477,7 @@ class PerformanceRepository(
         var consecutiveEqualReads = 0
         repeat(MAX_STOCK_READ_ATTEMPTS) { attempt ->
             val policies = detector.detectPolicies()
-            val detectedValues = policies.associate { policy -> policy.id to policy.currentMaxFreq }
+            val detectedValues = stockValuesForPolicies(policies)
             if (detectedValues.isNotEmpty()) {
                 consecutiveEqualReads = if (detectedValues == previousValues) {
                     consecutiveEqualReads + 1
@@ -512,16 +525,15 @@ class PerformanceRepository(
             )
         }
 
-        val hasStoredValuesForBoot = storedBootId == bootId && storedValues.isNotEmpty()
-        if (hasStoredValuesForBoot) {
-            stockCaptureState = StockCaptureState(bootId = bootId)
-            return StockBootstrapResult(
-                completedValues = storedValues,
-                isReadyForBoot = true,
-                isReading = false,
-                error = null,
-            )
-        }
+        val repairedStoredValues = repairStockValues(storedValues, detectedValues)
+        stockCaptureState = StockCaptureState(bootId = bootId)
+        return StockBootstrapResult(
+            completedValues = repairedStoredValues,
+            isReadyForBoot = true,
+            isReading = false,
+            error = null,
+        )
+    }
 
         val previous = stockCaptureState.takeIf { it.bootId == bootId } ?: StockCaptureState(bootId = bootId)
         val consecutiveEqualReads = if (previous.lastRead == detectedValues) {
@@ -563,6 +575,30 @@ class PerformanceRepository(
         val ordered = orderedIds.mapNotNull(byId::get)
         val missing = profiles.filter { it.id !in orderedIds }.sortedBy { it.order }
         return ordered + missing
+    }
+
+    private fun stockValuesForPolicies(policies: List<CpuPolicyInfo>): Map<Int, Int> {
+        return policies.associate { policy -> policy.id to policy.stockMaxFreq }
+    }
+
+    private fun repairStockValues(
+        storedValues: Map<Int, Int>,
+        detectedValues: Map<Int, Int>,
+    ): Map<Int, Int> {
+        if (detectedValues.isEmpty()) return storedValues
+        return detectedValues.mapValues { (policyId, detectedValue) ->
+            maxOf(storedValues[policyId] ?: 0, detectedValue)
+        }
+    }
+
+    private fun storedStockValuesNeedRepair(
+        storedValues: Map<Int, Int>,
+        detectedValues: Map<Int, Int>,
+    ): Boolean {
+        if (detectedValues.isEmpty()) return false
+        return detectedValues.any { (policyId, detectedValue) ->
+            (storedValues[policyId] ?: 0) < detectedValue
+        }
     }
 
     private companion object {
