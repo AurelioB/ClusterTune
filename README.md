@@ -6,6 +6,9 @@ The app has been tested with the AYN Odin 3, but should be compatible with other
 
 ClusterTune does not require Magisk or user-granted root access. It relies on the device's built-in PServer service, where available.
 
+> [!WARNING]
+> ClusterTune changes CPU frequency limits. This may affect device stability, thermals, battery life, and performance, and I cannot guarantee that it is safe for your hardware or beneficial for your use case. Use it only if you understand what CPU frequency limits do and are comfortable accepting the risk.
+
 ## Screenshots
 
 | Main app | Profile editor |
@@ -30,8 +33,6 @@ ClusterTune does not require Magisk or user-granted root access. It relies on th
 
 - Android 12+ (`minSdk 31`).
 - A compatible handheld with the PServer service, such as supported AYN and Retroid devices.
-
-This app changes CPU frequency limits. Use it only if you understand the risk of changing performance and thermal behavior on your device.
 
 ## Build
 
