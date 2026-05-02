@@ -360,7 +360,7 @@ private fun TileBehaviorSelector(
             modifier = Modifier.weight(1f),
         )
         TileBehaviorOption(
-            title = "Cycle presets",
+            title = "Cycle profiles",
             selected = selected == TileInteractionBehavior.CYCLE_PROFILES,
             onClick = { onChange(TileInteractionBehavior.CYCLE_PROFILES) },
             modifier = Modifier.weight(1f),
