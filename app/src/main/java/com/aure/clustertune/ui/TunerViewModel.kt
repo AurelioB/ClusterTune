@@ -204,12 +204,6 @@ class TunerViewModel(
         }
     }
 
-    fun setTileLongPressBehavior(behavior: TileInteractionBehavior) {
-        viewModelScope.launch {
-            settingsStorage.persistTileLongPressBehavior(behavior)
-        }
-    }
-
     fun setApplyLastProfileOnBoot(enabled: Boolean) {
         viewModelScope.launch {
             settingsStorage.persistApplyLastProfileOnBoot(enabled)

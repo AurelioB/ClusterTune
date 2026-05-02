@@ -54,7 +54,6 @@ fun SettingsScreen(
     onColorSourceChange: (AppColorSource) -> Unit,
     onAccentColorChange: (Int) -> Unit,
     onTileTapBehaviorChange: (TileInteractionBehavior) -> Unit,
-    onTileLongPressBehaviorChange: (TileInteractionBehavior) -> Unit,
     onApplyLastProfileOnBootChange: (Boolean) -> Unit,
     onResetProfiles: () -> Unit,
     onExportProfiles: () -> Unit,
@@ -127,12 +126,6 @@ fun SettingsScreen(
                 TileBehaviorSelector(
                     selected = settings.tileTapBehavior,
                     onChange = onTileTapBehaviorChange,
-                )
-            }
-            SettingsControlGroup(label = "Long press") {
-                TileBehaviorSelector(
-                    selected = settings.tileLongPressBehavior,
-                    onChange = onTileLongPressBehaviorChange,
                 )
             }
         }

@@ -12,13 +12,11 @@ import androidx.compose.material3.Surface
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aure.clustertune.model.ProfileStateResolver
-import com.aure.clustertune.model.TileInteractionBehavior
 import com.aure.clustertune.model.TunerState
 import com.aure.clustertune.tile.QuickSettingsTileRefresher
 import com.aure.clustertune.ui.CompactTunerScreen
 import com.aure.clustertune.ui.TunerViewModel
 import com.aure.clustertune.ui.theme.ClusterTuneTheme
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class TileControlActivity : ComponentActivity() {
@@ -51,34 +49,8 @@ class TileControlActivity : ComponentActivity() {
             val launchedFromLongPress = intent?.action == ACTION_QS_TILE_PREFERENCES
 
             if (launchedFromLongPress) {
-                val settings = container.settingsStorage.settings.first()
-                when (settings.tileLongPressBehavior) {
-                    TileInteractionBehavior.SHOW_DIALOG -> Unit
-                    TileInteractionBehavior.OPEN_APP -> {
-                        openFullApp()
-                        return@launch
-                    }
-                    TileInteractionBehavior.CYCLE_PROFILES -> {
-                        container.repository.cycleTileProfile()
-                            .onSuccess { profile ->
-                                QuickSettingsTileRefresher.requestUpdate(applicationContext)
-                                Toast.makeText(
-                                    applicationContext,
-                                    "Applied ${profile.name}",
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            }
-                            .onFailure { throwable ->
-                                Toast.makeText(
-                                    applicationContext,
-                                    throwable.message ?: "Failed to cycle profile",
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            }
-                        finish()
-                        return@launch
-                    }
-                }
+                openFullApp()
+                return@launch
             }
 
             setEditorContent()

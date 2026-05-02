@@ -17,7 +17,6 @@ private val Context.settingsDataStore by preferencesDataStore(name = "android_tu
 class SettingsStorage(private val context: Context) {
 
     private val tileTapBehaviorKey = stringPreferencesKey("tile_tap_behavior")
-    private val tileLongPressBehaviorKey = stringPreferencesKey("tile_long_press_behavior")
     private val applyLastProfileOnBootKey = booleanPreferencesKey("apply_last_profile_on_boot")
     private val quickSettingsTilePromptShownKey = booleanPreferencesKey("quick_settings_tile_prompt_shown")
     private val quickSettingsTileAddedKey = booleanPreferencesKey("quick_settings_tile_added")
@@ -33,9 +32,6 @@ class SettingsStorage(private val context: Context) {
             tileTapBehavior = preferences[tileTapBehaviorKey]
                 ?.let(::parseBehavior)
                 ?: TileInteractionBehavior.SHOW_DIALOG,
-            tileLongPressBehavior = preferences[tileLongPressBehaviorKey]
-                ?.let(::parseBehavior)
-                ?: TileInteractionBehavior.SHOW_DIALOG,
             applyLastProfileOnBoot = preferences[applyLastProfileOnBootKey] ?: false,
             hasPromptedQuickSettingsTile = preferences[quickSettingsTilePromptShownKey] ?: false,
             isQuickSettingsTileAdded = preferences[quickSettingsTileAddedKey] ?: false,
@@ -45,12 +41,6 @@ class SettingsStorage(private val context: Context) {
     suspend fun persistTileTapBehavior(behavior: TileInteractionBehavior) {
         context.settingsDataStore.edit { preferences ->
             preferences[tileTapBehaviorKey] = behavior.name
-        }
-    }
-
-    suspend fun persistTileLongPressBehavior(behavior: TileInteractionBehavior) {
-        context.settingsDataStore.edit { preferences ->
-            preferences[tileLongPressBehaviorKey] = behavior.name
         }
     }
 

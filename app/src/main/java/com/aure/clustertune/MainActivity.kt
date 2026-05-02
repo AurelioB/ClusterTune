@@ -64,7 +64,6 @@ class MainActivity : ComponentActivity() {
                             onColorSourceChange = viewModel::setColorSource,
                             onAccentColorChange = viewModel::setAccentColor,
                             onTileTapBehaviorChange = viewModel::setTileTapBehavior,
-                            onTileLongPressBehaviorChange = viewModel::setTileLongPressBehavior,
                             onApplyLastProfileOnBootChange = viewModel::setApplyLastProfileOnBoot,
                             onResetProfiles = viewModel::resetProfilesToDefault,
                             onExportProfiles = {
