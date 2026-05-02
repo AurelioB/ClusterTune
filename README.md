@@ -6,6 +6,16 @@ The app has been tested with the AYN Odin 3, but should be compatible with other
 
 ClusterTune does not require Magisk or user-granted root access. It relies on the device's built-in PServer service, where available.
 
+## Screenshots
+
+| Main app | Profile editor |
+| --- | --- |
+| <img src="docs/screenshots/main-app.png" alt="ClusterTune main app view" width="420"> | <img src="docs/screenshots/profile-editor.png" alt="ClusterTune profile editor dialog" width="420"> |
+
+| Quick Settings tile dialog | Settings |
+| --- | --- |
+| <img src="docs/screenshots/quick-settings-dialog.png" alt="ClusterTune Quick Settings tile dialog" width="420"> | <img src="docs/screenshots/settings.png" alt="ClusterTune settings view" width="420"> |
+
 ## Features
 
 - Tune CPU clusters with per-cluster frequency sliders.
