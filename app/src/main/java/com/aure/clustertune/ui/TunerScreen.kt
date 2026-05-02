@@ -87,10 +87,16 @@ fun MainTunerScreen(
     onOpenSettings: () -> Unit,
     onRefreshLiveValues: () -> Unit,
     onRefreshStructure: () -> Unit,
+    onStatusMessageShown: () -> Unit,
+    onErrorMessageShown: () -> Unit,
 ) {
     var dialogProfileId by remember { mutableStateOf<String?>(null) }
 
-    ScreenNotifications(state)
+    ScreenNotifications(
+        state = state,
+        onStatusMessageShown = onStatusMessageShown,
+        onErrorMessageShown = onErrorMessageShown,
+    )
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -211,7 +217,11 @@ fun CompactTunerScreen(
     onDismissRequest: (() -> Unit)?,
     onOpenFullApp: (() -> Unit)? = null,
 ) {
-    ScreenNotifications(state)
+    ScreenNotifications(
+        state = state,
+        onStatusMessageShown = {},
+        onErrorMessageShown = {},
+    )
 
     ScreenContainer(compactMode = true) {
         Column(
@@ -265,7 +275,6 @@ fun CompactTunerScreen(
                     Button(
                         onClick = {
                             onApplyCurrent(state)
-                            onDismissRequest()
                         },
                         enabled = state.policies.isNotEmpty() && state.isPServerAvailable,
                         modifier = Modifier.weight(1f),
@@ -319,14 +328,24 @@ private fun StockReadErrorCard(message: String) {
 }
 
 @Composable
-private fun ScreenNotifications(state: TunerState) {
+private fun ScreenNotifications(
+    state: TunerState,
+    onStatusMessageShown: () -> Unit,
+    onErrorMessageShown: () -> Unit,
+) {
     val context = LocalContext.current
 
     LaunchedEffect(state.statusMessage) {
-        state.statusMessage?.let { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+        state.statusMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            onStatusMessageShown()
+        }
     }
     LaunchedEffect(state.errorMessage) {
-        state.errorMessage?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+        state.errorMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+            onErrorMessageShown()
+        }
     }
 }
 
