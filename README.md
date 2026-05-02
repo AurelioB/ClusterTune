@@ -116,6 +116,12 @@ The RootExec / PServer command execution code in this project is based on code f
 [O2P Tweaks](https://github.com/FeralAI/o2ptweaks.app) by FeralAI, which is also
 licensed under the GNU General Public License v2.0.
 
+ClusterTune was inspired by the Odin 3 underclocking scripts published in
+[TheOldTaylor/Odin3-CPU-Underclock](https://github.com/TheOldTaylor/Odin3-CPU-Underclock).
+The original underclocking idea was shared by Reddit users u/twoohfive205 and
+u/JoaozaoS in
+[this r/OdinHandheld comment](https://www.reddit.com/r/OdinHandheld/comments/1snp9xd/comment/ogphgmb/).
+
 ## AI Assistance Disclosure
 
 I used AI assistance while building this project. Software development is my day job, and I reviewed the code throughout the process. I understand how the app works and what it does.
