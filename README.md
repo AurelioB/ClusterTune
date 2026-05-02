@@ -4,7 +4,7 @@ ClusterTune is an Android utility for tuning CPU frequency limits on supported h
 
 The app has been tested with the AYN Odin 3, but should be compatible with other AYN and Retroid devices.
 
-ClusterTune does not require root.
+ClusterTune does not require Magisk or user-granted root access. It relies on the device's built-in PServer service, where available.
 
 ## Features
 
@@ -97,3 +97,11 @@ Exported profiles follow the same schema.
 
 - UI refers to cpufreq policies as CPU clusters, but internal code keeps `policy` naming because it matches Linux/sysfs terminology.
 - ClusterTune uses the device's PServer service to read and write protected CPU frequency controls. It does not ask the user for root access.
+
+## License and Attribution
+
+ClusterTune is distributed under the terms of the GNU General Public License v2.0.
+
+The RootExec / PServer command execution code in this project is based on code from
+[O2P Tweaks](https://github.com/FeralAI/o2ptweaks.app) by FeralAI, which is also
+licensed under the GNU General Public License v2.0.
