@@ -1,4 +1,4 @@
-package com.aure.androidtuner.model
+package com.aure.clustertune.model
 
 data class TunerState(
     val isLoading: Boolean = true,

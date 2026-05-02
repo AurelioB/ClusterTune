@@ -1,4 +1,4 @@
-package com.aure.androidtuner.model
+package com.aure.clustertune.model
 
 enum class AppColorSource {
     SYSTEM,
@@ -7,7 +7,8 @@ enum class AppColorSource {
 
 enum class TileInteractionBehavior {
     SHOW_DIALOG,
-    CYCLE_PRESETS,
+    CYCLE_PROFILES,
+    OPEN_APP,
 }
 
 data class AppSettings(
@@ -15,5 +16,7 @@ data class AppSettings(
     val accentColor: Int = 0xFF3F51B5.toInt(),
     val tileTapBehavior: TileInteractionBehavior = TileInteractionBehavior.SHOW_DIALOG,
     val tileLongPressBehavior: TileInteractionBehavior = TileInteractionBehavior.SHOW_DIALOG,
-    val applyLastPresetOnBoot: Boolean = false,
+    val applyLastProfileOnBoot: Boolean = false,
+    val hasPromptedQuickSettingsTile: Boolean = false,
+    val isQuickSettingsTileAdded: Boolean = false,
 )

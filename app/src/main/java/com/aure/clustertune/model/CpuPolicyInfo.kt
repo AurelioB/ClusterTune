@@ -1,4 +1,4 @@
-package com.aure.androidtuner.model
+package com.aure.clustertune.model
 
 data class CpuPolicyInfo(
     val id: Int,
@@ -8,4 +8,5 @@ data class CpuPolicyInfo(
     val stockMaxFreq: Int,
     val minFreq: Int,
     val supportedFrequencies: List<Int>,
+    val cpuIds: List<Int> = listOf(id),
 )

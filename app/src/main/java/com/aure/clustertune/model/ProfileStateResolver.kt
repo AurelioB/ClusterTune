@@ -1,6 +1,6 @@
-package com.aure.androidtuner.model
+package com.aure.clustertune.model
 
-object PresetStateResolver {
+object ProfileStateResolver {
 
     const val MANUAL_PROFILE_ID = "virtual_manual"
     const val STOCK_PROFILE_ID = "virtual_stock"

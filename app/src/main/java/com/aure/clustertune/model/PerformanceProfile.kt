@@ -1,4 +1,4 @@
-package com.aure.androidtuner.model
+package com.aure.clustertune.model
 
 enum class ProfileSource {
     BUNDLED,
