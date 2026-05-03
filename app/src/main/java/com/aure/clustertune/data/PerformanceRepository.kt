@@ -8,7 +8,6 @@ import com.aure.clustertune.model.TunerState
 import com.aure.clustertune.root.PerformanceCommandBuilder
 import com.aure.clustertune.root.RootCommandRunner
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -38,14 +37,6 @@ private data class PartialStorageState(
     val initialStockValues: Map<Int, Int>,
 )
 
-private data class StockCaptureState(
-    val bootId: String? = null,
-    val lastRead: Map<Int, Int>? = null,
-    val consecutiveEqualReads: Int = 0,
-    val attempts: Int = 0,
-    val error: String? = null,
-)
-
 private data class StockBootstrapResult(
     val completedValues: Map<Int, Int>?,
     val isReadyForBoot: Boolean,
@@ -70,7 +61,6 @@ class PerformanceRepository(
     private val structureRefreshToken = MutableStateFlow(0)
     private val liveRefreshToken = MutableStateFlow(0)
     private val stockCaptureMutex = Mutex()
-    private var stockCaptureState = StockCaptureState()
     private var cachedPolicies: List<CpuPolicyInfo> = emptyList()
     private var cachedStructureVersion = Int.MIN_VALUE
 
@@ -480,40 +470,7 @@ class PerformanceRepository(
             return Result.success(Unit)
         }
 
-        var previousValues: Map<Int, Int>? = null
-        var consecutiveEqualReads = 0
-        repeat(MAX_STOCK_READ_ATTEMPTS) { attempt ->
-            val policies = detector.detectPolicies()
-            val detectedValues = stockValuesForPolicies(policies)
-            if (detectedValues.isNotEmpty()) {
-                consecutiveEqualReads = if (detectedValues == previousValues) {
-                    consecutiveEqualReads + 1
-                } else {
-                    1
-                }
-                previousValues = detectedValues
-
-                if (consecutiveEqualReads >= REQUIRED_STABLE_READS) {
-                    profileStorage.persistInitialStockValues(detectedValues)
-                    profileStorage.persistStockBootId(bootId)
-                    stockCaptureState = StockCaptureState(
-                        bootId = bootId,
-                        lastRead = detectedValues,
-                        consecutiveEqualReads = consecutiveEqualReads,
-                        attempts = attempt + 1,
-                    )
-                    cachedPolicies = policies
-                    refreshStructure()
-                    return Result.success(Unit)
-                }
-            }
-
-            if (attempt < MAX_STOCK_READ_ATTEMPTS - 1) {
-                delay(STOCK_READ_INTERVAL_MS)
-            }
-        }
-
-        Result.failure(IllegalStateException("Unable to read stable stock values"))
+        return Result.failure(IllegalStateException("Unable to read stock values"))
     }
 
     private fun resolveStockBootstrap(
@@ -523,7 +480,6 @@ class PerformanceRepository(
         storedBootId: String?,
     ): StockBootstrapResult {
         if (detectedValues.isEmpty()) {
-            stockCaptureState = StockCaptureState()
             return StockBootstrapResult(
                 completedValues = if (storedBootId == bootId) storedValues else null,
                 isReadyForBoot = storedBootId == bootId && storedValues.isNotEmpty(),
@@ -533,7 +489,6 @@ class PerformanceRepository(
         }
 
         val repairedStoredValues = repairStockValues(storedValues, detectedValues)
-        stockCaptureState = StockCaptureState(bootId = bootId)
         return StockBootstrapResult(
             completedValues = repairedStoredValues,
             isReadyForBoot = true,
@@ -573,9 +528,4 @@ class PerformanceRepository(
         return storedValues != detectedValues
     }
 
-    private companion object {
-        const val REQUIRED_STABLE_READS = 3
-        const val MAX_STOCK_READ_ATTEMPTS = 10
-        const val STOCK_READ_INTERVAL_MS = 1_000L
-    }
 }
