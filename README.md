@@ -3,6 +3,10 @@
   ClusterTune
 </h1>
 
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/AurelioB/cluster-tune/total)
+![GitHub Release](https://img.shields.io/github/v/release/AurelioB/cluster-tune)
+
+
 ClusterTune is an Android utility for tuning CPU frequency limits on supported handheld devices. It lets you adjust CPU clusters, save performance profiles, and access quick controls from an Android Quick Settings tile.
 
 The app has been tested with the AYN Odin 3, but should be compatible with other AYN and Retroid devices.
