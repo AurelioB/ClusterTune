@@ -82,6 +82,39 @@ class ProfileStateResolverTest {
         assertEquals("Stock", state.activeDisplayProfileName)
     }
 
+    @Test
+    fun `resolves capped profile when actual value is boost above writable max`() {
+        val policies = listOf(
+            policy(
+                id = 3,
+                current = 2_803_200,
+                stock = 2_707_200,
+                hardware = 2_803_200,
+                supported = listOf(499_200, 1_920_000, 2_707_200),
+            ),
+        )
+        val profile = PerformanceProfile(
+            id = "policy3_max",
+            name = "Policy 3 Max",
+            maxFrequencies = mapOf(3 to 2_707_200),
+            source = ProfileSource.USER,
+        )
+
+        val state = ProfileStateResolver.resolve(
+            TunerState(
+                isLoading = false,
+                policies = policies,
+                actualValues = mapOf(3 to 2_803_200),
+                currentValues = mapOf(3 to 2_707_200),
+                userProfiles = listOf(profile),
+                displayProfiles = listOf(profile),
+            ),
+        )
+
+        assertEquals("policy3_max", state.activeDisplayProfileId)
+        assertEquals("Policy 3 Max", state.activeDisplayProfileName)
+    }
+
     private fun policy(
         id: Int,
         current: Int,

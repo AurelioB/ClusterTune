@@ -63,7 +63,7 @@ object ProfileStateResolver {
             id = STOCK_PROFILE_ID,
             name = "Stock",
             maxFrequencies = policies.associate { policy ->
-                policy.id to (stockValues[policy.id] ?: policy.stockMaxFreq)
+                policy.id to policy.hardwareMaxFreq
             },
             source = ProfileSource.VIRTUAL,
             isResetProfile = true,
@@ -80,11 +80,22 @@ object ProfileStateResolver {
         val policiesById = policies.associateBy { it.id }
         return profile.maxFrequencies.isNotEmpty() && profile.maxFrequencies.all { (policyId, value) ->
             val actual = values[policyId] ?: return@all false
-            if (actual == value) return@all true
-            if (profile.id != STOCK_PROFILE_ID) return@all false
             val policy = policiesById[policyId] ?: return@all false
-            actual > value && actual <= policy.hardwareMaxFreq
+            isPolicyValueSatisfied(policy = policy, requestedValue = value, actualValue = actual)
         }
+    }
+
+    fun isPolicyValueSatisfied(
+        policy: CpuPolicyInfo,
+        requestedValue: Int,
+        actualValue: Int,
+    ): Boolean {
+        if (actualValue == requestedValue) return true
+        val writableMax = policy.stockMaxFreq
+        return requestedValue >= writableMax &&
+            requestedValue <= policy.hardwareMaxFreq &&
+            actualValue >= writableMax &&
+            actualValue <= policy.hardwareMaxFreq
     }
 
     fun preferredProfileForCurrentValues(state: TunerState): PerformanceProfile? {

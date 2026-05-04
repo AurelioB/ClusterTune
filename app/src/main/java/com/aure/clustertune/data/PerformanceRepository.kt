@@ -218,7 +218,13 @@ class PerformanceRepository(
             ApplyOutcome(
                 actualValues = actualValues,
                 verificationPassed = filtered.all { (policyId, requestedValue) ->
-                    actualValues[policyId] == requestedValue
+                    val policy = policies.firstOrNull { it.id == policyId } ?: return@all false
+                    val actualValue = actualValues[policyId] ?: return@all false
+                    ProfileStateResolver.isPolicyValueSatisfied(
+                        policy = policy,
+                        requestedValue = requestedValue,
+                        actualValue = actualValue,
+                    )
                 },
                 commandOutput = output,
             )

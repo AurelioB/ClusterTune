@@ -468,6 +468,7 @@ private fun CurrentFrequenciesCard(
                     values = state.policies.associate { policy ->
                         policy.id to (state.actualValues[policy.id] ?: policy.currentMaxFreq)
                     },
+                    policies = state.policies,
                     modifier = Modifier.weight(1f),
                 )
                 CompositionLocalProvider(
@@ -706,7 +707,9 @@ private fun ValuePreviewChips(
     modifier: Modifier = Modifier,
     chipContainerColor: Color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.92f),
     chipContentColor: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+    policies: List<CpuPolicyInfo> = emptyList(),
 ) {
+    val policiesById = policies.associateBy { it.id }
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -718,8 +721,9 @@ private fun ValuePreviewChips(
                 color = chipContainerColor,
                 shape = RoundedCornerShape(999.dp),
             ) {
+                val policy = policiesById[policyId]
                 Text(
-                    text = "C$policyId: ${formatFrequency(value)}",
+                    text = "C$policyId: ${formatFrequency(value, boosted = policy?.isBoosted(value) == true)}",
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelMedium,
                     color = chipContentColor,
@@ -844,7 +848,7 @@ private fun ProfileEditorDialog(
                 creatingNewProfile || manualMode -> baseState.actualValues[policy.id]
                 else -> profile?.maxFrequencies?.get(policy.id)
             } ?: policy.currentMaxFreq
-            policy.id to initialValue
+            policy.id to policy.clampToWritableMax(initialValue)
         }
     }
     var profileName by remember(profile?.id, creatingNewProfile) { mutableStateOf(profile?.name.orEmpty()) }
@@ -988,7 +992,13 @@ private fun PolicyCard(
     actualValue: Int = selectedValue,
 ) {
     val supported = policy.supportedFrequencies
-    val currentIndex = supported.indexOf(selectedValue).takeIf { it >= 0 } ?: 0
+    val displaySelectedValue = policy.clampToWritableMax(selectedValue)
+    val currentIndex = supported.indexOf(displaySelectedValue).takeIf { it >= 0 } ?: supported.lastIndex
+    val actualSatisfiesSelected = ProfileStateResolver.isPolicyValueSatisfied(
+        policy = policy,
+        requestedValue = selectedValue,
+        actualValue = actualValue,
+    )
 
     SectionCard(title = null) {
         Row(
@@ -1020,7 +1030,7 @@ private fun PolicyCard(
                 }
             }
             Surface(
-                color = if (actualValue == selectedValue) {
+                color = if (actualSatisfiesSelected) {
                     MaterialTheme.colorScheme.primaryContainer
                 } else {
                     MaterialTheme.colorScheme.tertiaryContainer
@@ -1028,10 +1038,10 @@ private fun PolicyCard(
                 shape = RoundedCornerShape(999.dp),
             ) {
                 Text(
-                    text = "Current ${formatFrequency(actualValue)}",
+                    text = "Current ${formatFrequency(actualValue, boosted = policy.isBoosted(actualValue))}",
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelMedium,
-                    color = if (actualValue == selectedValue) {
+                    color = if (actualSatisfiesSelected) {
                         MaterialTheme.colorScheme.onPrimaryContainer
                     } else {
                         MaterialTheme.colorScheme.onTertiaryContainer
@@ -1059,7 +1069,7 @@ private fun PolicyCard(
                     modifier = Modifier.weight(1f),
                 )
                 Text(
-                    text = formatFrequency(selectedValue),
+                    text = formatFrequency(displaySelectedValue),
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.End,
                 )
@@ -1095,10 +1105,19 @@ private fun SectionCard(
     }
 }
 
-internal fun formatFrequency(valueKhz: Int): String {
-    return when {
+private fun CpuPolicyInfo.clampToWritableMax(valueKhz: Int): Int {
+    return valueKhz.coerceAtMost(stockMaxFreq)
+}
+
+private fun CpuPolicyInfo.isBoosted(valueKhz: Int): Boolean {
+    return valueKhz > stockMaxFreq
+}
+
+internal fun formatFrequency(valueKhz: Int, boosted: Boolean = false): String {
+    val base = when {
         valueKhz >= 1_000_000 -> String.format("%.2f GHz", valueKhz / 1_000_000f)
         valueKhz >= 1_000 -> String.format("%.0f MHz", valueKhz / 1_000f)
         else -> "$valueKhz kHz"
     }
+    return if (boosted) "$base+" else base
 }

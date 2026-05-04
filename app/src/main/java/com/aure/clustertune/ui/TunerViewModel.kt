@@ -69,7 +69,9 @@ class TunerViewModel(
         val selectedProfile = state.value.displayProfiles
             .firstOrNull { it.id == state.value.selectedProfileId }
 
-        if (selectedProfile != null && !ProfileStateResolver.matchesProfile(pendingValues, selectedProfile)) {
+        if (selectedProfile != null &&
+            !ProfileStateResolver.matchesProfile(pendingValues, selectedProfile, state.value.policies)
+        ) {
             viewModelScope.launch {
                 repository.selectProfile(null)
             }
@@ -267,7 +269,8 @@ class TunerViewModel(
         val summary = state.policies.joinToString(", ") { policy ->
             val requested = state.currentValues[policy.id] ?: policy.currentMaxFreq
             val actual = actualValues[policy.id] ?: policy.currentMaxFreq
-            "C${policy.id} requested ${formatFrequency(requested)}, actual ${formatFrequency(actual)}"
+            "C${policy.id} requested ${formatFrequency(requested)}, " +
+                "actual ${formatFrequency(actual, boosted = actual > policy.stockMaxFreq)}"
         }
         val base = "Apply did not stick: $summary"
         return commandOutput?.takeIf { it.isNotBlank() }?.let { "$base | log: ${it.take(120)}" } ?: base
