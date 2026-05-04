@@ -63,7 +63,11 @@ class MainActivity : ComponentActivity() {
                             onBack = { showSettings = false },
                             onColorSourceChange = viewModel::setColorSource,
                             onAccentColorChange = viewModel::setAccentColor,
-                            onTileTapBehaviorChange = viewModel::setTileTapBehavior,
+                            onTileTapBehaviorChange = { behavior ->
+                                viewModel.setTileTapBehavior(behavior) {
+                                    QuickSettingsTileRefresher.requestUpdate(this@MainActivity)
+                                }
+                            },
                             onApplyLastProfileOnBootChange = viewModel::setApplyLastProfileOnBoot,
                             onResetProfiles = viewModel::resetProfilesToDefault,
                             onExportProfiles = {

@@ -200,9 +200,10 @@ class TunerViewModel(
         return importedCount
     }
 
-    fun setTileTapBehavior(behavior: TileInteractionBehavior) {
+    fun setTileTapBehavior(behavior: TileInteractionBehavior, onSaved: () -> Unit = {}) {
         viewModelScope.launch {
             settingsStorage.persistTileTapBehavior(behavior)
+            onSaved()
         }
     }
 

@@ -12,6 +12,7 @@ import android.widget.Toast
 import com.aure.clustertune.AppContainer
 import com.aure.clustertune.R
 import com.aure.clustertune.TileControlActivity
+import com.aure.clustertune.model.AppSettings
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.model.TileInteractionBehavior
@@ -68,9 +69,11 @@ class PerformanceTileService : TileService() {
         runCatching {
             val container = AppContainer(applicationContext)
             val state = runBlocking { container.repository.observeState().first() }
+            val settings = runBlocking { container.settingsStorage.settings.first() }
+            val presentation = buildTilePresentation(state, settings)
             qsTile?.apply {
-                label = getString(R.string.tile_title)
-                subtitle = buildTileSubtitle(state)
+                label = presentation.label
+                subtitle = presentation.subtitle
                 this.state = buildTileVisualState(state)
                 updateTile()
             }
@@ -85,11 +88,29 @@ class PerformanceTileService : TileService() {
         }
     }
 
-    private fun buildTileSubtitle(state: TunerState): String {
-        return when {
-            !state.isPServerAvailable -> getString(R.string.tile_state_unavailable)
-            else -> effectiveTileProfileName(state) ?: getString(R.string.tile_state_manual)
+    private data class TilePresentation(
+        val label: String,
+        val subtitle: String,
+    )
+
+    private fun buildTilePresentation(state: TunerState, settings: AppSettings): TilePresentation {
+        if (!state.isPServerAvailable) {
+            return TilePresentation(
+                label = getString(R.string.tile_title),
+                subtitle = getString(R.string.tile_state_unavailable),
+            )
         }
+        val currentName = effectiveTileProfileName(state) ?: getString(R.string.tile_state_manual)
+        if (settings.tileTapBehavior != TileInteractionBehavior.CYCLE_PROFILES) {
+            return TilePresentation(
+                label = getString(R.string.tile_title),
+                subtitle = currentName,
+            )
+        }
+        return TilePresentation(
+            label = currentName,
+            subtitle = getString(R.string.tile_title),
+        )
     }
 
     private fun buildTileVisualState(state: TunerState): Int {
@@ -150,7 +171,7 @@ class PerformanceTileService : TileService() {
                     runBlocking {
                         container.repository.cycleTileProfile()
                             .onSuccess { profile ->
-                                updateTileForAppliedProfile(profile)
+                                updateTileForAppliedProfile(container, profile)
                                 showToast("Applied ${profile.name}")
                             }
                             .onFailure { throwable ->
@@ -165,10 +186,13 @@ class PerformanceTileService : TileService() {
         }
     }
 
-    private fun updateTileForAppliedProfile(profile: PerformanceProfile) {
+    private fun updateTileForAppliedProfile(container: AppContainer, profile: PerformanceProfile) {
+        val refreshedState = runBlocking { container.repository.observeState().first() }
+        val settings = runBlocking { container.settingsStorage.settings.first() }
+        val presentation = buildTilePresentation(refreshedState, settings)
         qsTile?.apply {
-            label = getString(R.string.tile_title)
-            subtitle = profile.name
+            label = presentation.label
+            subtitle = presentation.subtitle
             state = if (profile.id == ProfileStateResolver.STOCK_PROFILE_ID || profile.name == "Stock") {
                 Tile.STATE_INACTIVE
             } else {
