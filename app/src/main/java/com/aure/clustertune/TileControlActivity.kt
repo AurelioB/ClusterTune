@@ -9,8 +9,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.material3.Surface
-import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.model.TunerState
 import com.aure.clustertune.tile.QuickSettingsTileRefresher
@@ -45,16 +45,13 @@ class TileControlActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        lifecycleScope.launch {
-            val launchedFromLongPress = intent?.action == ACTION_QS_TILE_PREFERENCES
-
-            if (launchedFromLongPress) {
-                openFullApp()
-                return@launch
-            }
-
-            setEditorContent()
+        val launchedFromLongPress = intent?.action == ACTION_QS_TILE_PREFERENCES
+        if (launchedFromLongPress) {
+            openFullApp()
+            return
         }
+
+        setEditorContent()
     }
 
     private fun setEditorContent() {

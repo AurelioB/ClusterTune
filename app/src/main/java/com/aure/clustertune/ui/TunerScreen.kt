@@ -36,6 +36,7 @@ import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
@@ -117,7 +118,9 @@ fun MainTunerScreen(
                 onOpenSettings = onOpenSettings,
             )
 
-            if (!state.isPServerAvailable) {
+            if (state.isLoading) {
+                LoadingClustersCard()
+            } else if (!state.isPServerAvailable) {
                 Text(
                     text = "Your device is not compatible with this app",
                     style = MaterialTheme.typography.headlineSmall,
@@ -215,17 +218,21 @@ fun CompactTunerScreen(
                 compactMode = true,
                 onOpenSettings = null,
             )
-            ProfileChipSelector(
-                state = state,
-                onApplyProfile = onApplyProfile,
-                onClearSelection = onClearSelection,
-                onOpenFullApp = onOpenFullApp,
-            )
-            PolicyEditorSection(
-                state = state,
-                onPolicyValueChange = onPolicyValueChange,
-                compactMode = true,
-            )
+            if (state.isLoading) {
+                LoadingClustersCard()
+            } else {
+                ProfileChipSelector(
+                    state = state,
+                    onApplyProfile = onApplyProfile,
+                    onClearSelection = onClearSelection,
+                    onOpenFullApp = onOpenFullApp,
+                )
+                PolicyEditorSection(
+                    state = state,
+                    onPolicyValueChange = onPolicyValueChange,
+                    compactMode = true,
+                )
+            }
 
             if (onDismissRequest != null) {
                 Row(
@@ -251,6 +258,30 @@ fun CompactTunerScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun LoadingClustersCard() {
+    SectionCard(
+        title = null,
+        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.5.dp,
+            )
+            Text(
+                text = "Scanning CPU clusters...",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
     }
 }
@@ -900,7 +931,7 @@ private fun ProfileEditorDialog(
 
 @Composable
 private fun EmptyState(state: TunerState) {
-    SectionCard(title = "No CPU Clusters Found") {
+    SectionCard(title = if (state.isLoading) "Scanning CPU Clusters" else "No CPU Clusters Found") {
         Text(
             text = if (state.isLoading) {
                 "Scanning CPU clusters..."
