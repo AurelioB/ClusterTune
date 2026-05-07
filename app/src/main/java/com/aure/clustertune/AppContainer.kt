@@ -7,6 +7,7 @@ import com.aure.clustertune.data.PerformanceRepository
 import com.aure.clustertune.data.ProfileStorage
 import com.aure.clustertune.data.SettingsStorage
 import com.aure.clustertune.root.PerformanceCommandBuilder
+import com.aure.clustertune.root.PServerSysfsLister
 import com.aure.clustertune.root.PServerSysfsReader
 import com.aure.clustertune.root.RootCommandRunner
 
@@ -21,6 +22,7 @@ class AppContainer(context: Context) {
         PerformanceRepository(
             detector = CpuPolicyDetector(
                 privilegedReader = PServerSysfsReader(appContext),
+                privilegedLister = PServerSysfsLister(),
             ),
             bundledProfileProvider = BundledProfileProvider(appContext),
             profileStorage = ProfileStorage(appContext),

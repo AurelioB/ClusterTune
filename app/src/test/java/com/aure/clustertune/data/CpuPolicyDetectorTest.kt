@@ -222,6 +222,133 @@ class CpuPolicyDetectorTest {
         assertTrue(result.all { it.id == 1 })
     }
 
+    @Test
+    fun `falls back to privileged lister when sysfs listing is empty`() {
+        // Reproduces the Odin 2 Mini scenario: untrusted_app cannot list
+        // /sys/devices/system/cpu/cpufreq, so SysfsFileSystem returns nothing,
+        // but PServer can still read the policy files.
+        val fileSystem = FakeSysfsFileSystem(
+            directories = emptyList(),
+            files = emptyMap(),
+        )
+        val privilegedFiles = mapOf(
+            "/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq" to "2745600",
+            "/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq" to "3072000",
+            "/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq" to "300000",
+            "/sys/devices/system/cpu/cpufreq/policy0/scaling_available_frequencies"
+                to "300000 1228800 1900800 2300000 2745600",
+            "/sys/devices/system/cpu/cpufreq/policy0/affected_cpus" to "0 1 2",
+            "/sys/devices/system/cpu/cpufreq/policy3/scaling_max_freq" to "2803200",
+            "/sys/devices/system/cpu/cpufreq/policy3/cpuinfo_max_freq" to "2803200",
+            "/sys/devices/system/cpu/cpufreq/policy3/scaling_min_freq" to "633600",
+            "/sys/devices/system/cpu/cpufreq/policy3/scaling_available_frequencies"
+                to "633600 1267200 1958400 2419200 2803200",
+            "/sys/devices/system/cpu/cpufreq/policy3/affected_cpus" to "3 4 5 6",
+            "/sys/devices/system/cpu/cpufreq/policy7/scaling_max_freq" to "3187200",
+            "/sys/devices/system/cpu/cpufreq/policy7/cpuinfo_max_freq" to "3187200",
+            "/sys/devices/system/cpu/cpufreq/policy7/scaling_min_freq" to "806400",
+            "/sys/devices/system/cpu/cpufreq/policy7/scaling_available_frequencies"
+                to "806400 1612800 2419200 3187200",
+            "/sys/devices/system/cpu/cpufreq/policy7/affected_cpus" to "7",
+        )
+        val privilegedLister = FakePrivilegedSysfsLister(
+            mapOf(
+                ("/sys/devices/system/cpu/cpufreq" to "policy") to listOf(
+                    "/sys/devices/system/cpu/cpufreq/policy0",
+                    "/sys/devices/system/cpu/cpufreq/policy7",
+                    "/sys/devices/system/cpu/cpufreq/policy3",
+                ),
+            ),
+        )
+
+        val detector = CpuPolicyDetector(
+            fileSystem = fileSystem,
+            privilegedReader = FakePrivilegedSysfsReader(privilegedFiles),
+            privilegedLister = privilegedLister,
+        )
+
+        val result = detector.detectPolicies()
+
+        assertEquals(listOf(0, 3, 7), result.map { it.id })
+        assertEquals(listOf(0, 1, 2), result[0].cpuIds)
+        assertEquals(listOf(3, 4, 5, 6), result[1].cpuIds)
+        assertEquals(listOf(7), result[2].cpuIds)
+        assertEquals(2_745_600, result[0].selectableMaxFreq)
+        assertEquals(3_187_200, result[2].selectableMaxFreq)
+    }
+
+    @Test
+    fun `does not consult privileged lister when sysfs listing already produced policies`() {
+        // Guards the existing fast path so we never spend a binder
+        // round-trip on devices where the unprivileged listing works.
+        val fileSystem = FakeSysfsFileSystem(
+            directories = listOf("/sys/devices/system/cpu/cpufreq/policy0"),
+            files = emptyMap(),
+        )
+        val privilegedReader = FakePrivilegedSysfsReader(
+            mapOf(
+                "/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq" to "2016000",
+                "/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq" to "2016000",
+                "/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq" to "300000",
+                "/sys/devices/system/cpu/cpufreq/policy0/scaling_available_frequencies"
+                    to "300000 1209600 2016000",
+            ),
+        )
+        val privilegedLister = FakePrivilegedSysfsLister(emptyMap())
+
+        val detector = CpuPolicyDetector(
+            fileSystem = fileSystem,
+            privilegedReader = privilegedReader,
+            privilegedLister = privilegedLister,
+        )
+
+        val result = detector.detectPolicies()
+
+        assertEquals(1, result.size)
+        assertEquals(0, privilegedLister.callCount)
+    }
+
+    @Test
+    fun `returns empty when privileged lister also has nothing`() {
+        val fileSystem = FakeSysfsFileSystem(
+            directories = emptyList(),
+            files = emptyMap(),
+        )
+        val privilegedLister = FakePrivilegedSysfsLister(emptyMap())
+
+        val detector = CpuPolicyDetector(
+            fileSystem = fileSystem,
+            privilegedReader = FakePrivilegedSysfsReader(emptyMap()),
+            privilegedLister = privilegedLister,
+        )
+
+        val result = detector.detectPolicies()
+
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `tolerates privileged lister returning null transport failure`() {
+        // listChildrenWithPrefix may legitimately return null when the
+        // PServer round trip fails. In that case detectPolicies should
+        // simply produce an empty list, not crash.
+        val fileSystem = FakeSysfsFileSystem(
+            directories = emptyList(),
+            files = emptyMap(),
+        )
+        val privilegedLister = PrivilegedSysfsLister { _, _ -> null }
+
+        val detector = CpuPolicyDetector(
+            fileSystem = fileSystem,
+            privilegedReader = FakePrivilegedSysfsReader(emptyMap()),
+            privilegedLister = privilegedLister,
+        )
+
+        val result = detector.detectPolicies()
+
+        assertTrue(result.isEmpty())
+    }
+
     private class FakeSysfsFileSystem(
         private val directories: List<String>,
         val files: Map<String, String>,
@@ -233,5 +360,24 @@ class CpuPolicyDetectorTest {
         private val files: Map<String, String>,
     ) : PrivilegedSysfsReader {
         override fun readText(path: String): String? = files[path]
+    }
+
+    private class FakePrivilegedSysfsLister(
+        private val listings: Map<Pair<String, String>, List<String>>,
+    ) : PrivilegedSysfsLister {
+        var callCount: Int = 0
+            private set
+
+        override fun listChildrenWithPrefix(
+            directoryPath: String,
+            prefix: String,
+        ): List<String>? {
+            callCount += 1
+            // The fake's lookup key is the same (directory, prefix) tuple we
+            // would use against a real PServer round-trip. A miss returns
+            // an empty list so the detector treats it as "directory exists,
+            // no matching children".
+            return listings[directoryPath to prefix].orEmpty()
+        }
     }
 }

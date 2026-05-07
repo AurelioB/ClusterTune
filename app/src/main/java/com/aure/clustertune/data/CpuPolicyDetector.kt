@@ -1,17 +1,39 @@
 package com.aure.clustertune.data
 
+import android.util.Log
 import com.aure.clustertune.model.CpuPolicyInfo
 
 class CpuPolicyDetector(
     private val fileSystem: SysfsFileSystem = RealSysfsFileSystem(),
     private val privilegedReader: PrivilegedSysfsReader,
+    private val privilegedLister: PrivilegedSysfsLister? = null,
     private val policyRoot: String = "/sys/devices/system/cpu/cpufreq",
 ) {
     fun detectPolicies(): List<CpuPolicyInfo> {
-        return fileSystem.listPolicyDirectories(policyRoot)
+        val directoriesFromFs = fileSystem.listPolicyDirectories(policyRoot)
+        Log.d(LOG_TAG, "Unprivileged listing of $policyRoot -> ${directoriesFromFs.size} entries: $directoriesFromFs")
+        // On the Odin 2 Mini, /sys/devices/system/cpu/cpufreq is not
+        // listable from the untrusted_app SELinux domain, even though the
+        // individual policyN/* files are readable through PServer. When the
+        // unprivileged listing yields nothing, try the privileged lister so
+        // we can still discover the policies. The previous "do not fall
+        // back to normal reads when privileged reader is configured" test
+        // relied on the unprivileged listing producing the directory names;
+        // we preserve that behaviour by only consulting the privileged
+        // lister when the unprivileged listing is empty.
+        val directories = if (directoriesFromFs.isNotEmpty()) {
+            directoriesFromFs
+        } else {
+            val fallback = privilegedLister?.listChildrenWithPrefix(policyRoot, "policy")
+            Log.d(LOG_TAG, "Privileged-listing fallback: lister=${privilegedLister != null}, result=$fallback")
+            fallback.orEmpty()
+        }
+        val policies = directories
             .sortedBy(::policyIdOrMax)
             .mapNotNull(::parsePolicy)
             .sortedBy { it.id }
+        Log.d(LOG_TAG, "detectPolicies finished: ${policies.size} policies parsed (ids=${policies.map { it.id }})")
+        return policies
     }
 
     fun readCurrentMaxValues(policies: List<CpuPolicyInfo>): Map<Int, Int> {
@@ -34,6 +56,11 @@ class CpuPolicyDetector(
         val minFreq = readText("$policyPath/scaling_min_freq")?.toIntOrNull()
             ?: rawSupported.firstOrNull()
             ?: 0
+        Log.d(
+            LOG_TAG,
+            "policy$id reads: cpuIds=$cpuIds, scalingMax=$scalingMax, cpuinfoMax=$cpuInfoMax, " +
+                "minFreq=$minFreq, available=${rawSupported.size} steps, timeInStateMax=$timeInStateMax",
+        )
         val supported = rawSupported.ifEmpty {
             buildFallbackFrequencies(
                 minFreq = minFreq,
@@ -41,7 +68,10 @@ class CpuPolicyDetector(
                 currentMaxFreq = scalingMax ?: cpuInfoMax ?: 0,
             )
         }
-        val selectableMax = supported.lastOrNull() ?: maxOfNotNull(scalingMax, cpuInfoMax) ?: return null
+        val selectableMax = supported.lastOrNull() ?: maxOfNotNull(scalingMax, cpuInfoMax) ?: run {
+            Log.d(LOG_TAG, "policy$id rejected: no usable max frequency from any source")
+            return null
+        }
         val observedMax = maxOfNotNull(cpuInfoMax, scalingMax, timeInStateMax, selectableMax) ?: selectableMax
         val currentMax = scalingMax ?: supported.lastOrNull() ?: cpuInfoMax ?: selectableMax
 
@@ -110,5 +140,9 @@ class CpuPolicyDetector(
 
     private fun policyIdOrMax(policyPath: String): Int {
         return policyPath.substringAfterLast('/').removePrefix("policy").toIntOrNull() ?: Int.MAX_VALUE
+    }
+
+    private companion object {
+        const val LOG_TAG = "ClusterTune"
     }
 }

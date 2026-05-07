@@ -34,11 +34,6 @@ private data class PartialStorageState(
     val lastValues: Map<Int, Int>,
 )
 
-internal data class ImportedProfileMerge(
-    val profiles: List<PerformanceProfile>,
-    val restoredBundledProfileIds: Set<String>,
-)
-
 class PerformanceRepository(
     private val detector: CpuPolicyDetector,
     private val bundledProfileProvider: BundledProfileProvider,
@@ -290,7 +285,9 @@ class PerformanceRepository(
         val state = observeState().first()
         val policyIds = state.policies.associateBy { it.id }
         val currentProfiles = state.displayProfiles.filter { it.source != ProfileSource.VIRTUAL }
-        val defaultBundledProfiles = bundledProfileProvider.createProfiles(state.policies)
+        val bundledProfilesById = currentProfiles
+            .filter { it.source == ProfileSource.BUNDLED }
+            .associateBy { it.id }
         val validProfiles = ProfileJsonCodec.parseShareProfiles(rawJson)
             .filter { profile ->
                 profile.maxFrequencies.isNotEmpty() &&
@@ -300,16 +297,31 @@ class PerformanceRepository(
                     }
             }
 
-        val merge = mergeImportedProfiles(
-            currentProfiles = currentProfiles,
-            defaultBundledProfiles = defaultBundledProfiles,
-            importedProfiles = validProfiles,
-        )
-        merge.restoredBundledProfileIds.forEach { bundledProfileId ->
-            profileStorage.unmarkBundledProfileDeleted(bundledProfileId)
-        }
-        merge.profiles.forEach { profile ->
-            profileStorage.saveProfile(profile)
+        var createdUserProfiles = 0
+        validProfiles.forEach { importedProfile ->
+            val bundledProfile = bundledProfilesById[importedProfile.id]
+            if (bundledProfile != null) {
+                profileStorage.unmarkBundledProfileDeleted(bundledProfile.id)
+                profileStorage.saveProfile(
+                    bundledProfile.copy(
+                        name = importedProfile.name,
+                        maxFrequencies = importedProfile.maxFrequencies,
+                        isEditable = true,
+                        isDeletable = true,
+                    ),
+                )
+            } else {
+                profileStorage.saveProfile(
+                    importedProfile.copy(
+                        id = "user_${UUID.randomUUID()}",
+                        source = ProfileSource.USER,
+                        order = currentProfiles.size + createdUserProfiles,
+                        isEditable = true,
+                        isDeletable = true,
+                    ),
+                )
+                createdUserProfiles += 1
+            }
         }
         return validProfiles.size
     }
@@ -403,50 +415,4 @@ class PerformanceRepository(
         return ordered + missing
     }
 
-}
-
-internal fun mergeImportedProfiles(
-    currentProfiles: List<PerformanceProfile>,
-    defaultBundledProfiles: List<PerformanceProfile>,
-    importedProfiles: List<PerformanceProfile>,
-): ImportedProfileMerge {
-    val currentById = currentProfiles.associateBy { it.id }
-    val defaultBundledById = defaultBundledProfiles.associateBy { it.id }
-    val restoredBundledProfileIds = mutableSetOf<String>()
-    var nextNewProfileOrder = currentProfiles.size
-
-    val profiles = importedProfiles.map { importedProfile ->
-        val bundledProfile = defaultBundledById[importedProfile.id]
-        if (bundledProfile != null) {
-            restoredBundledProfileIds += bundledProfile.id
-            val existing = currentById[importedProfile.id] ?: bundledProfile
-            existing.copy(
-                name = importedProfile.name,
-                maxFrequencies = importedProfile.maxFrequencies,
-                source = ProfileSource.BUNDLED,
-                isEditable = true,
-                isDeletable = true,
-            )
-        } else {
-            val existing = currentById[importedProfile.id]
-            existing?.copy(
-                name = importedProfile.name,
-                maxFrequencies = importedProfile.maxFrequencies,
-                source = ProfileSource.USER,
-                isEditable = true,
-                isDeletable = true,
-            )
-                ?: importedProfile.copy(
-                    source = ProfileSource.USER,
-                    order = nextNewProfileOrder++,
-                    isEditable = true,
-                    isDeletable = true,
-                )
-        }
-    }
-
-    return ImportedProfileMerge(
-        profiles = profiles,
-        restoredBundledProfileIds = restoredBundledProfileIds,
-    )
 }
