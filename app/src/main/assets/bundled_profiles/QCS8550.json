@@ -1,24 +1,33 @@
 {
-  "schemaVersion": 1,
-  "socModel": "QCS8550",
-  "profiles": [
-    {
-      "id": "bundled_qcs8550_moderate",
-      "name": "Medium Underclock",
-      "maxFrequencies": {
-        "0": 1555200,
-        "3": 2054400,
-        "7": 2092800
-      }
-    },
-    {
-      "id": "bundled_qcs8550_aggressive",
-      "name": "Large Underclock",
-      "maxFrequencies": {
-        "0": 1459200,
-        "3": 1785600,
-        "7": 1843200
-      }
-    }
-  ]
+    "schemaVersion": 1,
+    "socModel": "QCS8550",
+    "profiles": [
+        {
+            "id": "bundled_qcs8550_small",
+            "name": "Small Underclock",
+            "maxFrequencies": {
+                "0": 1785600,
+                "3": 2323200,
+                "7": 2476800
+            }
+        },
+        {
+            "id": "bundled_qcs8550_moderate",
+            "name": "Medium Underclock",
+            "maxFrequencies": {
+                "0": 1555200,
+                "3": 2054400,
+                "7": 2092800
+            }
+        },
+        {
+            "id": "bundled_qcs8550_aggressive",
+            "name": "Large Underclock",
+            "maxFrequencies": {
+                "0": 1459200,
+                "3": 1785600,
+                "7": 1843200
+            }
+        }
+    ]
 }
