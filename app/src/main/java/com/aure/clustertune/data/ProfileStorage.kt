@@ -18,6 +18,8 @@ class ProfileStorage(private val context: Context) {
     private val lastValuesKey = stringPreferencesKey("last_values")
     private val selectedProfileKey = stringPreferencesKey("selected_profile")
     private val lastAppliedDisplayProfileKey = stringPreferencesKey("last_applied_display_profile")
+    private val sleepRestoreValuesKey = stringPreferencesKey("sleep_restore_values")
+    private val sleepRestoreDisplayProfileKey = stringPreferencesKey("sleep_restore_display_profile")
     private val deletedBundledProfileIdsKey = stringSetPreferencesKey("deleted_bundled_profile_ids")
     private val displayOrderKey = stringPreferencesKey("display_order")
 
@@ -43,6 +45,14 @@ class ProfileStorage(private val context: Context) {
 
     val lastAppliedDisplayProfileId: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[lastAppliedDisplayProfileKey]
+    }
+
+    val sleepRestoreValues: Flow<Map<Int, Int>> = context.dataStore.data.map { preferences ->
+        ProfileStorageCodec.parseIntMap(preferences[sleepRestoreValuesKey])
+    }
+
+    val sleepRestoreDisplayProfileId: Flow<String?> = context.dataStore.data.map { preferences ->
+        preferences[sleepRestoreDisplayProfileKey]
     }
 
     suspend fun saveProfile(profile: PerformanceProfile) {
@@ -132,6 +142,24 @@ class ProfileStorage(private val context: Context) {
             } else {
                 preferences[lastAppliedDisplayProfileKey] = profileId
             }
+        }
+    }
+
+    suspend fun persistSleepRestoreState(values: Map<Int, Int>, profileId: String?) {
+        context.dataStore.edit { preferences ->
+            preferences[sleepRestoreValuesKey] = ProfileStorageCodec.encodeIntMap(values)
+            if (profileId == null) {
+                preferences.remove(sleepRestoreDisplayProfileKey)
+            } else {
+                preferences[sleepRestoreDisplayProfileKey] = profileId
+            }
+        }
+    }
+
+    suspend fun clearSleepRestoreState() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(sleepRestoreValuesKey)
+            preferences.remove(sleepRestoreDisplayProfileKey)
         }
     }
 

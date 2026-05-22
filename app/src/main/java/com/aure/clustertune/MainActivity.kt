@@ -1,6 +1,9 @@
 package com.aure.clustertune
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -13,8 +16,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.aure.clustertune.sleep.SleepProfileMonitorService
 import com.aure.clustertune.tile.QuickSettingsTileAddResult
 import com.aure.clustertune.tile.QuickSettingsTilePrompt
 import com.aure.clustertune.tile.QuickSettingsTileRefresher
@@ -44,6 +49,16 @@ class MainActivity : ComponentActivity() {
     ) { uri ->
         uri?.let(::importProfilesFromUri)
     }
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) {
+        lifecycleScope.launch {
+            val settings = container.settingsStorage.settings.first()
+            if (settings.sleepProfileEnabled) {
+                SleepProfileMonitorService.start(this@MainActivity)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,6 +84,19 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             onApplyLastProfileOnBootChange = viewModel::setApplyLastProfileOnBoot,
+                            sleepProfileOptions = state.displayProfiles,
+                            onSleepProfileEnabledChange = { enabled ->
+                                val profileId = settings.sleepProfileId
+                                    ?: state.displayProfiles.firstOrNull()?.id
+                                viewModel.configureSleepProfile(enabled, profileId) {
+                                    if (enabled) {
+                                        startSleepProfileMonitor()
+                                    } else {
+                                        SleepProfileMonitorService.stop(this@MainActivity)
+                                    }
+                                }
+                            },
+                            onSleepProfileChange = viewModel::setSleepProfile,
                             onResetProfiles = viewModel::resetProfilesToDefault,
                             onExportProfiles = {
                                 exportProfilesLauncher.launch("clustertune-profiles.json")
@@ -85,6 +113,7 @@ class MainActivity : ComponentActivity() {
                     } else {
                         MainTunerScreen(
                             state = state,
+                            sleepProfileId = settings.sleepProfileId.takeIf { settings.sleepProfileEnabled },
                             onApplyProfile = viewModel::applyProfile,
                             onApplyCurrent = { tunerState ->
                                 viewModel.applyCurrent(tunerState) {
@@ -104,6 +133,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun startSleepProfileMonitor() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        SleepProfileMonitorService.start(this)
     }
 
     private fun maybeRequestQuickSettingsTileOnFirstRun() {

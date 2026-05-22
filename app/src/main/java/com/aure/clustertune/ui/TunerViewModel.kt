@@ -213,6 +213,26 @@ class TunerViewModel(
         }
     }
 
+    fun setSleepProfileEnabled(enabled: Boolean, onSaved: () -> Unit = {}) {
+        viewModelScope.launch {
+            settingsStorage.persistSleepProfileEnabled(enabled)
+            onSaved()
+        }
+    }
+
+    fun configureSleepProfile(enabled: Boolean, profileId: String?, onSaved: () -> Unit = {}) {
+        viewModelScope.launch {
+            settingsStorage.persistSleepProfile(enabled, profileId)
+            onSaved()
+        }
+    }
+
+    fun setSleepProfile(profileId: String?) {
+        viewModelScope.launch {
+            settingsStorage.persistSleepProfileId(profileId)
+        }
+    }
+
     fun setColorSource(colorSource: AppColorSource) {
         viewModelScope.launch {
             settingsStorage.persistColorSource(colorSource)
