@@ -23,18 +23,16 @@ import java.io.File
  * Settings, and let the user navigate the remaining few taps
  * themselves.
  *
- * Where the script goes: [scriptDirectory] returns
- * `<context.getExternalFilesDir(DIRECTORY_DOWNLOADS)>/ClusterScripts`,
- * which resolves to
- * `/sdcard/Android/data/com.aure.clustertune/files/Download/ClusterScripts/`.
- * This path is writable from an `untrusted_app` SELinux domain on
- * Android 11+ without any runtime permission (it's app-scoped
- * external storage), and it's readable by Odin Settings's
- * root-context script runner. Earlier iterations tried
- * `/sdcard/Download/` directly; that requires either
- * `MANAGE_EXTERNAL_STORAGE` (a sensitive permission with a special
- * approval flow) or the MediaStore API, and silently fails without
- * them on `targetSdk >= 30`.
+ * Where the script goes: `/sdcard/Documents/ClusterScripts/`. This is
+ * a public storage directory that any app can create files in without
+ * runtime permissions (a deliberate scoped-storage carve-out on
+ * Android 10+ that allows apps to create files they own in Documents
+ * and Downloads). Odin Settings's file picker treats Documents as a
+ * top-level location and navigates into it cleanly. Earlier
+ * iterations tried `/sdcard/Download/` (worked but the file was hard
+ * for the user to locate) and the app-scoped equivalent under
+ * `/sdcard/Android/data/<pkg>/files/`, which is unlistable by other
+ * apps on Android 11+.
  */
 class OdinScriptHandoff(private val context: Context) {
 
@@ -47,22 +45,19 @@ class OdinScriptHandoff(private val context: Context) {
         get() = isPackageInstalled(ODIN_SETTINGS_PACKAGE)
 
     /**
-     * The absolute path Odin Settings's file picker should be pointed
-     * to. Resolved lazily because it depends on context state.
+     * Absolute path the script will be written to. Resolved lazily
+     * because it depends on Environment state.
      */
     fun absoluteScriptPath(): String = File(scriptDirectory(), SCRIPT_FILENAME).absolutePath
 
     /**
-     * The same path with the `/storage/emulated/0/` prefix stripped,
-     * shown to the user in the tutorial. Odin Settings's file picker
-     * typically displays paths under this prefix.
+     * The same path with the storage-root prefix stripped, shown to
+     * the user in the tutorial. Odin Settings's file picker presents
+     * Documents as a top-level entry, so users only ever see this
+     * shorter form.
      */
-    fun userVisibleScriptPath(): String {
-        val absolute = absoluteScriptPath()
-        return absolute
-            .removePrefix("/storage/emulated/0/")
-            .removePrefix("/sdcard/")
-    }
+    fun userVisibleScriptPath(): String =
+        "Documents/$SCRIPT_DIR_NAME/$SCRIPT_FILENAME"
 
     /**
      * Writes the apply script to the handoff location and returns its
@@ -78,7 +73,6 @@ class OdinScriptHandoff(private val context: Context) {
             }
             val file = File(dir, SCRIPT_FILENAME)
             file.writeText(scriptContents)
-            // World-readable so the root-context script runner can `sh` it.
             file.setReadable(true, false)
             file.setExecutable(true, false)
             Log.d(
@@ -114,10 +108,11 @@ class OdinScriptHandoff(private val context: Context) {
     }
 
     private fun scriptDirectory(): File {
-        // App-scoped external storage; no runtime permission needed.
-        val base = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
-            ?: File(context.filesDir, "external-fallback")
-        return File(base, SCRIPT_DIR_NAME)
+        @Suppress("DEPRECATION")
+        val documents = Environment.getExternalStoragePublicDirectory(
+            Environment.DIRECTORY_DOCUMENTS
+        )
+        return File(documents, SCRIPT_DIR_NAME)
     }
 
     private fun isPackageInstalled(packageName: String): Boolean {
