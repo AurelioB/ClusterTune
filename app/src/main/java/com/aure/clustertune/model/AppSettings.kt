@@ -16,6 +16,8 @@ data class AppSettings(
     val accentColor: Int = 0xFF3F51B5.toInt(),
     val tileTapBehavior: TileInteractionBehavior = TileInteractionBehavior.SHOW_DIALOG,
     val applyLastProfileOnBoot: Boolean = false,
+    val sleepProfileEnabled: Boolean = false,
+    val sleepProfileId: String? = null,
     val hasPromptedQuickSettingsTile: Boolean = false,
     val isQuickSettingsTileAdded: Boolean = false,
     /**

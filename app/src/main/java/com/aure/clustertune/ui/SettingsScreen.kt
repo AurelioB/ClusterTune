@@ -19,7 +19,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -36,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.aure.clustertune.model.AppColorSource
 import com.aure.clustertune.model.AppSettings
+import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.TileInteractionBehavior
 
 private val accentColorOptions = listOf(
@@ -55,6 +62,9 @@ fun SettingsScreen(
     onAccentColorChange: (Int) -> Unit,
     onTileTapBehaviorChange: (TileInteractionBehavior) -> Unit,
     onApplyLastProfileOnBootChange: (Boolean) -> Unit,
+    sleepProfileOptions: List<PerformanceProfile>,
+    onSleepProfileEnabledChange: (Boolean) -> Unit,
+    onSleepProfileChange: (String?) -> Unit,
     onResetProfiles: () -> Unit,
     onExportProfiles: () -> Unit,
     onImportProfiles: () -> Unit,
@@ -157,6 +167,49 @@ fun SettingsScreen(
             }
         }
 
+        SettingsSection(title = "Sleep") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = "Apply sleep profile",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "When enabled, ClusterTune keeps a low-priority notification so it can apply this profile when the screen turns off and restore the previous limits when the device wakes.",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                Switch(
+                    checked = settings.sleepProfileEnabled,
+                    onCheckedChange = onSleepProfileEnabledChange,
+                    enabled = sleepProfileOptions.isNotEmpty(),
+                )
+            }
+            if (sleepProfileOptions.isEmpty()) {
+                Text(
+                    text = "No profiles are available yet.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            } else {
+                SettingsControlGroup(label = "Profile while asleep") {
+                    SleepProfileSelector(
+                        profiles = sleepProfileOptions,
+                        selectedProfileId = settings.sleepProfileId,
+                        enabled = settings.sleepProfileEnabled,
+                        onChange = onSleepProfileChange,
+                    )
+                }
+            }
+        }
+
         SettingsSection(title = "Profiles") {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -239,6 +292,52 @@ fun SettingsScreen(
                 }
             },
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SleepProfileSelector(
+    profiles: List<PerformanceProfile>,
+    selectedProfileId: String?,
+    enabled: Boolean,
+    onChange: (String?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedProfile = profiles.firstOrNull { profile -> profile.id == selectedProfileId }
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { if (enabled) expanded = !expanded },
+    ) {
+        OutlinedTextField(
+            value = selectedProfile?.name ?: "Select profile",
+            onValueChange = {},
+            readOnly = true,
+            enabled = enabled,
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = enabled)
+                .fillMaxWidth(),
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+            singleLine = true,
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            profiles.forEach { profile ->
+                DropdownMenuItem(
+                    text = { Text(profile.name) },
+                    onClick = {
+                        onChange(profile.id)
+                        expanded = false
+                    },
+                )
+            }
+        }
     }
 }
 

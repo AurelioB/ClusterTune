@@ -18,6 +18,8 @@ class SettingsStorage(private val context: Context) {
 
     private val tileTapBehaviorKey = stringPreferencesKey("tile_tap_behavior")
     private val applyLastProfileOnBootKey = booleanPreferencesKey("apply_last_profile_on_boot")
+    private val sleepProfileEnabledKey = booleanPreferencesKey("sleep_profile_enabled")
+    private val sleepProfileIdKey = stringPreferencesKey("sleep_profile_id")
     private val quickSettingsTilePromptShownKey = booleanPreferencesKey("quick_settings_tile_prompt_shown")
     private val quickSettingsTileAddedKey = booleanPreferencesKey("quick_settings_tile_added")
     private val colorSourceKey = stringPreferencesKey("color_source")
@@ -34,6 +36,8 @@ class SettingsStorage(private val context: Context) {
                 ?.let(::parseBehavior)
                 ?: TileInteractionBehavior.SHOW_DIALOG,
             applyLastProfileOnBoot = preferences[applyLastProfileOnBootKey] ?: false,
+            sleepProfileEnabled = preferences[sleepProfileEnabledKey] ?: false,
+            sleepProfileId = preferences[sleepProfileIdKey],
             hasPromptedQuickSettingsTile = preferences[quickSettingsTilePromptShownKey] ?: false,
             isQuickSettingsTileAdded = preferences[quickSettingsTileAddedKey] ?: false,
             hasSeenOdinHandoffTutorial = preferences[odinHandoffTutorialSeenKey] ?: false,
@@ -49,6 +53,33 @@ class SettingsStorage(private val context: Context) {
     suspend fun persistApplyLastProfileOnBoot(enabled: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[applyLastProfileOnBootKey] = enabled
+        }
+    }
+
+    suspend fun persistSleepProfileEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[sleepProfileEnabledKey] = enabled
+        }
+    }
+
+    suspend fun persistSleepProfileId(profileId: String?) {
+        context.settingsDataStore.edit { preferences ->
+            if (profileId == null) {
+                preferences.remove(sleepProfileIdKey)
+            } else {
+                preferences[sleepProfileIdKey] = profileId
+            }
+        }
+    }
+
+    suspend fun persistSleepProfile(enabled: Boolean, profileId: String?) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[sleepProfileEnabledKey] = enabled
+            if (profileId == null) {
+                preferences.remove(sleepProfileIdKey)
+            } else {
+                preferences[sleepProfileIdKey] = profileId
+            }
         }
     }
 

@@ -173,8 +173,25 @@ class PerformanceRepository(
         isReset: Boolean,
         appliedDisplayProfileId: String?,
     ): Result<ApplyOutcome> {
+        return applyValuesInternal(
+            policies = policies,
+            selectedValues = selectedValues,
+            isReset = isReset,
+            appliedDisplayProfileId = appliedDisplayProfileId,
+            persistNormalState = true,
+        )
+    }
+
+    private suspend fun applyValuesInternal(
+        policies: List<CpuPolicyInfo>,
+        selectedValues: Map<Int, Int>,
+        isReset: Boolean,
+        appliedDisplayProfileId: String?,
+        persistNormalState: Boolean,
+    ): Result<ApplyOutcome> {
         val filtered = selectedValues.filterKeys { policyId -> policies.any { it.id == policyId } }
         val script = commandBuilder.buildApplyScript(policies, filtered, isReset)
+
         // The script execution may legitimately throw on devices where
         // the PServer channel is unreliable (e.g. Odin 2 Mini). To let
         // the UI offer the script-handoff fallback in those cases we
@@ -182,10 +199,8 @@ class PerformanceRepository(
         // with verificationPassed=false, so the caller can act on the
         // failure WITH the script in hand instead of having to
         // regenerate it.
-        android.util.Log.d("ClusterTuneApply", "applyValues: filtered=$filtered isReset=$isReset script-len=${script.length}")
         val executionResult = rootCommandRunner.executeScript(script)
         val commandOutput = executionResult.getOrNull()
-        android.util.Log.d("ClusterTuneApply", "executeScript success=${executionResult.isSuccess} output=${commandOutput?.take(60)}")
         if (executionResult.isFailure) {
             val actualValues = detector.readCurrentMaxValues(policies)
             return Result.success(
@@ -199,8 +214,10 @@ class PerformanceRepository(
             )
         }
         return runCatching {
-            profileStorage.persistLastValues(filtered)
-            profileStorage.persistLastAppliedDisplayProfile(appliedDisplayProfileId)
+            if (persistNormalState) {
+                profileStorage.persistLastValues(filtered)
+                profileStorage.persistLastAppliedDisplayProfile(appliedDisplayProfileId)
+            }
             val actualValues = detector.readCurrentMaxValues(policies)
             refreshLiveValues()
             val verificationPassed = filtered.all { (policyId, requestedValue) ->
@@ -222,6 +239,65 @@ class PerformanceRepository(
                 commandOutput = commandOutput,
                 appliedScript = script,
             )
+        }
+    }
+
+    suspend fun applySleepProfile(profileId: String): Result<ApplyOutcome> {
+        if (!rootCommandRunner.isAvailable) {
+            return Result.failure(IllegalStateException("PServer not available"))
+        }
+        val state = observeState().first()
+        if (state.policies.isEmpty()) {
+            return Result.failure(IllegalStateException("No CPU clusters found"))
+        }
+        val sleepProfile = state.displayProfiles.firstOrNull { profile -> profile.id == profileId }
+            ?: return Result.failure(IllegalStateException("Sleep profile is unavailable"))
+        val currentValues = detector.readCurrentMaxValues(state.policies)
+        profileStorage.persistSleepRestoreState(
+            values = currentValues,
+            profileId = state.activeDisplayProfileId ?: state.lastAppliedDisplayProfileId,
+        )
+        return applyValuesInternal(
+            policies = state.policies,
+            selectedValues = sleepProfile.maxFrequencies,
+            isReset = sleepProfile.id == ProfileStateResolver.STOCK_PROFILE_ID,
+            appliedDisplayProfileId = sleepProfile.id,
+            persistNormalState = false,
+        )
+    }
+
+    suspend fun restorePreSleepState(): Result<ApplyOutcome> {
+        if (!rootCommandRunner.isAvailable) {
+            return Result.failure(IllegalStateException("PServer not available"))
+        }
+        val policies = detector.detectPolicies()
+        if (policies.isEmpty()) {
+            return Result.failure(IllegalStateException("No CPU clusters found"))
+        }
+        val restoreValues = profileStorage.sleepRestoreValues.first()
+        if (restoreValues.isEmpty()) {
+            return Result.failure(IllegalStateException("No sleep restore state"))
+        }
+        val restoreProfileId = profileStorage.sleepRestoreDisplayProfileId.first()
+        val filteredValues = restoreValues.filterKeys { policyId ->
+            policies.any { it.id == policyId }
+        }
+        if (filteredValues.isEmpty()) {
+            return Result.failure(IllegalStateException("No stored values match detected policies"))
+        }
+        return applyValuesInternal(
+            policies = policies,
+            selectedValues = filteredValues,
+            isReset = restoreProfileId == ProfileStateResolver.STOCK_PROFILE_ID,
+            appliedDisplayProfileId = restoreProfileId,
+            persistNormalState = true,
+        ).onSuccess {
+            profileStorage.persistSelectedProfile(
+                restoreProfileId?.takeUnless { id ->
+                    id == ProfileStateResolver.STOCK_PROFILE_ID || id == ProfileStateResolver.MANUAL_PROFILE_ID
+                },
+            )
+            profileStorage.clearSleepRestoreState()
         }
     }
 

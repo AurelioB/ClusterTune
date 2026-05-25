@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -78,6 +79,7 @@ private const val NEW_PROFILE_DIALOG_ID = "__new_profile__"
 @Composable
 fun MainTunerScreen(
     state: TunerState,
+    sleepProfileId: String?,
     onApplyProfile: (PerformanceProfile) -> Unit,
     onApplyCurrent: (TunerState) -> Unit,
     onCreateProfile: (String, TunerState) -> Unit,
@@ -136,6 +138,7 @@ fun MainTunerScreen(
 
                 ProfileListSection(
                     state = state,
+                    sleepProfileId = sleepProfileId,
                     onApplyProfile = onApplyProfile,
                     onOpenCreateProfile = { dialogProfileId = NEW_PROFILE_DIALOG_ID },
                     onEditProfile = { dialogProfileId = it },
@@ -460,6 +463,7 @@ private fun CurrentFrequenciesCard(
 @Composable
 private fun ProfileListSection(
     state: TunerState,
+    sleepProfileId: String?,
     onApplyProfile: (PerformanceProfile) -> Unit,
     onOpenCreateProfile: () -> Unit,
     onEditProfile: (String) -> Unit,
@@ -502,6 +506,7 @@ private fun ProfileListSection(
                     profile = profile,
                     isApplied = profile.id == state.activeDisplayProfileId,
                     isSelected = profile.id == state.selectedDisplayProfileId,
+                    isSleepProfile = profile.id == sleepProfileId,
                     canMoveUp = canMove && movableIndex > 0,
                     canMoveDown = canMove && movableIndex < state.displayProfiles.lastIndex,
                     showReorder = true,
@@ -545,6 +550,7 @@ private fun ProfileListRow(
     profile: PerformanceProfile,
     isApplied: Boolean,
     isSelected: Boolean,
+    isSleepProfile: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
     showReorder: Boolean,
@@ -604,12 +610,25 @@ private fun ProfileListRow(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(
-                text = profile.name,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = contentColor,
-            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = profile.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = contentColor,
+                )
+                if (isSleepProfile) {
+                    Icon(
+                        imageVector = Icons.Rounded.DarkMode,
+                        contentDescription = "Sleep profile",
+                        modifier = Modifier.size(16.dp),
+                        tint = contentColor.copy(alpha = 0.78f),
+                    )
+                }
+            }
             if (valuePreview.isNotEmpty()) {
                 ValuePreviewChips(
                     values = valuePreview,
