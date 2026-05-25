@@ -3,6 +3,7 @@ package com.aure.clustertune.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import com.aure.clustertune.data.PerformanceRepository
 import com.aure.clustertune.data.SettingsStorage
 import com.aure.clustertune.root.OdinScriptHandoff
@@ -30,10 +31,10 @@ class TunerViewModel(
 
     /**
      * State surfaced to the UI when the standard PServer apply path
-     * failed verification (or threw) and the device has Odin Settings
-     * available as a fallback. The UI shows a handoff dialog and, if
-     * the user accepts, the user is taken to Odin Settings to run the
-     * script through "Run script as root".
+     * failed verification and the device has Odin Settings available
+     * as a fallback. The UI shows a handoff dialog and, if the user
+     * accepts, the user is taken to Odin Settings to run the script
+     * through "Run script as Root".
      */
     data class HandoffRequest(
         val scriptPath: String,
@@ -134,28 +135,30 @@ class TunerViewModel(
             applyResult.onSuccess { outcome ->
                 edits.value = emptyMap()
                 if (outcome.verificationPassed) {
+                    Log.d(LOG_TAG, "applyCurrent: verification passed")
                     transientMessage.value = buildAppliedMessage(appliedProfile, outcome.commandOutput)
                     transientError.value = null
                 } else {
-                    // Verification failed. If Odin Settings is available, offer
-                    // the script-handoff fallback. Otherwise just surface the
-                    // failure message the way the upstream code did.
+                    Log.d(
+                        LOG_TAG,
+                        "applyCurrent: verification failed, handoff available=${odinScriptHandoff.isAvailable}",
+                    )
                     if (odinScriptHandoff.isAvailable) {
                         val scriptPath = odinScriptHandoff.writeScript(outcome.appliedScript)
+                        Log.d(LOG_TAG, "applyCurrent: scriptPath=$scriptPath")
                         if (scriptPath != null) {
                             val hasSeenTutorial = settings.value.hasSeenOdinHandoffTutorial
                             handoffRequest.value = HandoffRequest(
                                 scriptPath = scriptPath,
-                                userVisiblePath = OdinScriptHandoff.USER_VISIBLE_PATH,
+                                userVisiblePath = odinScriptHandoff.userVisibleScriptPath(),
                                 showTutorial = !hasSeenTutorial,
                                 profileName = profileName,
                             )
                             transientMessage.value = null
                             transientError.value = null
                         } else {
-                            transientMessage.value =
-                                buildVerificationFailureMessage(state, outcome.actualValues, outcome.commandOutput)
-                            transientError.value = null
+                            transientError.value =
+                                "Could not write apply script to Downloads. Check storage permissions."
                         }
                     } else {
                         transientMessage.value =
@@ -164,6 +167,7 @@ class TunerViewModel(
                     }
                 }
             }.onFailure { throwable ->
+                Log.w(LOG_TAG, "applyCurrent: applyValues failed", throwable)
                 transientError.value = throwable.message ?: "Failed to apply limits"
             }
             if (applyResult.isSuccess && applyResult.getOrNull()?.verificationPassed == true) {
@@ -173,11 +177,7 @@ class TunerViewModel(
         }
     }
 
-    /**
-     * Called when the user taps "Open Odin Settings" in the handoff
-     * dialog. Marks the tutorial as seen, launches Odin Settings, and
-     * clears the pending handoff state.
-     */
+    /** User tapped "Open Odin Settings" in the handoff dialog. */
     fun confirmHandoff() {
         viewModelScope.launch {
             settingsStorage.persistOdinHandoffTutorialSeen()
@@ -186,12 +186,7 @@ class TunerViewModel(
         handoffRequest.value = null
     }
 
-    /**
-     * Called when the user cancels the handoff dialog. We still mark
-     * the tutorial as seen so we don't replay the long form again next
-     * time, and we surface the original verification-failure toast so
-     * the user has feedback that the apply didn't land.
-     */
+    /** User cancelled the handoff dialog. */
     fun dismissHandoff() {
         viewModelScope.launch {
             settingsStorage.persistOdinHandoffTutorialSeen()
@@ -203,17 +198,12 @@ class TunerViewModel(
         }
     }
 
-    /**
-     * Called from the activity's onResume after the user returned from
-     * Odin Settings. Re-reads sysfs and produces a final success/failure
-     * toast. Safe to call any time; no-op if no handoff is pending.
-     */
+    /** Called from onResume after the user returned from Odin Settings. */
     fun verifyAfterHandoff() {
         val current = state.value
         if (current.policies.isEmpty()) return
         viewModelScope.launch {
             repository.refreshLiveValues()
-            // Compare what the user had selected against what is now live.
             val mismatches = current.policies.mapNotNull { policy ->
                 val requested = current.currentValues[policy.id] ?: return@mapNotNull null
                 val actual = current.actualValues[policy.id] ?: return@mapNotNull null
@@ -221,7 +211,8 @@ class TunerViewModel(
                         policy = policy,
                         requestedValue = requested,
                         actualValue = actual,
-                    )) null else policy.id
+                    )
+                ) null else policy.id
             }
             transientMessage.value = if (mismatches.isEmpty()) {
                 "Underclock applied via Odin Settings"
@@ -230,6 +221,8 @@ class TunerViewModel(
             }
         }
     }
+
+
 
     fun createUserProfile(name: String, state: TunerState) {
         val trimmedName = name.trim()
@@ -376,6 +369,8 @@ class TunerViewModel(
     }
 
     companion object {
+        private const val LOG_TAG = "ClusterTuneApply"
+
         fun factory(
             repository: PerformanceRepository,
             settingsStorage: SettingsStorage,

@@ -19,9 +19,9 @@ data class AppSettings(
     val hasPromptedQuickSettingsTile: Boolean = false,
     val isQuickSettingsTileAdded: Boolean = false,
     /**
-     * Set the first time the Mini handoff dialog is shown, after which
-     * the longer tutorial is replaced with the shorter dialog body on
-     * subsequent uses.
+     * Set the first time the Mini handoff tutorial is dismissed.
+     * After this, the apply dialog shows the brief reminder instead
+     * of the full carousel, with a "Show guide" button to replay it.
      */
     val hasSeenOdinHandoffTutorial: Boolean = false,
 )

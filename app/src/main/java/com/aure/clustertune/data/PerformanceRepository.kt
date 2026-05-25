@@ -176,14 +176,16 @@ class PerformanceRepository(
         val filtered = selectedValues.filterKeys { policyId -> policies.any { it.id == policyId } }
         val script = commandBuilder.buildApplyScript(policies, filtered, isReset)
         // The script execution may legitimately throw on devices where
-        // the PServer channel is unreliable (Odin 2 Mini under sustained
-        // use). To allow the UI to offer the script-handoff fallback in
-        // those cases, we catch the failure here and return a non-throwing
-        // ApplyOutcome with verificationPassed=false, so the caller can
-        // act on the failure WITH the script in hand instead of needing
-        // to regenerate it.
+        // the PServer channel is unreliable (e.g. Odin 2 Mini). To let
+        // the UI offer the script-handoff fallback in those cases we
+        // catch the failure here and return a non-throwing ApplyOutcome
+        // with verificationPassed=false, so the caller can act on the
+        // failure WITH the script in hand instead of having to
+        // regenerate it.
+        android.util.Log.d("ClusterTuneApply", "applyValues: filtered=$filtered isReset=$isReset script-len=${script.length}")
         val executionResult = rootCommandRunner.executeScript(script)
         val commandOutput = executionResult.getOrNull()
+        android.util.Log.d("ClusterTuneApply", "executeScript success=${executionResult.isSuccess} output=${commandOutput?.take(60)}")
         if (executionResult.isFailure) {
             val actualValues = detector.readCurrentMaxValues(policies)
             return Result.success(
@@ -201,17 +203,22 @@ class PerformanceRepository(
             profileStorage.persistLastAppliedDisplayProfile(appliedDisplayProfileId)
             val actualValues = detector.readCurrentMaxValues(policies)
             refreshLiveValues()
+            val verificationPassed = filtered.all { (policyId, requestedValue) ->
+                val policy = policies.firstOrNull { it.id == policyId } ?: return@all false
+                val actualValue = actualValues[policyId] ?: return@all false
+                ProfileStateResolver.isPolicyValueSatisfied(
+                    policy = policy,
+                    requestedValue = requestedValue,
+                    actualValue = actualValue,
+                )
+            }
+            android.util.Log.d(
+                "ClusterTuneApply",
+                "verification: passed=$verificationPassed requested=$filtered actual=$actualValues",
+            )
             ApplyOutcome(
                 actualValues = actualValues,
-                verificationPassed = filtered.all { (policyId, requestedValue) ->
-                    val policy = policies.firstOrNull { it.id == policyId } ?: return@all false
-                    val actualValue = actualValues[policyId] ?: return@all false
-                    ProfileStateResolver.isPolicyValueSatisfied(
-                        policy = policy,
-                        requestedValue = requestedValue,
-                        actualValue = actualValue,
-                    )
-                },
+                verificationPassed = verificationPassed,
                 commandOutput = commandOutput,
                 appliedScript = script,
             )

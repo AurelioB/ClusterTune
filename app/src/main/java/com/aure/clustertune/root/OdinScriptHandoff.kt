@@ -16,56 +16,77 @@ import java.io.File
  * transactions complete without throwing, but the reply payload is
  * always empty. Writes look like they succeed at the API layer but
  * nothing reaches the kernel. AYN provides a workaround in their
- * customised Settings app: a "Run script as root" page that executes
+ * customised Settings app: a "Run script as Root" page that executes
  * a `.sh` from internal storage with full privileges. We can't call
  * that page directly (the activity is not exported), but we can write
- * the script to a known location, launch Odin Settings, and let the
- * user navigate the remaining few taps themselves.
+ * the script to a location Odin Settings can read, launch Odin
+ * Settings, and let the user navigate the remaining few taps
+ * themselves.
  *
- * On non-Mini devices this class is a no-op: [isAvailable] returns
- * false unless the Odin Settings package is installed, and even then
- * the caller should only invoke [writeScriptAndLaunch] after the
- * normal PServer apply path has failed verification.
+ * Where the script goes: [scriptDirectory] returns
+ * `<context.getExternalFilesDir(DIRECTORY_DOWNLOADS)>/ClusterScripts`,
+ * which resolves to
+ * `/sdcard/Android/data/com.aure.clustertune/files/Download/ClusterScripts/`.
+ * This path is writable from an `untrusted_app` SELinux domain on
+ * Android 11+ without any runtime permission (it's app-scoped
+ * external storage), and it's readable by Odin Settings's
+ * root-context script runner. Earlier iterations tried
+ * `/sdcard/Download/` directly; that requires either
+ * `MANAGE_EXTERNAL_STORAGE` (a sensitive permission with a special
+ * approval flow) or the MediaStore API, and silently fails without
+ * them on `targetSdk >= 30`.
  */
 class OdinScriptHandoff(private val context: Context) {
 
     /**
      * True if the device exposes the AYN-customised Settings app with
-     * a "Run script as root" feature. Currently this is the Odin 2/3
+     * a "Run script as Root" feature. Currently this is the Odin 2/3
      * family and any future AYN device that ships the same package.
      */
     val isAvailable: Boolean
         get() = isPackageInstalled(ODIN_SETTINGS_PACKAGE)
 
     /**
-     * Writes the apply script to a stable location under the public
-     * Downloads directory and launches Odin Settings's main screen so
-     * the user can finish the apply via "Run script as root". The user
-     * will see the script under [scriptDirectory] / [SCRIPT_FILENAME]
-     * in Odin Settings's file picker.
-     *
-     * Returns the absolute path of the script that was written, so the
-     * UI can show it in the handoff dialog and tutorial. Returns null
-     * if writing the file failed.
+     * The absolute path Odin Settings's file picker should be pointed
+     * to. Resolved lazily because it depends on context state.
      */
-    fun writeScriptAndLaunch(scriptContents: String): String? {
-        val scriptPath = writeScript(scriptContents) ?: return null
-        launchOdinSettings()
-        return scriptPath
+    fun absoluteScriptPath(): String = File(scriptDirectory(), SCRIPT_FILENAME).absolutePath
+
+    /**
+     * The same path with the `/storage/emulated/0/` prefix stripped,
+     * shown to the user in the tutorial. Odin Settings's file picker
+     * typically displays paths under this prefix.
+     */
+    fun userVisibleScriptPath(): String {
+        val absolute = absoluteScriptPath()
+        return absolute
+            .removePrefix("/storage/emulated/0/")
+            .removePrefix("/sdcard/")
     }
 
     /**
-     * Writes the script without launching anything. Used for tests and
-     * for callers that want to display the path before launching.
+     * Writes the apply script to the handoff location and returns its
+     * absolute path. Logs the outcome under tag `ClusterTuneHandoff`
+     * regardless. Returns null only if the write itself threw.
      */
     fun writeScript(scriptContents: String): String? {
         return runCatching {
             val dir = scriptDirectory()
-            if (!dir.exists()) dir.mkdirs()
+            if (!dir.exists()) {
+                val created = dir.mkdirs()
+                Log.d(TAG, "Created handoff dir ${dir.absolutePath}: $created")
+            }
             val file = File(dir, SCRIPT_FILENAME)
             file.writeText(scriptContents)
+            // World-readable so the root-context script runner can `sh` it.
             file.setReadable(true, false)
-            Log.d(TAG, "Wrote handoff script to ${file.absolutePath} (${scriptContents.length} bytes)")
+            file.setExecutable(true, false)
+            Log.d(
+                TAG,
+                "Wrote handoff script to ${file.absolutePath} " +
+                    "(${scriptContents.length} bytes, exists=${file.exists()}, " +
+                    "canRead=${file.canRead()}, canExec=${file.canExecute()})",
+            )
             file.absolutePath
         }.onFailure { throwable ->
             Log.w(TAG, "Failed to write handoff script", throwable)
@@ -93,11 +114,10 @@ class OdinScriptHandoff(private val context: Context) {
     }
 
     private fun scriptDirectory(): File {
-        @Suppress("DEPRECATION")
-        val downloads = Environment.getExternalStoragePublicDirectory(
-            Environment.DIRECTORY_DOWNLOADS
-        )
-        return File(downloads, SCRIPT_DIR_NAME)
+        // App-scoped external storage; no runtime permission needed.
+        val base = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            ?: File(context.filesDir, "external-fallback")
+        return File(base, SCRIPT_DIR_NAME)
     }
 
     private fun isPackageInstalled(packageName: String): Boolean {
@@ -116,12 +136,5 @@ class OdinScriptHandoff(private val context: Context) {
             "com.odin2.odinsettings.activity.MainSettingsActivity"
         const val SCRIPT_DIR_NAME = "ClusterScripts"
         const val SCRIPT_FILENAME = "clustertune-apply.sh"
-
-        /**
-         * The path users will see in Odin Settings's file picker.
-         * Exposed as a constant so the UI can show it without
-         * instantiating the handoff.
-         */
-        const val USER_VISIBLE_PATH = "Download/$SCRIPT_DIR_NAME/$SCRIPT_FILENAME"
     }
 }

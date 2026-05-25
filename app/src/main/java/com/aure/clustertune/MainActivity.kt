@@ -118,9 +118,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // If the user just returned from Odin Settings after we handed
-        // off a script for the Mini workaround, re-read sysfs and
-        // produce a final success/failure toast.
+        // If the user just came back from Odin Settings after we handed
+        // off a script, re-read sysfs and show a final success/failure toast.
         viewModel.verifyAfterHandoff()
     }
 

@@ -1,23 +1,42 @@
 package com.aure.clustertune.ui
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.aure.clustertune.R
 
 /**
- * Shown when the standard PServer apply path failed verification on a
- * device that has Odin Settings available as a fallback. Offers the
- * user a "open Odin Settings" button that takes them to the Run
- * script as root flow. The dialog body switches to a longer tutorial
- * the first time, then a shorter reminder afterwards.
+ * Two modes:
+ *  - When [HandoffRequest.showTutorial] is true: a multi-page interactive
+ *    walkthrough with screenshots showing exactly what to tap inside
+ *    Odin Settings.
+ *  - When false: a short reminder with the script path and three buttons
+ *    — Cancel, Guide (re-opens the tutorial), Open Odin Settings.
  */
 @Composable
 fun OdinHandoffDialog(
@@ -25,46 +44,48 @@ fun OdinHandoffDialog(
     onOpenSettings: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    // The state lives inside the dialog so the user can flip back and
+    // forth between tutorial and reminder modes without us round-tripping
+    // through the view model.
+    var showingTutorial by remember { mutableStateOf(request.showTutorial) }
+
+    if (showingTutorial) {
+        TutorialDialog(
+            request = request,
+            onOpenSettings = onOpenSettings,
+            onDismiss = onDismiss,
+        )
+    } else {
+        ReminderDialog(
+            request = request,
+            onOpenSettings = onOpenSettings,
+            onDismiss = onDismiss,
+            onShowGuide = { showingTutorial = true },
+        )
+    }
+}
+
+@Composable
+private fun ReminderDialog(
+    request: com.aure.clustertune.ui.TunerViewModel.HandoffRequest,
+    onOpenSettings: () -> Unit,
+    onDismiss: () -> Unit,
+    onShowGuide: () -> Unit,
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text("Apply via Odin Settings")
-        },
+        title = { Text("Apply via Odin Settings") },
         text = {
-            Column(
-                modifier = Modifier,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (request.showTutorial) {
-                    Text(
-                        text = "This device needs an extra step to apply CPU frequency limits. " +
-                            "ClusterTune has written the apply script to:",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text(
-                        text = request.userVisiblePath,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Tap \"Open Odin Settings\" below, then:",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text("1. Tap \"Run script as root\"")
-                    Text("2. Tap OK on the warning prompt")
-                    Text("3. Pick clustertune-apply.sh from the ClusterScripts folder")
-                    Text("4. Wait for the \"applied\" confirmation, then return here")
-                } else {
-                    Text(
-                        text = "Open Odin Settings → Run script as root → " +
-                            "pick clustertune-apply.sh, then return here.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Text(
-                        text = "Script: ${request.userVisiblePath}",
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Open Odin Settings, run clustertune-apply.sh through " +
+                        "Run script as Root, then return here.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    text = request.userVisiblePath,
+                    style = MaterialTheme.typography.bodySmall,
+                )
             }
         },
         confirmButton = {
@@ -73,9 +94,138 @@ fun OdinHandoffDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            Row {
+                TextButton(onClick = onShowGuide) {
+                    Text("Guide")
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
             }
         },
+    )
+}
+
+@Composable
+private fun TutorialDialog(
+    request: com.aure.clustertune.ui.TunerViewModel.HandoffRequest,
+    onOpenSettings: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val pages = remember(request.userVisiblePath) { tutorialPages(request.userVisiblePath) }
+    var pageIndex by remember { mutableStateOf(0) }
+    val page = pages[pageIndex]
+    val isLastPage = pageIndex == pages.lastIndex
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("${page.title}  (${pageIndex + 1}/${pages.size})") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (page.imageRes != null) {
+                    Image(
+                        painter = painterResource(id = page.imageRes),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Fit,
+                    )
+                } else if (page.placeholderText != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(16f / 9f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = page.placeholderText,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(16.dp),
+                        )
+                    }
+                }
+                Text(
+                    text = page.body,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                if (page.pathHighlight != null) {
+                    Text(
+                        text = page.pathHighlight,
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Bold),
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (isLastPage) {
+                TextButton(onClick = onOpenSettings) {
+                    Text("Open Odin Settings")
+                }
+            } else {
+                TextButton(onClick = { pageIndex++ }) {
+                    Text("Next")
+                }
+            }
+        },
+        dismissButton = {
+            Row {
+                if (pageIndex > 0) {
+                    TextButton(onClick = { pageIndex-- }) {
+                        Text("Back")
+                    }
+                    Spacer(modifier = Modifier.height(0.dp))
+                }
+                TextButton(onClick = onDismiss) {
+                    Text("Cancel")
+                }
+            }
+        },
+    )
+}
+
+private data class TutorialPage(
+    val title: String,
+    val body: String,
+    val imageRes: Int? = null,
+    val placeholderText: String? = null,
+    val pathHighlight: String? = null,
+)
+
+private fun tutorialPages(userVisiblePath: String): List<TutorialPage> {
+    return listOf(
+        TutorialPage(
+            title = "Apply via Odin Settings",
+            body = "This device needs an extra step to apply CPU frequency limits. " +
+                "ClusterTune has written the apply script and Odin Settings will run it. " +
+                "Walk through the next few screens to see exactly where to tap.",
+        ),
+        TutorialPage(
+            title = "Run script as Root",
+            body = "After tapping Open Odin Settings, scroll down and tap " +
+                "\"Run script as Root\" in the Odin Settings list.",
+            imageRes = R.drawable.tutorial_run_script_item,
+        ),
+        TutorialPage(
+            title = "Select a script",
+            body = "Read the warning and tap \"SELECT A SCRIPT\".",
+            imageRes = R.drawable.tutorial_select_script,
+        ),
+        TutorialPage(
+            title = "Pick clustertune-apply.sh",
+            body = "Navigate to the ClusterScripts folder and pick clustertune-apply.sh. " +
+                "The file picker may remember this folder after the first time.",
+            placeholderText = "(File picker screenshot will go here once available)",
+            pathHighlight = userVisiblePath,
+        ),
+        TutorialPage(
+            title = "Return to ClusterTune",
+            body = "Odin Settings will show \"applied\" when the script finishes. " +
+                "Switch back to ClusterTune and you'll see whether the underclock " +
+                "landed in a brief toast at the bottom of the screen.",
+        ),
     )
 }

@@ -103,17 +103,6 @@ class CpuPolicyDetector(
         return values.filterNotNull().maxOrNull()
     }
 
-    /**
-     * Reads a sysfs file. On the Odin 2 Mini, PServer accepts binder
-     * transactions but its reply payload is always empty for `cat`
-     * commands — stdout forwarding is broken in the firmware's pservice
-     * binary. The per-policy cpufreq nodes used for detection
-     * (scaling_max_freq, cpuinfo_max_freq, etc.) are world-readable via
-     * plain File I/O under the standard untrusted_app sepolicy, so we
-     * try a direct read first and fall back to PServer only if the
-     * direct read fails (which is the path that works on devices where
-     * the privileged reader's stdout forwarding is functional).
-     */
     private fun readText(path: String): String? {
         val direct = runCatching {
             File(path).readText().trim().takeIf { it.isNotEmpty() }
