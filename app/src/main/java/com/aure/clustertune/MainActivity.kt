@@ -150,6 +150,8 @@ class MainActivity : ComponentActivity() {
         // If the user just came back from Odin Settings after we handed
         // off a script, re-read sysfs and show a final success/failure toast.
         viewModel.verifyAfterHandoff()
+    }
+
     private fun startSleepProfileMonitor() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
