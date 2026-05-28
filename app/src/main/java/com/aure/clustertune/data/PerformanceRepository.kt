@@ -529,3 +529,107 @@ class PerformanceRepository(
     }
 
 }
+
+/**
+ * Result of merging an imported profile set into the current set.
+ *
+ * @property profiles the merged profiles to persist.
+ * @property restoredBundledProfileIds ids of bundled profiles that the
+ *   import re-created or overrode (so callers can clear any
+ *   "deleted bundled profile" markers for them).
+ */
+data class ImportMergeResult(
+    val profiles: List<PerformanceProfile>,
+    val restoredBundledProfileIds: Set<String>,
+)
+
+/**
+ * Pure merge of [importedProfiles] into [currentProfiles].
+ *
+ * Rules (covered by PerformanceRepositoryImportTest):
+ *  - An imported profile whose id matches a current BUNDLED profile
+ *    overrides that profile's name and frequencies, keeps
+ *    source=BUNDLED and the current profile's order, and is reported
+ *    in [ImportMergeResult.restoredBundledProfileIds].
+ *  - An imported profile whose id matches a [defaultBundledProfiles]
+ *    entry that is not currently present restores that bundled
+ *    profile: source=BUNDLED, the default's order, name and
+ *    frequencies from the import, and the id is reported as restored.
+ *  - An imported profile whose id matches a current USER profile
+ *    overrides its name and frequencies, keeping source=USER and the
+ *    current profile's order.
+ *  - An imported profile with an unknown id is appended as a USER
+ *    profile after the current profiles, preserving its id.
+ */
+fun mergeImportedProfiles(
+    currentProfiles: List<PerformanceProfile>,
+    defaultBundledProfiles: List<PerformanceProfile>,
+    importedProfiles: List<PerformanceProfile>,
+): ImportMergeResult {
+    val currentById = currentProfiles.associateBy { it.id }
+    val defaultBundledById = defaultBundledProfiles.associateBy { it.id }
+
+    val merged = currentProfiles.toMutableList()
+    val mergedIndexById = HashMap<String, Int>()
+    merged.forEachIndexed { index, profile -> mergedIndexById[profile.id] = index }
+
+    val restored = mutableSetOf<String>()
+    var appendedCount = 0
+
+    importedProfiles.forEach { imported ->
+        val current = currentById[imported.id]
+        when {
+            current != null && current.source == ProfileSource.BUNDLED -> {
+                val updated = current.copy(
+                    name = imported.name,
+                    maxFrequencies = imported.maxFrequencies,
+                    source = ProfileSource.BUNDLED,
+                    isEditable = true,
+                    isDeletable = true,
+                )
+                merged[mergedIndexById.getValue(imported.id)] = updated
+                restored += imported.id
+            }
+
+            current != null -> {
+                val updated = current.copy(
+                    name = imported.name,
+                    maxFrequencies = imported.maxFrequencies,
+                )
+                merged[mergedIndexById.getValue(imported.id)] = updated
+            }
+
+            defaultBundledById.containsKey(imported.id) -> {
+                val default = defaultBundledById.getValue(imported.id)
+                val restoredProfile = default.copy(
+                    name = imported.name,
+                    maxFrequencies = imported.maxFrequencies,
+                    source = ProfileSource.BUNDLED,
+                    order = default.order,
+                    isEditable = true,
+                    isDeletable = true,
+                )
+                mergedIndexById[imported.id] = merged.size
+                merged += restoredProfile
+                restored += imported.id
+            }
+
+            else -> {
+                val appended = imported.copy(
+                    source = ProfileSource.USER,
+                    order = currentProfiles.size + appendedCount,
+                    isEditable = true,
+                    isDeletable = true,
+                )
+                mergedIndexById[imported.id] = merged.size
+                merged += appended
+                appendedCount += 1
+            }
+        }
+    }
+
+    return ImportMergeResult(
+        profiles = merged,
+        restoredBundledProfileIds = restored,
+    )
+}
