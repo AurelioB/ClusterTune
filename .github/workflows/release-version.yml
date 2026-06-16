@@ -1,0 +1,120 @@
+name: Release Version
+
+run-name: Release ${{ inputs.version }} from ${{ inputs.target_ref }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, with or without the leading v"
+        required: true
+        type: string
+      target_ref:
+        description: "Branch, tag, or commit SHA to release"
+        required: true
+        default: "main"
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-version-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout target
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_ref }}
+          fetch-depth: 0
+
+      - name: Validate version
+        id: version
+        run: |
+          version="$INPUT_VERSION"
+          version="${version#v}"
+
+          if [[ ! "$version" =~ ^[0-9]+[.][0-9]+[.][0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Version must look like 1.2.3, optionally prefixed with v."
+            exit 1
+          fi
+
+          declared_version="$(sed -nE 's/^[[:space:]]*versionName[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' app/build.gradle.kts | head -n 1)"
+          if [[ "$declared_version" != "$version" ]]; then
+            echo "::error::Requested version $version does not match app/build.gradle.kts versionName $declared_version."
+            exit 1
+          fi
+
+          tag="v$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+
+      - name: Check tag availability
+        run: |
+          tag="${{ steps.version.outputs.tag }}"
+          git fetch --tags --force
+
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "::error::Tag $tag already exists locally."
+            exit 1
+          fi
+
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "::error::Tag $tag already exists on origin."
+            exit 1
+          fi
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Decode release keystore
+        run: |
+          mkdir -p "$RUNNER_TEMP/clustertune"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/clustertune/release.jks"
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+      - name: Test
+        run: ./gradlew testDebugUnitTest
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease
+        env:
+          ANDROID_KEYSTORE_FILE: ${{ runner.temp }}/clustertune/release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Prepare release assets
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          mkdir -p release
+          cp app/build/outputs/apk/release/app-release.apk "release/ClusterTune-v${version}.apk"
+          sha256sum "release/ClusterTune-v${version}.apk" > "release/ClusterTune-v${version}.apk.sha256"
+
+      - name: Create and push tag
+        run: |
+          tag="${{ steps.version.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "Release $tag"
+          git push origin "$tag"
+
+      - name: Create GitHub release
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" release/* \
+            --title "${{ steps.version.outputs.tag }}" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ github.token }}
