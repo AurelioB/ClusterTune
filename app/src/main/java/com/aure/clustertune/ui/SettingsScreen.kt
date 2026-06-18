@@ -52,6 +52,7 @@ private val accentColorOptions = listOf(
     0xFF8E24AA.toInt(),
     0xFF00639A.toInt(),
     0xFF9A4600.toInt(),
+    0xFF008778.toInt(),
 )
 
 @Composable
