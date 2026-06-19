@@ -1,6 +1,7 @@
 package com.aure.clustertune.data
 
 import com.aure.clustertune.model.CpuPolicyInfo
+import java.io.File
 
 class CpuPolicyDetector(
     private val fileSystem: SysfsFileSystem = RealSysfsFileSystem(),
@@ -8,7 +9,8 @@ class CpuPolicyDetector(
     private val policyRoot: String = "/sys/devices/system/cpu/cpufreq",
 ) {
     fun detectPolicies(): List<CpuPolicyInfo> {
-        return fileSystem.listPolicyDirectories(policyRoot)
+        val directories = fileSystem.listPolicyDirectories(policyRoot)
+        return directories
             .sortedBy(::policyIdOrMax)
             .mapNotNull(::parsePolicy)
             .sortedBy { it.id }
@@ -102,6 +104,10 @@ class CpuPolicyDetector(
     }
 
     private fun readText(path: String): String? {
+        val direct = runCatching {
+            File(path).readText().trim().takeIf { it.isNotEmpty() }
+        }.getOrNull()
+        if (direct != null) return direct
         return privilegedReader
             .readText(path)
             ?.trim()

@@ -38,6 +38,7 @@ class TileControlActivity : ComponentActivity() {
         TunerViewModel.factory(
             repository = container.repository,
             settingsStorage = container.settingsStorage,
+            odinScriptHandoff = container.odinScriptHandoff,
         )
     }
 

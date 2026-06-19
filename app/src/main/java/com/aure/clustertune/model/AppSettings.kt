@@ -20,4 +20,10 @@ data class AppSettings(
     val sleepProfileId: String? = null,
     val hasPromptedQuickSettingsTile: Boolean = false,
     val isQuickSettingsTileAdded: Boolean = false,
+    /**
+     * Set the first time the Mini handoff tutorial is dismissed.
+     * After this, the apply dialog shows the brief reminder instead
+     * of the full carousel, with a "Show guide" button to replay it.
+     */
+    val hasSeenOdinHandoffTutorial: Boolean = false,
 )
