@@ -50,8 +50,13 @@ jobs:
 
       - name: Create GitHub release
         run: |
+          release_flags=()
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            release_flags+=(--prerelease)
+          fi
           gh release create "$GITHUB_REF_NAME" release/* \
             --title "$GITHUB_REF_NAME" \
-            --generate-notes
+            --generate-notes \
+            "${release_flags[@]}"
         env:
           GH_TOKEN: ${{ github.token }}

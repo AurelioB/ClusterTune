@@ -113,8 +113,14 @@ jobs:
 
       - name: Create GitHub release
         run: |
-          gh release create "${{ steps.version.outputs.tag }}" release/* \
-            --title "${{ steps.version.outputs.tag }}" \
-            --generate-notes
+          tag="${{ steps.version.outputs.tag }}"
+          release_flags=()
+          if [[ "$tag" == *-* ]]; then
+            release_flags+=(--prerelease)
+          fi
+          gh release create "$tag" release/* \
+            --title "$tag" \
+            --generate-notes \
+            "${release_flags[@]}"
         env:
           GH_TOKEN: ${{ github.token }}
