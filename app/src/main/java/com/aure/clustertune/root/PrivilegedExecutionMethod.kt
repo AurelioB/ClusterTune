@@ -221,25 +221,15 @@ class PServerFileOutputExecutionMethod(
                 failureReason = "PServerBinder not available",
             )
         }
-        val outputFile = outputFile("probe-${UUID.randomUUID()}.txt")
-        return try {
-            val command = buildString {
-                append("echo $PROBE_MARKER > ${shellQuote(outputFile.absolutePath)}")
-                append(" && chmod 666 ${shellQuote(outputFile.absolutePath)}")
-            }
-            val executed = rootExec.executeAsRoot(command, captureOutput = false).isSuccess
-            val marker = if (executed) waitForText(outputFile, timeoutMillis = 2_000)?.trim() else null
-            if (executed && marker == PROBE_MARKER) {
-                ExecutionProbeResult(isAvailable = true, supportsStdout = false)
-            } else {
-                ExecutionProbeResult(
-                    isAvailable = false,
-                    supportsStdout = false,
-                    failureReason = "PServer could not write readable fallback output",
-                )
-            }
-        } finally {
-            outputFile.delete()
+        val dispatch = rootExec.executeAsRoot("true", captureOutput = false)
+        return if (dispatch.isSuccess) {
+            ExecutionProbeResult(isAvailable = true, supportsStdout = false)
+        } else {
+            ExecutionProbeResult(
+                isAvailable = false,
+                supportsStdout = false,
+                failureReason = "PServer did not accept output-disabled execution",
+            )
         }
     }
 
@@ -248,6 +238,20 @@ class PServerFileOutputExecutionMethod(
         scriptContents: String,
         captureResult: Boolean,
     ): Result<String?> {
+        if (!captureResult) {
+            return runCatching {
+                // Generated write scripts contain standalone commands that can be dispatched directly.
+                scriptContents
+                    .lineSequence()
+                    .map(String::trim)
+                    .filter { line -> line.isNotEmpty() && !line.startsWith('#') }
+                    .forEach { command ->
+                        rootExec.executeAsRoot(command, captureOutput = false).getOrThrow()
+                    }
+                null
+            }
+        }
+
         val operationId = UUID.randomUUID().toString()
         val scriptFile = writeFallbackScriptFile("command-$operationId.sh", scriptContents)
         val wrapperFile = writeFallbackScriptFile(
@@ -309,10 +313,9 @@ class PServerFileOutputExecutionMethod(
     }
 
     override fun makeReadable(path: String): Boolean {
-        return executeScript(
-            scriptName = "make-readable.sh",
-            scriptContents = "chmod 444 ${shellQuote(path)} 2>/dev/null",
-            captureResult = false,
+        return rootExec.executeAsRoot(
+            "chmod 444 ${shellQuote(path)} 2>/dev/null",
+            captureOutput = false,
         ).isSuccess
     }
 

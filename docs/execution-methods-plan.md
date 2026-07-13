@@ -41,10 +41,10 @@ Ordinary Android filesystem access is always attempted first for sysfs reads and
    - Request command output only for protected reads and listings. Dispatch writes and permission changes without output capture.
 
 2. **PServer storage bridge**
-   - Probe: `PServerBinder` exists and a command dispatched without output capture can write a unique marker to app-owned storage readable by ClusterTune.
+   - Probe: `PServerBinder` exists and accepts an output-disabled command. Storage exchange is not an availability requirement.
    - Use for devices where asking PServer to capture output prevents reliable command execution.
-   - `executeScript` runs the script with stdout/stderr redirected to an intermediary file.
-   - `readText(path)` runs `cat path > intermediary-file`, then reads the intermediary file from app storage.
+   - Writes and permission changes are dispatched as individual output-disabled commands.
+   - When a protected read genuinely requires command output, run it through the optional storage bridge and read the intermediary file from app storage.
 
 3. **Root shell (`su`)**
    - Probe: `su -c 'echo <marker>'` returns the marker.

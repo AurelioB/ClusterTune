@@ -93,7 +93,7 @@ private val executionMethodInfo = listOf(
         id = "pserver-file-output",
         label = "PServer compatibility",
         appliesTo = "Vendor PServer implementations without usable command output.",
-        note = "Second automatic choice; exchanges results through app storage.",
+        note = "Second automatic choice; dispatches writes without requesting output.",
     ),
     ExecutionMethodInfo(
         id = "root-shell",

@@ -170,20 +170,6 @@ class PrivilegedExecutionResolverTest {
     }
 
     @Test
-    fun `pserver file output probe waits for delayed command completion`() {
-        val outputDir = temporaryDirectory()
-        val method = PServerFileOutputExecutionMethod(
-            context = null,
-            rootExec = ShellBackedNoStdoutPServerExecutor(delayMillis = 100),
-            outputDirectory = outputDir,
-            scriptDirectory = temporaryDirectory(),
-        )
-
-        assertTrue(method.probe().isAvailable)
-        assertTrue(outputDir.listFiles().orEmpty().isEmpty())
-    }
-
-    @Test
     fun `pserver file output uses a distinct bridge file for each read`() {
         val outputDir = temporaryDirectory()
         val executor = ShellBackedNoStdoutPServerExecutor()
@@ -205,7 +191,7 @@ class PrivilegedExecutionResolverTest {
     }
 
     @Test
-    fun `pserver file output executes external script without stdout`() {
+    fun `pserver file output bridges captured script output`() {
         val outputDir = temporaryDirectory()
         val scriptDir = temporaryDirectory()
         val sideEffect = File(outputDir, "side-effect.txt")
@@ -255,9 +241,7 @@ class PrivilegedExecutionResolverTest {
         }
     }
 
-    private class ShellBackedNoStdoutPServerExecutor(
-        private val delayMillis: Long = 0,
-    ) : PServerRootExecutor {
+    private class ShellBackedNoStdoutPServerExecutor : PServerRootExecutor {
         override val pServerAvailable: Boolean = true
         val commands = mutableListOf<String>()
         val captureOutputArguments = mutableListOf<Boolean>()
@@ -269,13 +253,6 @@ class PrivilegedExecutionResolverTest {
         override fun executeAsRoot(cmd: String, captureOutput: Boolean): Result<String?> {
             commands += cmd
             captureOutputArguments += captureOutput
-            if (delayMillis > 0) {
-                Thread {
-                    Thread.sleep(delayMillis)
-                    runShell(cmd)
-                }.start()
-                return Result.success(null)
-            }
             return runShell(cmd)
         }
 
