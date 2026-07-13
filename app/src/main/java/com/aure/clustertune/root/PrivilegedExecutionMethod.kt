@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
+import java.util.UUID
 
 private const val PROBE_MARKER = "clustertune-exec-probe-ok"
 
@@ -22,6 +23,7 @@ interface PrivilegedExecutionMethod {
     fun executeScript(
         scriptName: String,
         scriptContents: String,
+        captureResult: Boolean,
     ): Result<String?>
 
     fun readText(path: String): String?
@@ -56,7 +58,7 @@ class PrivilegedExecutionResolver(
 
     fun autoDetectBestMethod(forceReprobe: Boolean = true): String? {
         val method = selectBestMethod(forceReprobe = forceReprobe)
-        setConfiguredMethodId(method?.id)
+        configuredMethodId = method?.id
         return method?.id
     }
 
@@ -100,17 +102,17 @@ class PrivilegedExecutionResolver(
 
     private fun orderedMethods(): List<PrivilegedExecutionMethod> {
         val byId = methods.associateBy { it.id }
-        val ordered = autoDetectionOrder.mapNotNull(byId::get)
-        return ordered + methods.filterNot { method -> method.id in autoDetectionOrder }
+        return autoDetectionOrder.mapNotNull(byId::get)
     }
 
     fun executeScript(
         scriptName: String,
         scriptContents: String,
+        captureResult: Boolean,
     ): Result<String?> {
         val method = selectedMethod()
             ?: return Result.failure(IllegalStateException("No privileged execution method available"))
-        return method.executeScript(scriptName, scriptContents)
+        return method.executeScript(scriptName, scriptContents, captureResult)
     }
 
     fun readText(path: String): String? {
@@ -124,7 +126,6 @@ class PrivilegedExecutionResolver(
     companion object {
         val DEFAULT_AUTO_DETECTION_ORDER = listOf(
             "pserver-stdout",
-            "shizuku",
             "pserver-file-output",
             "root-shell",
         )
@@ -157,7 +158,10 @@ class PServerStdoutExecutionMethod(
                 failureReason = "PServerBinder not available",
             )
         }
-        val output = rootExec.executeAsRoot("echo $PROBE_MARKER").getOrNull()?.trim()
+        val output = rootExec.executeAsRoot(
+            "echo $PROBE_MARKER",
+            captureOutput = true,
+        ).getOrNull()?.trim()
         return if (output == PROBE_MARKER) {
             ExecutionProbeResult(isAvailable = true, supportsStdout = true)
         } else {
@@ -169,22 +173,35 @@ class PServerStdoutExecutionMethod(
         }
     }
 
-    override fun executeScript(scriptName: String, scriptContents: String): Result<String?> {
+    override fun executeScript(
+        scriptName: String,
+        scriptContents: String,
+        captureResult: Boolean,
+    ): Result<String?> {
         return runCatching {
             val scriptFile = writeScriptFile(context, scriptName, scriptContents)
-            rootExec.executeAsRoot("sh ${shellQuote(scriptFile.absolutePath)}").getOrThrow()
+            rootExec.executeAsRoot(
+                "sh ${shellQuote(scriptFile.absolutePath)}",
+                captureOutput = captureResult,
+            ).getOrThrow()
         }
     }
 
     override fun readText(path: String): String? {
-        return rootExec.executeAsRoot("cat ${shellQuote(path)} 2>/dev/null")
+        return rootExec.executeAsRoot(
+            "cat ${shellQuote(path)} 2>/dev/null",
+            captureOutput = true,
+        )
             .getOrNull()
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
     }
 
     override fun makeReadable(path: String): Boolean {
-        return rootExec.executeAsRoot("chmod 444 ${shellQuote(path)} 2>/dev/null").isSuccess
+        return rootExec.executeAsRoot(
+            "chmod 444 ${shellQuote(path)} 2>/dev/null",
+            captureOutput = false,
+        ).isSuccess
     }
 }
 
@@ -204,68 +221,109 @@ class PServerFileOutputExecutionMethod(
                 failureReason = "PServerBinder not available",
             )
         }
-        val outputFile = outputFile("probe.out")
-        outputFile.delete()
-        val command = buildString {
-            append("echo $PROBE_MARKER > ${shellQuote(outputFile.absolutePath)}")
-            append(" && chmod 666 ${shellQuote(outputFile.absolutePath)}")
-        }
-        val executed = rootExec.executeAsRoot(command).isSuccess
-        val marker = outputFile.takeIf { it.isFile }?.readText()?.trim()
-        return if (executed && marker == PROBE_MARKER) {
-            ExecutionProbeResult(isAvailable = true, supportsStdout = false)
-        } else {
-            ExecutionProbeResult(
-                isAvailable = false,
-                supportsStdout = false,
-                failureReason = "PServer could not write readable fallback output",
-            )
+        val outputFile = outputFile("probe-${UUID.randomUUID()}.txt")
+        return try {
+            val command = buildString {
+                append("echo $PROBE_MARKER > ${shellQuote(outputFile.absolutePath)}")
+                append(" && chmod 666 ${shellQuote(outputFile.absolutePath)}")
+            }
+            val executed = rootExec.executeAsRoot(command, captureOutput = false).isSuccess
+            val marker = if (executed) waitForText(outputFile, timeoutMillis = 2_000)?.trim() else null
+            if (executed && marker == PROBE_MARKER) {
+                ExecutionProbeResult(isAvailable = true, supportsStdout = false)
+            } else {
+                ExecutionProbeResult(
+                    isAvailable = false,
+                    supportsStdout = false,
+                    failureReason = "PServer could not write readable fallback output",
+                )
+            }
+        } finally {
+            outputFile.delete()
         }
     }
 
-    override fun executeScript(scriptName: String, scriptContents: String): Result<String?> {
-        return runCatching {
-            val scriptFile = writeFallbackScriptFile(scriptName, scriptContents)
-            rootExec.executeAsRoot("sh ${shellQuote(scriptFile.absolutePath)}").getOrThrow()
-            null
+    override fun executeScript(
+        scriptName: String,
+        scriptContents: String,
+        captureResult: Boolean,
+    ): Result<String?> {
+        val operationId = UUID.randomUUID().toString()
+        val scriptFile = writeFallbackScriptFile("command-$operationId.sh", scriptContents)
+        val wrapperFile = writeFallbackScriptFile(
+            "dispatch-$operationId.sh",
+            buildString {
+                val stdoutFile = outputFile("stdout-$operationId.txt")
+                val stderrFile = outputFile("stderr-$operationId.txt")
+                val statusFile = outputFile("status-$operationId.txt")
+                val completionFile = outputFile("complete-$operationId.txt")
+                appendLine("#!/system/bin/sh")
+                appendLine("sh ${shellQuote(scriptFile.absolutePath)} > ${shellQuote(stdoutFile.absolutePath)} 2> ${shellQuote(stderrFile.absolutePath)}")
+                appendLine("exit_code=\$?")
+                appendLine("printf '%s' \"\$exit_code\" > ${shellQuote(statusFile.absolutePath)}")
+                appendLine("chmod 666 ${shellQuote(stdoutFile.absolutePath)} ${shellQuote(stderrFile.absolutePath)} ${shellQuote(statusFile.absolutePath)} 2>/dev/null")
+                appendLine("printf '%s' ${shellQuote(PROBE_MARKER)} > ${shellQuote(completionFile.absolutePath)}")
+                appendLine("chmod 666 ${shellQuote(completionFile.absolutePath)} 2>/dev/null")
+            },
+        )
+        val stdoutFile = outputFile("stdout-$operationId.txt")
+        val stderrFile = outputFile("stderr-$operationId.txt")
+        val statusFile = outputFile("status-$operationId.txt")
+        val completionFile = outputFile("complete-$operationId.txt")
+        val artifacts = listOf(scriptFile, wrapperFile, stdoutFile, stderrFile, statusFile, completionFile)
+
+        return try {
+            runCatching {
+                rootExec.executeAsRoot(
+                    "sh ${shellQuote(wrapperFile.absolutePath)}",
+                    captureOutput = false,
+                ).getOrThrow()
+                check(waitForText(completionFile, timeoutMillis = 5_000) == PROBE_MARKER) {
+                    "PServer command did not complete before the timeout"
+                }
+                val exitCode = statusFile.readText().trim().toIntOrNull()
+                    ?: error("PServer command did not provide a valid exit status")
+                val stderr = stderrFile.takeIf { it.isFile }?.readText().orEmpty().trim()
+                check(exitCode == 0) {
+                    if (stderr.isNotEmpty()) stderr else "PServer command failed with exit code $exitCode"
+                }
+                if (captureResult) {
+                    stdoutFile.takeIf { it.isFile }?.readText().orEmpty()
+                } else {
+                    null
+                }
+            }
+        } finally {
+            artifacts.forEach(File::delete)
         }
     }
 
     override fun readText(path: String): String? {
-        val outputFile = outputFile("read.txt")
-        outputFile.delete()
-        val scriptFile = writeFallbackScriptFile(
-            "read-text.sh",
-            buildString {
-                appendLine("#!/system/bin/sh")
-                appendLine("cat ${shellQuote(path)} > ${shellQuote(outputFile.absolutePath)} 2>/dev/null")
-                appendLine("chmod 666 ${shellQuote(outputFile.absolutePath)} 2>/dev/null")
-            },
-        )
-        val result = rootExec.executeAsRoot("sh ${shellQuote(scriptFile.absolutePath)}")
-        if (result.isFailure) return null
-        return outputFile.takeIf { it.isFile }
-            ?.readText()
+        return executeScript(
+            scriptName = "read-text.sh",
+            scriptContents = "cat ${shellQuote(path)} 2>/dev/null",
+            captureResult = true,
+        ).getOrNull()
             ?.trim()
             ?.takeIf { it.isNotEmpty() }
     }
 
     override fun makeReadable(path: String): Boolean {
-        val scriptFile = writeFallbackScriptFile(
-            "chmod-readable.sh",
-            buildString {
-                appendLine("#!/system/bin/sh")
-                appendLine("chmod 444 ${shellQuote(path)} 2>/dev/null")
-            },
-        )
-        return rootExec.executeAsRoot("sh ${shellQuote(scriptFile.absolutePath)}").isSuccess
+        return executeScript(
+            scriptName = "make-readable.sh",
+            scriptContents = "chmod 444 ${shellQuote(path)} 2>/dev/null",
+            captureResult = false,
+        ).isSuccess
     }
 
     private fun outputFile(name: String): File {
-        val dir = outputDirectory ?: File(appOwnedExternalFallbackDirectory(), "root-output")
+        val dir = outputDirectory ?: File(appOwnedFallbackDirectory(), "root-output")
         if (!dir.exists()) {
             dir.mkdirs()
         }
+        dir.setReadable(true, false)
+        dir.setWritable(true, false)
+        dir.setExecutable(true, false)
         return File(dir, name)
     }
 
@@ -278,6 +336,8 @@ class PServerFileOutputExecutionMethod(
         if (!scriptDir.exists()) {
             scriptDir.mkdirs()
         }
+        scriptDir.setReadable(true, false)
+        scriptDir.setExecutable(true, false)
         val scriptFile = File(scriptDir, scriptName)
         scriptFile.writeText(scriptContents)
         scriptFile.setReadable(true, false)
@@ -289,10 +349,23 @@ class PServerFileOutputExecutionMethod(
         return File(requireContext().filesDir, "pserver-fallback")
     }
 
-    private fun appOwnedExternalFallbackDirectory(): File {
-        return requireNotNull(requireContext().getExternalFilesDir(null)) {
-            "External files directory is required for PServer fallback output"
+    private fun waitForText(file: File, timeoutMillis: Long): String? {
+        val deadline = System.nanoTime() + timeoutMillis * 1_000_000
+        while (System.nanoTime() < deadline) {
+            if (file.isFile) {
+                runCatching { file.readText() }
+                    .getOrNull()
+                    ?.takeIf { it.isNotEmpty() }
+                    ?.let { return it }
+            }
+            try {
+                Thread.sleep(25)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return null
+            }
         }
+        return null
     }
 }
 
@@ -314,8 +387,14 @@ class RootShellExecutionMethod(
         }
     }
 
-    override fun executeScript(scriptName: String, scriptContents: String): Result<String?> {
-        return runner.run(scriptContents, timeoutSeconds = 30).toResult()
+    override fun executeScript(
+        scriptName: String,
+        scriptContents: String,
+        captureResult: Boolean,
+    ): Result<String?> {
+        return runner.run(scriptContents, timeoutSeconds = 30)
+            .toResult()
+            .map { output -> output.takeIf { captureResult } }
     }
 
     override fun readText(path: String): String? {
@@ -363,8 +442,14 @@ class ShizukuExecutionMethod(
         }
     }
 
-    override fun executeScript(scriptName: String, scriptContents: String): Result<String?> {
-        return runner.run(scriptContents, timeoutSeconds = 30).toResult()
+    override fun executeScript(
+        scriptName: String,
+        scriptContents: String,
+        captureResult: Boolean,
+    ): Result<String?> {
+        return runner.run(scriptContents, timeoutSeconds = 30)
+            .toResult()
+            .map { output -> output.takeIf { captureResult } }
     }
 
     override fun readText(path: String): String? {

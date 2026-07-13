@@ -85,27 +85,27 @@ private data class ExecutionMethodInfo(
 private val executionMethodInfo = listOf(
     ExecutionMethodInfo(
         id = "pserver-stdout",
-        label = "PServer",
-        appliesTo = "Odin/AYN vendor PServer with stdout.",
-        note = "Preferred when available: direct output, no extra permission.",
-    ),
-    ExecutionMethodInfo(
-        id = "shizuku",
-        label = "Shizuku",
-        appliesTo = "Rooted devices running Shizuku or Sui.",
-        note = "Needs one-time permission; good when PServer is unavailable.",
+        label = "PServer direct",
+        appliesTo = "Vendor PServer implementations that return command output.",
+        note = "First choice during automatic detection.",
     ),
     ExecutionMethodInfo(
         id = "pserver-file-output",
-        label = "PServer fallback",
-        appliesTo = "PServer variants without reliable stdout.",
-        note = "Uses a file-output workaround to read command results.",
+        label = "PServer compatibility",
+        appliesTo = "Vendor PServer implementations without usable command output.",
+        note = "Second automatic choice; exchanges results through app storage.",
     ),
     ExecutionMethodInfo(
         id = "root-shell",
         label = "Root shell",
         appliesTo = "Generic rooted devices with Magisk/su.",
-        note = "Broad fallback when PServer and Shizuku are not usable.",
+        note = "Final automatic choice when neither PServer mode is usable.",
+    ),
+    ExecutionMethodInfo(
+        id = "shizuku",
+        label = "Shizuku (experimental)",
+        appliesTo = "Manual testing on devices with Shizuku or Sui.",
+        note = "Not auto-selected; permission alone may not allow CPU control.",
     ),
 )
 
@@ -852,10 +852,10 @@ private fun PrivilegedExecutionMethodSelector(
 
 private fun executionMethodLabel(methodId: String): String {
     return when (methodId) {
-        "pserver-stdout" -> "PServer"
-        "pserver-file-output" -> "PServer fallback"
+        "pserver-stdout" -> "PServer direct"
+        "pserver-file-output" -> "PServer compatibility"
         "root-shell" -> "Root shell"
-        "shizuku" -> "Shizuku"
+        "shizuku" -> "Shizuku (experimental)"
         else -> methodId
     }
 }

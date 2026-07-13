@@ -12,7 +12,7 @@ ClusterTune is an Android utility for tuning CPU frequency limits on supported h
 
 The app has been tested with the AYN Odin 3, but should be compatible with other AYN and Retroid devices.
 
-ClusterTune does not require Magisk or user-granted root access. It relies on the device's built-in PServer service, where available.
+ClusterTune uses a device's built-in PServer service where available, so supported handhelds do not require Magisk or user-granted root access. A standard `su` root shell is also supported as a fallback on rooted devices.
 
 > [!WARNING]
 > ClusterTune changes CPU frequency limits. This may affect device stability, thermals, battery life, and performance, and I cannot guarantee that it is safe for your hardware or beneficial for your use case. Use it only if you understand what CPU frequency limits do and are comfortable accepting the risk.
@@ -46,7 +46,7 @@ Lower CPU frequency caps can reduce power draw, which may help lower temperature
 ## Requirements
 
 - Android 12+ (`minSdk 31`).
-- A compatible handheld with the PServer service, such as supported AYN and Retroid devices.
+- A compatible handheld with a supported PServer service, or a rooted Android device with a working `su` shell.
 
 ## Build
 
@@ -78,7 +78,7 @@ app/build/outputs/apk/debug/
 app/src/main/java/com/aure/clustertune/
   data/       detection, storage, bundled profiles, repository
   model/      app state and profile models
-  root/       PServer access and command execution
+  root/       privileged execution and sysfs access
   tile/       Quick Settings tile and add-tile prompt
   ui/         Compose screens, dialogs, settings, theme
   boot/       boot completed receiver
@@ -121,7 +121,8 @@ Exported profiles follow the same schema.
 ## Notes For Contributors
 
 - UI refers to cpufreq policies as CPU clusters, but internal code keeps `policy` naming because it matches Linux/sysfs terminology.
-- ClusterTune uses the device's PServer service to read and write protected CPU frequency controls. It does not ask the user for root access.
+- Automatic execution detection prefers direct PServer access, then PServer compatibility mode, and finally a standard root shell.
+- Shizuku support is experimental and manual-only because a granted Shizuku permission does not necessarily provide access to protected CPU controls.
 
 ## License and Attribution
 

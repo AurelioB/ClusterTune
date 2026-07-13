@@ -16,6 +16,7 @@ class ExecutionMethodSysfsLister(
         return executionResolver.executeScript(
             scriptName = "list-sysfs-children.sh",
             scriptContents = script,
+            captureResult = true,
         ).getOrNull()
             ?.lineSequence()
             ?.map { it.trim() }

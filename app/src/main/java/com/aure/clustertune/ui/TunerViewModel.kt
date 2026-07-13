@@ -413,10 +413,10 @@ class TunerViewModel(
 
     private fun formatExecutionMethod(methodId: String): String {
         return when (methodId) {
-            "pserver-stdout" -> "PServer"
-            "pserver-file-output" -> "PServer fallback"
+            "pserver-stdout" -> "PServer direct"
+            "pserver-file-output" -> "PServer compatibility"
             "root-shell" -> "Root shell"
-            "shizuku" -> "Shizuku"
+            "shizuku" -> "Shizuku (experimental)"
             else -> methodId
         }
     }

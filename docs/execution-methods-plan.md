@@ -10,7 +10,7 @@ Current code assumes one privileged path:
 ClusterTune -> RootCommandRunner / PServerSysfsReader -> PServerBinder -> stdout
 ```
 
-That is too narrow. Some devices may expose `PServerBinder` but not return stdout reliably. Others may only work with `su`; Shizuku may be viable later for binder/shell-backed operations but should not block the first refactor.
+That is too narrow. Some devices expose `PServerBinder`, but commands requested with output capture do not execute reliably. Others may only work with `su`. Shizuku remains available for explicit testing, but is not part of automatic selection because a normal shell-level Shizuku session may lack permission to change CPU controls.
 
 ## Target architecture
 
@@ -31,15 +31,18 @@ Everything above this layer should treat privileged execution as a capability, n
 - `executeScript(...)`
 - protected sysfs `readText(path)`
 
+Ordinary Android filesystem access is always attempted first for sysfs reads and directory listings, regardless of the selected privileged method. Privileged reads are only a fallback when direct access fails. Writes and permission changes always use the selected privileged method and are verified through the direct-first read path.
+
 ## Method order
 
-1. **PServer stdout**
+1. **PServer direct output**
    - Probe: `PServerBinder` exists and `echo <marker>` returns the marker.
    - Best path. Existing behavior, but explicitly capability-checked.
+   - Request command output only for protected reads and listings. Dispatch writes and permission changes without output capture.
 
-2. **PServer file-output fallback**
-   - Probe: `PServerBinder` exists, command execution works, stdout does not work, but the command can write to an app-owned output file readable by ClusterTune.
-   - Use for devices where PServer executes commands but returns empty/null output.
+2. **PServer storage bridge**
+   - Probe: `PServerBinder` exists and a command dispatched without output capture can write a unique marker to app-owned storage readable by ClusterTune.
+   - Use for devices where asking PServer to capture output prevents reliable command execution.
    - `executeScript` runs the script with stdout/stderr redirected to an intermediary file.
    - `readText(path)` runs `cat path > intermediary-file`, then reads the intermediary file from app storage.
 
@@ -48,10 +51,10 @@ Everything above this layer should treat privileged execution as a capability, n
    - Useful on rooted devices without PServer.
    - First implementation can be conservative and not lock files aggressively until tested.
 
-4. **Shizuku**
-   - Implemented behind the same API.
+**Manual only: Shizuku (experimental)**
+   - Implemented behind the same API, but excluded from automatic detection.
    - Probe: Shizuku binder alive, app permission granted, and `echo <marker>` returns stdout.
-   - On-device test tomorrow should decide whether Shizuku has enough privilege for ClusterTune's sysfs reads/writes. If it does not, remove this method and dependency.
+   - Keep it unavailable for tuning unless an exact CPU-control capability probe succeeds; binder access and permission grant alone are insufficient.
 
 ## Implementation milestones
 
@@ -70,20 +73,20 @@ Everything above this layer should treat privileged execution as a capability, n
 - [x] Use `ProcessBuilder("su", "-c", command)` with bounded output capture.
 - [ ] On-device verify before treating it as supported in UI.
 
-### Milestone 3: Shizuku implementation
+### Milestone 3: Shizuku experimental implementation
 
 - [x] Add Shizuku API/provider dependencies and manifest provider.
 - [x] Add `ShizukuExecutionMethod` behind the same API.
 - [x] Probe binder availability, permission, and actual shell stdout using `echo <marker>`.
 - [ ] On-device verify whether Shizuku's shell/root identity can read/write the sysfs nodes ClusterTune needs.
-- [ ] If Shizuku cannot access the required nodes, remove the method and dependency.
+- [ ] Keep Shizuku manual-only unless it can access and update the required nodes.
 
 ### Milestone 4: capability reporting
 
 Expose diagnostics in state/UI/logs:
 
 ```text
-selected method: pserver-stdout | pserver-file-output | root-shell | unavailable
+selected automatic method: pserver-stdout | pserver-file-output | root-shell | unavailable
 pserver present: yes/no
 stdout supported: yes/no
 file-output fallback: yes/no
@@ -93,19 +96,19 @@ last probe failure: ...
 
 This matters because device support bugs will otherwise be opaque.
 
-### Milestone 4: Shizuku spike
+### Milestone 5: Shizuku qualification
 
 - Check whether Shizuku can run the exact sysfs reads/writes ClusterTune needs on target devices.
-- If yes, add `ShizukuExecutionMethod` behind the same API.
-- If no, document why and keep it out of the runtime path.
+- If yes, retain `ShizukuExecutionMethod` as an explicitly selected option.
+- If no, report the capability failure clearly and do not allow tuning through it.
 
 ## Safety constraints
 
 - Keep command escaping centralized.
-- Intermediary files must live under `context.filesDir/root-output` and be overwritten per command.
+- Intermediary files must live under an app-owned internal directory, use unique names per invocation, and be removed after completion.
 - Do not trust stdout as proof of success for writes; keep readback verification.
 - Resolver should cache the selected method for normal use, but there should be a way to force reprobe later.
-- Do not add Shizuku dependency until there is evidence it provides the needed privilege level.
+- Never include Shizuku in automatic selection without evidence that it provides the needed privilege level.
 
 ## First code slice
 

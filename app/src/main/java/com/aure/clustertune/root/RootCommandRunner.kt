@@ -21,6 +21,7 @@ class RootCommandRunner(
         executionResolver.executeScript(
             scriptName = "apply-frequencies.sh",
             scriptContents = script,
+            captureResult = false,
         )
     }
 }
