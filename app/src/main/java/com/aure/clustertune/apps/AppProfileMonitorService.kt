@@ -31,7 +31,7 @@ class AppProfileMonitorService : Service() {
     private var monitorJob: Job? = null
     private lateinit var container: AppContainer
     private var activeAssignedPackage: String? = null
-    private var lastObservedForegroundPackage: String? = null
+    private val foregroundAppTracker = ForegroundAppTracker()
     private var lastUsageEventTimestamp: Long = 0L
 
     override fun onCreate() {
@@ -113,25 +113,31 @@ class AppProfileMonitorService : Service() {
         val queryStart = maxOf(now - LOOKBACK_MS, lastUsageEventTimestamp + 1)
         val events = usageStatsManager.queryEvents(queryStart, now)
         val event = UsageEvents.Event()
+        var newestEventTimestamp = lastUsageEventTimestamp
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.timeStamp <= lastUsageEventTimestamp) continue
-            lastUsageEventTimestamp = event.timeStamp
+            if (event.timeStamp < queryStart) continue
+            newestEventTimestamp = maxOf(newestEventTimestamp, event.timeStamp)
             when (event.eventType) {
                 UsageEvents.Event.ACTIVITY_RESUMED,
                 UsageEvents.Event.MOVE_TO_FOREGROUND -> {
-                    lastObservedForegroundPackage = event.packageName
+                    foregroundAppTracker.onActivityResumed(
+                        packageName = event.packageName,
+                        className = event.className,
+                    )
                 }
                 UsageEvents.Event.ACTIVITY_PAUSED,
-                UsageEvents.Event.ACTIVITY_STOPPED,
                 UsageEvents.Event.MOVE_TO_BACKGROUND -> {
-                    if (lastObservedForegroundPackage == event.packageName) {
-                        lastObservedForegroundPackage = null
-                    }
+                    foregroundAppTracker.onActivityPaused(
+                        packageName = event.packageName,
+                        className = event.className,
+                    )
                 }
+                UsageEvents.Event.ACTIVITY_STOPPED -> foregroundAppTracker.onActivityStopped()
             }
         }
-        return lastObservedForegroundPackage
+        lastUsageEventTimestamp = newestEventTimestamp
+        return foregroundAppTracker.foregroundPackage
     }
 
     private fun showProfileToast(profileName: String) {
