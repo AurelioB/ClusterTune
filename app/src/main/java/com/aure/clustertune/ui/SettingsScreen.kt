@@ -59,7 +59,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
 import com.aure.clustertune.model.AppColorSource
 import com.aure.clustertune.model.AppSettings
 import com.aure.clustertune.model.MAX_PROFILE_SWITCH_HISTORY_LIMIT
@@ -78,34 +77,29 @@ private val accentColorOptions = listOf(
 private data class ExecutionMethodInfo(
     val id: String,
     val label: String,
-    val appliesTo: String,
-    val note: String,
+    val description: String,
 )
 
 private val executionMethodInfo = listOf(
     ExecutionMethodInfo(
         id = "pserver-stdout",
         label = "PServer direct",
-        appliesTo = "Vendor PServer implementations that return command output.",
-        note = "First choice during automatic detection.",
+        description = "Uses the vendor service with command output.",
     ),
     ExecutionMethodInfo(
         id = "pserver-file-output",
         label = "PServer compatibility",
-        appliesTo = "Vendor PServer implementations without usable command output.",
-        note = "Second automatic choice; dispatches writes without requesting output.",
+        description = "Avoids output capture when it prevents commands from running.",
     ),
     ExecutionMethodInfo(
         id = "root-shell",
         label = "Root shell",
-        appliesTo = "Generic rooted devices with Magisk/su.",
-        note = "Final automatic choice when neither PServer mode is usable.",
+        description = "Uses su on rooted devices.",
     ),
     ExecutionMethodInfo(
         id = "shizuku",
         label = "Shizuku (experimental)",
-        appliesTo = "Manual testing on devices with Shizuku or Sui.",
-        note = "Not auto-selected; permission alone may not allow CPU control.",
+        description = "Requires Shizuku or Sui; permission may not allow CPU control.",
     ),
 )
 
@@ -185,47 +179,25 @@ fun SettingsScreen(
                 onAccentColorChange = onAccentColorChange,
                 onCustomAccentColorChange = onCustomAccentColorChange,
             )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = "Show frequencies as percent",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "Display CPU frequency values as a percentage of each cluster's selectable maximum.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-                Switch(
-                    checked = settings.displayFrequenciesAsPercent,
-                    onCheckedChange = onDisplayFrequenciesAsPercentChange,
-                )
-            }
+            SettingsSwitchRow(
+                title = "Use percentages",
+                description = "Relative to each cluster's selectable maximum.",
+                checked = settings.displayFrequenciesAsPercent,
+                onCheckedChange = onDisplayFrequenciesAsPercentChange,
+            )
         }
 
         SettingsSection(title = "Updates", symbol = "update") {
+            SettingsSwitchRow(
+                title = "Check automatically",
+                checked = settings.automaticUpdateChecksEnabled,
+                onCheckedChange = onAutomaticUpdateChecksEnabledChange,
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "Auto check",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Switch(
-                    checked = settings.automaticUpdateChecksEnabled,
-                    onCheckedChange = onAutomaticUpdateChecksEnabledChange,
-                )
                 OutlinedTextField(
                     value = updateIntervalText,
                     onValueChange = { rawValue ->
@@ -233,64 +205,40 @@ fun SettingsScreen(
                         updateIntervalText = digits
                         digits.toIntOrNull()?.let(onUpdateCheckIntervalDaysChange)
                     },
-                    label = { Text("Days") },
+                    label = { Text("Every (days)") },
                     enabled = settings.automaticUpdateChecksEnabled,
                     singleLine = true,
                     modifier = Modifier.weight(1f),
                 )
                 TextButton(onClick = onCheckForUpdates) {
-                    Text("Check")
+                    Text("Check now")
                 }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = "Include pre-releases",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "Show beta and release-candidate builds when checking for updates.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-                Switch(
-                    checked = settings.includePrereleaseUpdates,
-                    onCheckedChange = onIncludePrereleaseUpdatesChange,
-                )
-            }
+            SettingsSwitchRow(
+                title = "Include pre-releases",
+                checked = settings.includePrereleaseUpdates,
+                onCheckedChange = onIncludePrereleaseUpdatesChange,
+            )
         }
 
-        SettingsSection(title = "Quick Settings Tile", symbol = "grid_view") {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Add ClusterTune to Quick Settings",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+        SettingsSection(title = "Quick Settings", symbol = "grid_view") {
+            when {
+                isQuickSettingsTileAdded -> Text(
+                    text = "Tile added",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
                 )
-                TextButton(
+                canRequestAddQuickSettingsTile -> OutlinedButton(
                     onClick = onRequestAddQuickSettingsTile,
-                    enabled = canRequestAddQuickSettingsTile && !isQuickSettingsTileAdded,
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text(
-                        when {
-                            isQuickSettingsTileAdded -> "Tile already added"
-                            canRequestAddQuickSettingsTile -> "Add tile"
-                            else -> "Unavailable"
-                        },
-                    )
+                    Text("Add tile")
                 }
+                else -> Text(
+                    text = "Add the tile from Android's Quick Settings editor.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             SettingsControlGroup(label = "Single tap") {
                 TileBehaviorSelector(
@@ -314,11 +262,12 @@ fun SettingsScreen(
                     )
                     Text(
                         text = if (canDrawOverlays) {
-                            "Granted. Quick Settings can show the compact tuner over the current app."
+                            "The tile can open the tuner over other apps."
                         } else {
-                            "Not granted. Quick Settings will use the existing dialog fallback."
+                            "Without this, Android opens the tuner in a dialog."
                         },
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 TextButton(onClick = onOpenOverlayPermissionSettings) {
@@ -327,31 +276,40 @@ fun SettingsScreen(
             }
         }
 
-        SettingsSection(title = "App profiles", symbol = "notifications") {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = "Show profile switch toast",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "Show a short toast with only the profile name when app automation switches profiles.",
-                        style = MaterialTheme.typography.bodyMedium,
+        SettingsSection(title = "Automation", symbol = "routine") {
+            SettingsSwitchRow(
+                title = "Apply last profile after boot",
+                checked = settings.applyLastProfileOnBoot,
+                onCheckedChange = onApplyLastProfileOnBootChange,
+            )
+            SettingsSwitchRow(
+                title = "Use sleep profile",
+                description = "Applies when the screen turns off, restores on wake, and keeps a low-priority notification active.",
+                checked = settings.sleepProfileEnabled,
+                onCheckedChange = onSleepProfileEnabledChange,
+                enabled = sleepProfileOptions.isNotEmpty(),
+            )
+            if (sleepProfileOptions.isEmpty()) {
+                Text(
+                    text = "Create a profile to enable this.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else {
+                SettingsControlGroup(label = "While asleep") {
+                    SleepProfileSelector(
+                        profiles = sleepProfileOptions,
+                        selectedProfileId = settings.sleepProfileId,
+                        enabled = settings.sleepProfileEnabled,
+                        onChange = onSleepProfileChange,
                     )
                 }
-                Switch(
-                    checked = settings.profileSwitchToastsEnabled,
-                    onCheckedChange = onProfileSwitchToastsEnabledChange,
-                )
             }
+            SettingsSwitchRow(
+                title = "Show profile name on switch",
+                checked = settings.profileSwitchToastsEnabled,
+                onCheckedChange = onProfileSwitchToastsEnabledChange,
+            )
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -362,13 +320,14 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        text = "History limit",
+                        text = "Switch history",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = "Keep only the newest profile-switch entries. Older entries are removed when a new one is added.",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = "Recent automatic profile changes to keep.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 OutlinedTextField(
@@ -396,106 +355,23 @@ fun SettingsScreen(
             onRequestShizukuPermission = onRequestShizukuPermission,
         )
 
-        SettingsSection(title = "Startup", symbol = "power_settings_new") {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = "Apply last profile on device boot",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "When enabled, the app will attempt to restore the last applied profile after boot.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-                Switch(
-                    checked = settings.applyLastProfileOnBoot,
-                    onCheckedChange = onApplyLastProfileOnBootChange,
-                )
-            }
-        }
-
-        SettingsSection(title = "Sleep", symbol = "bedtime") {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = "Apply sleep profile",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "When enabled, ClusterTune keeps a low-priority notification so it can apply this profile when the screen turns off and restore the previous limits when the device wakes.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                }
-                Switch(
-                    checked = settings.sleepProfileEnabled,
-                    onCheckedChange = onSleepProfileEnabledChange,
-                    enabled = sleepProfileOptions.isNotEmpty(),
-                )
-            }
-            if (sleepProfileOptions.isEmpty()) {
-                Text(
-                    text = "No profiles are available yet.",
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            } else {
-                SettingsControlGroup(label = "Profile while asleep") {
-                    SleepProfileSelector(
-                        profiles = sleepProfileOptions,
-                        selectedProfileId = settings.sleepProfileId,
-                        enabled = settings.sleepProfileEnabled,
-                        onChange = onSleepProfileChange,
-                    )
-                }
-            }
-        }
-
         SettingsSection(title = "Profiles", symbol = "swap_vert") {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Column(
+                OutlinedButton(
+                    onClick = onImportProfiles,
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text(
-                        text = "Share profiles",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "Export profiles to JSON or import a shared profile file.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    Text("Import")
                 }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                OutlinedButton(
+                    onClick = onExportProfiles,
+                    modifier = Modifier.weight(1f),
                 ) {
-                    TextButton(onClick = onImportProfiles) {
-                        Text("Import")
-                    }
-                    TextButton(onClick = onExportProfiles) {
-                        Text("Export")
-                    }
+                    Text("Export")
                 }
             }
 
@@ -509,13 +385,14 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        text = "Reset profiles to default",
+                        text = "Restore defaults",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Text(
-                        text = "Bundled profiles are restored and custom profiles are removed.",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = "Removes custom profiles.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 TextButton(onClick = { showResetConfirmation = true }) {
@@ -560,90 +437,53 @@ private fun DeviceExecutionMethodCard(
     onMethodChange: (String?) -> Unit,
     onRequestShizukuPermission: () -> Unit,
 ) {
-    val selectedInfo = executionMethodInfo.firstOrNull { info -> info.id == selectedMethodId }
-    val needsPermission = selectedMethodId == "shizuku" && !isShizukuPermissionGranted
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+    SettingsSection(title = "Execution", symbol = "terminal") {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
+            FilledTonalButton(
+                onClick = onAutoDetect,
+                contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
             ) {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                ) {
-                    MaterialSymbol(
-                        name = "terminal",
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(10.dp),
-                        size = 24.dp,
-                    )
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = "Execution method",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = selectedInfo?.appliesTo ?: "Pick how ClusterTune gets privileged access on this device.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                FilledTonalButton(
-                    onClick = onAutoDetect,
-                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                ) {
-                    MaterialSymbol(
-                        name = "auto_awesome",
-                        contentDescription = null,
-                        size = ButtonDefaults.IconSize,
-                    )
-                    Text(
-                        text = "Auto detect",
-                        modifier = Modifier.padding(start = ButtonDefaults.IconSpacing),
-                    )
-                }
-                PrivilegedExecutionMethodSelector(
-                    selectedMethodId = selectedMethodId,
-                    onChange = onMethodChange,
-                    modifier = Modifier.weight(1f),
+                MaterialSymbol(
+                    name = "auto_awesome",
+                    contentDescription = null,
+                    size = ButtonDefaults.IconSize,
                 )
-                OutlinedButton(
-                    onClick = onRequestShizukuPermission,
-                    enabled = needsPermission,
-                    contentPadding = ButtonDefaults.ButtonWithIconContentPadding,
-                ) {
-                    MaterialSymbol(
-                        name = "security",
-                        contentDescription = null,
-                        size = ButtonDefaults.IconSize,
-                    )
+                Text(
+                    text = "Auto detect",
+                    modifier = Modifier.padding(start = ButtonDefaults.IconSpacing),
+                )
+            }
+            PrivilegedExecutionMethodSelector(
+                selectedMethodId = selectedMethodId,
+                onChange = onMethodChange,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (selectedMethodId == "shizuku") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "Shizuku permission",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                if (isShizukuPermissionGranted) {
                     Text(
-                        text = permissionButtonLabel(selectedMethodId, isShizukuPermissionGranted),
-                        modifier = Modifier.padding(start = ButtonDefaults.IconSpacing),
+                        text = "Granted",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
                     )
+                } else {
+                    OutlinedButton(onClick = onRequestShizukuPermission) {
+                        Text("Grant")
+                    }
                 }
             }
         }
@@ -658,69 +498,23 @@ private fun ExecutionMethodSelectionDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        modifier = Modifier.fillMaxWidth(0.92f),
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-        title = {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(14.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                ) {
-                    MaterialSymbol(
-                        name = "terminal",
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(10.dp),
-                        size = 24.dp,
-                    )
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text("Execution method")
-                    Text(
-                        text = "Choose the backend that matches this handheld.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        },
+        title = { Text("Execution method") },
         text = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    executionMethodInfo.take(2).forEach { info ->
-                        ExecutionMethodOptionRow(
-                            info = info,
-                            selected = selectedMethodId == info.id,
-                            onClick = {
-                                onChange(info.id)
-                                onDismiss()
-                            },
-                        )
-                    }
-                }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    executionMethodInfo.drop(2).forEach { info ->
-                        ExecutionMethodOptionRow(
-                            info = info,
-                            selected = selectedMethodId == info.id,
-                            onClick = {
-                                onChange(info.id)
-                                onDismiss()
-                            },
-                        )
-                    }
+                executionMethodInfo.forEach { info ->
+                    ExecutionMethodOptionRow(
+                        info = info,
+                        selected = selectedMethodId == info.id,
+                        onClick = {
+                            onChange(info.id)
+                            onDismiss()
+                        },
+                    )
                 }
             }
         },
@@ -739,7 +533,9 @@ private fun ExecutionMethodOptionRow(
     onClick: () -> Unit,
 ) {
     Card(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) {
@@ -770,17 +566,8 @@ private fun ExecutionMethodOptionRow(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "Applies to: ${info.appliesTo}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (selected) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurface
-                    },
-                )
-                Text(
-                    text = info.note,
-                    style = MaterialTheme.typography.bodyMedium,
+                    text = info.description,
+                    style = MaterialTheme.typography.bodySmall,
                     color = if (selected) {
                         MaterialTheme.colorScheme.onPrimaryContainer
                     } else {
@@ -792,17 +579,6 @@ private fun ExecutionMethodOptionRow(
     }
 }
 
-private fun permissionButtonLabel(
-    selectedMethodId: String?,
-    isShizukuPermissionGranted: Boolean,
-): String {
-    return when {
-        selectedMethodId != "shizuku" -> "No permission"
-        isShizukuPermissionGranted -> "Granted"
-        else -> "Grant"
-    }
-}
-
 @Composable
 private fun PrivilegedExecutionMethodSelector(
     selectedMethodId: String?,
@@ -810,7 +586,7 @@ private fun PrivilegedExecutionMethodSelector(
     modifier: Modifier = Modifier,
 ) {
     var showDialog by remember { mutableStateOf(false) }
-    val selectedLabel = selectedMethodId?.let(::executionMethodLabel) ?: "Not detected yet"
+    val selectedLabel = selectedMethodId?.let(::executionMethodLabel) ?: "Not selected"
 
     Box(modifier = modifier) {
         Surface(
@@ -1236,6 +1012,51 @@ private fun TileBehaviorOption(
 }
 
 @Composable
+private fun SettingsSwitchRow(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    description: String? = null,
+    enabled: Boolean = true,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = if (description == null) Alignment.CenterVertically else Alignment.Top,
+    ) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = if (enabled) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                },
+            )
+            description?.let { supportingText ->
+                Text(
+                    text = supportingText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled,
+        )
+    }
+}
+
+@Composable
 private fun SettingsControlGroup(
     label: String,
     content: @Composable () -> Unit,
@@ -1270,7 +1091,7 @@ private fun SettingsSection(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             SettingsSectionTitle(title = title, symbol = symbol)
             content()
@@ -1284,19 +1105,19 @@ private fun SettingsSectionTitle(
     symbol: String,
 ) {
     Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Surface(
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.primaryContainer,
         ) {
             MaterialSymbol(
                 name = symbol,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.padding(10.dp),
-                size = 24.dp,
+                modifier = Modifier.padding(8.dp),
+                size = 20.dp,
             )
         }
         Text(
