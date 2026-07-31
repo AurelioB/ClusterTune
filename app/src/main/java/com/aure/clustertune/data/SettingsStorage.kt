@@ -73,7 +73,9 @@ class SettingsStorage(private val context: Context) {
             profileSwitchHistoryLimit = (preferences[profileSwitchHistoryLimitKey]
                 ?: DEFAULT_PROFILE_SWITCH_HISTORY_LIMIT)
                 .coerceIn(MIN_PROFILE_SWITCH_HISTORY_LIMIT, MAX_PROFILE_SWITCH_HISTORY_LIMIT),
-            privilegedExecutionMethodId = preferences[privilegedExecutionMethodIdKey],
+            privilegedExecutionMethodId = supportedExecutionMethodId(
+                preferences[privilegedExecutionMethodIdKey],
+            ),
         )
     }
 
@@ -209,4 +211,8 @@ class SettingsStorage(private val context: Context) {
         return runCatching { AppColorSource.valueOf(raw) }
             .getOrDefault(AppColorSource.SYSTEM)
     }
+}
+
+internal fun supportedExecutionMethodId(methodId: String?): String? {
+    return methodId?.takeIf { it == "pserver-stdout" || it == "root-shell" }
 }

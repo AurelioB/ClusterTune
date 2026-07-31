@@ -35,7 +35,6 @@ import com.aure.clustertune.sleep.SleepProfileMonitorService
 import com.aure.clustertune.tile.QuickSettingsTileAddResult
 import com.aure.clustertune.tile.QuickSettingsTilePrompt
 import com.aure.clustertune.tile.QuickSettingsTileRefresher
-import com.aure.clustertune.root.ShizukuCommandRunner
 import com.aure.clustertune.ui.MainTunerScreen
 import com.aure.clustertune.ui.SettingsScreen
 import com.aure.clustertune.ui.SingleToast
@@ -53,7 +52,6 @@ class MainActivity : ComponentActivity() {
 
     private val container by lazy { AppContainer(this) }
     private val appUpdateManager by lazy { AppUpdateManager(this) }
-    private val shizukuCommandRunner by lazy { ShizukuCommandRunner() }
     private val pendingUpdateRelease = mutableStateOf<AppRelease?>(null)
     private val viewModel by viewModels<TunerViewModel> {
         TunerViewModel.factory(
@@ -167,8 +165,6 @@ class MainActivity : ComponentActivity() {
                             onProfileSwitchHistoryLimitChange = viewModel::setProfileSwitchHistoryLimit,
                             onPrivilegedExecutionMethodChange = viewModel::setPrivilegedExecutionMethod,
                             onAutoDetectPrivilegedExecutionMethod = viewModel::autoDetectPrivilegedExecutionMethod,
-                            isShizukuPermissionGranted = shizukuCommandRunner.hasPermission(),
-                            onRequestShizukuPermission = ::requestShizukuPermission,
                         )
                     } else {
                         MainTunerScreen(
@@ -297,32 +293,6 @@ class MainActivity : ComponentActivity() {
             }
             if (!showResultToast) return@request
             SingleToast.show(applicationContext, result.toToastMessage(), Toast.LENGTH_SHORT)
-        }
-    }
-
-    private fun requestShizukuPermission() {
-        when {
-            !shizukuCommandRunner.isBinderAlive() -> {
-                SingleToast.show(applicationContext, "Shizuku is not running", Toast.LENGTH_LONG)
-            }
-
-            shizukuCommandRunner.hasPermission() -> {
-                SingleToast.show(applicationContext, "Shizuku permission is already granted", Toast.LENGTH_SHORT)
-            }
-
-            else -> {
-                shizukuCommandRunner.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE)
-                    .onSuccess {
-                        SingleToast.show(applicationContext, "Shizuku permission requested", Toast.LENGTH_SHORT)
-                    }
-                    .onFailure { throwable ->
-                        SingleToast.show(
-                            applicationContext,
-                            throwable.message ?: "Failed to request Shizuku permission",
-                            Toast.LENGTH_LONG,
-                        )
-                    }
-            }
         }
     }
 
@@ -455,9 +425,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    companion object {
-        private const val SHIZUKU_PERMISSION_REQUEST_CODE = 4100
-    }
 }
 
 @Composable

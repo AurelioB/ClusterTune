@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,6 +60,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.aure.clustertune.model.AppColorSource
 import com.aure.clustertune.model.AppSettings
 import com.aure.clustertune.model.MAX_PROFILE_SWITCH_HISTORY_LIMIT
@@ -83,23 +85,13 @@ private data class ExecutionMethodInfo(
 private val executionMethodInfo = listOf(
     ExecutionMethodInfo(
         id = "pserver-stdout",
-        label = "PServer direct",
-        description = "Uses the vendor service with command output.",
-    ),
-    ExecutionMethodInfo(
-        id = "pserver-file-output",
-        label = "PServer compatibility",
-        description = "Avoids output capture when it prevents commands from running.",
+        label = "PServer",
+        description = "Compatible with AYN and Retroid devices, except Odin 2 Mini.",
     ),
     ExecutionMethodInfo(
         id = "root-shell",
-        label = "Root shell",
-        description = "Uses su on rooted devices.",
-    ),
-    ExecutionMethodInfo(
-        id = "shizuku",
-        label = "Shizuku (experimental)",
-        description = "Requires Shizuku or Sui; permission may not allow CPU control.",
+        label = "Root",
+        description = "Compatible with all rooting methods that provide su.",
     ),
 )
 
@@ -132,8 +124,6 @@ fun SettingsScreen(
     onProfileSwitchHistoryLimitChange: (Int) -> Unit,
     onPrivilegedExecutionMethodChange: (String?) -> Unit,
     onAutoDetectPrivilegedExecutionMethod: () -> Unit,
-    isShizukuPermissionGranted: Boolean,
-    onRequestShizukuPermission: () -> Unit,
 ) {
     var showResetConfirmation by remember { mutableStateOf(false) }
 
@@ -349,10 +339,8 @@ fun SettingsScreen(
 
         DeviceExecutionMethodCard(
             selectedMethodId = settings.privilegedExecutionMethodId,
-            isShizukuPermissionGranted = isShizukuPermissionGranted,
             onAutoDetect = onAutoDetectPrivilegedExecutionMethod,
             onMethodChange = onPrivilegedExecutionMethodChange,
-            onRequestShizukuPermission = onRequestShizukuPermission,
         )
 
         SettingsSection(title = "Profiles", symbol = "swap_vert") {
@@ -432,10 +420,8 @@ fun SettingsScreen(
 @Composable
 private fun DeviceExecutionMethodCard(
     selectedMethodId: String?,
-    isShizukuPermissionGranted: Boolean,
     onAutoDetect: () -> Unit,
     onMethodChange: (String?) -> Unit,
-    onRequestShizukuPermission: () -> Unit,
 ) {
     SettingsSection(title = "Execution", symbol = "terminal") {
         Row(
@@ -463,30 +449,6 @@ private fun DeviceExecutionMethodCard(
                 modifier = Modifier.weight(1f),
             )
         }
-        if (selectedMethodId == "shizuku") {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "Shizuku permission",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                if (isShizukuPermissionGranted) {
-                    Text(
-                        text = "Granted",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                } else {
-                    OutlinedButton(onClick = onRequestShizukuPermission) {
-                        Text("Grant")
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -498,6 +460,10 @@ private fun ExecutionMethodSelectionDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier
+            .fillMaxWidth(0.9f)
+            .widthIn(max = 720.dp),
+        properties = DialogProperties(usePlatformDefaultWidth = false),
         title = { Text("Execution method") },
         text = {
             Column(
@@ -626,12 +592,10 @@ private fun PrivilegedExecutionMethodSelector(
     }
 }
 
-private fun executionMethodLabel(methodId: String): String {
+internal fun executionMethodLabel(methodId: String): String {
     return when (methodId) {
-        "pserver-stdout" -> "PServer direct"
-        "pserver-file-output" -> "PServer compatibility"
-        "root-shell" -> "Root shell"
-        "shizuku" -> "Shizuku (experimental)"
+        "pserver-stdout" -> "PServer"
+        "root-shell" -> "Root"
         else -> methodId
     }
 }

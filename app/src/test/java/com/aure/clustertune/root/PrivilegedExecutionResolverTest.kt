@@ -40,7 +40,7 @@ class PrivilegedExecutionResolverTest {
     }
 
     @Test
-    fun `falls back when stdout method probe fails`() {
+    fun `does not use compatibility method when pserver probe fails`() {
         val stdout = FakeExecutionMethod(
             id = "pserver-stdout",
             probeResult = ExecutionProbeResult(false, false, "no stdout"),
@@ -52,9 +52,10 @@ class PrivilegedExecutionResolverTest {
         )
         val resolver = PrivilegedExecutionResolver(listOf(stdout, fileOutput))
 
-        assertTrue(resolver.isAvailable)
-        assertEquals("pserver-file-output", resolver.selectedMethodId)
-        assertEquals("value", resolver.readText("/protected"))
+        assertFalse(resolver.isAvailable)
+        assertNull(resolver.selectedMethodId)
+        assertNull(resolver.readText("/protected"))
+        assertEquals(0, fileOutput.probeCount)
     }
 
     @Test
@@ -101,34 +102,29 @@ class PrivilegedExecutionResolverTest {
         assertEquals("root-shell", resolver.autoDetectBestMethod())
         assertEquals("root-shell", resolver.selectedMethodId)
         assertEquals(1, pserver.probeCount)
-        assertEquals(1, fileOutput.probeCount)
+        assertEquals(0, fileOutput.probeCount)
         assertEquals(1, rootShell.probeCount)
         assertEquals(0, shizuku.probeCount)
     }
 
     @Test
-    fun `default auto detection prefers stdout then file output then root`() {
+    fun `default auto detection prefers pserver then root`() {
         val probeOrder = mutableListOf<String>()
         val stdout = FakeExecutionMethod(
             "pserver-stdout",
             ExecutionProbeResult(false, false),
             onProbe = { probeOrder += "pserver-stdout" },
         )
-        val fileOutput = FakeExecutionMethod(
-            "pserver-file-output",
-            ExecutionProbeResult(false, false),
-            onProbe = { probeOrder += "pserver-file-output" },
-        )
         val rootShell = FakeExecutionMethod(
             "root-shell",
             ExecutionProbeResult(true, true),
             onProbe = { probeOrder += "root-shell" },
         )
-        val resolver = PrivilegedExecutionResolver(listOf(rootShell, fileOutput, stdout))
+        val resolver = PrivilegedExecutionResolver(listOf(rootShell, stdout))
 
         assertEquals("root-shell", resolver.autoDetectBestMethod())
         assertEquals(
-            listOf("pserver-stdout", "pserver-file-output", "root-shell"),
+            listOf("pserver-stdout", "root-shell"),
             probeOrder,
         )
     }

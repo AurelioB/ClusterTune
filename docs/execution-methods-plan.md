@@ -1,5 +1,8 @@
 # Execution methods plan
 
+> Archived design record. The compatibility and Shizuku strategies are no longer
+> available executors. Current builds detect standard PServer first, then Root.
+
 Goal: make ClusterTune usable on more Android handhelds by separating “how privileged commands run” from the tuning code that needs privileged reads/writes.
 
 ## Problem

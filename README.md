@@ -121,8 +121,7 @@ Exported profiles follow the same schema.
 ## Notes For Contributors
 
 - UI refers to cpufreq policies as CPU clusters, but internal code keeps `policy` naming because it matches Linux/sysfs terminology.
-- Automatic execution detection prefers direct PServer access, then PServer compatibility mode, and finally a standard root shell.
-- Shizuku support is experimental and manual-only because a granted Shizuku permission does not necessarily provide access to protected CPU controls.
+- Automatic execution detection prefers PServer access, then a standard root shell.
 
 ## License and Attribution
 
