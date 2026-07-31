@@ -179,9 +179,10 @@ class PerformanceRepository(
                                 stockProfile = stockProfile,
                                 orderedIds = storage.displayOrder,
                             ),
-                            appProfileAssignments = storage.appProfileAssignments.filter { assignment ->
-                                orderedRealProfiles.any { profile -> profile.id == assignment.profileId }
-                            },
+                            appProfileAssignments = supportedAppProfileAssignments(
+                                assignments = storage.appProfileAssignments,
+                                realProfiles = orderedRealProfiles,
+                            ),
                             profileSwitchHistory = storage.profileSwitchHistory,
                         ),
                     ),
@@ -657,4 +658,13 @@ internal fun mergeImportedProfiles(
         profiles = profiles,
         restoredBundledProfileIds = restoredBundledProfileIds,
     )
+}
+
+internal fun supportedAppProfileAssignments(
+    assignments: List<AppProfileAssignment>,
+    realProfiles: List<PerformanceProfile>,
+): List<AppProfileAssignment> {
+    val supportedProfileIds = realProfiles.mapTo(mutableSetOf()) { profile -> profile.id }
+    supportedProfileIds += ProfileStateResolver.STOCK_PROFILE_ID
+    return assignments.filter { assignment -> assignment.profileId in supportedProfileIds }
 }
