@@ -70,6 +70,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.surfaceColorAtElevation
@@ -93,6 +94,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -271,7 +273,7 @@ fun MainTunerScreen(
             AppProfileAssignmentDialog(
                 app = app,
                 currentProfileId = state.appProfileAssignments.firstOrNull { it.packageName == app.packageName }?.profileId,
-                profiles = state.displayProfiles.filter { profile -> profile.source != ProfileSource.VIRTUAL },
+                profiles = profilesForCompactPicker(state.displayProfiles),
                 onDismiss = { showAppAssignmentDialog = false },
                 onSave = { selectedProfile ->
                     if (selectedProfile == null) {
@@ -440,10 +442,25 @@ fun CompactProfilePickerScreen(
     onApplyProfile: (PerformanceProfile) -> Unit,
     onDismissRequest: () -> Unit,
     showCompactScrim: Boolean = true,
+    contextPackageName: String? = null,
+    contextLabel: String? = null,
+    contextIcon: Drawable? = null,
+    onAppProfileAssignmentChange: ((PerformanceProfile?) -> Unit)? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val profiles = state.displayProfiles.filter { profile -> profile.source != ProfileSource.VIRTUAL }
+    val profiles = profilesForCompactPicker(state.displayProfiles)
+    val assignment = contextPackageName?.let { packageName ->
+        state.appProfileAssignments.firstOrNull { it.packageName == packageName }
+    }
+    val canAssignAppProfile = !contextPackageName.isNullOrBlank() && onAppProfileAssignmentChange != null
+    var appProfileEnabled by remember(contextPackageName, assignment?.profileId) {
+        mutableStateOf(assignment != null)
+    }
+    LaunchedEffect(assignment != null) {
+        appProfileEnabled = assignment != null
+    }
     val selectedProfileId = listOfNotNull(
+        assignment?.profileId,
         state.activeDisplayProfileId,
         state.lastAppliedDisplayProfileId,
         state.selectedDisplayProfileId,
@@ -461,23 +478,78 @@ fun CompactProfilePickerScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(colorScheme.surfaceContainer)
-                    .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 8.dp),
+                    .padding(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "Pick a profile",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colorScheme.onSurface,
-                )
-                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                    TextButton(
-                        onClick = onDismissRequest,
-                        modifier = Modifier.height(28.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (contextPackageName != null || contextLabel != null || contextIcon != null) {
+                        AppIcon(
+                            icon = contextIcon,
+                            contentDescription = contextLabel,
+                            modifier = Modifier.size(44.dp),
+                        )
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(1.dp),
                     ) {
-                        Text("Cancel", color = colorScheme.primary)
+                        Text(
+                            text = contextLabel ?: contextPackageName ?: "Pick a profile",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        if (canAssignAppProfile) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    text = "App profile",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = colorScheme.onSurface,
+                                )
+                                Switch(
+                                    checked = appProfileEnabled,
+                                    onCheckedChange = { enabled ->
+                                        appProfileEnabled = enabled
+                                        onAppProfileAssignmentChange?.invoke(
+                                            if (enabled) {
+                                                profiles.firstOrNull { it.id == selectedProfileId }
+                                            } else {
+                                                null
+                                            },
+                                        )
+                                    },
+                                    modifier = Modifier.scale(0.82f),
+                                )
+                            }
+                        }
+                        IconButton(
+                            onClick = onDismissRequest,
+                            modifier = Modifier.size(32.dp),
+                        ) {
+                            MaterialSymbol(
+                                name = "close",
+                                contentDescription = "Close",
+                                tint = colorScheme.onSurfaceVariant,
+                                size = 22.dp,
+                            )
+                        }
                     }
                 }
             }
@@ -504,7 +576,12 @@ fun CompactProfilePickerScreen(
                         ProfileChoiceRow(
                             title = profile.name,
                             selected = selectedProfileId == profile.id,
-                            onClick = { onApplyProfile(profile) },
+                            onClick = {
+                                if (appProfileEnabled && canAssignAppProfile) {
+                                    onAppProfileAssignmentChange?.invoke(profile)
+                                }
+                                onApplyProfile(profile)
+                            },
                         )
                     }
                 }
@@ -899,7 +976,7 @@ private fun Header(
                 state.privilegedExecutionMethodId?.let { methodId ->
                     AssistChip(
                         onClick = {},
-                        label = { Text("Execution: $methodId") },
+                        label = { Text("Execution: ${executionMethodLabel(methodId)}") },
                         enabled = false,
                     )
                 }

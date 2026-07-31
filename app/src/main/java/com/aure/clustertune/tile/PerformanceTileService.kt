@@ -15,7 +15,6 @@ import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.model.TileInteractionBehavior
 import com.aure.clustertune.model.TunerState
-import com.aure.clustertune.overlay.OverlayHostService
 import com.aure.clustertune.overlay.OverlayPermission
 import com.aure.clustertune.ui.SingleToast
 import kotlinx.coroutines.CoroutineScope
@@ -165,16 +164,16 @@ class PerformanceTileService : TileService() {
             when (settings.tileTapBehavior) {
                 TileInteractionBehavior.SHOW_DIALOG -> {
                     if (OverlayPermission.canDrawOverlays(applicationContext)) {
-                        showProfilePickerOverlayAndCollapse()
+                        showOverlayAndCollapse()
                     } else {
-                        launchProfilePickerAndCollapse()
+                        launchDialogAndCollapse()
                     }
                 }
                 TileInteractionBehavior.SHOW_PROFILE_PICKER -> {
                     if (OverlayPermission.canDrawOverlays(applicationContext)) {
                         showProfilePickerOverlayAndCollapse()
                     } else {
-                        launchProfilePickerAndCollapse()
+                        requestOverlayAccessAndCollapse()
                     }
                 }
                 TileInteractionBehavior.OPEN_APP -> {
@@ -225,22 +224,25 @@ class PerformanceTileService : TileService() {
         launchIntentAndCollapse(intent)
     }
 
-    @Suppress("DEPRECATION")
-    private fun launchProfilePickerAndCollapse() {
-        val intent = TileControlActivity.createProfilePickerIntent(applicationContext)
-        launchIntentAndCollapse(intent)
+    private fun requestOverlayAccessAndCollapse() {
+        showToast("Allow overlay access to use the profile picker")
+        launchIntentAndCollapse(
+            OverlayPermission.createSettingsIntent(applicationContext),
+        )
     }
 
     @Suppress("DEPRECATION")
     private fun showOverlayAndCollapse() {
-        OverlayHostService.showCompactTuner(applicationContext)
-        sendBroadcast(Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS))
+        launchIntentAndCollapse(
+            TileControlActivity.createCompactTunerOverlayIntent(applicationContext),
+        )
     }
 
     @Suppress("DEPRECATION")
     private fun showProfilePickerOverlayAndCollapse() {
-        OverlayHostService.showProfilePicker(applicationContext)
-        sendBroadcast(Intent(Intent.ACTION_CLOSE_SYSTEM_DIALOGS))
+        launchIntentAndCollapse(
+            TileControlActivity.createProfilePickerOverlayIntent(applicationContext),
+        )
     }
 
     @Suppress("DEPRECATION")

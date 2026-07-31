@@ -85,7 +85,7 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="User-requested temporary overlay controls from the Quick Settings tile" />
+                android:value="User-enabled profile controls from Quick Settings or a left-edge gesture" />
         </service>
 
         <provider

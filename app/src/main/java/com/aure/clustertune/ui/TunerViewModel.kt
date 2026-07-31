@@ -333,6 +333,41 @@ class TunerViewModel(
         }
     }
 
+    fun setLeftEdgeProfilePickerEnabled(enabled: Boolean, onSaved: () -> Unit = {}) {
+        viewModelScope.launch {
+            settingsStorage.persistLeftEdgeProfilePickerEnabled(enabled)
+            onSaved()
+        }
+    }
+
+    fun setEdgeHandleHeightDp(heightDp: Int, onSaved: () -> Unit = {}) {
+        viewModelScope.launch {
+            settingsStorage.persistEdgeHandleHeightDp(heightDp)
+            onSaved()
+        }
+    }
+
+    fun setEdgeHandleThicknessDp(thicknessDp: Int, onSaved: () -> Unit = {}) {
+        viewModelScope.launch {
+            settingsStorage.persistEdgeHandleThicknessDp(thicknessDp)
+            onSaved()
+        }
+    }
+
+    fun setEdgeHandleVerticalPositionPercent(positionPercent: Int, onSaved: () -> Unit = {}) {
+        viewModelScope.launch {
+            settingsStorage.persistEdgeHandleVerticalPositionPercent(positionPercent)
+            onSaved()
+        }
+    }
+
+    fun setEdgeHandleOpacityPercent(opacityPercent: Int, onSaved: () -> Unit = {}) {
+        viewModelScope.launch {
+            settingsStorage.persistEdgeHandleOpacityPercent(opacityPercent)
+            onSaved()
+        }
+    }
+
     fun setProfileSwitchToastsEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsStorage.persistProfileSwitchToastsEnabled(enabled)

@@ -7,25 +7,37 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Configuration
+import android.graphics.Rect
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.core.view.doOnLayout
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -45,6 +57,9 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.aure.clustertune.AppContainer
 import com.aure.clustertune.MainActivity
 import com.aure.clustertune.R
+import com.aure.clustertune.apps.AppProfileMonitorService
+import com.aure.clustertune.apps.ForegroundAppInfo
+import com.aure.clustertune.apps.ForegroundAppResolver
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.TunerState
 import com.aure.clustertune.quicktuner.PerformanceQuickTunerApplyRepository
@@ -55,7 +70,56 @@ import com.aure.clustertune.ui.CompactTunerScreen
 import com.aure.clustertune.ui.SingleToast
 import com.aure.clustertune.ui.TunerViewModel
 import com.aure.clustertune.ui.theme.ClusterTuneTheme
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+internal data class CompactProfilePickerForegroundState(
+    val trackedPackageName: String? = null,
+    val foregroundApp: ForegroundAppInfo? = null,
+    val consecutiveNullDetections: Int = 0,
+)
+
+internal data class CompactProfilePickerForegroundUpdate(
+    val state: CompactProfilePickerForegroundState,
+    val dismissRequested: Boolean,
+)
+
+internal fun updateCompactProfilePickerForeground(
+    state: CompactProfilePickerForegroundState,
+    detected: ForegroundAppInfo?,
+): CompactProfilePickerForegroundUpdate {
+    if (detected == null) {
+        if (state.trackedPackageName == null) {
+            return CompactProfilePickerForegroundUpdate(state, dismissRequested = false)
+        }
+        val nullCount = state.consecutiveNullDetections + 1
+        return CompactProfilePickerForegroundUpdate(
+            state = state.copy(
+                foregroundApp = if (nullCount >= 2) null else state.foregroundApp,
+                consecutiveNullDetections = nullCount,
+            ),
+            dismissRequested = nullCount >= 2,
+        )
+    }
+    val packageChanged = state.trackedPackageName != null &&
+        state.trackedPackageName != detected.packageName
+    val samePackage = state.trackedPackageName == detected.packageName
+    return CompactProfilePickerForegroundUpdate(
+        state = state.copy(
+            trackedPackageName = state.trackedPackageName ?: detected.packageName,
+            foregroundApp = if (samePackage) state.foregroundApp else detected,
+            consecutiveNullDetections = 0,
+        ),
+        dismissRequested = packageChanged,
+    )
+}
 
 class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRegistryOwner {
 
@@ -78,11 +142,16 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         )[TunerViewModel::class.java]
     }
     private var screenReceiverRegistered = false
+    private var keepEdgeHandle = false
+    private val foregroundAppResolver by lazy { ForegroundAppResolver(this) }
+    private var compactProfilePickerSessionJob: Job? = null
+    private var compactProfilePickerForegroundState = CompactProfilePickerForegroundState()
+    private val compactProfilePickerForeground = MutableStateFlow<ForegroundAppInfo?>(null)
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent?) {
             if (intent?.action == Intent.ACTION_SCREEN_OFF) {
-                dismissOverlay(OverlayType.COMPACT_TUNER_MODAL)
+                dismissOverlay()
             }
         }
     }
@@ -109,11 +178,17 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         super.onStartCommand(intent, flags, startId)
         when (intent?.action) {
             ACTION_SHOW_COMPACT_TUNER -> showCompactTunerOverlay()
-            ACTION_SHOW_PROFILE_PICKER -> showCompactProfilePickerOverlay()
+            ACTION_SHOW_PROFILE_PICKER -> openProfilePickerForForegroundApp()
+            ACTION_SHOW_EDGE_HANDLE -> showEdgeHandleIfEnabled()
+            ACTION_HIDE_EDGE_HANDLE -> hideEdgeHandle()
             ACTION_DISMISS -> dismissOverlay(intent.overlayTypeExtra())
-            else -> stopIfIdle()
+            else -> showEdgeHandleIfEnabled()
         }
-        return START_NOT_STICKY
+        return if (keepEdgeHandle || intent?.action == ACTION_SHOW_EDGE_HANDLE || intent == null) {
+            START_STICKY
+        } else {
+            START_NOT_STICKY
+        }
     }
 
     override fun onBind(intent: Intent): IBinder? {
@@ -122,43 +197,63 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
     }
 
     override fun onDestroy() {
+        cancelCompactProfilePickerSession()
         if (screenReceiverRegistered) {
             unregisterReceiver(screenReceiver)
             screenReceiverRegistered = false
         }
-        windowController.dismiss()
+        windowController.dismissAll()
         viewModelStore.clear()
         super.onDestroy()
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        windowController.refreshEdgeHandleLayout()
+    }
+
     private fun showCompactTunerOverlay() {
+        cancelCompactProfilePickerSession()
         if (!OverlayPermission.canDrawOverlays(this)) {
             Log.w(TAG, "Overlay permission missing; cannot show compact tuner overlay")
-            stopIfIdle()
+            dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
             return
         }
         val view = buildCompactTunerView()
         runCatching {
-            windowController.show(OverlayType.COMPACT_TUNER_MODAL, view)
+            windowController.show(
+                type = OverlayType.COMPACT_TUNER_MODAL,
+                view = view,
+                onBackPressed = {
+                    dismissOverlay(OverlayType.COMPACT_TUNER_MODAL)
+                },
+            )
         }.onFailure { throwable ->
             Log.e(TAG, "Failed to show compact tuner overlay", throwable)
             stopIfIdle()
         }
     }
 
-    private fun showCompactProfilePickerOverlay() {
+    private fun showCompactProfilePickerOverlay(foregroundApp: ForegroundAppInfo? = null): Boolean {
         if (!OverlayPermission.canDrawOverlays(this)) {
             Log.w(TAG, "Overlay permission missing; cannot show compact profile picker overlay")
-            stopIfIdle()
-            return
+            dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+            return false
         }
-        val view = buildCompactProfilePickerView()
-        runCatching {
-            windowController.show(OverlayType.COMPACT_PROFILE_PICKER, view)
+        val view = buildCompactProfilePickerView(foregroundApp)
+        return runCatching {
+            windowController.show(
+                type = OverlayType.COMPACT_PROFILE_PICKER,
+                view = view,
+                onBackPressed = {
+                    dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                },
+            )
+            true
         }.onFailure { throwable ->
             Log.e(TAG, "Failed to show compact profile picker overlay", throwable)
             stopIfIdle()
-        }
+        }.getOrDefault(false)
     }
 
     private fun buildCompactTunerView(): ComposeView {
@@ -207,7 +302,12 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         }
     }
 
-    private fun buildCompactProfilePickerView(): ComposeView {
+    private fun buildCompactProfilePickerView(foregroundApp: ForegroundAppInfo?): ComposeView {
+        compactProfilePickerForegroundState = CompactProfilePickerForegroundState(
+            trackedPackageName = foregroundApp?.packageName,
+            foregroundApp = foregroundApp,
+        )
+        compactProfilePickerForeground.value = foregroundApp
         return ComposeView(this).apply {
             setViewTreeLifecycleOwner(this@OverlayHostService)
             setViewTreeViewModelStoreOwner(this@OverlayHostService)
@@ -215,6 +315,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
             setContent {
                 val settings by viewModel.settings.collectAsStateWithLifecycle()
                 val state by viewModel.state.collectAsStateWithLifecycle()
+                val currentForegroundApp by compactProfilePickerForeground.collectAsStateWithLifecycle()
                 ClusterTuneTheme(settings = settings) {
                     Box(
                         modifier = Modifier
@@ -238,12 +339,185 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                                 onApplyProfile = { profile -> applyProfileFromOverlay(state, profile) },
                                 onDismissRequest = { dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER) },
                                 showCompactScrim = false,
+                                contextPackageName = currentForegroundApp?.packageName,
+                                contextLabel = currentForegroundApp?.label,
+                                contextIcon = currentForegroundApp?.icon,
+                                onAppProfileAssignmentChange = currentForegroundApp?.let { app ->
+                                    { profile ->
+                                        if (profile == null) {
+                                            viewModel.deleteAppProfileAssignment(app.packageName)
+                                        } else {
+                                            viewModel.saveAppProfileAssignment(
+                                                app.packageName,
+                                                app.label,
+                                                profile.id,
+                                            )
+                                            AppProfileMonitorService.start(this@OverlayHostService)
+                                        }
+                                    }
+                                },
                             )
                         }
                     }
                 }
             }
         }
+    }
+
+    private fun showEdgeHandleIfEnabled() {
+        lifecycleScope.launch {
+            val settings = container.settingsStorage.settings.first()
+            if (
+                !settings.leftEdgeProfilePickerEnabled ||
+                !OverlayPermission.canDrawOverlays(this@OverlayHostService) ||
+                !AppProfileMonitorService.hasUsageStatsPermission(this@OverlayHostService)
+            ) {
+                keepEdgeHandle = false
+                windowController.removeEdgeHandle()
+                stopIfIdle()
+                return@launch
+            }
+
+            keepEdgeHandle = true
+            runCatching {
+                windowController.showEdgeHandle(
+                    view = buildEdgeHandleView(),
+                    config = EdgeHandleWindowConfig(
+                        heightDp = settings.edgeHandleHeightDp,
+                        verticalPositionPercent = settings.edgeHandleVerticalPositionPercent,
+                    ),
+                )
+            }.onFailure { throwable ->
+                keepEdgeHandle = false
+                Log.e(TAG, "Failed to show profile edge handle", throwable)
+                stopIfIdle()
+            }
+        }
+    }
+
+    private fun buildEdgeHandleView(): ComposeView {
+        return ComposeView(this).apply {
+            setViewTreeLifecycleOwner(this@OverlayHostService)
+            setViewTreeViewModelStoreOwner(this@OverlayHostService)
+            setViewTreeSavedStateRegistryOwner(this@OverlayHostService)
+            addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
+                updateSystemGestureExclusion(view)
+            }
+            doOnLayout(::updateSystemGestureExclusion)
+            setContent {
+                val settings by viewModel.settings.collectAsStateWithLifecycle()
+                val swipeThresholdPx = with(LocalDensity.current) { EDGE_SWIPE_THRESHOLD_DP.dp.toPx() }
+                var dragDistance by remember { mutableFloatStateOf(0f) }
+                ClusterTuneTheme(settings = settings) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(swipeThresholdPx) {
+                                detectHorizontalDragGestures(
+                                    onDragStart = { dragDistance = 0f },
+                                    onDragCancel = { dragDistance = 0f },
+                                    onDragEnd = {
+                                        if (dragDistance >= swipeThresholdPx) {
+                                            openProfilePickerForForegroundApp()
+                                        }
+                                        dragDistance = 0f
+                                    },
+                                    onHorizontalDrag = { change, amount ->
+                                        if (amount > 0f) {
+                                            dragDistance += amount
+                                            change.consume()
+                                        }
+                                    },
+                                )
+                            },
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(settings.edgeHandleThicknessDp.dp)
+                                .fillMaxHeight()
+                                .alpha(settings.edgeHandleOpacityPercent / 100f)
+                                .background(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp),
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.3f)
+                                    .fillMaxHeight(0.47f)
+                                    .background(
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f),
+                                        shape = RoundedCornerShape(2.dp),
+                                    ),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun updateSystemGestureExclusion(view: android.view.View) {
+        view.systemGestureExclusionRects = listOf(
+            Rect(0, 0, view.width, view.height),
+        )
+    }
+
+    private fun openProfilePickerForForegroundApp() {
+        startCompactProfilePickerSession()
+    }
+
+    private fun startCompactProfilePickerSession() {
+        cancelCompactProfilePickerSession()
+        compactProfilePickerSessionJob = lifecycleScope.launch {
+            val initial = try {
+                withContext(Dispatchers.IO) { foregroundAppResolver.resolve() }
+            } catch (error: Throwable) {
+                if (error is CancellationException) throw error
+                Log.e(TAG, "Failed to resolve foreground app for profile picker", error)
+                dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                return@launch
+            }
+            if (!showCompactProfilePickerOverlay(initial)) {
+                dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                return@launch
+            }
+            while (isActive && windowController.isShowing(OverlayType.COMPACT_PROFILE_PICKER)) {
+                delay(COMPACT_PROFILE_PICKER_POLL_INTERVAL_MS)
+                val detected = try {
+                    withContext(Dispatchers.IO) { foregroundAppResolver.resolve() }
+                } catch (error: Throwable) {
+                    if (error is CancellationException) throw error
+                    Log.e(TAG, "Failed to monitor foreground app for profile picker", error)
+                    dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                    return@launch
+                }
+                val update = updateCompactProfilePickerForeground(
+                    compactProfilePickerForegroundState,
+                    detected,
+                )
+                compactProfilePickerForegroundState = update.state
+                // Publish context before requesting dismissal so a delayed removal cannot show stale data.
+                compactProfilePickerForeground.value = update.state.foregroundApp
+                if (update.dismissRequested) {
+                    dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                    break
+                }
+            }
+        }
+    }
+
+    private fun cancelCompactProfilePickerSession() {
+        compactProfilePickerSessionJob?.cancel()
+        compactProfilePickerSessionJob = null
+    }
+
+    private fun hideEdgeHandle() {
+        keepEdgeHandle = false
+        windowController.removeEdgeHandle()
+        stopIfIdle()
     }
 
     private fun applyCurrentFromOverlay(state: TunerState) {
@@ -273,12 +547,15 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
     }
 
     private fun dismissOverlay(type: OverlayType? = null) {
+        if (type == null || type == OverlayType.COMPACT_PROFILE_PICKER) {
+            cancelCompactProfilePickerSession()
+        }
         windowController.dismiss(type)
         stopIfIdle()
     }
 
     private fun stopIfIdle() {
-        if (!windowController.hasActiveOverlay) {
+        if (!keepEdgeHandle && !windowController.hasActiveOverlay) {
             stopSelf()
         }
     }
@@ -309,7 +586,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
             setShowBadge(false)
-            description = "Hosts temporary ClusterTune overlay controls."
+            description = "Hosts ClusterTune controls over other apps."
         }
         getSystemService<NotificationManager>()?.createNotificationChannel(channel)
     }
@@ -318,7 +595,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_tile_underclock)
             .setContentTitle("ClusterTune controls")
-            .setContentText("Showing quick tuning controls over the current app.")
+            .setContentText("Profile controls are available over other apps.")
             .setOngoing(true)
             .setShowWhen(false)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -343,8 +620,12 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         private const val NOTIFICATION_ID = 41
         private const val ACTION_SHOW_COMPACT_TUNER = "com.aure.clustertune.overlay.SHOW_COMPACT_TUNER"
         private const val ACTION_SHOW_PROFILE_PICKER = "com.aure.clustertune.overlay.SHOW_PROFILE_PICKER"
+        private const val ACTION_SHOW_EDGE_HANDLE = "com.aure.clustertune.overlay.SHOW_EDGE_HANDLE"
+        private const val ACTION_HIDE_EDGE_HANDLE = "com.aure.clustertune.overlay.HIDE_EDGE_HANDLE"
         private const val ACTION_DISMISS = "com.aure.clustertune.overlay.DISMISS"
         private const val EXTRA_OVERLAY_TYPE = "overlay_type"
+        private const val EDGE_SWIPE_THRESHOLD_DP = 48
+        private const val COMPACT_PROFILE_PICKER_POLL_INTERVAL_MS = 400L
 
         fun showCompactTuner(context: Context) {
             ContextCompat.startForegroundService(
@@ -360,6 +641,23 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                 context,
                 Intent(context, OverlayHostService::class.java).apply {
                     action = ACTION_SHOW_PROFILE_PICKER
+                },
+            )
+        }
+
+        fun showEdgeHandle(context: Context) {
+            ContextCompat.startForegroundService(
+                context,
+                Intent(context, OverlayHostService::class.java).apply {
+                    action = ACTION_SHOW_EDGE_HANDLE
+                },
+            )
+        }
+
+        fun hideEdgeHandle(context: Context) {
+            context.startService(
+                Intent(context, OverlayHostService::class.java).apply {
+                    action = ACTION_HIDE_EDGE_HANDLE
                 },
             )
         }

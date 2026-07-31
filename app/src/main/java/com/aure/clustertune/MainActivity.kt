@@ -24,12 +24,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.aure.clustertune.apps.AppProfileMonitorService
+import com.aure.clustertune.overlay.OverlayHostService
 import com.aure.clustertune.overlay.OverlayPermission
 import com.aure.clustertune.sleep.SleepProfileMonitorService
 import com.aure.clustertune.tile.QuickSettingsTileAddResult
@@ -100,18 +102,28 @@ class MainActivity : ComponentActivity() {
                     val launchableApps = viewModel.launchableApps.collectAsStateWithLifecycle().value
                     val recentActiveApps = viewModel.recentActiveApps.collectAsStateWithLifecycle().value
                     var showSettings by rememberSaveable { mutableStateOf(false) }
-                    var overlayPermissionRefresh by remember { mutableStateOf(0) }
+                    var permissionRefresh by remember { mutableStateOf(0) }
                     DisposableEffect(Unit) {
                         val observer = LifecycleEventObserver { _, event ->
                             if (event == Lifecycle.Event.ON_RESUME) {
-                                overlayPermissionRefresh++
+                                permissionRefresh++
                             }
                         }
                         lifecycle.addObserver(observer)
                         onDispose { lifecycle.removeObserver(observer) }
                     }
-                    val canDrawOverlays = remember(overlayPermissionRefresh) {
+                    val canDrawOverlays = remember(permissionRefresh) {
                         OverlayPermission.canDrawOverlays(this@MainActivity)
+                    }
+                    val hasUsageAccess = remember(permissionRefresh) {
+                        AppProfileMonitorService.hasUsageStatsPermission(this@MainActivity)
+                    }
+                    val hasNotificationAccess = remember(permissionRefresh) {
+                        NotificationManagerCompat.from(this@MainActivity)
+                            .areNotificationsEnabled()
+                    }
+                    val canInstallUpdates = remember(permissionRefresh) {
+                        packageManager.canRequestPackageInstalls()
                     }
 
                     if (showSettings) {
@@ -156,6 +168,72 @@ class MainActivity : ComponentActivity() {
                             canDrawOverlays = canDrawOverlays,
                             onOpenOverlayPermissionSettings = {
                                 startActivity(OverlayPermission.createSettingsIntent(this@MainActivity))
+                            },
+                            hasUsageAccess = hasUsageAccess,
+                            onOpenUsageAccessSettings = {
+                                startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                            },
+                            hasNotificationAccess = hasNotificationAccess,
+                            onOpenNotificationSettings = {
+                                startActivity(
+                                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                                    },
+                                )
+                            },
+                            canInstallUpdates = canInstallUpdates,
+                            onOpenInstallPermissionSettings = {
+                                startActivity(
+                                    Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                        data = Uri.parse("package:$packageName")
+                                    },
+                                )
+                            },
+                            onLeftEdgeProfilePickerEnabledChange = { enabled ->
+                                viewModel.setLeftEdgeProfilePickerEnabled(enabled) {
+                                    when {
+                                        !enabled -> OverlayHostService.hideEdgeHandle(this@MainActivity)
+                                        !canDrawOverlays -> {
+                                            SingleToast.show(
+                                                this@MainActivity,
+                                                "Grant overlay permission to use the edge picker",
+                                                Toast.LENGTH_LONG,
+                                            )
+                                            startActivity(
+                                                OverlayPermission.createSettingsIntent(this@MainActivity),
+                                            )
+                                        }
+                                        !hasUsageAccess -> {
+                                            SingleToast.show(
+                                                this@MainActivity,
+                                                "Grant Usage Access to identify the current app",
+                                                Toast.LENGTH_LONG,
+                                            )
+                                            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                                        }
+                                        else -> OverlayHostService.showEdgeHandle(this@MainActivity)
+                                    }
+                                }
+                            },
+                            onEdgeHandleHeightChange = { heightDp ->
+                                viewModel.setEdgeHandleHeightDp(heightDp) {
+                                    refreshLeftEdgeProfilePicker()
+                                }
+                            },
+                            onEdgeHandleThicknessChange = { thicknessDp ->
+                                viewModel.setEdgeHandleThicknessDp(thicknessDp) {
+                                    refreshLeftEdgeProfilePicker()
+                                }
+                            },
+                            onEdgeHandleVerticalPositionChange = { positionPercent ->
+                                viewModel.setEdgeHandleVerticalPositionPercent(positionPercent) {
+                                    refreshLeftEdgeProfilePicker()
+                                }
+                            },
+                            onEdgeHandleOpacityChange = { opacityPercent ->
+                                viewModel.setEdgeHandleOpacityPercent(opacityPercent) {
+                                    refreshLeftEdgeProfilePicker()
+                                }
                             },
                             onCheckForUpdates = { checkForUpdates(showUpToDateToast = true) },
                             onAutomaticUpdateChecksEnabledChange = viewModel::setAutomaticUpdateChecksEnabled,
@@ -214,6 +292,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         maybeStartSleepProfileMonitor()
         maybeStartAppProfileMonitor()
+        maybeStartLeftEdgeProfilePicker()
     }
 
     private fun startSleepProfileMonitor() {
@@ -281,6 +360,30 @@ class MainActivity : ComponentActivity() {
             ) {
                 startAppProfileMonitor()
             }
+        }
+    }
+
+    private fun maybeStartLeftEdgeProfilePicker() {
+        lifecycleScope.launch {
+            val settings = container.settingsStorage.settings.first()
+            if (
+                settings.leftEdgeProfilePickerEnabled &&
+                OverlayPermission.canDrawOverlays(this@MainActivity) &&
+                AppProfileMonitorService.hasUsageStatsPermission(this@MainActivity)
+            ) {
+                OverlayHostService.showEdgeHandle(this@MainActivity)
+            } else if (settings.leftEdgeProfilePickerEnabled) {
+                OverlayHostService.hideEdgeHandle(this@MainActivity)
+            }
+        }
+    }
+
+    private fun refreshLeftEdgeProfilePicker() {
+        if (
+            OverlayPermission.canDrawOverlays(this) &&
+            AppProfileMonitorService.hasUsageStatsPermission(this)
+        ) {
+            OverlayHostService.showEdgeHandle(this)
         }
     }
 
@@ -456,4 +559,3 @@ private fun UpdateAvailableDialog(
         },
     )
 }
-

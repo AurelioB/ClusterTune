@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,6 +42,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderColors
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -48,6 +51,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -59,13 +63,23 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.aure.clustertune.model.AppColorSource
 import com.aure.clustertune.model.AppSettings
+import com.aure.clustertune.model.MAX_EDGE_HANDLE_HEIGHT_DP
+import com.aure.clustertune.model.MAX_EDGE_HANDLE_OPACITY_PERCENT
+import com.aure.clustertune.model.MAX_EDGE_HANDLE_THICKNESS_DP
+import com.aure.clustertune.model.MAX_EDGE_HANDLE_VERTICAL_POSITION_PERCENT
 import com.aure.clustertune.model.MAX_PROFILE_SWITCH_HISTORY_LIMIT
+import com.aure.clustertune.model.MIN_EDGE_HANDLE_HEIGHT_DP
+import com.aure.clustertune.model.MIN_EDGE_HANDLE_OPACITY_PERCENT
+import com.aure.clustertune.model.MIN_EDGE_HANDLE_THICKNESS_DP
+import com.aure.clustertune.model.MIN_EDGE_HANDLE_VERTICAL_POSITION_PERCENT
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.TileInteractionBehavior
+import kotlin.math.roundToInt
 
 private val accentColorOptions = listOf(
     0xFF3F51B5.toInt(),
@@ -116,6 +130,17 @@ fun SettingsScreen(
     isQuickSettingsTileAdded: Boolean,
     canDrawOverlays: Boolean,
     onOpenOverlayPermissionSettings: () -> Unit,
+    hasUsageAccess: Boolean,
+    onOpenUsageAccessSettings: () -> Unit,
+    hasNotificationAccess: Boolean,
+    onOpenNotificationSettings: () -> Unit,
+    canInstallUpdates: Boolean,
+    onOpenInstallPermissionSettings: () -> Unit,
+    onLeftEdgeProfilePickerEnabledChange: (Boolean) -> Unit,
+    onEdgeHandleHeightChange: (Int) -> Unit,
+    onEdgeHandleThicknessChange: (Int) -> Unit,
+    onEdgeHandleVerticalPositionChange: (Int) -> Unit,
+    onEdgeHandleOpacityChange: (Int) -> Unit,
     onCheckForUpdates: () -> Unit,
     onAutomaticUpdateChecksEnabledChange: (Boolean) -> Unit,
     onUpdateCheckIntervalDaysChange: (Int) -> Unit,
@@ -209,9 +234,37 @@ fun SettingsScreen(
                 checked = settings.includePrereleaseUpdates,
                 onCheckedChange = onIncludePrereleaseUpdatesChange,
             )
+            SettingsAccessRow(
+                title = "Install downloaded updates",
+                description = "Allows ClusterTune to hand downloaded APKs to Android's installer.",
+                granted = canInstallUpdates,
+                missingActionLabel = "Allow",
+                onClick = onOpenInstallPermissionSettings,
+            )
         }
 
-        SettingsSection(title = "Quick Settings", symbol = "grid_view") {
+        SettingsSection(title = "Permissions & access", symbol = "shield") {
+            SettingsAccessRow(
+                title = "Overlay access",
+                description = "Shows Quick Settings controls and the edge picker over games.",
+                granted = canDrawOverlays,
+                onClick = onOpenOverlayPermissionSettings,
+            )
+            SettingsAccessRow(
+                title = "Usage access",
+                description = "Identifies the foreground game for app profiles and profile pickers.",
+                granted = hasUsageAccess,
+                onClick = onOpenUsageAccessSettings,
+            )
+            SettingsAccessRow(
+                title = "Notifications",
+                description = "Shows background status for overlays and automation while they run.",
+                granted = hasNotificationAccess,
+                onClick = onOpenNotificationSettings,
+            )
+        }
+
+        SettingsSection(title = "Quick access", symbol = "grid_view") {
             when {
                 isQuickSettingsTileAdded -> Text(
                     text = "Tile added",
@@ -236,33 +289,23 @@ fun SettingsScreen(
                     onChange = onTileTapBehaviorChange,
                 )
             }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = "Overlay permission",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = if (canDrawOverlays) {
-                            "The tile can open the tuner over other apps."
-                        } else {
-                            "Without this, Android opens the tuner in a dialog."
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                TextButton(onClick = onOpenOverlayPermissionSettings) {
-                    Text(if (canDrawOverlays) "Manage" else "Grant")
-                }
+            SettingsSwitchRow(
+                title = "Left-edge profile picker",
+                description = "Swipe in from the left edge to choose a profile for the current app.",
+                checked = settings.leftEdgeProfilePickerEnabled,
+                onCheckedChange = onLeftEdgeProfilePickerEnabledChange,
+            )
+            if (settings.leftEdgeProfilePickerEnabled) {
+                EdgeHandleControls(
+                    heightDp = settings.edgeHandleHeightDp,
+                    thicknessDp = settings.edgeHandleThicknessDp,
+                    verticalPositionPercent = settings.edgeHandleVerticalPositionPercent,
+                    opacityPercent = settings.edgeHandleOpacityPercent,
+                    onHeightChange = onEdgeHandleHeightChange,
+                    onThicknessChange = onEdgeHandleThicknessChange,
+                    onVerticalPositionChange = onEdgeHandleVerticalPositionChange,
+                    onOpacityChange = onEdgeHandleOpacityChange,
+                )
             }
         }
 
@@ -844,12 +887,12 @@ private fun ColorChannelSlider(
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
         )
-        Slider(
+        CompactSettingsSlider(
             modifier = Modifier.weight(1f),
             value = value.toFloat(),
             onValueChange = { onChange(it.toInt().coerceIn(0, 255)) },
             valueRange = 0f..255f,
-            colors = androidx.compose.material3.SliderDefaults.colors(
+            colors = SliderDefaults.colors(
                 thumbColor = color,
                 activeTrackColor = color,
             ),
@@ -976,6 +1019,154 @@ private fun TileBehaviorOption(
 }
 
 @Composable
+private fun EdgeHandleControls(
+    heightDp: Int,
+    thicknessDp: Int,
+    verticalPositionPercent: Int,
+    opacityPercent: Int,
+    onHeightChange: (Int) -> Unit,
+    onThicknessChange: (Int) -> Unit,
+    onVerticalPositionChange: (Int) -> Unit,
+    onOpacityChange: (Int) -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                EdgeHandleSlider(
+                    label = "Height",
+                    value = heightDp,
+                    valueRange = MIN_EDGE_HANDLE_HEIGHT_DP..MAX_EDGE_HANDLE_HEIGHT_DP,
+                    valueText = { "$it dp" },
+                    onValueChange = onHeightChange,
+                    modifier = Modifier.weight(1f),
+                )
+                EdgeHandleSlider(
+                    label = "Thickness",
+                    value = thicknessDp,
+                    valueRange = MIN_EDGE_HANDLE_THICKNESS_DP..MAX_EDGE_HANDLE_THICKNESS_DP,
+                    valueText = { "$it dp" },
+                    onValueChange = onThicknessChange,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                EdgeHandleSlider(
+                    label = "Position",
+                    value = verticalPositionPercent,
+                    valueRange = MIN_EDGE_HANDLE_VERTICAL_POSITION_PERCENT..
+                        MAX_EDGE_HANDLE_VERTICAL_POSITION_PERCENT,
+                    valueText = { "$it%" },
+                    onValueChange = onVerticalPositionChange,
+                    modifier = Modifier.weight(1f),
+                )
+                EdgeHandleSlider(
+                    label = "Opacity",
+                    value = opacityPercent,
+                    valueRange = MIN_EDGE_HANDLE_OPACITY_PERCENT..MAX_EDGE_HANDLE_OPACITY_PERCENT,
+                    valueText = { "$it%" },
+                    onValueChange = onOpacityChange,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            Text(
+                text = "At 0% opacity, the swipe area stays active.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun EdgeHandleSlider(
+    label: String,
+    value: Int,
+    valueRange: IntRange,
+    valueText: (Int) -> String,
+    onValueChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var pendingValue by remember(value) { mutableFloatStateOf(value.toFloat()) }
+    val roundedValue = pendingValue.roundToInt()
+
+    Column(
+        modifier = modifier,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = valueText(roundedValue),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        CompactSettingsSlider(
+            value = pendingValue,
+            onValueChange = { pendingValue = it },
+            onValueChangeFinished = { onValueChange(pendingValue.roundToInt()) },
+            valueRange = valueRange.first.toFloat()..valueRange.last.toFloat(),
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CompactSettingsSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
+    onValueChangeFinished: (() -> Unit)? = null,
+    colors: SliderColors = SliderDefaults.colors(),
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Slider(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = modifier.height(36.dp),
+        valueRange = valueRange,
+        onValueChangeFinished = onValueChangeFinished,
+        colors = colors,
+        interactionSource = interactionSource,
+        thumb = {
+            SliderDefaults.Thumb(
+                interactionSource = interactionSource,
+                colors = colors,
+                thumbSize = DpSize(width = 4.dp, height = 24.dp),
+            )
+        },
+        track = { sliderState ->
+            SliderDefaults.Track(
+                sliderState = sliderState,
+                modifier = Modifier.height(6.dp),
+                colors = colors,
+            )
+        },
+    )
+}
+
+@Composable
 private fun SettingsSwitchRow(
     title: String,
     checked: Boolean,
@@ -1035,6 +1226,40 @@ private fun SettingsControlGroup(
             fontWeight = FontWeight.SemiBold,
         )
         content()
+    }
+}
+
+@Composable
+private fun SettingsAccessRow(
+    title: String,
+    description: String,
+    granted: Boolean,
+    onClick: () -> Unit,
+    missingActionLabel: String = "Grant",
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        TextButton(onClick = onClick) {
+            Text(if (granted) "Manage" else missingActionLabel)
+        }
     }
 }
 
