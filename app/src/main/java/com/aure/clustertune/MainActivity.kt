@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -41,6 +42,7 @@ import com.aure.clustertune.ui.MainTunerScreen
 import com.aure.clustertune.ui.SettingsScreen
 import com.aure.clustertune.ui.SingleToast
 import com.aure.clustertune.ui.TunerViewModel
+import com.aure.clustertune.ui.theme.ClusterTuneSystemBars
 import com.aure.clustertune.ui.theme.ClusterTuneTheme
 import com.aure.clustertune.update.AppRelease
 import com.aure.clustertune.update.AppUpdateManager
@@ -97,11 +99,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings = viewModel.settings.collectAsStateWithLifecycle().value
             ClusterTuneTheme(settings = settings) {
+                ClusterTuneSystemBars()
                 Surface {
                     val state = viewModel.state.collectAsStateWithLifecycle().value
                     val launchableApps = viewModel.launchableApps.collectAsStateWithLifecycle().value
                     val recentActiveApps = viewModel.recentActiveApps.collectAsStateWithLifecycle().value
                     var showSettings by rememberSaveable { mutableStateOf(false) }
+                    BackHandler(enabled = showSettings) {
+                        showSettings = false
+                    }
                     var permissionRefresh by remember { mutableStateOf(0) }
                     DisposableEffect(Unit) {
                         val observer = LifecycleEventObserver { _, event ->
@@ -215,26 +221,19 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
                             },
-                            onEdgeHandleHeightChange = { heightDp ->
-                                viewModel.setEdgeHandleHeightDp(heightDp) {
-                                    refreshLeftEdgeProfilePicker()
-                                }
+                            onEdgeHandlePreview = { height, thickness, position, opacity ->
+                                OverlayHostService.previewEdgeHandle(
+                                    context = this@MainActivity,
+                                    heightDp = height,
+                                    thicknessDp = thickness,
+                                    verticalPositionPercent = position,
+                                    opacityPercent = opacity,
+                                )
                             },
-                            onEdgeHandleThicknessChange = { thicknessDp ->
-                                viewModel.setEdgeHandleThicknessDp(thicknessDp) {
-                                    refreshLeftEdgeProfilePicker()
-                                }
-                            },
-                            onEdgeHandleVerticalPositionChange = { positionPercent ->
-                                viewModel.setEdgeHandleVerticalPositionPercent(positionPercent) {
-                                    refreshLeftEdgeProfilePicker()
-                                }
-                            },
-                            onEdgeHandleOpacityChange = { opacityPercent ->
-                                viewModel.setEdgeHandleOpacityPercent(opacityPercent) {
-                                    refreshLeftEdgeProfilePicker()
-                                }
-                            },
+                            onEdgeHandleHeightChange = viewModel::setEdgeHandleHeightDp,
+                            onEdgeHandleThicknessChange = viewModel::setEdgeHandleThicknessDp,
+                            onEdgeHandleVerticalPositionChange = viewModel::setEdgeHandleVerticalPositionPercent,
+                            onEdgeHandleOpacityChange = viewModel::setEdgeHandleOpacityPercent,
                             onCheckForUpdates = { checkForUpdates(showUpToDateToast = true) },
                             onAutomaticUpdateChecksEnabledChange = viewModel::setAutomaticUpdateChecksEnabled,
                             onUpdateCheckIntervalDaysChange = viewModel::setUpdateCheckIntervalDays,
@@ -375,15 +374,6 @@ class MainActivity : ComponentActivity() {
             } else if (settings.leftEdgeProfilePickerEnabled) {
                 OverlayHostService.hideEdgeHandle(this@MainActivity)
             }
-        }
-    }
-
-    private fun refreshLeftEdgeProfilePicker() {
-        if (
-            OverlayPermission.canDrawOverlays(this) &&
-            AppProfileMonitorService.hasUsageStatsPermission(this)
-        ) {
-            OverlayHostService.showEdgeHandle(this)
         }
     }
 

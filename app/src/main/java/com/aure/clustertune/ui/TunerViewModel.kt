@@ -299,7 +299,7 @@ class TunerViewModel(
 
     fun setAccentColor(accentColor: Int) {
         viewModelScope.launch {
-            settingsStorage.persistAccentColor(accentColor)
+            settingsStorage.persistPresetAccentColor(accentColor)
         }
     }
 
@@ -340,31 +340,27 @@ class TunerViewModel(
         }
     }
 
-    fun setEdgeHandleHeightDp(heightDp: Int, onSaved: () -> Unit = {}) {
+    fun setEdgeHandleHeightDp(heightDp: Int) {
         viewModelScope.launch {
             settingsStorage.persistEdgeHandleHeightDp(heightDp)
-            onSaved()
         }
     }
 
-    fun setEdgeHandleThicknessDp(thicknessDp: Int, onSaved: () -> Unit = {}) {
+    fun setEdgeHandleThicknessDp(thicknessDp: Int) {
         viewModelScope.launch {
             settingsStorage.persistEdgeHandleThicknessDp(thicknessDp)
-            onSaved()
         }
     }
 
-    fun setEdgeHandleVerticalPositionPercent(positionPercent: Int, onSaved: () -> Unit = {}) {
+    fun setEdgeHandleVerticalPositionPercent(positionPercent: Int) {
         viewModelScope.launch {
             settingsStorage.persistEdgeHandleVerticalPositionPercent(positionPercent)
-            onSaved()
         }
     }
 
-    fun setEdgeHandleOpacityPercent(opacityPercent: Int, onSaved: () -> Unit = {}) {
+    fun setEdgeHandleOpacityPercent(opacityPercent: Int) {
         viewModelScope.launch {
             settingsStorage.persistEdgeHandleOpacityPercent(opacityPercent)
-            onSaved()
         }
     }
 

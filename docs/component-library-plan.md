@@ -1,5 +1,22 @@
 # ClusterTune component library plan
 
+## Implementation status
+
+The in-app library, deterministic preview catalog, theme/window separation,
+Settings and tuner feature migrations, shared overlay frame, service-hosted
+Compose factory, accessibility semantics, automated behavior tests, and CI
+verification are implemented in the current working tree.
+
+Three items remain intentionally conditional rather than incomplete work:
+
+- extracting a separate `:core:designsystem` module requires a second consumer or
+  measured build-time benefit;
+- replacing documentation screenshots remains a separate documentation-only
+  change so the historical images are never mistaken for implementation baselines.
+- deterministic screenshot-golden infrastructure remains a follow-up until its
+  rendering is stable across the project's local and CI environments; fresh
+  device captures were used for parity review during this migration.
+
 ## Goal
 
 Create a small, source-owned Compose component library that makes ClusterTune's
@@ -81,6 +98,7 @@ app/src/main/java/com/aure/clustertune/ui/
       CtModalScaffold.kt
       CtOverlayFrame.kt
       CtPreferenceRow.kt
+      CtSwitch.kt
       CtRowSurface.kt
       CtSectionCard.kt
       CtSelectableRow.kt
@@ -149,6 +167,7 @@ handle opacity and one-off device geometry are not design tokens.
 | Component | Responsibility |
 | --- | --- |
 | `CtPreferenceRow` | Title, optional helpful description, and trailing-control layout with merged semantics |
+| `CtSwitch` | Library-owned Material switch entry point for compact and standalone controls |
 | `CtSwitchPreference` | Preference-row wrapper with one toggle action and `Role.Switch` |
 | `CtSelectableRow` | Radio/single-choice behavior using `selectable`, `selected`, and a trailing slot |
 | `CtSlider` | Compact visual slider with a full target, progress semantics, labels, and optional commit callback |
@@ -268,7 +287,7 @@ Outcome: app and overlay share components without sharing lifecycle assumptions.
 - Resolve the dual icon approach and establish one library-owned icon API.
 - Add a component catalog screen available only in debug builds if previews are
   insufficient for on-device review.
-- Add lint, unit, UI, and visual checks to CI.
+- Add lint, unit, and UI checks to CI; add visual checks once rendering is deterministic.
 - Decide whether the stable `ui/designsystem` package merits extraction into
   `:core:designsystem`. Do not create a module solely for architectural symmetry.
 - Replace documentation screenshots with current captures as a separate,
@@ -298,8 +317,8 @@ OEM palettes are intentionally nondeterministic.
   contrast.
 - Compose UI tests for roles, merged labels, selected/toggle state, progress
   actions, dismiss actions, headings, live regions, and minimum targets.
-- A small set of component visual goldens plus screen-level goldens for main,
-  Settings, and both overlays.
+- Fresh component and screen captures for parity review; automate a small stable
+  golden set for main, Settings, and both overlays once rendering is deterministic.
 - Existing unit tests continue to protect tuning and execution behavior.
 
 ### Device matrix

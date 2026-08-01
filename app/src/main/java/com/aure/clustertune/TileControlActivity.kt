@@ -18,6 +18,7 @@ import com.aure.clustertune.tile.QuickSettingsTileRefresher
 import com.aure.clustertune.ui.CompactTunerScreen
 import com.aure.clustertune.ui.SingleToast
 import com.aure.clustertune.ui.TunerViewModel
+import com.aure.clustertune.ui.theme.ClusterTuneSystemBars
 import com.aure.clustertune.ui.theme.ClusterTuneTheme
 import kotlinx.coroutines.launch
 
@@ -91,6 +92,7 @@ class TileControlActivity : ComponentActivity() {
         setContent {
             val settings = viewModel.settings.collectAsStateWithLifecycle().value
             ClusterTuneTheme(settings = settings) {
+                ClusterTuneSystemBars()
                 Surface {
                     val state = viewModel.state.collectAsStateWithLifecycle().value
                     CompactTunerScreen(

@@ -1,5 +1,6 @@
 package com.aure.clustertune.tile
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
@@ -23,6 +24,18 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.lang.ref.WeakReference
+
+internal fun resolveTileProfileId(state: TunerState): String? {
+    fun isKnownProfile(id: String): Boolean {
+        return id == ProfileStateResolver.MANUAL_PROFILE_ID ||
+            id == ProfileStateResolver.STOCK_PROFILE_ID ||
+            state.displayProfiles.any { profile -> profile.id == id }
+    }
+
+    return state.activeDisplayProfileId
+        ?.takeIf(::isKnownProfile)
+        ?: state.lastAppliedDisplayProfileId?.takeIf(::isKnownProfile)
+}
 
 class PerformanceTileService : TileService() {
 
@@ -123,13 +136,7 @@ class PerformanceTileService : TileService() {
     }
 
     private fun effectiveTileProfileId(state: TunerState): String? {
-        return state.lastAppliedDisplayProfileId
-            ?.takeIf { id ->
-                id == ProfileStateResolver.MANUAL_PROFILE_ID ||
-                    id == ProfileStateResolver.STOCK_PROFILE_ID ||
-                    state.displayProfiles.any { profile -> profile.id == id }
-            }
-            ?: state.activeDisplayProfileId
+        return resolveTileProfileId(state)
     }
 
     private fun effectiveTileProfileName(state: TunerState): String? {
@@ -253,6 +260,7 @@ class PerformanceTileService : TileService() {
         launchIntentAndCollapse(intent)
     }
 
+    @SuppressLint("StartActivityAndCollapseDeprecated")
     @Suppress("DEPRECATION")
     private fun launchIntentAndCollapse(intent: Intent) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

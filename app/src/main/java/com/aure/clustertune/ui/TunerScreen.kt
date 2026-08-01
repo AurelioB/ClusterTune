@@ -1,10 +1,6 @@
 package com.aure.clustertune.ui
 
-import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.Color as AndroidColor
 import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -41,6 +37,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -62,7 +59,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
@@ -70,7 +66,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.surfaceColorAtElevation
@@ -99,6 +94,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -110,24 +109,24 @@ import com.aure.clustertune.R
 import com.aure.clustertune.model.CpuPolicyInfo
 import com.aure.clustertune.model.InstalledAppInfo
 import com.aure.clustertune.model.PerformanceProfile
-import com.aure.clustertune.model.ProfileSwitchHistoryEntry
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.model.ProfileSource
 import com.aure.clustertune.model.TunerState
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.qrcode.QRCodeWriter
+import com.aure.clustertune.ui.designsystem.component.CtAppIdentity
+import com.aure.clustertune.ui.designsystem.component.CtConfirmationDialog
+import com.aure.clustertune.ui.designsystem.component.CtDashedCard
+import com.aure.clustertune.ui.designsystem.component.CtDivider
+import com.aure.clustertune.ui.designsystem.component.CtIcon
+import com.aure.clustertune.ui.designsystem.component.CtSectionCard
+import com.aure.clustertune.ui.designsystem.component.CtSelectableRow
+import com.aure.clustertune.ui.designsystem.component.CtStatePanel
+import com.aure.clustertune.ui.designsystem.component.CtStatePanelState
+import com.aure.clustertune.ui.designsystem.component.CtSwitch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlin.math.roundToInt
 
 private const val NEW_PROFILE_DIALOG_ID = "__new_profile__"
-private const val KOFI_URL = "https://ko-fi.com/J3J518XVKR"
-private const val SUPPORT_MESSAGE =
-    "ClusterTune is built and maintained independently. If it helps you tune your device, consider supporting my work on Ko-fi."
-
 private enum class MainTab {
     PROFILES,
     APPS,
@@ -396,12 +395,7 @@ fun CompactTunerScreen(
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(colorScheme.outlineVariant.copy(alpha = 0.48f)),
-            )
+            CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -523,7 +517,7 @@ fun CompactProfilePickerScreen(
                                     style = MaterialTheme.typography.labelMedium,
                                     color = colorScheme.onSurface,
                                 )
-                                Switch(
+                                CtSwitch(
                                     checked = appProfileEnabled,
                                     onCheckedChange = { enabled ->
                                         appProfileEnabled = enabled
@@ -543,8 +537,8 @@ fun CompactProfilePickerScreen(
                             onClick = onDismissRequest,
                             modifier = Modifier.size(32.dp),
                         ) {
-                            MaterialSymbol(
-                                name = "close",
+                            CtIcon(
+                                symbol = "close",
                                 contentDescription = "Close",
                                 tint = colorScheme.onSurfaceVariant,
                                 size = 22.dp,
@@ -554,12 +548,7 @@ fun CompactProfilePickerScreen(
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(colorScheme.outlineVariant.copy(alpha = 0.48f)),
-            )
+            CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
 
             Column(
                 modifier = Modifier
@@ -592,64 +581,40 @@ fun CompactProfilePickerScreen(
 
 @Composable
 private fun ProfilePickerEmptyOptionCard() {
-    val colorScheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(20.dp)
-    val borderColor = colorScheme.outlineVariant.copy(alpha = 0.28f)
-    val contentColor = colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp)
-            .background(colorScheme.surfaceContainerHigh.copy(alpha = 0.10f), shape),
-        contentAlignment = Alignment.Center,
+    CtDashedCard(
+        modifier = Modifier.height(54.dp),
     ) {
-        Canvas(Modifier.fillMaxSize()) {
-            val strokeWidth = 2.dp.toPx()
-            drawRoundRect(
-                color = borderColor,
-                topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f),
-                size = Size(size.width - strokeWidth, size.height - strokeWidth),
-                cornerRadius = CornerRadius(20.dp.toPx(), 20.dp.toPx()),
-                style = Stroke(
-                    width = strokeWidth,
-                    pathEffect = PathEffect.dashPathEffect(
-                        floatArrayOf(9.dp.toPx(), 6.dp.toPx()),
-                    ),
-                ),
-            )
-        }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
             text = "No profiles available",
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
-            color = contentColor,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
         )
+        }
     }
 }
 
 @Composable
 private fun LoadingClustersCard() {
-    SectionCard(
-        title = null,
-        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                strokeWidth = 2.5.dp,
-            )
+    CtStatePanel(
+        state = CtStatePanelState.Loading,
+        shape = RoundedCornerShape(24.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+        title = {
             Text(
                 text = "Scanning CPU clusters...",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
             )
-        }
-    }
+        },
+        leading = {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.5.dp,
+            )
+        },
+    )
 }
 
 @Composable
@@ -703,7 +668,12 @@ private fun ScreenContainer(
         )
     }
 
-    Box(modifier = backgroundModifier) {
+    if (compactMode && !showCompactScrim) {
+        // Overlay hosts provide their own scrim and panel surface. Rendering the
+        // content directly here avoids nesting a second full-screen Card inside
+        // that panel, which would otherwise paint an opaque layer over the host.
+        content()
+    } else Box(modifier = backgroundModifier) {
         val containerModifier = if (compactMode) {
             var modifier = Modifier.align(Alignment.Center)
                 .navigationBarsPadding()
@@ -804,90 +774,6 @@ private fun MainSideMenu(
 }
 
 @Composable
-private fun SupportClusterTuneDialog(onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val qrCode = remember { generateQrCodeBitmap(KOFI_URL, 520).asImageBitmap() }
-    val openKofi: () -> Unit = {
-        runCatching {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(KOFI_URL)))
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            MaterialSymbol(
-                name = "favorite",
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                size = 28.dp,
-            )
-        },
-        title = {
-            Text(
-                text = "Support ClusterTune",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-        },
-        text = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                Text(
-                    text = SUPPORT_MESSAGE,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color.White,
-                ) {
-                    Image(
-                        bitmap = qrCode,
-                        contentDescription = "Ko-fi donation QR code",
-                        modifier = Modifier
-                            .size(196.dp)
-                            .padding(12.dp),
-                    )
-                }
-                Text(
-                    text = KOFI_URL,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.clickable(onClick = openKofi),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = openKofi) {
-                Text("Open Ko-fi")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
-        },
-    )
-}
-
-private fun generateQrCodeBitmap(content: String, size: Int): Bitmap {
-    val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size)
-    return Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).apply {
-        for (x in 0 until size) {
-            for (y in 0 until size) {
-                setPixel(x, y, if (matrix[x, y]) AndroidColor.BLACK else AndroidColor.WHITE)
-            }
-        }
-    }
-}
-
-@Composable
 private fun SideMenuItem(
     label: String,
     symbol: String,
@@ -909,7 +795,11 @@ private fun SideMenuItem(
             .fillMaxWidth()
             .height(44.dp)
             .clip(itemShape)
-            .clickable(onClick = onClick),
+            .selectable(
+                selected = selected,
+                role = Role.Tab,
+                onClick = onClick,
+            ),
         shape = itemShape,
         color = containerColor,
         contentColor = contentColor,
@@ -926,8 +816,8 @@ private fun SideMenuItem(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            MaterialSymbol(
-                name = symbol,
+            CtIcon(
+                symbol = symbol,
                 contentDescription = null,
                 tint = contentColor,
                 size = 26.dp,
@@ -982,7 +872,7 @@ private fun Header(
                 }
                 onOpenSettings?.let { openSettings ->
                     IconButton(onClick = openSettings) {
-                        Icon(
+                        CtIcon(
                             imageVector = Icons.Outlined.Settings,
                             contentDescription = "Settings",
                             tint = MaterialTheme.colorScheme.onSurface,
@@ -1082,7 +972,7 @@ private fun MainTabSelector(
         AssistChip(
             onClick = { onSelect(MainTab.PROFILES) },
             label = { Text("Profiles") },
-            leadingIcon = { Icon(Icons.Outlined.Memory, contentDescription = null) },
+            leadingIcon = { CtIcon(Icons.Outlined.Memory, contentDescription = null) },
             colors = AssistChipDefaults.assistChipColors(
                 containerColor = if (selectedTab == MainTab.PROFILES) {
                     MaterialTheme.colorScheme.primaryContainer
@@ -1094,7 +984,7 @@ private fun MainTabSelector(
         AssistChip(
             onClick = { onSelect(MainTab.APPS) },
             label = { Text("Apps") },
-            leadingIcon = { Icon(Icons.Outlined.Apps, contentDescription = null) },
+            leadingIcon = { CtIcon(Icons.Outlined.Apps, contentDescription = null) },
             colors = AssistChipDefaults.assistChipColors(
                 containerColor = if (selectedTab == MainTab.APPS) {
                     MaterialTheme.colorScheme.primaryContainer
@@ -1106,7 +996,7 @@ private fun MainTabSelector(
         AssistChip(
             onClick = { onSelect(MainTab.HISTORY) },
             label = { Text("History") },
-            leadingIcon = { Icon(Icons.Outlined.History, contentDescription = null) },
+            leadingIcon = { CtIcon(Icons.Outlined.History, contentDescription = null) },
             colors = AssistChipDefaults.assistChipColors(
                 containerColor = if (selectedTab == MainTab.HISTORY) {
                     MaterialTheme.colorScheme.primaryContainer
@@ -1131,90 +1021,6 @@ private data class RailMarker(
     val isDot: Boolean,
     val isRecents: Boolean = false,
 )
-
-@Composable
-private fun ProfileSwitchHistorySection(
-    entries: List<ProfileSwitchHistoryEntry>,
-    modifier: Modifier = Modifier,
-) {
-    val timestampFormatter = remember { SimpleDateFormat("MMM d, h:mm:ss a", Locale.getDefault()) }
-    if (entries.isEmpty()) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "No profile switches logged yet.",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-        }
-    } else {
-        LazyColumn(
-            modifier = modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            itemsIndexed(
-                items = entries,
-                key = { index, entry -> "${entry.timestampMillis}-$index" },
-            ) { _, entry ->
-                ProfileSwitchHistoryRow(
-                    entry = entry,
-                    timestamp = timestampFormatter.format(Date(entry.timestampMillis)),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProfileSwitchHistoryRow(
-    entry: ProfileSwitchHistoryEntry,
-    timestamp: String,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val rowShape = RoundedCornerShape(20.dp)
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = rowShape,
-        color = colorScheme.surfaceContainerHigh.copy(alpha = 0.46f),
-        border = BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.28f)),
-    ) {
-        Column(
-            modifier = Modifier.padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = entry.profileName,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colorScheme.onSurface,
-                    maxLines = 1,
-                )
-                Text(
-                    text = timestamp,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colorScheme.onSurfaceVariant.copy(alpha = 0.84f),
-                    textAlign = TextAlign.End,
-                    maxLines = 1,
-                )
-            }
-            Text(
-                text = entry.trigger,
-                style = MaterialTheme.typography.bodySmall,
-                color = colorScheme.onSurfaceVariant.copy(alpha = 0.84f),
-                maxLines = 2,
-            )
-        }
-    }
-}
 
 private sealed interface AppListItem {
     val key: String
@@ -1527,8 +1333,8 @@ private fun AlphabetScrubber(
                     MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
                 }
                 if (marker.isRecents) {
-                    MaterialSymbol(
-                        name = "history",
+                    CtIcon(
+                        symbol = "history",
                         contentDescription = "Recents",
                         tint = markerColor,
                         size = 16.dp,
@@ -1704,35 +1510,25 @@ private fun AppProfileAssignmentDialog(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                    AppIcon(
-                        icon = app.icon,
-                        contentDescription = app.label,
-                        modifier = Modifier.size(48.dp),
-                    )
-                    Column(
+                    CtAppIdentity(
+                        label = app.label,
+                        subtitle = app.packageName,
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        Text(
-                            text = app.label,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = app.packageName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
-                    }
+                        iconSize = 48.dp,
+                        labelStyle = MaterialTheme.typography.titleLarge,
+                        labelFontWeight = FontWeight.SemiBold,
+                        subtitleStyle = MaterialTheme.typography.bodyMedium,
+                        icon = {
+                            AppIcon(
+                                icon = app.icon,
+                                contentDescription = app.label,
+                                modifier = Modifier.size(48.dp),
+                            )
+                        },
+                    )
                 }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(colorScheme.outlineVariant.copy(alpha = 0.48f)),
-            )
+            CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
 
                 Column(
                     modifier = Modifier
@@ -1756,12 +1552,7 @@ private fun AppProfileAssignmentDialog(
                     }
                 }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(colorScheme.outlineVariant.copy(alpha = 0.48f)),
-                )
+                CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
 
                 Row(
                     modifier = Modifier
@@ -1860,8 +1651,8 @@ private fun ProfileChoiceRow(
             contentColor = colorScheme.onPrimary,
         ) {
             if (selected) {
-                MaterialSymbol(
-                    name = "check",
+                CtIcon(
+                    symbol = "check",
                     contentDescription = "Selected",
                     tint = colorScheme.onPrimary,
                     size = if (compact) 15.dp else 18.dp,
@@ -1920,8 +1711,8 @@ private fun AppIcon(
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ) {
             Box(contentAlignment = Alignment.Center) {
-                MaterialSymbol(
-                    name = "apps",
+                CtIcon(
+                    symbol = "apps",
                     contentDescription = contentDescription,
                     size = 24.dp,
                 )
@@ -2007,6 +1798,16 @@ private fun ProfileListSection(
                             isDragging = isDragging,
                             dragActive = draggingProfileId != null,
                             onActivate = { onActivateProfile(profile) },
+                            onMoveUp = if (canMove && originalIndex > 0) {
+                                { onMoveProfile(profile.id, -1) }
+                            } else {
+                                null
+                            },
+                            onMoveDown = if (canMove && originalIndex < profiles.lastIndex) {
+                                { onMoveProfile(profile.id, 1) }
+                            } else {
+                                null
+                            },
                             onEdit = {
                                 if (profile.isEditable) {
                                     onEditProfile(profile.id)
@@ -2082,8 +1883,8 @@ private fun AddProfileSkeletonButton(onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            MaterialSymbol(
-                name = "add",
+            CtIcon(
+                symbol = "add",
                 contentDescription = null,
                 tint = contentColor,
                 size = 24.dp,
@@ -2114,6 +1915,8 @@ private fun ProfileListRow(
     isDragging: Boolean,
     dragActive: Boolean,
     onActivate: () -> Unit,
+    onMoveUp: (() -> Unit)?,
+    onMoveDown: (() -> Unit)?,
     onEdit: () -> Unit,
     onDragStart: () -> Unit,
     onDrag: (Float) -> Unit,
@@ -2163,6 +1966,9 @@ private fun ProfileListRow(
                 enabled = true,
                 canMoveUp = canMoveUp,
                 canMoveDown = canMoveDown,
+                profileName = profile.name,
+                onMoveUp = onMoveUp,
+                onMoveDown = onMoveDown,
                 onDragStart = onDragStart,
                 onDrag = onDrag,
                 onDragEnd = onDragEnd,
@@ -2186,8 +1992,8 @@ private fun ProfileListRow(
                     color = profileNameColor,
                 )
                 if (isSleepProfile) {
-                    MaterialSymbol(
-                        name = "dark_mode",
+                    CtIcon(
+                        symbol = "dark_mode",
                         contentDescription = "Sleep profile",
                         tint = contentColor.copy(alpha = 0.78f),
                         size = 18.dp,
@@ -2205,8 +2011,8 @@ private fun ProfileListRow(
         }
         if (showEdit) {
             IconButton(onClick = onEdit) {
-                MaterialSymbol(
-                    name = "tune",
+                CtIcon(
+                symbol = "tune",
                     contentDescription = "Edit ${profile.name}",
                     tint = colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
                     size = 26.dp,
@@ -2256,8 +2062,8 @@ private fun ProfileActivationControl(
             contentColor = colorScheme.onPrimary,
         ) {
             if (selected) {
-                MaterialSymbol(
-                    name = "check",
+                CtIcon(
+                    symbol = "check",
                     contentDescription = "Active profile",
                     tint = colorScheme.onPrimary,
                     size = 18.dp,
@@ -2273,6 +2079,9 @@ private fun ReorderControl(
     enabled: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
+    profileName: String,
+    onMoveUp: (() -> Unit)?,
+    onMoveDown: (() -> Unit)?,
     onDragStart: () -> Unit,
     onDrag: (Float) -> Unit,
     onDragEnd: () -> Unit,
@@ -2283,6 +2092,26 @@ private fun ReorderControl(
     Box(
         modifier = Modifier
             .size(width = 40.dp, height = 48.dp)
+            .semantics {
+                customActions = buildList {
+                    if (canMoveUp && onMoveUp != null) {
+                        add(
+                            CustomAccessibilityAction("Move $profileName up") {
+                                onMoveUp()
+                                true
+                            },
+                        )
+                    }
+                    if (canMoveDown && onMoveDown != null) {
+                        add(
+                            CustomAccessibilityAction("Move $profileName down") {
+                                onMoveDown()
+                                true
+                            },
+                        )
+                    }
+                }
+            }
             .pointerInput(canDrag, canMoveUp, canMoveDown) {
                 if (!canDrag) return@pointerInput
                 detectVerticalDragGestures(
@@ -2297,8 +2126,8 @@ private fun ReorderControl(
             },
         contentAlignment = Alignment.Center,
     ) {
-        MaterialSymbol(
-            name = "drag_indicator",
+        CtIcon(
+            symbol = "drag_indicator",
             contentDescription = "Drag to reorder ${if (canDrag) "profile" else "profile unavailable"}",
             tint = if (canDrag) {
                 colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
@@ -2403,7 +2232,7 @@ private fun ProfileChipSelector(
                     onClick = openFullApp,
                     modifier = Modifier.size(40.dp),
                 ) {
-                    Icon(
+                    CtIcon(
                         imageVector = Icons.Outlined.Settings,
                         contentDescription = "Open full app",
                         tint = MaterialTheme.colorScheme.primary,
@@ -2452,7 +2281,7 @@ private fun PolicyEditorSection(
     }
 
     state.policies.forEach { policy ->
-        PolicyCard(
+        TunerPolicyCard(
             policy = policy,
             selectedValue = state.currentValues[policy.id] ?: policy.currentMaxFreq,
             actualValue = state.actualValues[policy.id] ?: policy.currentMaxFreq,
@@ -2519,7 +2348,7 @@ private fun ProfileEditorDialog(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     baseState.policies.forEach { policy ->
-                        PolicyCard(
+                        TunerPolicyCard(
                             policy = policy,
                             selectedValue = editedValues[policy.id] ?: policy.currentMaxFreq,
                             actualValue = baseState.actualValues[policy.id] ?: policy.currentMaxFreq,
@@ -2533,12 +2362,7 @@ private fun ProfileEditorDialog(
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(colorScheme.outlineVariant.copy(alpha = 0.48f)),
-            )
+            CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
 
             Row(
                 modifier = Modifier
@@ -2555,7 +2379,7 @@ private fun ProfileEditorDialog(
                             onClick = { showDeleteConfirmation = true },
                             modifier = Modifier.size(36.dp),
                         ) {
-                            Icon(
+                            CtIcon(
                                 Icons.Outlined.Delete,
                                 contentDescription = "Delete profile",
                                 tint = MaterialTheme.colorScheme.error,
@@ -2595,25 +2419,17 @@ private fun ProfileEditorDialog(
     }
 
     if (showDeleteConfirmation) {
-        AlertDialog(
+        CtConfirmationDialog(
+            title = "Delete profile?",
+            message = "This profile will be removed until you reset profiles to default.",
+            confirmLabel = "Delete",
+            dismissLabel = "Cancel",
+            onConfirm = {
+                showDeleteConfirmation = false
+                onDelete()
+            },
             onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Delete profile?") },
-            text = { Text("This profile will be removed until you reset profiles to default.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteConfirmation = false
-                        onDelete()
-                    },
-                ) {
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirmation = false }) {
-                    Text("Cancel")
-                }
-            },
+            destructive = true,
         )
     }
 }
@@ -2632,177 +2448,6 @@ private fun EmptyState(state: TunerState) {
 }
 
 @Composable
-private fun PolicyCard(
-    policy: CpuPolicyInfo,
-    selectedValue: Int,
-    onValueChanged: (Int) -> Unit,
-    compactMode: Boolean = false,
-    displayFrequenciesAsPercent: Boolean = false,
-    actualValue: Int = selectedValue,
-) {
-    val supported = policy.supportedFrequencies
-    val displaySelectedValue = policy.clampToWritableMax(selectedValue)
-    val currentIndex = supported.indexOf(displaySelectedValue).takeIf { it >= 0 } ?: supported.lastIndex
-    val colorScheme = MaterialTheme.colorScheme
-    val rowShape = RoundedCornerShape(20.dp)
-
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = rowShape,
-        color = colorScheme.surfaceContainerHigh.copy(alpha = 0.46f),
-        border = BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.28f)),
-    ) {
-        CompositionLocalProvider(
-            LocalMinimumInteractiveComponentSize provides if (compactMode) Dp.Unspecified else 48.dp,
-        ) {
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val tightRow = maxWidth < 420.dp
-                val veryTightRow = maxWidth < 340.dp
-                val horizontalGap = when {
-                    veryTightRow -> 4.dp
-                    tightRow -> 5.dp
-                    else -> 6.dp
-                }
-                val clusterColumnWidth = when {
-                    veryTightRow -> 72.dp
-                    tightRow -> 84.dp
-                    else -> 96.dp
-                }
-                val valueColumnWidth = when {
-                    veryTightRow -> 58.dp
-                    tightRow -> 66.dp
-                    else -> 76.dp
-                }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 62.dp)
-                    .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(horizontalGap),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(
-                    modifier = Modifier.width(clusterColumnWidth),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Text(
-                        text = "Cluster ${policy.id}",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = "Now ${formatFrequency(actualValue, boosted = policy.isBoosted(actualValue), policy = policy, displayAsPercent = displayFrequenciesAsPercent)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.84f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-
-                CompactFrequencySlider(
-                    valueIndex = currentIndex,
-                    maxIndex = supported.lastIndex,
-                    onIndexChange = { index -> onValueChanged(supported[index]) },
-                    modifier = Modifier.weight(1f),
-                )
-
-                Text(
-                    text = formatFrequency(selectedValue, boosted = policy.isBoosted(selectedValue), policy = policy, displayAsPercent = displayFrequenciesAsPercent),
-                    modifier = Modifier.width(valueColumnWidth),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colorScheme.primary,
-                    textAlign = TextAlign.End,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CompactFrequencySlider(
-    valueIndex: Int,
-    maxIndex: Int,
-    onIndexChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val density = LocalDensity.current
-    val trackHeight = with(density) { 4.dp.toPx() }
-    val tickRadius = with(density) { 1.4.dp.toPx() }
-    val thumbRadius = with(density) { 7.dp.toPx() }
-    val cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
-
-    BoxWithConstraints(modifier = modifier.height(24.dp)) {
-        val widthPx = with(density) { maxWidth.toPx() }.coerceAtLeast(1f)
-        fun indexForPosition(x: Float): Int {
-            if (maxIndex <= 0) return 0
-            return ((x / widthPx) * maxIndex).roundToInt().coerceIn(0, maxIndex)
-        }
-
-        Canvas(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(maxIndex, widthPx) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        onIndexChange(indexForPosition(down.position.x))
-                        val pointerId = down.id
-                        do {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == pointerId }
-                            if (change != null) {
-                                onIndexChange(indexForPosition(change.position.x))
-                                change.consume()
-                            }
-                        } while (event.changes.any { it.pressed })
-                    }
-                },
-        ) {
-            val centerY = size.height / 2f
-            val clampedMax = maxIndex.coerceAtLeast(1)
-            val progress = valueIndex.coerceIn(0, clampedMax).toFloat() / clampedMax.toFloat()
-            val thumbX = size.width * progress
-
-            drawRoundRect(
-                color = colorScheme.outlineVariant.copy(alpha = 0.34f),
-                topLeft = Offset(0f, centerY - trackHeight / 2f),
-                size = Size(size.width, trackHeight),
-                cornerRadius = cornerRadius,
-            )
-            drawRoundRect(
-                color = colorScheme.primary,
-                topLeft = Offset(0f, centerY - trackHeight / 2f),
-                size = Size(thumbX, trackHeight),
-                cornerRadius = cornerRadius,
-            )
-            if (maxIndex > 1) {
-                for (index in 0..maxIndex) {
-                    val tickX = size.width * (index.toFloat() / maxIndex.toFloat())
-                    drawCircle(
-                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.14f),
-                        radius = tickRadius,
-                        center = Offset(tickX, centerY),
-                    )
-                }
-            }
-            drawCircle(
-                color = colorScheme.primary,
-                radius = thumbRadius,
-                center = Offset(thumbX, centerY),
-            )
-        }
-    }
-}
-
-@Composable
 private fun SectionCard(
     title: String?,
     containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -2811,32 +2456,30 @@ private fun SectionCard(
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        shape = RoundedCornerShape(24.dp),
+    CtSectionCard(
         modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        containerColor = containerColor,
+        contentPadding = contentPadding,
+        contentModifier = contentModifier,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Column(
-            modifier = contentModifier.padding(contentPadding),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            title?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-            content()
+        title?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
+        content()
     }
 }
 
-private fun CpuPolicyInfo.clampToWritableMax(valueKhz: Int): Int {
+internal fun CpuPolicyInfo.clampToWritableMax(valueKhz: Int): Int {
     return valueKhz.coerceAtMost(selectableMaxFreq)
 }
 
-private fun CpuPolicyInfo.isBoosted(valueKhz: Int): Boolean {
+internal fun CpuPolicyInfo.isBoosted(valueKhz: Int): Boolean {
     return valueKhz > selectableMaxFreq
 }
 

@@ -15,6 +15,7 @@ import android.os.Process
 import androidx.core.app.NotificationCompat
 import com.aure.clustertune.AppContainer
 import com.aure.clustertune.R
+import com.aure.clustertune.tile.QuickSettingsTileRefresher
 import com.aure.clustertune.ui.SingleToast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -65,6 +66,7 @@ class AppProfileMonitorService : Service() {
                     container.repository.restoreNormalProfileTemporarily().onSuccess {
                         val trigger = "No assigned app focused; restored previous profile"
                         container.repository.logProfileSwitch(state.lastAppliedDisplayProfileId, restoreProfileName, trigger)
+                        QuickSettingsTileRefresher.requestUpdate(applicationContext)
                         showProfileToast(restoreProfileName)
                     }
                 }
@@ -85,6 +87,7 @@ class AppProfileMonitorService : Service() {
                     container.repository.applyProfileTemporarily(assignment.profileId).onSuccess {
                         val trigger = "App focused: ${assignment.appLabel} (${assignment.packageName})"
                         container.repository.logProfileSwitch(assignment.profileId, profileName, trigger)
+                        QuickSettingsTileRefresher.requestUpdate(applicationContext)
                         showProfileToast(profileName)
                     }
                 }
@@ -98,6 +101,7 @@ class AppProfileMonitorService : Service() {
                             ?.let { "Focused app has no assigned profile: $it" }
                             ?: "No foreground app detected"
                         container.repository.logProfileSwitch(state.lastAppliedDisplayProfileId, restoreProfileName, trigger)
+                        QuickSettingsTileRefresher.requestUpdate(applicationContext)
                         showProfileToast(restoreProfileName)
                     }
                 }

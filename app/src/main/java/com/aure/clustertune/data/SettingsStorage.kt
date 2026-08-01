@@ -168,14 +168,16 @@ class SettingsStorage(private val context: Context) {
         }
     }
 
-    suspend fun persistAccentColor(accentColor: Int) {
+    suspend fun persistPresetAccentColor(accentColor: Int) {
         context.settingsDataStore.edit { preferences ->
+            preferences[colorSourceKey] = AppColorSource.CUSTOM_ACCENT.name
             preferences[accentColorKey] = accentColor
         }
     }
 
     suspend fun persistCustomAccentColor(accentColor: Int) {
         context.settingsDataStore.edit { preferences ->
+            preferences[colorSourceKey] = AppColorSource.CUSTOM_ACCENT.name
             preferences[accentColorKey] = accentColor
             preferences[customAccentColorKey] = accentColor
         }

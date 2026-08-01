@@ -89,6 +89,12 @@ class OverlayWindowController(
         }
     }
 
+    fun updateEdgeHandleConfig(config: EdgeHandleWindowConfig) {
+        if (edgeHandleView == null) return
+        edgeHandleConfig = config
+        refreshEdgeHandleLayout()
+    }
+
     fun dismissAll() {
         dismissModal(restoreEdgeHandle = false)
         removeEdgeHandle()

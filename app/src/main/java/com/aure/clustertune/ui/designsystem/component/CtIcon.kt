@@ -1,10 +1,12 @@
-package com.aure.clustertune.ui
+package com.aure.clustertune.ui.designsystem.component
 
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.PlatformTextStyle
@@ -25,16 +27,17 @@ private val MaterialSymbolsRounded = FontFamily(
     ),
 )
 
+/** Shared icon entry point for font-backed Material Symbols and vector icons. */
 @Composable
-internal fun MaterialSymbol(
-    name: String,
+internal fun CtIcon(
+    symbol: String,
     contentDescription: String?,
     modifier: Modifier = Modifier,
     tint: Color = LocalContentColor.current,
     size: Dp = 24.dp,
 ) {
     Text(
-        text = name,
+        text = symbol,
         modifier = modifier.clearAndSetSemantics {
             if (contentDescription != null) {
                 this.contentDescription = contentDescription
@@ -49,5 +52,20 @@ internal fun MaterialSymbol(
         style = TextStyle(
             platformStyle = PlatformTextStyle(includeFontPadding = false),
         ),
+    )
+}
+
+@Composable
+internal fun CtIcon(
+    imageVector: ImageVector,
+    contentDescription: String?,
+    modifier: Modifier = Modifier,
+    tint: Color = LocalContentColor.current,
+) {
+    Icon(
+        imageVector = imageVector,
+        contentDescription = contentDescription,
+        modifier = modifier,
+        tint = tint,
     )
 }

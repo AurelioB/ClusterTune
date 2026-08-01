@@ -13,9 +13,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,9 +21,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -48,12 +46,9 @@ import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.setViewTreeLifecycleOwner
-import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
-import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.aure.clustertune.AppContainer
 import com.aure.clustertune.MainActivity
 import com.aure.clustertune.R
@@ -70,6 +65,7 @@ import com.aure.clustertune.ui.CompactTunerScreen
 import com.aure.clustertune.ui.SingleToast
 import com.aure.clustertune.ui.TunerViewModel
 import com.aure.clustertune.ui.theme.ClusterTuneTheme
+import com.aure.clustertune.ui.designsystem.component.CtOverlayFrame
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -84,6 +80,13 @@ internal data class CompactProfilePickerForegroundState(
     val trackedPackageName: String? = null,
     val foregroundApp: ForegroundAppInfo? = null,
     val consecutiveNullDetections: Int = 0,
+)
+
+private data class EdgeHandleAppearance(
+    val heightDp: Int,
+    val thicknessDp: Int,
+    val verticalPositionPercent: Int,
+    val opacityPercent: Int,
 )
 
 internal data class CompactProfilePickerForegroundUpdate(
@@ -147,6 +150,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
     private var compactProfilePickerSessionJob: Job? = null
     private var compactProfilePickerForegroundState = CompactProfilePickerForegroundState()
     private val compactProfilePickerForeground = MutableStateFlow<ForegroundAppInfo?>(null)
+    private val edgeHandleAppearance = MutableStateFlow<EdgeHandleAppearance?>(null)
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent?) {
@@ -180,6 +184,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
             ACTION_SHOW_COMPACT_TUNER -> showCompactTunerOverlay()
             ACTION_SHOW_PROFILE_PICKER -> openProfilePickerForForegroundApp()
             ACTION_SHOW_EDGE_HANDLE -> showEdgeHandleIfEnabled()
+            ACTION_PREVIEW_EDGE_HANDLE -> previewEdgeHandle(intent)
             ACTION_HIDE_EDGE_HANDLE -> hideEdgeHandle()
             ACTION_DISMISS -> dismissOverlay(intent.overlayTypeExtra())
             else -> showEdgeHandleIfEnabled()
@@ -257,48 +262,35 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
     }
 
     private fun buildCompactTunerView(): ComposeView {
-        return ComposeView(this).apply {
-            setViewTreeLifecycleOwner(this@OverlayHostService)
-            setViewTreeViewModelStoreOwner(this@OverlayHostService)
-            setViewTreeSavedStateRegistryOwner(this@OverlayHostService)
-            setContent {
+        return OverlayComposeViewFactory.create(this, this, this, this) {
                 val settings by viewModel.settings.collectAsStateWithLifecycle()
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 ClusterTuneTheme(settings = settings) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.46f))
-                            .clickable { dismissOverlay(OverlayType.COMPACT_TUNER_MODAL) },
-                        contentAlignment = Alignment.Center,
+                    CtOverlayFrame(
+                        onDismissRequest = { dismissOverlay(OverlayType.COMPACT_TUNER_MODAL) },
+                        scrimColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.46f),
+                        maxWidth = 900.dp,
+                        widthFraction = 0.92f,
+                        heightFraction = 0.92f,
+                        panelShape = RoundedCornerShape(20.dp),
+                        panelColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
+                        panelTonalElevation = 0.dp,
+                        panelModifier = Modifier.padding(horizontal = 12.dp, vertical = 24.dp),
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.92f)
-                                .widthIn(max = 720.dp)
-                                .fillMaxHeight(0.92f)
-                                .padding(vertical = 12.dp)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                ) {},
-                        ) {
-                            CompactTunerScreen(
-                                state = state,
-                                displayFrequenciesAsPercent = settings.displayFrequenciesAsPercent,
-                                onPolicyValueChange = viewModel::setPolicyValue,
-                                onApplyProfile = viewModel::applyProfile,
-                                onClearSelection = viewModel::clearSelection,
-                                onApplyCurrent = { tunerState -> applyCurrentFromOverlay(tunerState) },
-                                onDismissRequest = { dismissOverlay(OverlayType.COMPACT_TUNER_MODAL) },
-                                onRefreshLiveValues = viewModel::refreshLiveState,
-                                onOpenFullApp = ::openFullApp,
-                                showCompactScrim = false,
-                            )
-                        }
+                        CompactTunerScreen(
+                            state = state,
+                            displayFrequenciesAsPercent = settings.displayFrequenciesAsPercent,
+                            onPolicyValueChange = viewModel::setPolicyValue,
+                            onApplyProfile = viewModel::applyProfile,
+                            onClearSelection = viewModel::clearSelection,
+                            onApplyCurrent = { tunerState -> applyCurrentFromOverlay(tunerState) },
+                            onDismissRequest = { dismissOverlay(OverlayType.COMPACT_TUNER_MODAL) },
+                            onRefreshLiveValues = viewModel::refreshLiveState,
+                            onOpenFullApp = ::openFullApp,
+                            showCompactScrim = false,
+                        )
                     }
                 }
-            }
         }
     }
 
@@ -308,63 +300,51 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
             foregroundApp = foregroundApp,
         )
         compactProfilePickerForeground.value = foregroundApp
-        return ComposeView(this).apply {
-            setViewTreeLifecycleOwner(this@OverlayHostService)
-            setViewTreeViewModelStoreOwner(this@OverlayHostService)
-            setViewTreeSavedStateRegistryOwner(this@OverlayHostService)
-            setContent {
+        return OverlayComposeViewFactory.create(this, this, this, this) {
                 val settings by viewModel.settings.collectAsStateWithLifecycle()
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 val currentForegroundApp by compactProfilePickerForeground.collectAsStateWithLifecycle()
                 ClusterTuneTheme(settings = settings) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.46f))
-                            .clickable { dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER) },
-                        contentAlignment = Alignment.Center,
+                    CtOverlayFrame(
+                        onDismissRequest = { dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER) },
+                        scrimColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.46f),
+                        maxWidth = 380.dp,
+                        widthFraction = 1f,
+                        heightFraction = null,
+                        panelShape = RoundedCornerShape(20.dp),
+                        panelColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
+                        panelTonalElevation = 0.dp,
+                        panelModifier = Modifier.padding(horizontal = 12.dp),
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .widthIn(max = 380.dp)
-                                .fillMaxWidth()
-                                .padding(vertical = 12.dp)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                ) {},
-                        ) {
-                            CompactProfilePickerScreen(
-                                state = state,
-                                onApplyProfile = { profile -> applyProfileFromOverlay(state, profile) },
-                                onDismissRequest = { dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER) },
-                                showCompactScrim = false,
-                                contextPackageName = currentForegroundApp?.packageName,
-                                contextLabel = currentForegroundApp?.label,
-                                contextIcon = currentForegroundApp?.icon,
-                                onAppProfileAssignmentChange = currentForegroundApp?.let { app ->
-                                    { profile ->
-                                        if (profile == null) {
-                                            viewModel.deleteAppProfileAssignment(app.packageName)
-                                        } else {
-                                            viewModel.saveAppProfileAssignment(
-                                                app.packageName,
-                                                app.label,
-                                                profile.id,
-                                            )
-                                            AppProfileMonitorService.start(this@OverlayHostService)
-                                        }
+                        CompactProfilePickerScreen(
+                            state = state,
+                            onApplyProfile = { profile -> applyProfileFromOverlay(state, profile) },
+                            onDismissRequest = { dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER) },
+                            showCompactScrim = false,
+                            contextPackageName = currentForegroundApp?.packageName,
+                            contextLabel = currentForegroundApp?.label,
+                            contextIcon = currentForegroundApp?.icon,
+                            onAppProfileAssignmentChange = currentForegroundApp?.let { app ->
+                                { profile ->
+                                    if (profile == null) {
+                                        viewModel.deleteAppProfileAssignment(app.packageName)
+                                    } else {
+                                        viewModel.saveAppProfileAssignment(
+                                            app.packageName,
+                                            app.label,
+                                            profile.id,
+                                        )
+                                        AppProfileMonitorService.start(this@OverlayHostService)
                                     }
-                                },
-                            )
-                        }
+                                }
+                            },
+                        )
                     }
                 }
-            }
         }
     }
 
-    private fun showEdgeHandleIfEnabled() {
+    private fun showEdgeHandleIfEnabled(preview: EdgeHandleAppearance? = null) {
         lifecycleScope.launch {
             val settings = container.settingsStorage.settings.first()
             if (
@@ -379,12 +359,19 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
             }
 
             keepEdgeHandle = true
+            val appearance = preview ?: EdgeHandleAppearance(
+                heightDp = settings.edgeHandleHeightDp,
+                thicknessDp = settings.edgeHandleThicknessDp,
+                verticalPositionPercent = settings.edgeHandleVerticalPositionPercent,
+                opacityPercent = settings.edgeHandleOpacityPercent,
+            )
+            edgeHandleAppearance.value = appearance
             runCatching {
                 windowController.showEdgeHandle(
                     view = buildEdgeHandleView(),
                     config = EdgeHandleWindowConfig(
-                        heightDp = settings.edgeHandleHeightDp,
-                        verticalPositionPercent = settings.edgeHandleVerticalPositionPercent,
+                        heightDp = appearance.heightDp,
+                        verticalPositionPercent = appearance.verticalPositionPercent,
                     ),
                 )
             }.onFailure { throwable ->
@@ -395,17 +382,30 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         }
     }
 
+    private fun previewEdgeHandle(intent: Intent) {
+        val appearance = intent.edgeHandleAppearanceExtra() ?: return
+        edgeHandleAppearance.value = appearance
+        if (keepEdgeHandle) {
+            windowController.updateEdgeHandleConfig(
+                EdgeHandleWindowConfig(
+                    heightDp = appearance.heightDp,
+                    verticalPositionPercent = appearance.verticalPositionPercent,
+                ),
+            )
+        } else {
+            showEdgeHandleIfEnabled(preview = appearance)
+        }
+    }
+
     private fun buildEdgeHandleView(): ComposeView {
-        return ComposeView(this).apply {
-            setViewTreeLifecycleOwner(this@OverlayHostService)
-            setViewTreeViewModelStoreOwner(this@OverlayHostService)
-            setViewTreeSavedStateRegistryOwner(this@OverlayHostService)
+        return OverlayComposeViewFactory.create(this, this, this, this).apply {
             addOnLayoutChangeListener { view, _, _, _, _, _, _, _, _ ->
                 updateSystemGestureExclusion(view)
             }
             doOnLayout(::updateSystemGestureExclusion)
             setContent {
                 val settings by viewModel.settings.collectAsStateWithLifecycle()
+                val appearance by edgeHandleAppearance.collectAsStateWithLifecycle()
                 val swipeThresholdPx = with(LocalDensity.current) { EDGE_SWIPE_THRESHOLD_DP.dp.toPx() }
                 var dragDistance by remember { mutableFloatStateOf(0f) }
                 ClusterTuneTheme(settings = settings) {
@@ -434,9 +434,9 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                     ) {
                         Box(
                             modifier = Modifier
-                                .width(settings.edgeHandleThicknessDp.dp)
+                                .width((appearance?.thicknessDp ?: settings.edgeHandleThicknessDp).dp)
                                 .fillMaxHeight()
-                                .alpha(settings.edgeHandleOpacityPercent / 100f)
+                                .alpha((appearance?.opacityPercent ?: settings.edgeHandleOpacityPercent) / 100f)
                                 .background(
                                     color = MaterialTheme.colorScheme.primaryContainer,
                                     shape = RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp),
@@ -614,6 +614,23 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         return runCatching { OverlayType.valueOf(rawType) }.getOrNull()
     }
 
+    private fun Intent.edgeHandleAppearanceExtra(): EdgeHandleAppearance? {
+        if (
+            !hasExtra(EXTRA_EDGE_HANDLE_HEIGHT_DP) ||
+            !hasExtra(EXTRA_EDGE_HANDLE_THICKNESS_DP) ||
+            !hasExtra(EXTRA_EDGE_HANDLE_VERTICAL_POSITION_PERCENT) ||
+            !hasExtra(EXTRA_EDGE_HANDLE_OPACITY_PERCENT)
+        ) {
+            return null
+        }
+        return EdgeHandleAppearance(
+            heightDp = getIntExtra(EXTRA_EDGE_HANDLE_HEIGHT_DP, 0),
+            thicknessDp = getIntExtra(EXTRA_EDGE_HANDLE_THICKNESS_DP, 0),
+            verticalPositionPercent = getIntExtra(EXTRA_EDGE_HANDLE_VERTICAL_POSITION_PERCENT, 0),
+            opacityPercent = getIntExtra(EXTRA_EDGE_HANDLE_OPACITY_PERCENT, 0),
+        )
+    }
+
     companion object {
         private const val TAG = "OverlayHostService"
         private const val CHANNEL_ID = "clustertune_overlays"
@@ -621,9 +638,14 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         private const val ACTION_SHOW_COMPACT_TUNER = "com.aure.clustertune.overlay.SHOW_COMPACT_TUNER"
         private const val ACTION_SHOW_PROFILE_PICKER = "com.aure.clustertune.overlay.SHOW_PROFILE_PICKER"
         private const val ACTION_SHOW_EDGE_HANDLE = "com.aure.clustertune.overlay.SHOW_EDGE_HANDLE"
+        private const val ACTION_PREVIEW_EDGE_HANDLE = "com.aure.clustertune.overlay.PREVIEW_EDGE_HANDLE"
         private const val ACTION_HIDE_EDGE_HANDLE = "com.aure.clustertune.overlay.HIDE_EDGE_HANDLE"
         private const val ACTION_DISMISS = "com.aure.clustertune.overlay.DISMISS"
         private const val EXTRA_OVERLAY_TYPE = "overlay_type"
+        private const val EXTRA_EDGE_HANDLE_HEIGHT_DP = "edge_handle_height_dp"
+        private const val EXTRA_EDGE_HANDLE_THICKNESS_DP = "edge_handle_thickness_dp"
+        private const val EXTRA_EDGE_HANDLE_VERTICAL_POSITION_PERCENT = "edge_handle_vertical_position_percent"
+        private const val EXTRA_EDGE_HANDLE_OPACITY_PERCENT = "edge_handle_opacity_percent"
         private const val EDGE_SWIPE_THRESHOLD_DP = 48
         private const val COMPACT_PROFILE_PICKER_POLL_INTERVAL_MS = 400L
 
@@ -650,6 +672,24 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                 context,
                 Intent(context, OverlayHostService::class.java).apply {
                     action = ACTION_SHOW_EDGE_HANDLE
+                },
+            )
+        }
+
+        fun previewEdgeHandle(
+            context: Context,
+            heightDp: Int,
+            thicknessDp: Int,
+            verticalPositionPercent: Int,
+            opacityPercent: Int,
+        ) {
+            context.startService(
+                Intent(context, OverlayHostService::class.java).apply {
+                    action = ACTION_PREVIEW_EDGE_HANDLE
+                    putExtra(EXTRA_EDGE_HANDLE_HEIGHT_DP, heightDp)
+                    putExtra(EXTRA_EDGE_HANDLE_THICKNESS_DP, thicknessDp)
+                    putExtra(EXTRA_EDGE_HANDLE_VERTICAL_POSITION_PERCENT, verticalPositionPercent)
+                    putExtra(EXTRA_EDGE_HANDLE_OPACITY_PERCENT, opacityPercent)
                 },
             )
         }
