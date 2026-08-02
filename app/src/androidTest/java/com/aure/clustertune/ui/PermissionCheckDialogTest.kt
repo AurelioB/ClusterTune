@@ -38,7 +38,9 @@ class PermissionCheckDialogTest {
         composeRule.onNodeWithText("Open settings, then allow ClusterTune to display over other apps.").assertIsDisplayed()
         composeRule.onNodeWithText("Notifications").assertIsDisplayed()
         composeRule.onNodeWithText("Shows background status for overlays and automation while they run.").assertIsDisplayed()
-        composeRule.onNodeWithText("Open settings, then allow notifications for ClusterTune.").assertIsDisplayed()
+        composeRule.onNodeWithText("Open settings, then allow notifications for ClusterTune.")
+            .performScrollTo()
+            .assertIsDisplayed()
 
         assertTrue(composeRule.onAllNodesWithText("Usage access").fetchSemanticsNodes().isEmpty())
         assertTrue(

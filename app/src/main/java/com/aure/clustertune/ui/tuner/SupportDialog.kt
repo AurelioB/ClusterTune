@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.google.zxing.BarcodeFormat
@@ -46,7 +47,15 @@ internal fun SupportScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
-    val qrCodeSize = if (isLandscape) 256.dp else 220.dp
+    val isCompactPortrait = !isLandscape && configuration.screenHeightDp < 600
+    val qrCodeSize = when {
+        isLandscape -> 256.dp
+        isCompactPortrait -> 140.dp
+        else -> 220.dp
+    }
+    val horizontalPadding = if (isCompactPortrait) 16.dp else 24.dp
+    val verticalPadding = if (isCompactPortrait) 12.dp else 20.dp
+    val sectionSpacing = if (isCompactPortrait) 12.dp else 20.dp
     val qrCode = remember { generateQrCodeBitmap(KOFI_URL, 520).asImageBitmap() }
     val openKofi: () -> Unit = {
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(KOFI_URL))) }
@@ -56,8 +65,8 @@ internal fun SupportScreen(onBack: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .navigationBarsPadding()
-            .padding(horizontal = 24.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+            .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+        verticalArrangement = Arrangement.spacedBy(sectionSpacing),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -65,6 +74,7 @@ internal fun SupportScreen(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Row(
+                modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -78,6 +88,8 @@ internal fun SupportScreen(onBack: () -> Unit) {
                     text = "Support ClusterTune",
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             TextButton(onClick = onBack) { Text("Done") }
@@ -105,7 +117,7 @@ internal fun SupportScreen(onBack: () -> Unit) {
             } else {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (isCompactPortrait) 8.dp else 14.dp),
                 ) {
                     SupportMessage(textAlign = TextAlign.Center)
                     SupportQrCode(qrCode, qrCodeSize)

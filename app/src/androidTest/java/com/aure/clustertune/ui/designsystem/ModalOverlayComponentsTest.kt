@@ -75,8 +75,8 @@ class ModalOverlayComponentsTest {
             MaterialTheme {
                 CtOverlayFrame(
                     onDismissRequest = {},
-                    modifier = Modifier.size(width = 400.dp, height = 300.dp),
-                    maxWidth = 300.dp,
+                    modifier = Modifier.size(width = 240.dp, height = 200.dp),
+                    maxWidth = 200.dp,
                     widthFraction = 0.5f,
                     heightFraction = 0.5f,
                 ) { Text("Panel") }
@@ -84,8 +84,8 @@ class ModalOverlayComponentsTest {
         }
 
         composeRule.onNodeWithTag(CtOverlayFrameTestTags.Panel)
-            .assertWidthIsEqualTo(200.dp)
-            .assertHeightIsEqualTo(150.dp)
+            .assertWidthIsEqualTo(120.dp)
+            .assertHeightIsEqualTo(100.dp)
     }
 
     @Test
