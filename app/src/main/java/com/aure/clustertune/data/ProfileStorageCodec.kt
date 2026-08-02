@@ -84,6 +84,8 @@ object ProfileStorageCodec {
                     packageName = assignment.packageName,
                     appLabel = assignment.appLabel,
                     profileId = assignment.profileId,
+                    customMaxFrequencies = assignment.customMaxFrequencies
+                        .mapKeys { (policyId, _) -> policyId.toString() },
                 )
             },
         )
@@ -95,12 +97,16 @@ object ProfileStorageCodec {
             json.decodeFromString<List<StoredAppProfileAssignment>>(raw)
                 .mapNotNull { assignment ->
                     val packageName = assignment.packageName.trim()
-                    val profileId = assignment.profileId.trim()
-                    if (packageName.isBlank() || profileId.isBlank()) return@mapNotNull null
+                    val profileId = assignment.profileId?.trim()?.takeIf { it.isNotBlank() }
+                    val customValues = assignment.customMaxFrequencies.mapNotNull { (policyId, frequency) ->
+                        policyId.toIntOrNull()?.takeIf { frequency > 0 }?.let { it to frequency }
+                    }.toMap()
+                    if (packageName.isBlank() || (profileId == null && customValues.isEmpty())) return@mapNotNull null
                     AppProfileAssignment(
                         packageName = packageName,
                         appLabel = assignment.appLabel.ifBlank { packageName },
                         profileId = profileId,
+                        customMaxFrequencies = customValues,
                     )
                 }
                 .sortedBy { it.appLabel.lowercase() }
@@ -159,7 +165,8 @@ object ProfileStorageCodec {
     private data class StoredAppProfileAssignment(
         val packageName: String,
         val appLabel: String,
-        val profileId: String,
+        val profileId: String? = null,
+        val customMaxFrequencies: Map<String, Int> = emptyMap(),
     )
 
     @Serializable

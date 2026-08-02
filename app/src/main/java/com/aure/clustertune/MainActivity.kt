@@ -20,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,12 +35,17 @@ import androidx.lifecycle.lifecycleScope
 import com.aure.clustertune.apps.AppProfileMonitorService
 import com.aure.clustertune.overlay.OverlayHostService
 import com.aure.clustertune.overlay.OverlayPermission
+import com.aure.clustertune.permissions.AppAccess
+import com.aure.clustertune.permissions.AppAccessStatus
+import com.aure.clustertune.permissions.missingAppAccess
 import com.aure.clustertune.sleep.SleepProfileMonitorService
 import com.aure.clustertune.tile.QuickSettingsTileAddResult
 import com.aure.clustertune.tile.QuickSettingsTilePrompt
 import com.aure.clustertune.tile.QuickSettingsTileRefresher
 import com.aure.clustertune.ui.MainTunerScreen
+import com.aure.clustertune.ui.PermissionCheckDialog
 import com.aure.clustertune.ui.SettingsScreen
+import com.aure.clustertune.ui.SupportScreen
 import com.aure.clustertune.ui.SingleToast
 import com.aure.clustertune.ui.TunerViewModel
 import com.aure.clustertune.ui.theme.ClusterTuneSystemBars
@@ -77,20 +83,21 @@ class MainActivity : ComponentActivity() {
     }
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
-    ) {
-        lifecycleScope.launch {
-            val settings = container.settingsStorage.settings.first()
-            if (settings.sleepProfileEnabled) {
-                SleepProfileMonitorService.start(this@MainActivity)
+    ) { granted ->
+        if (granted) {
+            lifecycleScope.launch {
+                val settings = container.settingsStorage.settings.first()
+                if (settings.sleepProfileEnabled) {
+                    SleepProfileMonitorService.start(this@MainActivity)
+                }
+                maybeStartAppProfileMonitor()
             }
-            maybeStartAppProfileMonitor()
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        maybeRequestQuickSettingsTileOnFirstRun()
         maybeAutoDetectPrivilegedExecutionOnFirstRun()
         maybeCheckForUpdatesOnLaunch()
         maybeStartSleepProfileMonitor()
@@ -105,8 +112,10 @@ class MainActivity : ComponentActivity() {
                     val launchableApps = viewModel.launchableApps.collectAsStateWithLifecycle().value
                     val recentActiveApps = viewModel.recentActiveApps.collectAsStateWithLifecycle().value
                     var showSettings by rememberSaveable { mutableStateOf(false) }
-                    BackHandler(enabled = showSettings) {
+                    var showSupport by rememberSaveable { mutableStateOf(false) }
+                    BackHandler(enabled = showSettings || showSupport) {
                         showSettings = false
+                        showSupport = false
                     }
                     var permissionRefresh by remember { mutableStateOf(0) }
                     DisposableEffect(Unit) {
@@ -130,6 +139,20 @@ class MainActivity : ComponentActivity() {
                     }
                     val canInstallUpdates = remember(permissionRefresh) {
                         packageManager.canRequestPackageInstalls()
+                    }
+                    val missingAccess = missingAppAccess(
+                        AppAccessStatus(
+                            overlayGranted = canDrawOverlays,
+                            usageGranted = hasUsageAccess,
+                            notificationsGranted = hasNotificationAccess,
+                        ),
+                    )
+                    var showPermissionDialog by rememberSaveable { mutableStateOf(true) }
+                    val permissionDialogVisible = showPermissionDialog && missingAccess.isNotEmpty()
+                    LaunchedEffect(permissionDialogVisible) {
+                        if (!permissionDialogVisible) {
+                            maybeRequestQuickSettingsTileOnFirstRun()
+                        }
                     }
 
                     if (showSettings) {
@@ -170,7 +193,6 @@ class MainActivity : ComponentActivity() {
                                 requestQuickSettingsTile(showResultToast = true)
                             },
                             canRequestAddQuickSettingsTile = QuickSettingsTilePrompt.isSupported,
-                            isQuickSettingsTileAdded = settings.isQuickSettingsTileAdded,
                             canDrawOverlays = canDrawOverlays,
                             onOpenOverlayPermissionSettings = {
                                 startActivity(OverlayPermission.createSettingsIntent(this@MainActivity))
@@ -243,6 +265,8 @@ class MainActivity : ComponentActivity() {
                             onPrivilegedExecutionMethodChange = viewModel::setPrivilegedExecutionMethod,
                             onAutoDetectPrivilegedExecutionMethod = viewModel::autoDetectPrivilegedExecutionMethod,
                         )
+                    } else if (showSupport) {
+                        SupportScreen(onBack = { showSupport = false })
                     } else {
                         MainTunerScreen(
                             state = state,
@@ -260,27 +284,59 @@ class MainActivity : ComponentActivity() {
                             onMoveProfile = viewModel::moveProfile,
                             launchableApps = launchableApps,
                             recentActiveApps = recentActiveApps,
-                            onSaveAppProfileAssignment = { packageName, appLabel, profileId ->
-                                viewModel.saveAppProfileAssignment(packageName, appLabel, profileId)
+                            onSaveAppProfileAssignment = { packageName, appLabel, profileId, customMaxFrequencies ->
+                                viewModel.saveAppProfileAssignment(
+                                    packageName = packageName,
+                                    appLabel = appLabel,
+                                    profileId = profileId,
+                                    customMaxFrequencies = customMaxFrequencies,
+                                )
                                 startAppProfileMonitor()
                             },
                             onDeleteAppProfileAssignment = viewModel::deleteAppProfileAssignment,
                             onRefreshInstalledApps = viewModel::refreshInstalledApps,
                             onOpenSettings = { showSettings = true },
+                            onOpenSupport = { showSupport = true },
                             onRefreshLiveValues = viewModel::refreshLiveState,
                             onStatusMessageShown = viewModel::consumeStatusMessage,
                             onErrorMessageShown = viewModel::consumeErrorMessage,
                         )
                     }
-                    pendingUpdateRelease.value?.let { release ->
-                        UpdateAvailableDialog(
-                            release = release,
-                            onDismiss = { pendingUpdateRelease.value = null },
-                            onInstall = {
-                                pendingUpdateRelease.value = null
-                                downloadAndInstallUpdate(release)
+                    if (permissionDialogVisible) {
+                        PermissionCheckDialog(
+                            missingAccess = missingAccess,
+                            onFixAccess = { access ->
+                                when (access) {
+                                    AppAccess.OVERLAY -> {
+                                        startActivity(OverlayPermission.createSettingsIntent(this@MainActivity))
+                                    }
+
+                                    AppAccess.USAGE -> {
+                                        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                                    }
+
+                                    AppAccess.NOTIFICATIONS -> {
+                                        startActivity(
+                                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                                putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                                            },
+                                        )
+                                    }
+                                }
                             },
+                            onDismiss = { showPermissionDialog = false },
                         )
+                    } else {
+                        pendingUpdateRelease.value?.let { release ->
+                            UpdateAvailableDialog(
+                                release = release,
+                                onDismiss = { pendingUpdateRelease.value = null },
+                                onInstall = {
+                                    pendingUpdateRelease.value = null
+                                    downloadAndInstallUpdate(release)
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -346,7 +402,7 @@ class MainActivity : ComponentActivity() {
     private fun maybeStartSleepProfileMonitor() {
         lifecycleScope.launch {
             val settings = container.settingsStorage.settings.first()
-            if (settings.sleepProfileEnabled) {
+            if (settings.sleepProfileEnabled && hasNotificationAccess()) {
                 startSleepProfileMonitor()
             }
         }
@@ -355,12 +411,16 @@ class MainActivity : ComponentActivity() {
     private fun maybeStartAppProfileMonitor() {
         lifecycleScope.launch {
             if (container.repository.observeState().first().appProfileAssignments.isNotEmpty() &&
-                AppProfileMonitorService.hasUsageStatsPermission(this@MainActivity)
+                AppProfileMonitorService.hasUsageStatsPermission(this@MainActivity) &&
+                hasNotificationAccess()
             ) {
                 startAppProfileMonitor()
             }
         }
     }
+
+    private fun hasNotificationAccess(): Boolean =
+        NotificationManagerCompat.from(this).areNotificationsEnabled()
 
     private fun maybeStartLeftEdgeProfilePicker() {
         lifecycleScope.launch {
@@ -379,11 +439,6 @@ class MainActivity : ComponentActivity() {
 
     private fun requestQuickSettingsTile(showResultToast: Boolean) {
         QuickSettingsTilePrompt.request(this) { result ->
-            if (result == QuickSettingsTileAddResult.ADDED || result == QuickSettingsTileAddResult.ALREADY_ADDED) {
-                lifecycleScope.launch {
-                    container.settingsStorage.persistQuickSettingsTileAdded(true)
-                }
-            }
             if (!showResultToast) return@request
             SingleToast.show(applicationContext, result.toToastMessage(), Toast.LENGTH_SHORT)
         }

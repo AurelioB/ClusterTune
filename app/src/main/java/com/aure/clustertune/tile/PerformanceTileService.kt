@@ -173,7 +173,7 @@ class PerformanceTileService : TileService() {
                     if (OverlayPermission.canDrawOverlays(applicationContext)) {
                         showOverlayAndCollapse()
                     } else {
-                        launchDialogAndCollapse()
+                        requestOverlayAccessAndCollapse()
                     }
                 }
                 TileInteractionBehavior.SHOW_PROFILE_PICKER -> {
@@ -225,14 +225,8 @@ class PerformanceTileService : TileService() {
         SingleToast.show(applicationContext, message, Toast.LENGTH_SHORT)
     }
 
-    @Suppress("DEPRECATION")
-    private fun launchDialogAndCollapse() {
-        val intent = TileControlActivity.createDialogIntent(applicationContext)
-        launchIntentAndCollapse(intent)
-    }
-
     private fun requestOverlayAccessAndCollapse() {
-        showToast("Allow overlay access to use the profile picker")
+        showToast("Allow overlay access to use Quick Settings controls")
         launchIntentAndCollapse(
             OverlayPermission.createSettingsIntent(applicationContext),
         )

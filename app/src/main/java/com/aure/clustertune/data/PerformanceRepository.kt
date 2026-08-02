@@ -474,12 +474,28 @@ class PerformanceRepository(
     }
 
     suspend fun saveAppProfileAssignment(assignment: AppProfileAssignment) {
+        if (assignment.packageName.isBlank() || !assignment.hasValidTarget) return
         val state = observeState().first()
+        if (assignment.isCustom) {
+            val validValues = assignment.customMaxFrequencies.filter { (policyId, frequency) ->
+                state.policies.firstOrNull { it.id == policyId }?.supportedFrequencies?.contains(frequency) == true
+            }
+            if (validValues.isEmpty()) return
+            profileStorage.saveAppProfileAssignment(
+                assignment.copy(
+                    appLabel = assignment.appLabel.ifBlank { assignment.packageName },
+                    profileId = null,
+                    customMaxFrequencies = validValues,
+                ),
+            )
+            return
+        }
         val profile = state.displayProfiles.firstOrNull { it.id == assignment.profileId } ?: return
         profileStorage.saveAppProfileAssignment(
             assignment.copy(
                 appLabel = assignment.appLabel.ifBlank { assignment.packageName },
                 profileId = profile.id,
+                customMaxFrequencies = emptyMap(),
             ),
         )
     }
@@ -500,6 +516,31 @@ class PerformanceRepository(
             selectedValues = profile.maxFrequencies,
             isReset = profile.id == ProfileStateResolver.STOCK_PROFILE_ID,
             appliedDisplayProfileId = profile.id,
+            persistNormalState = false,
+        )
+    }
+
+    suspend fun applyAppProfileTemporarily(assignment: AppProfileAssignment): Result<ApplyOutcome> {
+        val state = observeState().first()
+        if (!state.isPServerAvailable || state.policies.isEmpty()) {
+            return Result.failure(IllegalStateException("Profile automation is unavailable"))
+        }
+        val values = if (assignment.isCustom) {
+            assignment.customMaxFrequencies
+        } else {
+            val profile = state.displayProfiles.firstOrNull { it.id == assignment.profileId }
+                ?: return Result.failure(IllegalStateException("App profile is unavailable"))
+            profile.maxFrequencies
+        }
+        val filteredValues = values.filterKeys { policyId -> state.policies.any { it.id == policyId } }
+        if (filteredValues.isEmpty()) {
+            return Result.failure(IllegalStateException("App profile has no matching CPU policies"))
+        }
+        return applyValuesInternal(
+            policies = state.policies,
+            selectedValues = filteredValues,
+            isReset = !assignment.isCustom && assignment.profileId == ProfileStateResolver.STOCK_PROFILE_ID,
+            appliedDisplayProfileId = assignment.profileId,
             persistNormalState = false,
         )
     }
@@ -666,5 +707,10 @@ internal fun supportedAppProfileAssignments(
 ): List<AppProfileAssignment> {
     val supportedProfileIds = realProfiles.mapTo(mutableSetOf()) { profile -> profile.id }
     supportedProfileIds += ProfileStateResolver.STOCK_PROFILE_ID
-    return assignments.filter { assignment -> assignment.profileId in supportedProfileIds }
+    val supportedPolicyIds = realProfiles.flatMapTo(mutableSetOf()) { profile -> profile.maxFrequencies.keys }
+    return assignments.filter { assignment ->
+        assignment.hasValidTarget &&
+            ((assignment.isCustom && assignment.customMaxFrequencies.keys.all { it in supportedPolicyIds }) ||
+                assignment.profileId in supportedProfileIds)
+    }
 }

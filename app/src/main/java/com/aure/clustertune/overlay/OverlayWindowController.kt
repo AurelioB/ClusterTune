@@ -14,7 +14,6 @@ import androidx.core.content.getSystemService
 import kotlin.math.roundToInt
 
 enum class OverlayType {
-    COMPACT_TUNER_MODAL,
     COMPACT_PROFILE_PICKER,
 }
 
@@ -57,6 +56,7 @@ class OverlayWindowController(
             modalBackHandler = backHandler
         } catch (throwable: Throwable) {
             backHandler.dispose()
+            runCatching { windowManager.removeView(view) }
             attachEdgeHandle()
             throw throwable
         }
@@ -139,13 +139,15 @@ class OverlayWindowController(
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.MATCH_PARENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
-                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+            modalWindowFlags(),
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.CENTER
             title = "ClusterTune overlay"
+            windowAnimations = android.R.style.Animation
+            alpha = 1f
+            dimAmount = 0f
+            flags = flags and WindowManager.LayoutParams.FLAG_DIM_BEHIND.inv()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             }
@@ -274,6 +276,12 @@ internal fun shouldDismissOverlayOnKeyEvent(
     return keyCode == KeyEvent.KEYCODE_BACK &&
         action == KeyEvent.ACTION_UP &&
         !canceled
+}
+
+internal fun modalWindowFlags(): Int {
+    return WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
 }
 
 internal fun calculateEdgeHandleTopOffset(

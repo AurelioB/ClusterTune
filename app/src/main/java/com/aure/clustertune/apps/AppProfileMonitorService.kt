@@ -82,9 +82,9 @@ class AppProfileMonitorService : Service() {
             when {
                 assignment != null && assignment.packageName != activeAssignedPackage -> {
                     val profile = state.displayProfiles.firstOrNull { it.id == assignment.profileId }
-                    val profileName = profile?.name ?: assignment.profileId
+                    val profileName = profile?.name ?: if (assignment.isCustom) "Custom" else assignment.profileId ?: "Unknown"
                     activeAssignedPackage = assignment.packageName
-                    container.repository.applyProfileTemporarily(assignment.profileId).onSuccess {
+                    container.repository.applyAppProfileTemporarily(assignment).onSuccess {
                         val trigger = "App focused: ${assignment.appLabel} (${assignment.packageName})"
                         container.repository.logProfileSwitch(assignment.profileId, profileName, trigger)
                         QuickSettingsTileRefresher.requestUpdate(applicationContext)

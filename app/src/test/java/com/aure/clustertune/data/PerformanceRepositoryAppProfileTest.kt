@@ -17,6 +17,8 @@ class PerformanceRepositoryAppProfileTest {
             assignment(profileId = ProfileStateResolver.STOCK_PROFILE_ID, packageName = "stock.app"),
             assignment(profileId = ProfileStateResolver.MANUAL_PROFILE_ID, packageName = "manual.app"),
             assignment(profileId = "missing", packageName = "missing.app"),
+            AppProfileAssignment("custom.app", "Custom", customMaxFrequencies = mapOf(0 to 900_000)),
+            AppProfileAssignment("invalid-custom.app", "Invalid", customMaxFrequencies = mapOf(9 to 900_000)),
         )
 
         val result = supportedAppProfileAssignments(
@@ -25,7 +27,7 @@ class PerformanceRepositoryAppProfileTest {
         )
 
         assertEquals(
-            listOf(assignments[0], assignments[1]),
+            listOf(assignments[0], assignments[1], assignments[4]),
             result,
         )
     }

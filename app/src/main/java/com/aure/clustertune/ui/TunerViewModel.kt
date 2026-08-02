@@ -122,6 +122,13 @@ class TunerViewModel(
         }
     }
 
+    /** Discards values staged by a compact tuner without changing the applied state. */
+    fun discardEdits() {
+        edits.value = emptyMap()
+        transientMessage.value = null
+        transientError.value = null
+    }
+
     fun consumeStatusMessage() {
         transientMessage.value = null
     }
@@ -207,18 +214,46 @@ class TunerViewModel(
         }
     }
 
-    fun saveAppProfileAssignment(packageName: String, appLabel: String, profileId: String) {
+    fun saveAppProfileAssignment(
+        packageName: String,
+        appLabel: String,
+        profileId: String?,
+        customMaxFrequencies: Map<Int, Int> = emptyMap(),
+    ) {
         viewModelScope.launch {
             repository.saveAppProfileAssignment(
                 AppProfileAssignment(
                     packageName = packageName,
                     appLabel = appLabel,
                     profileId = profileId,
+                    customMaxFrequencies = customMaxFrequencies,
                 ),
             )
             transientMessage.value = "Saved app profile for $appLabel"
             transientError.value = null
         }
+    }
+
+    suspend fun saveAppProfileAssignmentAwait(
+        packageName: String,
+        appLabel: String,
+        profileId: String?,
+        customMaxFrequencies: Map<Int, Int> = emptyMap(),
+    ) {
+        repository.saveAppProfileAssignment(
+            AppProfileAssignment(packageName, appLabel, profileId, customMaxFrequencies),
+        )
+    }
+
+    suspend fun deleteAppProfileAssignmentAwait(packageName: String) {
+        repository.deleteAppProfileAssignment(packageName)
+    }
+
+    suspend fun applyAppProfileTemporarily(assignment: AppProfileAssignment): Result<PerformanceRepository.ApplyOutcome> =
+        repository.applyAppProfileTemporarily(assignment)
+
+    suspend fun logProfileSwitchAwait(profileId: String?, profileName: String, trigger: String) {
+        repository.logProfileSwitch(profileId, profileName, trigger)
     }
 
     fun deleteAppProfileAssignment(packageName: String) {

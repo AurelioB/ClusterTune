@@ -44,7 +44,7 @@
             android:exported="true"
             android:launchMode="singleTop"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
-            android:theme="@style/Theme.ClusterTune.TileDialog">
+            android:theme="@style/Theme.ClusterTune.TileTrampoline">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>

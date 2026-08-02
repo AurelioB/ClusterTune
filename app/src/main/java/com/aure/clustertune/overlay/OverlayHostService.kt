@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -55,20 +54,24 @@ import com.aure.clustertune.R
 import com.aure.clustertune.apps.AppProfileMonitorService
 import com.aure.clustertune.apps.ForegroundAppInfo
 import com.aure.clustertune.apps.ForegroundAppResolver
+import com.aure.clustertune.model.AppSettings
 import com.aure.clustertune.model.PerformanceProfile
+import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.TunerState
 import com.aure.clustertune.quicktuner.PerformanceQuickTunerApplyRepository
 import com.aure.clustertune.quicktuner.QuickTunerApplyHandler
 import com.aure.clustertune.tile.QuickSettingsTileRefresher
-import com.aure.clustertune.ui.CompactProfilePickerScreen
-import com.aure.clustertune.ui.CompactTunerScreen
+import com.aure.clustertune.ui.CompactOverlayMode
+import com.aure.clustertune.ui.CompactOverlayScreen
 import com.aure.clustertune.ui.SingleToast
 import com.aure.clustertune.ui.TunerViewModel
 import com.aure.clustertune.ui.theme.ClusterTuneTheme
-import com.aure.clustertune.ui.designsystem.component.CtOverlayFrame
+import com.aure.clustertune.ui.designsystem.component.CtCompactOverlayFrame
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
@@ -148,6 +151,8 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
     private var keepEdgeHandle = false
     private val foregroundAppResolver by lazy { ForegroundAppResolver(this) }
     private var compactProfilePickerSessionJob: Job? = null
+    private var compactAssignmentMutationJob: Job? = null
+    private val compactOverlayMode = MutableStateFlow(CompactOverlayMode.PROFILES)
     private var compactProfilePickerForegroundState = CompactProfilePickerForegroundState()
     private val compactProfilePickerForeground = MutableStateFlow<ForegroundAppInfo?>(null)
     private val edgeHandleAppearance = MutableStateFlow<EdgeHandleAppearance?>(null)
@@ -218,34 +223,19 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
     }
 
     private fun showCompactTunerOverlay() {
-        cancelCompactProfilePickerSession()
-        if (!OverlayPermission.canDrawOverlays(this)) {
-            Log.w(TAG, "Overlay permission missing; cannot show compact tuner overlay")
-            dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
-            return
-        }
-        val view = buildCompactTunerView()
-        runCatching {
-            windowController.show(
-                type = OverlayType.COMPACT_TUNER_MODAL,
-                view = view,
-                onBackPressed = {
-                    dismissOverlay(OverlayType.COMPACT_TUNER_MODAL)
-                },
-            )
-        }.onFailure { throwable ->
-            Log.e(TAG, "Failed to show compact tuner overlay", throwable)
-            stopIfIdle()
-        }
+        startCompactProfilePickerSession(CompactOverlayMode.TUNER)
     }
 
-    private fun showCompactProfilePickerOverlay(foregroundApp: ForegroundAppInfo? = null): Boolean {
+    private fun showCompactProfilePickerOverlay(
+        foregroundApp: ForegroundAppInfo? = null,
+        initialSettings: AppSettings,
+    ): Boolean {
         if (!OverlayPermission.canDrawOverlays(this)) {
             Log.w(TAG, "Overlay permission missing; cannot show compact profile picker overlay")
             dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
             return false
         }
-        val view = buildCompactProfilePickerView(foregroundApp)
+        val view = buildCompactProfilePickerView(foregroundApp, initialSettings)
         return runCatching {
             windowController.show(
                 type = OverlayType.COMPACT_PROFILE_PICKER,
@@ -261,80 +251,61 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         }.getOrDefault(false)
     }
 
-    private fun buildCompactTunerView(): ComposeView {
-        return OverlayComposeViewFactory.create(this, this, this, this) {
-                val settings by viewModel.settings.collectAsStateWithLifecycle()
-                val state by viewModel.state.collectAsStateWithLifecycle()
-                ClusterTuneTheme(settings = settings) {
-                    CtOverlayFrame(
-                        onDismissRequest = { dismissOverlay(OverlayType.COMPACT_TUNER_MODAL) },
-                        scrimColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.46f),
-                        maxWidth = 900.dp,
-                        widthFraction = 0.92f,
-                        heightFraction = 0.92f,
-                        panelShape = RoundedCornerShape(20.dp),
-                        panelColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
-                        panelTonalElevation = 0.dp,
-                        panelModifier = Modifier.padding(horizontal = 12.dp, vertical = 24.dp),
-                    ) {
-                        CompactTunerScreen(
-                            state = state,
-                            displayFrequenciesAsPercent = settings.displayFrequenciesAsPercent,
-                            onPolicyValueChange = viewModel::setPolicyValue,
-                            onApplyProfile = viewModel::applyProfile,
-                            onClearSelection = viewModel::clearSelection,
-                            onApplyCurrent = { tunerState -> applyCurrentFromOverlay(tunerState) },
-                            onDismissRequest = { dismissOverlay(OverlayType.COMPACT_TUNER_MODAL) },
-                            onRefreshLiveValues = viewModel::refreshLiveState,
-                            onOpenFullApp = ::openFullApp,
-                            showCompactScrim = false,
-                        )
-                    }
-                }
-        }
-    }
-
-    private fun buildCompactProfilePickerView(foregroundApp: ForegroundAppInfo?): ComposeView {
+    private fun buildCompactProfilePickerView(
+        foregroundApp: ForegroundAppInfo?,
+        initialSettings: AppSettings,
+    ): ComposeView {
         compactProfilePickerForegroundState = CompactProfilePickerForegroundState(
             trackedPackageName = foregroundApp?.packageName,
             foregroundApp = foregroundApp,
         )
         compactProfilePickerForeground.value = foregroundApp
         return OverlayComposeViewFactory.create(this, this, this, this) {
-                val settings by viewModel.settings.collectAsStateWithLifecycle()
+                val settings by container.settingsStorage.settings.collectAsStateWithLifecycle(
+                    initialValue = initialSettings,
+                )
                 val state by viewModel.state.collectAsStateWithLifecycle()
                 val currentForegroundApp by compactProfilePickerForeground.collectAsStateWithLifecycle()
+                val overlayMode by compactOverlayMode.collectAsStateWithLifecycle()
                 ClusterTuneTheme(settings = settings) {
-                    CtOverlayFrame(
+                    CtCompactOverlayFrame(
                         onDismissRequest = { dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER) },
-                        scrimColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.46f),
-                        maxWidth = 380.dp,
-                        widthFraction = 1f,
-                        heightFraction = null,
-                        panelShape = RoundedCornerShape(20.dp),
-                        panelColor = MaterialTheme.colorScheme.surfaceColorAtElevation(4.dp),
-                        panelTonalElevation = 0.dp,
-                        panelModifier = Modifier.padding(horizontal = 12.dp),
                     ) {
-                        CompactProfilePickerScreen(
+                        CompactOverlayScreen(
                             state = state,
-                            onApplyProfile = { profile -> applyProfileFromOverlay(state, profile) },
+                            displayFrequenciesAsPercent = settings.displayFrequenciesAsPercent,
+                            mode = overlayMode,
+                            onModeChange = { compactOverlayMode.value = it },
+                            onApplyProfile = { profile, appProfileEnabled ->
+                                if (overlayMode == CompactOverlayMode.PROFILES) {
+                                    applyProfileFromOverlay(state, profile, currentForegroundApp, appProfileEnabled)
+                                }
+                            },
+                            onApplyCurrent = { tunerState, profile, customValues, appProfileEnabled ->
+                                applyCurrentFromOverlay(tunerState, profile, customValues, appProfileEnabled, currentForegroundApp)
+                            },
+                            onRefreshLiveValues = viewModel::refreshLiveState,
                             onDismissRequest = { dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER) },
-                            showCompactScrim = false,
                             contextPackageName = currentForegroundApp?.packageName,
                             contextLabel = currentForegroundApp?.label,
                             contextIcon = currentForegroundApp?.icon,
                             onAppProfileAssignmentChange = currentForegroundApp?.let { app ->
-                                { profile ->
-                                    if (profile == null) {
-                                        viewModel.deleteAppProfileAssignment(app.packageName)
-                                    } else {
-                                        viewModel.saveAppProfileAssignment(
-                                            app.packageName,
-                                            app.label,
-                                            profile.id,
-                                        )
-                                        AppProfileMonitorService.start(this@OverlayHostService)
+                                { profile, customValues ->
+                                    compactAssignmentMutationJob?.cancel()
+                                    compactAssignmentMutationJob = lifecycleScope.launch {
+                                        if (profile == null) {
+                                            viewModel.deleteAppProfileAssignmentAwait(app.packageName)
+                                        } else {
+                                            viewModel.saveAppProfileAssignmentAwait(
+                                                app.packageName,
+                                                app.label,
+                                                profile.id,
+                                                customMaxFrequencies = customValues ?: emptyMap(),
+                                            )
+                                            AppProfileMonitorService.start(this@OverlayHostService)
+                                        }
+                                        compactAssignmentMutationJob = null
+                                        stopIfIdle()
                                     }
                                 }
                             },
@@ -466,21 +437,26 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
     }
 
     private fun openProfilePickerForForegroundApp() {
-        startCompactProfilePickerSession()
+        startCompactProfilePickerSession(CompactOverlayMode.PROFILES)
     }
 
-    private fun startCompactProfilePickerSession() {
+    private fun startCompactProfilePickerSession(mode: CompactOverlayMode) {
         cancelCompactProfilePickerSession()
+        compactOverlayMode.value = mode
         compactProfilePickerSessionJob = lifecycleScope.launch {
-            val initial = try {
-                withContext(Dispatchers.IO) { foregroundAppResolver.resolve() }
+            val (initial, initialSettings) = try {
+                coroutineScope {
+                    val foreground = async(Dispatchers.IO) { foregroundAppResolver.resolve() }
+                    val settings = async(Dispatchers.IO) { container.settingsStorage.settings.first() }
+                    foreground.await() to settings.await()
+                }
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
-                Log.e(TAG, "Failed to resolve foreground app for profile picker", error)
+                Log.e(TAG, "Failed to prepare compact profile picker", error)
                 dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
                 return@launch
             }
-            if (!showCompactProfilePickerOverlay(initial)) {
+            if (!showCompactProfilePickerOverlay(initial, initialSettings)) {
                 dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
                 return@launch
             }
@@ -520,27 +496,83 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         stopIfIdle()
     }
 
-    private fun applyCurrentFromOverlay(state: TunerState) {
+    private fun applyCurrentFromOverlay(
+        state: TunerState,
+        assignmentProfile: PerformanceProfile?,
+        customMaxFrequencies: Map<Int, Int>?,
+        appProfileEnabled: Boolean,
+        foregroundApp: ForegroundAppInfo?,
+    ) {
         lifecycleScope.launch {
+            if (foregroundApp != null && appProfileEnabled) {
+                val assignment = AppProfileAssignment(
+                    packageName = foregroundApp.packageName,
+                    appLabel = foregroundApp.label,
+                    profileId = assignmentProfile?.id,
+                    customMaxFrequencies = customMaxFrequencies ?: emptyMap(),
+                )
+                viewModel.applyAppProfileTemporarily(assignment).onSuccess {
+                    viewModel.saveAppProfileAssignmentAwait(
+                        foregroundApp.packageName,
+                        foregroundApp.label,
+                        assignment.profileId,
+                        assignment.customMaxFrequencies,
+                    )
+                    viewModel.logProfileSwitchAwait(assignment.profileId, assignmentProfile?.name ?: "Custom", "App profile overlay")
+                    QuickSettingsTileRefresher.requestUpdate(applicationContext)
+                    SingleToast.show(applicationContext, "Applied ${assignmentProfile?.name ?: "Custom"}", android.widget.Toast.LENGTH_SHORT)
+                    AppProfileMonitorService.start(this@OverlayHostService)
+                    dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                }
+                return@launch
+            }
             val handler = QuickTunerApplyHandler(
                 repository = PerformanceQuickTunerApplyRepository(container.repository),
                 showToast = { message, duration -> SingleToast.show(applicationContext, message, duration) },
                 refreshTile = { QuickSettingsTileRefresher.requestUpdate(applicationContext) },
             )
             handler.applyCurrent(state).onSuccess {
-                dismissOverlay(OverlayType.COMPACT_TUNER_MODAL)
+                foregroundApp?.let { app ->
+                    viewModel.deleteAppProfileAssignmentAwait(app.packageName)
+                }
+                dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
             }
         }
     }
 
-    private fun applyProfileFromOverlay(state: TunerState, profile: PerformanceProfile) {
+    private fun applyProfileFromOverlay(
+        state: TunerState,
+        profile: PerformanceProfile,
+        foregroundApp: ForegroundAppInfo?,
+        appProfileEnabled: Boolean,
+    ) {
         lifecycleScope.launch {
+            if (foregroundApp != null && appProfileEnabled) {
+                val assignment = AppProfileAssignment(foregroundApp.packageName, foregroundApp.label, profile.id)
+                viewModel.applyAppProfileTemporarily(assignment).onSuccess {
+                    viewModel.saveAppProfileAssignmentAwait(foregroundApp.packageName, foregroundApp.label, profile.id)
+                    viewModel.logProfileSwitchAwait(profile.id, profile.name, "App profile overlay")
+                    QuickSettingsTileRefresher.requestUpdate(applicationContext)
+                    SingleToast.show(applicationContext, "Applied ${profile.name}", android.widget.Toast.LENGTH_SHORT)
+                    AppProfileMonitorService.start(this@OverlayHostService)
+                    dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                }
+                return@launch
+            }
             val handler = QuickTunerApplyHandler(
                 repository = PerformanceQuickTunerApplyRepository(container.repository),
                 showToast = { message, duration -> SingleToast.show(applicationContext, message, duration) },
                 refreshTile = { QuickSettingsTileRefresher.requestUpdate(applicationContext) },
             )
             handler.applyProfile(state, profile).onSuccess {
+                foregroundApp?.let { app ->
+                    if (appProfileEnabled) {
+                        viewModel.saveAppProfileAssignmentAwait(app.packageName, app.label, profile.id)
+                        AppProfileMonitorService.start(this@OverlayHostService)
+                    } else {
+                        viewModel.deleteAppProfileAssignmentAwait(app.packageName)
+                    }
+                }
                 dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
             }
         }
@@ -550,12 +582,13 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         if (type == null || type == OverlayType.COMPACT_PROFILE_PICKER) {
             cancelCompactProfilePickerSession()
         }
+        viewModel.discardEdits()
         windowController.dismiss(type)
         stopIfIdle()
     }
 
     private fun stopIfIdle() {
-        if (!keepEdgeHandle && !windowController.hasActiveOverlay) {
+        if (!keepEdgeHandle && !windowController.hasActiveOverlay && compactAssignmentMutationJob?.isActive != true) {
             stopSelf()
         }
     }

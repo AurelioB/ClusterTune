@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -112,11 +113,11 @@ import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.model.ProfileSource
 import com.aure.clustertune.model.TunerState
-import com.aure.clustertune.ui.designsystem.component.CtAppIdentity
 import com.aure.clustertune.ui.designsystem.component.CtConfirmationDialog
 import com.aure.clustertune.ui.designsystem.component.CtDashedCard
 import com.aure.clustertune.ui.designsystem.component.CtDivider
 import com.aure.clustertune.ui.designsystem.component.CtIcon
+import com.aure.clustertune.ui.designsystem.component.CtCompactOverlayFrame
 import com.aure.clustertune.ui.designsystem.component.CtSectionCard
 import com.aure.clustertune.ui.designsystem.component.CtSelectableRow
 import com.aure.clustertune.ui.designsystem.component.CtStatePanel
@@ -146,10 +147,11 @@ fun MainTunerScreen(
     onMoveProfile: (String, Int) -> Unit,
     launchableApps: List<InstalledAppInfo>,
     recentActiveApps: List<InstalledAppInfo>,
-    onSaveAppProfileAssignment: (String, String, String) -> Unit,
+    onSaveAppProfileAssignment: (String, String, String?, Map<Int, Int>) -> Unit,
     onDeleteAppProfileAssignment: (String) -> Unit,
     onRefreshInstalledApps: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSupport: () -> Unit,
     onRefreshLiveValues: () -> Unit,
     onStatusMessageShown: () -> Unit,
     onErrorMessageShown: () -> Unit,
@@ -158,7 +160,6 @@ fun MainTunerScreen(
     var selectedTab by remember { mutableStateOf(MainTab.PROFILES) }
     var appToConfigure by remember { mutableStateOf<InstalledAppInfo?>(null) }
     var showAppAssignmentDialog by remember { mutableStateOf(false) }
-    var showSupportDialog by remember { mutableStateOf(false) }
 
     ScreenNotifications(
         state = state,
@@ -191,7 +192,7 @@ fun MainTunerScreen(
                     selectedTab = selectedTab,
                     onSelectTab = { selectedTab = it },
                     onOpenSettings = onOpenSettings,
-                    onOpenSupport = { showSupportDialog = true },
+                    onOpenSupport = onOpenSupport,
                     modifier = Modifier
                         .fillMaxHeight()
                         .width(188.dp)
@@ -269,20 +270,43 @@ fun MainTunerScreen(
 
     if (showAppAssignmentDialog) {
         appToConfigure?.let { app ->
-            AppProfileAssignmentDialog(
-                app = app,
-                currentProfileId = state.appProfileAssignments.firstOrNull { it.packageName == app.packageName }?.profileId,
-                profiles = profilesForCompactPicker(state.displayProfiles),
-                onDismiss = { showAppAssignmentDialog = false },
-                onSave = { selectedProfile ->
-                    if (selectedProfile == null) {
+            val assignment = state.appProfileAssignments.firstOrNull { it.packageName == app.packageName }
+            var appOverlayMode by remember(app.packageName) { mutableStateOf(CompactOverlayMode.PROFILES) }
+            CtCompactOverlayFrame(onDismissRequest = { showAppAssignmentDialog = false }) {
+                CompactOverlayScreen(
+                    state = state,
+                    displayFrequenciesAsPercent = displayFrequenciesAsPercent,
+                    mode = appOverlayMode,
+                    onModeChange = { appOverlayMode = it },
+                    onApplyProfile = { profile, _ ->
+                        onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap())
+                        showAppAssignmentDialog = false
+                    },
+                    onApplyCurrent = { _, profile, customValues, _ ->
+                        if (profile == null && customValues == null) {
+                            onDeleteAppProfileAssignment(app.packageName)
+                        } else {
+                            onSaveAppProfileAssignment(app.packageName, app.label, profile?.id, customValues ?: emptyMap())
+                        }
+                        showAppAssignmentDialog = false
+                    },
+                    onDismissRequest = { showAppAssignmentDialog = false },
+                    onRefreshLiveValues = onRefreshLiveValues,
+                    contextPackageName = app.packageName,
+                    contextLabel = app.label,
+                    contextIcon = app.icon,
+                    onAppProfileAssignmentChange = { profile, customValues ->
+                        if (profile == null && customValues == null) onDeleteAppProfileAssignment(app.packageName)
+                        else onSaveAppProfileAssignment(app.packageName, app.label, profile?.id, customValues ?: emptyMap())
+                    },
+                    showAppProfileToggle = false,
+                    showAssignmentRemove = assignment != null,
+                    onRemoveAssignment = {
                         onDeleteAppProfileAssignment(app.packageName)
-                    } else {
-                        onSaveAppProfileAssignment(app.packageName, app.label, selectedProfile.id)
-                    }
-                    showAppAssignmentDialog = false
-                },
-            )
+                        showAppAssignmentDialog = false
+                    },
+                )
+            }
         }
     }
 
@@ -330,151 +354,102 @@ fun MainTunerScreen(
         )
     }
 
-    if (showSupportDialog) {
-        SupportClusterTuneDialog(onDismiss = { showSupportDialog = false })
-    }
 }
 
+enum class CompactOverlayMode { PROFILES, TUNER }
+
+/** Compact app-aware overlay shared by the edge picker and quick tuner. */
 @Composable
-fun CompactTunerScreen(
+fun CompactOverlayScreen(
     state: TunerState,
     displayFrequenciesAsPercent: Boolean,
-    onPolicyValueChange: (CpuPolicyInfo, Int) -> Unit,
-    onApplyProfile: (PerformanceProfile) -> Unit,
-    onClearSelection: () -> Unit,
-    onApplyCurrent: (TunerState) -> Unit,
+    mode: CompactOverlayMode,
+    onModeChange: (CompactOverlayMode) -> Unit,
+    onApplyProfile: (PerformanceProfile, Boolean) -> Unit,
+    onApplyCurrent: (TunerState, PerformanceProfile?, Map<Int, Int>?, Boolean) -> Unit,
     onDismissRequest: () -> Unit,
     onRefreshLiveValues: () -> Unit,
-    onOpenFullApp: () -> Unit,
-    showCompactScrim: Boolean = true,
-) {
-    ScreenNotifications(
-        state = state,
-        onStatusMessageShown = {},
-        onErrorMessageShown = {},
-    )
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1_000)
-            onRefreshLiveValues()
-        }
-    }
-
-    ScreenContainer(compactMode = true, showCompactScrim = showCompactScrim) {
-        val colorScheme = MaterialTheme.colorScheme
-        Column(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Header(
-                    state = state,
-                    compactMode = true,
-                    onOpenSettings = null,
-                )
-                if (state.isLoading) {
-                    LoadingClustersCard()
-                } else {
-                    ProfileChipSelector(
-                        state = state,
-                        onApplyProfile = onApplyProfile,
-                        onClearSelection = onClearSelection,
-                        onOpenFullApp = onOpenFullApp,
-                    )
-                    PolicyEditorSection(
-                        state = state,
-                        displayFrequenciesAsPercent = displayFrequenciesAsPercent,
-                        onPolicyValueChange = onPolicyValueChange,
-                        compactMode = true,
-                    )
-                }
-            }
-
-            CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .background(colorScheme.surfaceContainer),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        TextButton(
-                            onClick = onDismissRequest,
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                        ) {
-                            Text("Cancel")
-                        }
-                        Button(
-                            onClick = { onApplyCurrent(state) },
-                            enabled = state.policies.isNotEmpty() && state.isPServerAvailable,
-                            modifier = Modifier.height(30.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                        ) {
-                            Text("Apply")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun CompactProfilePickerScreen(
-    state: TunerState,
-    onApplyProfile: (PerformanceProfile) -> Unit,
-    onDismissRequest: () -> Unit,
-    showCompactScrim: Boolean = true,
     contextPackageName: String? = null,
     contextLabel: String? = null,
     contextIcon: Drawable? = null,
-    onAppProfileAssignmentChange: ((PerformanceProfile?) -> Unit)? = null,
+    onAppProfileAssignmentChange: ((PerformanceProfile?, Map<Int, Int>?) -> Unit)? = null,
+    showAppProfileToggle: Boolean = true,
+    showAssignmentRemove: Boolean = false,
+    onRemoveAssignment: (() -> Unit)? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val profiles = profilesForCompactPicker(state.displayProfiles)
     val assignment = contextPackageName?.let { packageName ->
         state.appProfileAssignments.firstOrNull { it.packageName == packageName }
     }
-    val canAssignAppProfile = !contextPackageName.isNullOrBlank() && onAppProfileAssignmentChange != null
-    var appProfileEnabled by remember(contextPackageName, assignment?.profileId) {
+    val canAssign = !contextPackageName.isNullOrBlank() && onAppProfileAssignmentChange != null
+    var appProfileEnabled by remember(contextPackageName, assignment?.profileId, assignment?.customMaxFrequencies) {
         mutableStateOf(assignment != null)
     }
-    LaunchedEffect(assignment != null) {
-        appProfileEnabled = assignment != null
+    var stagedProfile by remember(assignment?.profileId, state.selectedDisplayProfileId) {
+        mutableStateOf(
+            if (assignment?.isCustom == true || (assignment == null && state.isManualSelection)) {
+                null
+            } else {
+                profiles.firstOrNull { it.id == assignment?.profileId }
+                    ?: listOfNotNull(state.selectedDisplayProfileId, state.activeDisplayProfileId, state.lastAppliedDisplayProfileId)
+                        .firstNotNullOfOrNull { id -> profiles.firstOrNull { it.id == id } }
+            },
+        )
     }
-    val selectedProfileId = listOfNotNull(
-        assignment?.profileId,
-        state.activeDisplayProfileId,
-        state.lastAppliedDisplayProfileId,
-        state.selectedDisplayProfileId,
-    ).firstOrNull { profileId -> profiles.any { profile -> profile.id == profileId } }
+    val initialValues = remember(assignment?.profileId, assignment?.customMaxFrequencies, state.displayProfiles) {
+        assignment?.customMaxFrequencies?.takeIf { it.isNotEmpty() }
+            ?: profiles.firstOrNull { it.id == assignment?.profileId }?.maxFrequencies
+            ?: state.currentValues
+    }
+    var stagedCustomValues by remember(initialValues) { mutableStateOf(initialValues) }
+    var customDraft by remember(assignment?.profileId, assignment?.customMaxFrequencies) {
+        mutableStateOf(assignment?.isCustom == true || (assignment == null && state.isManualSelection))
+    }
+    // Keep the preset selection derived from the complete staged values. This also
+    // handles opening the overlay with values that already match a named profile.
+    LaunchedEffect(stagedCustomValues, state.policies, profiles) {
+        val matchingProfile = stagedProfile?.takeIf { profile ->
+            ProfileStateResolver.matchesProfile(stagedCustomValues, profile, state.policies)
+        } ?: listOfNotNull(
+            assignment?.profileId,
+            state.selectedDisplayProfileId,
+            state.activeDisplayProfileId,
+            state.lastAppliedDisplayProfileId,
+        ).asSequence().mapNotNull { id -> profiles.firstOrNull { it.id == id } }
+            .firstOrNull { profile ->
+                ProfileStateResolver.matchesProfile(stagedCustomValues, profile, state.policies)
+            }
+        ?: profiles.firstOrNull { profile ->
+            ProfileStateResolver.matchesProfile(stagedCustomValues, profile, state.policies)
+        }
+        if (matchingProfile != null) {
+            if (stagedProfile?.id != matchingProfile.id || customDraft) {
+                stagedProfile = matchingProfile
+                customDraft = false
+            }
+        } else if (stagedProfile != null || !customDraft) {
+            stagedProfile = null
+            customDraft = true
+        }
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1_000)
+            onRefreshLiveValues()
+        }
+    }
+    val selectedProfileId = if (customDraft) null else stagedProfile?.id
+        ?: listOfNotNull(assignment?.profileId, state.activeDisplayProfileId, state.lastAppliedDisplayProfileId)
+            .firstOrNull { id -> profiles.any { it.id == id } }
 
-    ScreenContainer(
-        compactMode = true,
-        showCompactScrim = showCompactScrim,
-        compactFillHeight = false,
-        compactWidthFraction = 1f,
-        compactMaxWidth = 360.dp,
-    ) {
+    ScreenContainer(compactMode = true, showCompactScrim = false, compactFillHeight = false) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colorScheme.surfaceContainer)
+                modifier = Modifier.fillMaxWidth().background(colorScheme.surfaceContainer)
                     .padding(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Row(
                     modifier = Modifier.weight(1f),
@@ -482,15 +457,11 @@ fun CompactProfilePickerScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (contextPackageName != null || contextLabel != null || contextIcon != null) {
-                        AppIcon(
-                            icon = contextIcon,
-                            contentDescription = contextLabel,
-                            modifier = Modifier.size(44.dp),
-                        )
+                        AppIcon(icon = contextIcon, contentDescription = contextLabel, modifier = Modifier.size(40.dp))
                     }
                     Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(1.dp),
+                        modifier = Modifier.weight(1f).height(40.dp),
+                        verticalArrangement = Arrangement.Center,
                     ) {
                         Text(
                             text = contextLabel ?: contextPackageName ?: "Pick a profile",
@@ -500,79 +471,142 @@ fun CompactProfilePickerScreen(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
-                    }
-                }
-                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        if (canAssignAppProfile) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                Text(
-                                    text = "App profile",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = colorScheme.onSurface,
-                                )
-                                CtSwitch(
-                                    checked = appProfileEnabled,
-                                    onCheckedChange = { enabled ->
-                                        appProfileEnabled = enabled
-                                        onAppProfileAssignmentChange?.invoke(
-                                            if (enabled) {
-                                                profiles.firstOrNull { it.id == selectedProfileId }
-                                            } else {
-                                                null
-                                            },
-                                        )
-                                    },
-                                    modifier = Modifier.scale(0.82f),
-                                )
-                            }
-                        }
-                        IconButton(
-                            onClick = onDismissRequest,
-                            modifier = Modifier.size(32.dp),
-                        ) {
-                            CtIcon(
-                                symbol = "close",
-                                contentDescription = "Close",
-                                tint = colorScheme.onSurfaceVariant,
-                                size = 22.dp,
+                        if (!contextLabel.isNullOrBlank() && !contextPackageName.isNullOrBlank() && contextLabel != contextPackageName) {
+                            Text(
+                                text = contextPackageName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     }
                 }
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (canAssign && showAppProfileToggle) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text("App profile", style = MaterialTheme.typography.labelMedium, color = colorScheme.onSurface)
+                                CtSwitch(
+                                    checked = appProfileEnabled,
+                                    onCheckedChange = { enabled ->
+                                        appProfileEnabled = enabled
+                                        if (!enabled && mode == CompactOverlayMode.PROFILES) {
+                                            onAppProfileAssignmentChange?.invoke(null, null)
+                                        }
+                                    },
+                                    modifier = Modifier.scale(0.78f),
+                                )
+                            }
+                        }
+                        if (showAssignmentRemove && onRemoveAssignment != null) {
+                            TextButton(onClick = onRemoveAssignment) { Text("Remove") }
+                        }
+                        Row(
+                            modifier = Modifier.background(colorScheme.surfaceContainerHighest, RoundedCornerShape(10.dp))
+                                .padding(2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            listOf(CompactOverlayMode.PROFILES to "list", CompactOverlayMode.TUNER to "tune").forEach { (item, icon) ->
+                                val selected = mode == item
+                                Box(
+                                    modifier = Modifier.size(30.dp).clip(RoundedCornerShape(8.dp))
+                                        .background(if (selected) colorScheme.primaryContainer else Color.Transparent)
+                                        .clickable { onModeChange(item) },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CtIcon(icon, if (item == CompactOverlayMode.PROFILES) "Profiles" else "Tuner", tint = if (selected) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant, size = 18.dp)
+                                }
+                            }
+                        }
+                        IconButton(onClick = onDismissRequest, modifier = Modifier.size(30.dp)) {
+                            CtIcon("close", "Close", tint = colorScheme.onSurfaceVariant, size = 21.dp)
+                        }
+                    }
+                }
             }
-
             CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 340.dp)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (profiles.isEmpty()) {
-                    ProfilePickerEmptyOptionCard()
-                } else {
+            if (mode == CompactOverlayMode.PROFILES) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 340.dp).verticalScroll(rememberScrollState()).padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (customDraft) {
+                        ProfileChoiceRow(
+                            title = "Custom",
+                            selected = true,
+                            onClick = { onModeChange(CompactOverlayMode.TUNER) },
+                        )
+                    }
                     profiles.forEach { profile ->
                         ProfileChoiceRow(
                             title = profile.name,
                             selected = selectedProfileId == profile.id,
                             onClick = {
-                                if (appProfileEnabled && canAssignAppProfile) {
-                                    onAppProfileAssignmentChange?.invoke(profile)
-                                }
-                                onApplyProfile(profile)
+                                stagedProfile = profile
+                                onApplyProfile(profile, appProfileEnabled)
                             },
                         )
                     }
+                    if (profiles.isEmpty()) ProfilePickerEmptyOptionCard()
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 390.dp).verticalScroll(rememberScrollState()).padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ProfileChipSelector(
+                        state = state.copy(
+                            currentValues = stagedCustomValues,
+                            activeDisplayProfileId = null,
+                            lastAppliedDisplayProfileId = null,
+                            selectedDisplayProfileId = stagedProfile?.id,
+                            isManualSelection = customDraft,
+                        ),
+                        onApplyProfile = { profile ->
+                            stagedProfile = profile
+                            customDraft = false
+                            stagedCustomValues = profile.maxFrequencies
+                            if (mode == CompactOverlayMode.PROFILES) onApplyProfile(profile, appProfileEnabled)
+                        },
+                        onClearSelection = {
+                            stagedProfile = null
+                            customDraft = true
+                        },
+                        onOpenFullApp = null,
+                        stripUnderclockSuffix = true,
+                    )
+                    PolicyEditorSection(
+                        state = state.copy(currentValues = stagedCustomValues),
+                        displayFrequenciesAsPercent = displayFrequenciesAsPercent,
+                        onPolicyValueChange = { policy, value ->
+                            stagedCustomValues = stagedCustomValues + (policy.id to value)
+                        },
+                        compactMode = true,
+                    )
+                }
+            }
+            if (mode == CompactOverlayMode.TUNER) {
+                CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
+                Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onDismissRequest) { Text("Cancel") }
+                    Button(
+                        onClick = {
+                            onApplyCurrent(
+                                state.copy(currentValues = stagedCustomValues),
+                                stagedProfile.takeUnless { customDraft },
+                                stagedCustomValues.takeIf { customDraft },
+                                appProfileEnabled,
+                            )
+                        },
+                        enabled = state.policies.isNotEmpty() && state.isPServerAvailable,
+                        modifier = Modifier.height(30.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                    ) { Text("Apply") }
                 }
             }
         }
@@ -1147,7 +1181,9 @@ private fun AppProfilesSection(
                                     is AppListItem.Header -> AppListHeader(section = item.section)
                                     is AppListItem.App -> {
                                         val assignment = assignmentsByPackage[item.app.packageName]
-                                        val profileName = assignment?.let { profilesById[it.profileId]?.name ?: "Missing profile" }
+                                        val profileName = assignment?.let {
+                                            if (it.isCustom) "Custom" else profilesById[it.profileId]?.name ?: "Missing profile"
+                                        }
                                         AppProfileAppRow(
                                             app = item.app,
                                             profileName = profileName,
@@ -1487,106 +1523,6 @@ private fun CenteredModalSurface(
         }
     }
 }
-
-@Composable
-private fun AppProfileAssignmentDialog(
-    app: InstalledAppInfo,
-    currentProfileId: String?,
-    profiles: List<PerformanceProfile>,
-    onDismiss: () -> Unit,
-    onSave: (PerformanceProfile?) -> Unit,
-) {
-    var selectedProfileId by remember(app.packageName, currentProfileId) { mutableStateOf(currentProfileId) }
-    val selectedProfile = profiles.firstOrNull { it.id == selectedProfileId }
-    val colorScheme = MaterialTheme.colorScheme
-
-    CenteredModalSurface(maxWidth = 520.dp, onDismiss = onDismiss) {
-        Column(modifier = Modifier.fillMaxHeight()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colorScheme.surfaceContainer)
-                    .padding(18.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                    CtAppIdentity(
-                        label = app.label,
-                        subtitle = app.packageName,
-                        modifier = Modifier.weight(1f),
-                        iconSize = 48.dp,
-                        labelStyle = MaterialTheme.typography.titleLarge,
-                        labelFontWeight = FontWeight.SemiBold,
-                        subtitleStyle = MaterialTheme.typography.bodyMedium,
-                        icon = {
-                            AppIcon(
-                                icon = app.icon,
-                                contentDescription = app.label,
-                                modifier = Modifier.size(48.dp),
-                            )
-                        },
-                    )
-                }
-
-            CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    ProfileChoiceRow(
-                        title = "None",
-                        selected = selectedProfileId == null,
-                        onClick = { selectedProfileId = null },
-                    )
-                    profiles.forEach { profile ->
-                        ProfileChoiceRow(
-                            title = profile.name,
-                            selected = selectedProfileId == profile.id,
-                            onClick = { selectedProfileId = profile.id },
-                        )
-                    }
-                }
-
-                CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .background(colorScheme.surfaceContainer)
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            TextButton(
-                                onClick = onDismiss,
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                            ) {
-                                Text("Cancel")
-                            }
-                            Button(
-                                onClick = { onSave(selectedProfile) },
-                                modifier = Modifier.height(30.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                            ) {
-                                Text("Save")
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 
 @Composable
 private fun ProfileChoiceRow(
@@ -2197,31 +2133,50 @@ private fun ProfileChipSelector(
     onApplyProfile: (PerformanceProfile) -> Unit,
     onClearSelection: () -> Unit,
     onOpenFullApp: (() -> Unit)?,
+    stripUnderclockSuffix: Boolean = false,
 ) {
+    val listState = rememberLazyListState()
+    LaunchedEffect(state.selectedDisplayProfileId, state.isManualSelection, state.displayProfiles) {
+        val selectedIndex = when {
+            state.isManualSelection -> state.displayProfiles.size
+            state.selectedDisplayProfileId != null -> state.displayProfiles.indexOfFirst {
+                it.id == state.selectedDisplayProfileId
+            }.takeIf { it >= 0 } ?: 0
+            else -> 0
+        }
+        listState.animateScrollToItem(selectedIndex)
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+        LazyRow(
+            state = listState,
+            modifier = Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 2.dp),
         ) {
-            state.displayProfiles.forEach { profile ->
+            itemsIndexed(
+                items = state.displayProfiles,
+                key = { _, profile -> profile.id },
+            ) { _, profile ->
                 ProfileSelectorChip(
-                    label = profile.name,
+                    label = profile.name.displayNameForTuner(stripUnderclockSuffix),
                     isApplied = profile.id == state.activeDisplayProfileId,
                     isSelected = profile.id == state.selectedDisplayProfileId,
                     onClick = { onApplyProfile(profile) },
                 )
             }
             if (state.isManualSelection) {
-                ProfileSelectorChip(
-                    label = "Manual",
-                    isApplied = false,
-                    isSelected = true,
-                    onClick = onClearSelection,
-                )
+                item(key = "custom") {
+                    ProfileSelectorChip(
+                        label = "Custom",
+                        isApplied = false,
+                        isSelected = true,
+                        onClick = onClearSelection,
+                    )
+                }
             }
         }
         onOpenFullApp?.let { openFullApp ->
@@ -2242,6 +2197,9 @@ private fun ProfileChipSelector(
         }
     }
 }
+
+private fun String.displayNameForTuner(stripUnderclockSuffix: Boolean): String =
+    if (stripUnderclockSuffix) removeSuffix(" Underclock") else this
 
 @Composable
 private fun ProfileSelectorChip(

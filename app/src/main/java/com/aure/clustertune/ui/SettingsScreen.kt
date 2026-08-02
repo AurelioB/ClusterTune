@@ -39,7 +39,6 @@ import androidx.compose.material3.FilledTonalButton
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -83,6 +82,7 @@ import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.TileInteractionBehavior
 import kotlin.math.roundToInt
 import com.aure.clustertune.ui.designsystem.component.CtNumericField
+import com.aure.clustertune.ui.designsystem.component.CtCompactOutlinedField
 import com.aure.clustertune.ui.designsystem.component.CtConfirmationDialog
 import com.aure.clustertune.ui.designsystem.component.CtPreferenceRow
 import com.aure.clustertune.ui.designsystem.component.CtSelectableRow
@@ -113,7 +113,6 @@ fun SettingsScreen(
     onImportProfiles: () -> Unit,
     onRequestAddQuickSettingsTile: () -> Unit,
     canRequestAddQuickSettingsTile: Boolean,
-    isQuickSettingsTileAdded: Boolean,
     canDrawOverlays: Boolean,
     onOpenOverlayPermissionSettings: () -> Unit,
     hasUsageAccess: Boolean,
@@ -269,24 +268,19 @@ fun SettingsScreen(
         }
 
         SectionCard(title = stringResource(R.string.settings_quick_access), symbol = "grid_view", density = density) {
-            when {
-                isQuickSettingsTileAdded -> Text(
-                    text = stringResource(R.string.settings_tile_added),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                canRequestAddQuickSettingsTile -> OutlinedButton(
+            if (canRequestAddQuickSettingsTile) {
+                OutlinedButton(
                     onClick = onRequestAddQuickSettingsTile,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(stringResource(R.string.settings_add_tile))
                 }
-                else -> Text(
-                    text = stringResource(R.string.settings_add_tile_from_editor),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
+            Text(
+                text = stringResource(R.string.settings_add_tile_from_editor),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             SettingsControlGroup(label = stringResource(R.string.settings_single_tap)) {
                 TileBehaviorSelector(
                     selected = settings.tileTapBehavior,
@@ -339,6 +333,7 @@ fun SettingsScreen(
                         profiles = sleepProfileOptions,
                         selectedProfileId = settings.sleepProfileId,
                         enabled = settings.sleepProfileEnabled,
+                        containerHeight = density.sizing.numericFieldHeight,
                         onChange = onSleepProfileChange,
                     )
                 }
@@ -470,6 +465,7 @@ private fun SleepProfileSelector(
     profiles: List<PerformanceProfile>,
     selectedProfileId: String?,
     enabled: Boolean,
+    containerHeight: Dp,
     onChange: (String?) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -479,19 +475,19 @@ private fun SleepProfileSelector(
         expanded = expanded,
         onExpandedChange = { if (enabled) expanded = !expanded },
     ) {
-        OutlinedTextField(
+        CtCompactOutlinedField(
             value = selectedProfile?.name ?: stringResource(R.string.settings_select_profile),
             onValueChange = {},
             readOnly = true,
             enabled = enabled,
-            modifier = Modifier
-                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = enabled)
-                .fillMaxWidth(),
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
             },
             colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
-            singleLine = true,
+            containerHeight = containerHeight,
+            modifier = Modifier
+                .menuAnchor(MenuAnchorType.PrimaryNotEditable, enabled = enabled)
+                .fillMaxWidth(),
         )
         ExposedDropdownMenu(
             expanded = expanded,
