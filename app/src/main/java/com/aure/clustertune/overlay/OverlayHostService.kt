@@ -97,10 +97,16 @@ internal data class CompactProfilePickerForegroundUpdate(
     val dismissRequested: Boolean,
 )
 
+internal const val SYSTEM_UI_PACKAGE = "com.android.systemui"
+
 internal fun updateCompactProfilePickerForeground(
     state: CompactProfilePickerForegroundState,
     detected: ForegroundAppInfo?,
+    ignoredPackages: Set<String> = emptySet(),
 ): CompactProfilePickerForegroundUpdate {
+    if (detected != null && detected.packageName in ignoredPackages) {
+        return CompactProfilePickerForegroundUpdate(state.copy(consecutiveNullDetections = 0), false)
+    }
     if (detected == null) {
         if (state.trackedPackageName == null) {
             return CompactProfilePickerForegroundUpdate(state, dismissRequested = false)
@@ -128,6 +134,7 @@ internal fun updateCompactProfilePickerForeground(
 }
 
 class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRegistryOwner {
+    private val foregroundIgnoredPackages by lazy { setOf(packageName, SYSTEM_UI_PACKAGE) }
 
     override val viewModelStore = ViewModelStore()
     private val savedStateController = SavedStateRegistryController.create(this)
@@ -255,11 +262,12 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         foregroundApp: ForegroundAppInfo?,
         initialSettings: AppSettings,
     ): ComposeView {
+        val initialExternal = foregroundApp?.takeUnless { it.packageName in foregroundIgnoredPackages }
         compactProfilePickerForegroundState = CompactProfilePickerForegroundState(
-            trackedPackageName = foregroundApp?.packageName,
-            foregroundApp = foregroundApp,
+            trackedPackageName = initialExternal?.packageName,
+            foregroundApp = initialExternal,
         )
-        compactProfilePickerForeground.value = foregroundApp
+        compactProfilePickerForeground.value = initialExternal
         return OverlayComposeViewFactory.create(this, this, this, this) {
                 val settings by container.settingsStorage.settings.collectAsStateWithLifecycle(
                     initialValue = initialSettings,
@@ -473,6 +481,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                 val update = updateCompactProfilePickerForeground(
                     compactProfilePickerForegroundState,
                     detected,
+                    foregroundIgnoredPackages,
                 )
                 compactProfilePickerForegroundState = update.state
                 // Publish context before requesting dismissal so a delayed removal cannot show stale data.

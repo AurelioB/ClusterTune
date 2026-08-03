@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CompactProfilePickerForegroundTest {
+    private val ignored = setOf("com.aure.clustertune", SYSTEM_UI_PACKAGE)
     private fun app(packageName: String, label: String = packageName) =
         ForegroundAppInfo(packageName = packageName, label = label)
 
@@ -77,5 +78,35 @@ class CompactProfilePickerForegroundTest {
         assertEquals("com.android.launcher", update.state.foregroundApp?.packageName)
         assertTrue(update.dismissRequested)
         assertNull(update.state.foregroundApp?.icon)
+    }
+
+    @Test
+    fun systemUiSampleDoesNotClaimIdentityBeforeGameAppears() {
+        val state = CompactProfilePickerForegroundState()
+        val ignoredUpdate = updateCompactProfilePickerForeground(state, app("com.android.systemui"), ignored)
+        val game = updateCompactProfilePickerForeground(ignoredUpdate.state, app("com.game"), ignored)
+        assertFalse(ignoredUpdate.dismissRequested)
+        assertEquals("com.game", game.state.trackedPackageName)
+        assertFalse(game.dismissRequested)
+    }
+
+    @Test
+    fun ownAppTransientThenGameEstablishesWithoutDismissal() {
+        val own = updateCompactProfilePickerForeground(CompactProfilePickerForegroundState(), app("com.aure.clustertune"), ignored)
+        val game = updateCompactProfilePickerForeground(own.state, app("com.game"), ignored)
+        assertFalse(own.dismissRequested)
+        assertEquals("com.game", game.state.trackedPackageName)
+        assertFalse(game.dismissRequested)
+    }
+
+    @Test
+    fun ignoredSampleAfterTrackingDoesNotDismiss() {
+        val update = updateCompactProfilePickerForeground(
+            CompactProfilePickerForegroundState("com.game", app("com.game")),
+            app(SYSTEM_UI_PACKAGE),
+            ignored,
+        )
+        assertFalse(update.dismissRequested)
+        assertEquals("com.game", update.state.trackedPackageName)
     }
 }

@@ -2,6 +2,7 @@ package com.aure.clustertune.tile
 
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileSource
+import com.aure.clustertune.model.TileInteractionBehavior
 import com.aure.clustertune.model.TunerState
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -32,6 +33,34 @@ class PerformanceTileStateTest {
         )
 
         assertEquals(normal.id, resolveTileProfileId(state))
+    }
+
+    @Test
+    fun `tap actions route overlay permission`() {
+        assertEquals(
+            TileTapAction.SHOW_DIALOG,
+            resolveTileTapAction(TileInteractionBehavior.SHOW_DIALOG, true),
+        )
+        assertEquals(
+            TileTapAction.SHOW_PROFILE_PICKER,
+            resolveTileTapAction(TileInteractionBehavior.SHOW_PROFILE_PICKER, true),
+        )
+        assertEquals(
+            TileTapAction.REQUEST_OVERLAY_PERMISSION,
+            resolveTileTapAction(TileInteractionBehavior.SHOW_DIALOG, false),
+        )
+        assertEquals(
+            TileTapAction.REQUEST_OVERLAY_PERMISSION,
+            resolveTileTapAction(TileInteractionBehavior.SHOW_PROFILE_PICKER, false),
+        )
+        assertEquals(
+            TileTapAction.OPEN_APP,
+            resolveTileTapAction(TileInteractionBehavior.OPEN_APP, false),
+        )
+        assertEquals(
+            TileTapAction.CYCLE_PROFILES,
+            resolveTileTapAction(TileInteractionBehavior.CYCLE_PROFILES, false),
+        )
     }
 
     private fun profile(id: String) = PerformanceProfile(
