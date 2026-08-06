@@ -42,7 +42,7 @@ Detection tries PServer first, then Root. The Odin 2 Mini must use Root. If neit
 
 ## Install
 
-Download [v1.0.1](https://github.com/AurelioB/ClusterTune/releases/tag/v1.0.1) and install `ClusterTune-v1.0.1.apk`.
+Download [v1.0.2](https://github.com/AurelioB/ClusterTune/releases/tag/v1.0.2) and install `ClusterTune-v1.0.2.apk`.
 
 Android may ask the browser or file manager for permission to install the APK. **Install downloaded updates** is separate and optional. It is only needed for updates installed from inside the app.
 
