@@ -135,6 +135,7 @@ fun SettingsScreen(
     onProfileSwitchHistoryLimitChange: (Int) -> Unit,
     onPrivilegedExecutionMethodChange: (String?) -> Unit,
     onAutoDetectPrivilegedExecutionMethod: () -> Unit,
+    onOpenWirelessDebugSetup: (() -> Unit)? = null,
 ) {
     var showResetConfirmation by remember { mutableStateOf(false) }
 
@@ -385,6 +386,7 @@ fun SettingsScreen(
             onAutoDetect = onAutoDetectPrivilegedExecutionMethod,
             onMethodChange = onPrivilegedExecutionMethodChange,
             density = density,
+            onOpenWirelessDebugSetup = onOpenWirelessDebugSetup,
         )
 
         SectionCard(title = stringResource(R.string.settings_profiles), symbol = "swap_vert", density = density) {

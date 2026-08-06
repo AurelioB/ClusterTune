@@ -244,18 +244,20 @@ class WirelessDebugConnectionManager private constructor(
         connectOnUnavailable = onUnavailable
         if (connectResolver != null || wirelessConnectResolver != null) {
             JdwpDebugLog.d("startConnectDiscovery: already running; keeping discovery alive")
-            connectionInfo?.let { onConnected(it) }
+            val existing = connectionInfo
+            if (existing != null) {
+                onConnected(existing)
+            } else {
+                // Not connected yet, but we may have already resolved an endpoint
+                // that failed the handshake because pairing hadn't happened. Retry
+                // it now — this is what makes "pair, then connect" work without
+                // waiting for another mDNS event.
+                lastResolvedEndpoint?.let { (host, port) -> validateAndConnect(host, port) }
+            }
             return
         }
         JdwpDebugLog.d("startConnectDiscovery: starting continuous discovery (tcp + tls-connect)")
-        val handle: (String, Int) -> Unit = { host, port ->
-            if (connectionInfo == null) {
-                val info = AdbConnectionInfo(host, port)
-                connectionInfo = info
-                JdwpDebugLog.d("startConnectDiscovery: CONNECTED $host:$port")
-                connectOnConnected?.invoke(info)
-            }
-        }
+        val handle: (String, Int) -> Unit = { host, port -> validateAndConnect(host, port) }
         connectResolver = with(appContext) {
             resolveAdbTcpConnectPort { host, port -> handle(host, port) }
         }
@@ -265,6 +267,42 @@ class WirelessDebugConnectionManager private constructor(
                 connectOnUnavailable?.invoke()
             }) { host, port -> handle(host, port) }
         }
+    }
+
+    /**
+     * mDNS resolution only tells us the device *advertises* an adb connect
+     * endpoint — it is advertised whether or not this app has been paired. The
+     * old code treated a successful resolve as "CONNECTED", so the UI claimed to
+     * be connected before the user had even entered a pairing code, and the
+     * failure only surfaced later as "handshake failed, wireless pairing is
+     * required!" when a profile was applied.
+     *
+     * We now do what the port scan already did: attempt the real adb handshake
+     * and only report connected if it succeeds. Runs off the main thread.
+     */
+    private fun validateAndConnect(host: String, port: Int) {
+        lastResolvedEndpoint = host to port
+        if (connectionInfo != null || validatingEndpoint) return
+        validatingEndpoint = true
+        Thread {
+            val ok = runCatching {
+                AdbClient.openShell(host, port, connectTimeout = 3000L, maxRetryCount = 1).use { }
+                true
+            }.getOrDefault(false)
+            validatingEndpoint = false
+            if (ok) {
+                val info = AdbConnectionInfo(host, port)
+                connectionInfo = info
+                JdwpDebugLog.d("connect: adb handshake OK -> CONNECTED $host:$port")
+                connectOnConnected?.invoke(info)
+            } else {
+                JdwpDebugLog.w(
+                    "connect: resolved $host:$port but adb handshake FAILED " +
+                        "(not paired yet) — staying disconnected",
+                )
+                connectOnUnavailable?.invoke()
+            }
+        }.also { it.isDaemon = true }.start()
     }
 
     /**
@@ -355,6 +393,14 @@ class WirelessDebugConnectionManager private constructor(
 
     @Volatile
     private var scanning = false
+
+    /** Last endpoint mDNS resolved, so we can re-validate after pairing completes. */
+    @Volatile
+    private var lastResolvedEndpoint: Pair<String, Int>? = null
+
+    /** Guards against overlapping handshake validations. */
+    @Volatile
+    private var validatingEndpoint = false
 
     /**
      * Scan the device's Wi-Fi IP for the adb connect port and, if found,

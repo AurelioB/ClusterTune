@@ -9,6 +9,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -174,6 +175,10 @@ fun MainTunerScreen(
     onErrorMessageShown: () -> Unit,
 ) {
     var dialogProfileId by remember { mutableStateOf<String?>(null) }
+    // Focus targets for the no-root setup panel so D-pad up/down chains between
+    // the two buttons instead of escaping into the nav rail.
+    val setupButtonFocus = remember { FocusRequester() }
+    val connectButtonFocus = remember { FocusRequester() }
     var selectedTab by remember { mutableStateOf(MainTab.PROFILES) }
     var appToConfigure by remember { mutableStateOf<InstalledAppInfo?>(null) }
     var showAppAssignmentDialog by remember { mutableStateOf(false) }
@@ -256,7 +261,12 @@ fun MainTunerScreen(
                                 MaterialTheme.colorScheme.onSurface
                             },
                         )
-                        Button(onClick = onOpenWirelessDebugSetup) {
+                        Button(
+                            onClick = onOpenWirelessDebugSetup,
+                            modifier = Modifier
+                                .focusRequester(setupButtonFocus)
+                                .focusProperties { down = connectButtonFocus },
+                        ) {
                             Text("Set up wireless debugging (no root)")
                         }
                         Text(
@@ -264,7 +274,16 @@ fun MainTunerScreen(
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Button(onClick = onConnectWirelessDebug) {
+                        Button(
+                            onClick = onConnectWirelessDebug,
+                            modifier = Modifier
+                                .focusRequester(connectButtonFocus)
+                                // Without an explicit target, the 2-D focus search
+                                // from Connect goes up-and-left into the nav rail
+                                // (it is geometrically closer) instead of back to
+                                // the Set up button directly above it.
+                                .focusProperties { up = setupButtonFocus },
+                        ) {
                             Text("Connect")
                         }
                     } else {
@@ -1585,6 +1604,14 @@ private fun CenteredModalSurface(
                             false
                         }
                     }
+                    // Trap focus inside the modal. focusGroup alone only *bounds*
+                    // the 2-D search — focus could still escape sideways to the
+                    // nav rail / profile list behind the overlay, and once out
+                    // there was no way back in. Cancelling the group's exit keeps
+                    // focus contained without consuming any key: left/right are
+                    // still delivered to children (needed for slider adjust), they
+                    // just can't move focus out of the modal.
+                    .focusProperties { exit = { FocusRequester.Cancel } }
                     .focusRestorer()
                     .focusGroup(),
             ) {
@@ -1616,6 +1643,10 @@ private fun ProfileNameField(
     if (editing) {
         var everFocused by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { runCatching { editFocus.requestFocus() } }
+        // While editing, Back/B must only leave edit mode (dismissing the
+        // keyboard), NOT close the surrounding dialog. This nested BackHandler is
+        // registered deeper than the modal's, so it wins while it is enabled.
+        BackHandler(enabled = true) { editing = false }
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,

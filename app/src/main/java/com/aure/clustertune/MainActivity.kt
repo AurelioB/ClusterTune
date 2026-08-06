@@ -331,6 +331,10 @@ class MainActivity : ComponentActivity() {
                             onProfileSwitchHistoryLimitChange = viewModel::setProfileSwitchHistoryLimit,
                             onPrivilegedExecutionMethodChange = viewModel::setPrivilegedExecutionMethod,
                             onAutoDetectPrivilegedExecutionMethod = viewModel::autoDetectPrivilegedExecutionMethod,
+                            onOpenWirelessDebugSetup = {
+                                showSettings = false
+                                showWirelessSetup = true
+                            },
                         )
                     } else if (showSupport) {
                         SupportScreen(onBack = { showSupport = false })

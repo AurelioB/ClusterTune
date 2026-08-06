@@ -18,6 +18,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -54,6 +55,12 @@ private val executionMethodInfo = listOf(
         labelRes = R.string.settings_execution_root,
         descriptionRes = R.string.settings_execution_root_description,
     ),
+    // No-root path via on-device wireless debugging (JDWP injection).
+    ExecutionMethodInfo(
+        id = "jdwp-inject",
+        labelRes = R.string.settings_execution_jdwp,
+        descriptionRes = R.string.settings_execution_jdwp_description,
+    ),
 )
 
 @Composable
@@ -62,6 +69,7 @@ internal fun DeviceExecutionMethodCard(
     onAutoDetect: () -> Unit,
     onMethodChange: (String?) -> Unit,
     density: ClusterTuneDensity,
+    onOpenWirelessDebugSetup: (() -> Unit)? = null,
 ) {
     SectionCard(title = stringResource(R.string.settings_execution), symbol = "terminal", density = density) {
         Row(
@@ -88,6 +96,17 @@ internal fun DeviceExecutionMethodCard(
                 onChange = onMethodChange,
                 modifier = Modifier.weight(1f),
             )
+        }
+        // When the no-root wireless-debugging method is in use, expose a way back
+        // into the pairing flow so it can be redone (the connect port changes on
+        // every boot / whenever wireless debugging is toggled).
+        if (selectedMethodId == "jdwp-inject" && onOpenWirelessDebugSetup != null) {
+            OutlinedButton(
+                onClick = onOpenWirelessDebugSetup,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(text = stringResource(R.string.settings_execution_jdwp_setup))
+            }
         }
     }
 }
@@ -171,6 +190,7 @@ private fun PrivilegedExecutionMethodSelector(
     val selectedLabel = when (selectedMethodId) {
         "pserver-stdout" -> stringResource(R.string.settings_execution_pserver)
         "root-shell" -> stringResource(R.string.settings_execution_root)
+        "jdwp-inject" -> stringResource(R.string.settings_execution_jdwp)
         null -> stringResource(R.string.settings_execution_not_selected)
         else -> selectedMethodId
     }

@@ -104,4 +104,7 @@
     <string name="settings_execution_pserver_description">Compatible with AYN and Retroid devices, except Odin 2 Mini.</string>
     <string name="settings_execution_root">Root</string>
     <string name="settings_execution_root_description">Compatible with all rooting methods that provide su.</string>
+    <string name="settings_execution_jdwp">Wireless debugging (no root)</string>
+    <string name="settings_execution_jdwp_description">No root and no PC required. Pair once per boot using Android\'s built-in Wireless debugging. Works on Odin 2 Mini.</string>
+    <string name="settings_execution_jdwp_setup">Set up wireless debugging</string>
 </resources>
