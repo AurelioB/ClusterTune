@@ -6,6 +6,7 @@ import java.io.Closeable
 import java.io.DataInputStream
 import java.io.OutputStream
 import java.net.ConnectException
+import java.net.InetSocketAddress
 import java.net.Socket
 import java.net.SocketTimeoutException
 import java.nio.ByteBuffer
@@ -91,11 +92,23 @@ class AdbClient private constructor(host: String, port: Int) : Closeable {
     private var remoteId = 0
 
     init {
-        socket = Socket(host, port).apply {
+        // A bare Socket(host, port) has NO connect timeout and NO read timeout, so
+        // a port that accepts TCP but never speaks adb (very common when the port
+        // scanner probes every open port) made waitForResponse() block forever.
+        // Because connectAdb/openShell are @Synchronized on the companion, that
+        // one stuck thread deadlocked every later adb call in the whole app.
+        socket = Socket().apply {
             tcpNoDelay = true
+            connect(InetSocketAddress(host, port), SOCKET_CONNECT_TIMEOUT_MS)
+            soTimeout = HANDSHAKE_READ_TIMEOUT_MS
             this@AdbClient.inputStream = DataInputStream(inputStream)
             this@AdbClient.outputStream = outputStream
         }
+    }
+
+    /** Removes the handshake read timeout once the adb connection is up. */
+    internal fun clearHandshakeReadTimeout() {
+        runCatching { socket.soTimeout = 0 }
     }
 
     private fun openShell() {
@@ -212,6 +225,15 @@ class AdbClient private constructor(host: String, port: Int) : Closeable {
         private val MSG_TLS_VERSION = byteArrayOf(83, 84, 76, 83, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -84, -85, -77, -84)
 
         private const val CONNECT_TIMEOUT = 2_000L
+
+        /** TCP connect timeout. Without this a dead host hangs for the OS default. */
+        private const val SOCKET_CONNECT_TIMEOUT_MS = 3_000
+
+        /**
+         * Read timeout applied while establishing/handshaking only. Cleared once
+         * the adb connection is up so long-lived shell / JDWP reads are unaffected.
+         */
+        private const val HANDSHAKE_READ_TIMEOUT_MS = 5_000
         private val LOCK = Object()
 
         @JvmStatic
@@ -276,6 +298,9 @@ class AdbClient private constructor(host: String, port: Int) : Closeable {
                         close()
                         throw ConnectException("failed to connect adb")
                     }
+                    // Connection established: drop the handshake read timeout so
+                    // long-lived shell / JDWP reads can block as long as needed.
+                    clearHandshakeReadTimeout()
                 }
             }.getOrElse {
                 if (it !is ConnectException && maxRetryCount > 0) {
@@ -288,6 +313,7 @@ class AdbClient private constructor(host: String, port: Int) : Closeable {
             init(arrayOf(keyManager), arrayOf(trustManager), SecureRandom())
             (socketFactory.createSocket(this@createSSLSocket, host, port, true) as SSLSocket).apply {
                 tcpNoDelay = true
+                soTimeout = HANDSHAKE_READ_TIMEOUT_MS
                 startHandshake()
             }
         }
