@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -8,8 +9,10 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
-    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
-    <uses-permission android:name="moe.shizuku.manager.permission.API_V23" />
+    <!-- App-op special access required for usage stats inspection. -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
 
     <queries>
         <intent>
@@ -41,7 +44,7 @@
             android:exported="true"
             android:launchMode="singleTop"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
-            android:theme="@style/Theme.ClusterTune.TileDialog">
+            android:theme="@style/Theme.ClusterTune.TileTrampoline">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>
@@ -86,16 +89,8 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="User-requested temporary overlay controls from the Quick Settings tile" />
+                android:value="User-enabled profile controls from Quick Settings or a left-edge gesture" />
         </service>
-
-        <provider
-            android:name="rikka.shizuku.ShizukuProvider"
-            android:authorities="${applicationId}.shizuku"
-            android:enabled="true"
-            android:exported="true"
-            android:multiprocess="false"
-            android:permission="android.permission.INTERACT_ACROSS_USERS_FULL" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

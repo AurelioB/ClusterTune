@@ -33,14 +33,14 @@ class PrivilegedExecutionResolverTest {
         assertTrue(resolver.isAvailable)
         assertEquals("pserver-stdout", resolver.selectedMethodId)
         assertEquals("123", resolver.readText("/sys/test"))
-        assertEquals("ok", resolver.executeScript("apply.sh", "echo ok").getOrThrow())
+        assertEquals("ok", resolver.executeScript("apply.sh", "echo ok", captureResult = true).getOrThrow())
         assertEquals(1, unavailable.probeCount)
         assertEquals(1, pserver.probeCount)
         assertEquals(0, fallback.probeCount)
     }
 
     @Test
-    fun `falls back when stdout method probe fails`() {
+    fun `does not use compatibility method when pserver probe fails`() {
         val stdout = FakeExecutionMethod(
             id = "pserver-stdout",
             probeResult = ExecutionProbeResult(false, false, "no stdout"),
@@ -52,9 +52,10 @@ class PrivilegedExecutionResolverTest {
         )
         val resolver = PrivilegedExecutionResolver(listOf(stdout, fileOutput))
 
-        assertTrue(resolver.isAvailable)
-        assertEquals("pserver-file-output", resolver.selectedMethodId)
-        assertEquals("value", resolver.readText("/protected"))
+        assertFalse(resolver.isAvailable)
+        assertNull(resolver.selectedMethodId)
+        assertNull(resolver.readText("/protected"))
+        assertEquals(0, fileOutput.probeCount)
     }
 
     @Test
@@ -68,7 +69,7 @@ class PrivilegedExecutionResolverTest {
 
         assertFalse(resolver.isAvailable)
         assertNull(resolver.selectedMethodId)
-        assertTrue(resolver.executeScript("apply.sh", "echo ok").isFailure)
+        assertTrue(resolver.executeScript("apply.sh", "echo ok", captureResult = false).isFailure)
     }
 
     @Test
@@ -91,14 +92,41 @@ class PrivilegedExecutionResolverTest {
     }
 
     @Test
-    fun `auto detect persists best available method`() {
+    fun `auto detect skips shizuku and persists root when pserver methods are unavailable`() {
         val pserver = FakeExecutionMethod("pserver-stdout", ExecutionProbeResult(false, false))
+        val fileOutput = FakeExecutionMethod("pserver-file-output", ExecutionProbeResult(false, false))
         val shizuku = FakeExecutionMethod("shizuku", ExecutionProbeResult(true, true))
         val rootShell = FakeExecutionMethod("root-shell", ExecutionProbeResult(true, true))
-        val resolver = PrivilegedExecutionResolver(listOf(rootShell, shizuku, pserver))
+        val resolver = PrivilegedExecutionResolver(listOf(rootShell, shizuku, fileOutput, pserver))
 
-        assertEquals("shizuku", resolver.autoDetectBestMethod())
-        assertEquals("shizuku", resolver.selectedMethodId)
+        assertEquals("root-shell", resolver.autoDetectBestMethod())
+        assertEquals("root-shell", resolver.selectedMethodId)
+        assertEquals(1, pserver.probeCount)
+        assertEquals(0, fileOutput.probeCount)
+        assertEquals(1, rootShell.probeCount)
+        assertEquals(0, shizuku.probeCount)
+    }
+
+    @Test
+    fun `default auto detection prefers pserver then root`() {
+        val probeOrder = mutableListOf<String>()
+        val stdout = FakeExecutionMethod(
+            "pserver-stdout",
+            ExecutionProbeResult(false, false),
+            onProbe = { probeOrder += "pserver-stdout" },
+        )
+        val rootShell = FakeExecutionMethod(
+            "root-shell",
+            ExecutionProbeResult(true, true),
+            onProbe = { probeOrder += "root-shell" },
+        )
+        val resolver = PrivilegedExecutionResolver(listOf(rootShell, stdout))
+
+        assertEquals("root-shell", resolver.autoDetectBestMethod())
+        assertEquals(
+            listOf("pserver-stdout", "root-shell"),
+            probeOrder,
+        )
     }
 
     @Test
@@ -117,7 +145,49 @@ class PrivilegedExecutionResolverTest {
     }
 
     @Test
-    fun `pserver file output executes external script without stdout`() {
+    fun `pserver file output dispatches with output capture disabled`() {
+        val outputDir = temporaryDirectory()
+        val scriptDir = temporaryDirectory()
+        val executor = ShellBackedNoStdoutPServerExecutor()
+        val sourceFile = File(outputDir, "sys-value.txt").also { it.writeText("42") }
+        val method = PServerFileOutputExecutionMethod(
+            context = null,
+            rootExec = executor,
+            outputDirectory = outputDir,
+            scriptDirectory = scriptDir,
+        )
+
+        assertTrue(method.probe().isAvailable)
+        assertEquals("42", method.readText(sourceFile.absolutePath))
+        method.executeScript("apply.sh", "true", captureResult = false).getOrThrow()
+
+        assertTrue(executor.captureOutputArguments.isNotEmpty())
+        assertTrue(executor.captureOutputArguments.all { captureOutput -> !captureOutput })
+    }
+
+    @Test
+    fun `pserver file output uses a distinct bridge file for each read`() {
+        val outputDir = temporaryDirectory()
+        val executor = ShellBackedNoStdoutPServerExecutor()
+        val sourceFile = File(outputDir, "sys-value.txt").also { it.writeText("7") }
+        val method = PServerFileOutputExecutionMethod(
+            context = null,
+            rootExec = executor,
+            outputDirectory = outputDir,
+            scriptDirectory = temporaryDirectory(),
+        )
+
+        assertEquals("7", method.readText(sourceFile.absolutePath))
+        assertEquals("7", method.readText(sourceFile.absolutePath))
+
+        val bridgePaths = executor.commands
+            .mapNotNull { command -> Regex("dispatch-([0-9a-f-]+)\\.sh").find(command)?.value }
+        assertEquals(2, bridgePaths.size)
+        assertEquals(2, bridgePaths.toSet().size)
+    }
+
+    @Test
+    fun `pserver file output bridges captured script output`() {
         val outputDir = temporaryDirectory()
         val scriptDir = temporaryDirectory()
         val sideEffect = File(outputDir, "side-effect.txt")
@@ -131,10 +201,11 @@ class PrivilegedExecutionResolverTest {
         val output = method.executeScript(
             "apply.sh",
             "echo landed > ${shellQuote(sideEffect.absolutePath)}\necho log-line\n",
+            captureResult = true,
         ).getOrThrow()
 
         assertEquals("landed", sideEffect.readText().trim())
-        assertNull(output)
+        assertEquals("log-line\n", output)
     }
 
     private class FakeExecutionMethod(
@@ -142,16 +213,22 @@ class PrivilegedExecutionResolverTest {
         private val probeResult: ExecutionProbeResult,
         private val scriptOutput: String? = null,
         private val reads: Map<String, String> = emptyMap(),
+        private val onProbe: () -> Unit = {},
     ) : PrivilegedExecutionMethod {
         var probeCount = 0
             private set
 
         override fun probe(): ExecutionProbeResult {
             probeCount += 1
+            onProbe()
             return probeResult
         }
 
-        override fun executeScript(scriptName: String, scriptContents: String): Result<String?> {
+        override fun executeScript(
+            scriptName: String,
+            scriptContents: String,
+            captureResult: Boolean,
+        ): Result<String?> {
             return Result.success(scriptOutput)
         }
 
@@ -162,15 +239,27 @@ class PrivilegedExecutionResolverTest {
 
     private class ShellBackedNoStdoutPServerExecutor : PServerRootExecutor {
         override val pServerAvailable: Boolean = true
+        val commands = mutableListOf<String>()
+        val captureOutputArguments = mutableListOf<Boolean>()
 
         override fun executeAsRoot(cmd: String): Result<String?> {
+            return executeAsRoot(cmd, captureOutput = true)
+        }
+
+        override fun executeAsRoot(cmd: String, captureOutput: Boolean): Result<String?> {
+            commands += cmd
+            captureOutputArguments += captureOutput
+            return runShell(cmd)
+        }
+
+        private fun runShell(cmd: String): Result<String?> {
             val process = ProcessBuilder("sh", "-c", cmd)
                 .redirectErrorStream(true)
                 .start()
-            process.inputStream.bufferedReader().readText()
+            val output = process.inputStream.bufferedReader().readText()
             val exitCode = process.waitFor()
             return if (exitCode == 0) {
-                Result.success(null)
+                Result.success(output.takeIf { it.isNotEmpty() })
             } else {
                 Result.failure(IllegalStateException("shell exited $exitCode"))
             }

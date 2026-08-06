@@ -5,10 +5,11 @@
         <item name="android:enforceNavigationBarContrast" tools:targetApi="q">false</item>
     </style>
 
-    <style name="Theme.ClusterTune.TileDialog" parent="Theme.ClusterTune">
+    <style name="Theme.ClusterTune.TileTrampoline" parent="Theme.ClusterTune">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
-        <item name="android:backgroundDimEnabled">true</item>
-        <item name="android:windowCloseOnTouchOutside">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowDisablePreview">true</item>
     </style>
 </resources>
