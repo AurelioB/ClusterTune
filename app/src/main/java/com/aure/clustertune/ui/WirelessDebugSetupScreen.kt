@@ -82,13 +82,19 @@ fun WirelessDebugSetupScreen(
     var connected by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
 
-    // On open, reflect whether we currently have a connection. (Verification is
-    // intentionally non-destructive — it must never tear down a live session,
-    // which previously caused connect→clear→reconnect loops and handshake
-    // failures. A genuinely dead connection surfaces at apply time.)
+    // Set only when a connection is established *during this visit*. The
+    // auto-return below must not fire just because we were already connected
+    // when the screen opened — that made the screen flash "Connected" and bounce
+    // straight back to the main screen, leaving no way to redo setup.
+    var connectedThisVisit by remember { mutableStateOf(false) }
+
+    // On open, do a real liveness check (off the main thread). If the connection
+    // died externally (wireless debugging switched off) this clears it so the
+    // pairing steps are shown again instead of a dead "you're ready" state.
     LaunchedEffect(Unit) {
         if (connectionManager.connectionInfo != null) {
-            val alive = connectionManager.verifyConnection()
+            status = "Checking existing connection…"
+            val alive = withContext(Dispatchers.IO) { connectionManager.verifyConnection() }
             if (alive) {
                 connected = true
                 connectionManager.connectionInfo?.let { info ->
@@ -96,15 +102,15 @@ fun WirelessDebugSetupScreen(
                 }
             } else {
                 connected = false
-                status = "Not connected"
+                status = "Previous connection is no longer active. Reconnect below."
             }
         }
     }
 
     // Once connected, briefly show success then return to the app automatically
     // (also brings ClusterTune back to fullscreen out of the split view).
-    LaunchedEffect(connected) {
-        if (connected) {
+    LaunchedEffect(connected, connectedThisVisit) {
+        if (connected && connectedThisVisit) {
             kotlinx.coroutines.delay(900)
             onBack()
         }
@@ -126,6 +132,7 @@ fun WirelessDebugSetupScreen(
         connectionManager.startConnectDiscovery(
             onConnected = { info ->
                 connected = true
+                connectedThisVisit = true
                 status = "Connected (${info.host}:${info.port}). You're ready."
             },
         )
@@ -138,6 +145,7 @@ fun WirelessDebugSetupScreen(
         connectionManager.startConnectDiscovery(
             onConnected = { info ->
                 connected = true
+                connectedThisVisit = true
                 status = "Connected (${info.host}:${info.port}). You're ready."
             },
             onUnavailable = {
@@ -160,6 +168,7 @@ fun WirelessDebugSetupScreen(
                 connectionManager.scanForConnectPort { info ->
                     if (info != null) {
                         connected = true
+                        connectedThisVisit = true
                         status = "Connected (${info.host}:${info.port}). You're ready."
                     } else {
                         status = "Couldn't connect. Make sure Wireless debugging is ON."
@@ -221,12 +230,27 @@ fun WirelessDebugSetupScreen(
                 OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
                     Text("Done")
                 }
+                Spacer(Modifier.height(8.dp))
+                // Safety net: never leave the user stuck on a "connected" screen.
+                // If the connection is actually dead (e.g. wireless debugging was
+                // switched off) this drops it and reveals the pairing steps again.
+                OutlinedButton(
+                    onClick = {
+                        connectionManager.clearConnection()
+                        connected = false
+                        connectedThisVisit = false
+                        status = "Connection cleared. Pair/connect again below."
+                    },
+                    modifier = Modifier.fillMaxWidth().focusHighlight(),
+                ) {
+                    Text("Reconnect / redo setup")
+                }
             } else {
                 if (!devOptionsEnabled) {
                     Text("1. Turn on Developer options first.")
                     OutlinedButton(
                         onClick = {
-                            openAdjacent(context, Intent(Settings.ACTION_DEVICE_INFO_SETTINGS))
+                            openBuildNumberForDeveloperUnlock(context)
                             devOptionsEnabled = isDevOptionsEnabled(context)
                         },
                         modifier = Modifier.fillMaxWidth().focusHighlight(),
@@ -371,20 +395,78 @@ private fun isDevOptionsEnabled(context: Context): Boolean {
  * back to the Developer options screen. Launched in split screen next to
  * ClusterTune so the pairing dialog stays visible.
  */
+/**
+ * Opens Android's Wireless debugging page.
+ *
+ * Order matters. The explicit ComponentName route (tried first previously) does
+ * not resolve on some vendor ROMs — including the AYN Odin build, where the log
+ * showed "direct wireless-debugging page not found" — so we now try the public
+ * action string first, which is the documented way to reach this page on
+ * Android 11+.
+ *
+ * NOTE: the ":settings:fragment_args_key" extra used in the fallbacks is an
+ * undocumented AOSP internal (it is what Settings search uses to scroll to and
+ * highlight a row). It is best-effort: harmless if the ROM ignores it.
+ */
 private fun openWirelessDebugging(context: Context) {
-    // Known component on AOSP/many OEMs for the wireless-debugging page.
-    val direct = Intent().apply {
-        component = ComponentName(
-            "com.android.settings",
-            "com.android.settings.Settings\$WirelessDebuggingActivity",
-        )
+    val candidates = listOf(
+        // 1. Public action for the wireless-debugging screen (Android 11+).
+        Intent("android.settings.WIRELESS_DEBUGGING_SETTINGS"),
+        // 2. Explicit AOSP component, for ROMs that don't declare the action.
+        Intent().apply {
+            component = ComponentName(
+                "com.android.settings",
+                "com.android.settings.Settings\$WirelessDebuggingActivity",
+            )
+        },
+        // 3. Developer options, scrolled to + highlighting the Wireless
+        //    debugging row so the user only has to tap it.
+        Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
+            putExtra(":settings:fragment_args_key", "toggle_adb_wireless")
+            putExtra(
+                ":settings:show_fragment_args",
+                android.os.Bundle().apply {
+                    putString(":settings:fragment_args_key", "toggle_adb_wireless")
+                },
+            )
+        },
+        // 4. Plain developer options.
+        Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS),
+    )
+    for ((index, intent) in candidates.withIndex()) {
+        if (context.packageManager.resolveActivity(intent, 0) != null) {
+            JdwpDebugLog.d("openWirelessDebugging: using candidate #${index + 1}")
+            openAdjacent(context, intent)
+            return
+        }
     }
-    if (context.packageManager.resolveActivity(direct, 0) != null) {
-        JdwpDebugLog.d("opening Wireless debugging page directly")
-        openAdjacent(context, direct)
-    } else {
-        JdwpDebugLog.d("direct wireless-debugging page not found; opening Developer options")
-        openAdjacent(context, Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS))
+    JdwpDebugLog.w("openWirelessDebugging: no settings activity resolved")
+}
+
+/**
+ * Opens the device-info page with the Build number row highlighted, so the user
+ * can immediately tap it seven times to unlock Developer options. Android has no
+ * public API to jump straight to Build number; the highlight extra below is the
+ * same undocumented mechanism Settings search uses, so treat it as best-effort.
+ */
+private fun openBuildNumberForDeveloperUnlock(context: Context) {
+    val args = android.os.Bundle().apply {
+        putString(":settings:fragment_args_key", "build_number")
+    }
+    val candidates = listOf(
+        Intent(Settings.ACTION_DEVICE_INFO_SETTINGS).apply {
+            putExtra(":settings:fragment_args_key", "build_number")
+            putExtra(":settings:show_fragment_args", args)
+        },
+        Intent(Settings.ACTION_DEVICE_INFO_SETTINGS),
+        Intent(Settings.ACTION_SETTINGS),
+    )
+    for ((index, intent) in candidates.withIndex()) {
+        if (context.packageManager.resolveActivity(intent, 0) != null) {
+            JdwpDebugLog.d("openBuildNumber: using candidate #${index + 1}")
+            openAdjacent(context, intent)
+            return
+        }
     }
 }
 

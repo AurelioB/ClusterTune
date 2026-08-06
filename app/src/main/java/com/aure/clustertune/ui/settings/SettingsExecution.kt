@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.res.stringResource
@@ -205,14 +206,20 @@ private fun PrivilegedExecutionMethodSelector(
             color = MaterialTheme.colorScheme.surfaceContainerHighest,
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
+                    // weight + ellipsis: long labels (e.g. "Wireless debugging
+                    // (no root)") previously overflowed and collided with the
+                    // trailing "Change" text instead of truncating.
+                    modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp),
                     text = selectedLabel,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = stringResource(R.string.settings_change),

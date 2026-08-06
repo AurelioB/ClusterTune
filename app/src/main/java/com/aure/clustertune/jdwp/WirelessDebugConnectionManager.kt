@@ -109,21 +109,30 @@ class WirelessDebugConnectionManager private constructor(
      * stale "connected" flag. Runs a cheap shell probe; call off the main thread.
      */
     /**
-     * Reports whether we currently believe we have a connection, for UI display.
+     * Returns true if the connection is genuinely alive, clearing it if not.
      *
-     * IMPORTANT: this must NOT tear the connection down. An earlier version opened
-     * a shell here as a "liveness test" and called clearConnection() if that
-     * failed — but the shell transport and the JDWP transport are independent, so
-     * on some devices/networks the shell open fails while the JDWP session is
-     * perfectly alive. That false negative destroyed working sessions on every
-     * resume / setup-screen open, producing a connect→clear→reconnect→clear loop
-     * and "handshake failed" on apply. We now only report presence and never
-     * clear here. A genuinely dead connection is detected + dropped lazily at
-     * apply time (injectExecPersistent/sharedShell drop their sessions on real
-     * failure), which is the correct, non-destructive place to notice it.
+     * This performs the same real adb handshake used to establish the connection.
+     * An earlier version probed via sharedShell() and cleared on any failure,
+     * which wrongly destroyed live sessions (the shell and JDWP transports are
+     * independent). A later version avoided that by never clearing — but then a
+     * connection killed externally (wireless debugging turned off) was never
+     * noticed, so the UI kept showing profiles and offered no way to reconnect.
+     *
+     * Doing the real handshake is now safe because AdbClient has bounded connect
+     * and read timeouts, so this cannot hang. Call off the main thread.
      */
     fun verifyConnection(): Boolean {
-        return connectionInfo != null
+        val conn = connectionInfo ?: return false
+        val alive = runCatching {
+            AdbClient.openShell(conn.host, conn.port, connectTimeout = 3000L, maxRetryCount = 1)
+                .use { }
+            true
+        }.getOrDefault(false)
+        if (!alive) {
+            JdwpDebugLog.w("verifyConnection: ${conn.host}:${conn.port} is dead — clearing")
+            clearConnection()
+        }
+        return alive
     }
 
     // ---- Persistent JDWP session (reused across applies) --------------------
