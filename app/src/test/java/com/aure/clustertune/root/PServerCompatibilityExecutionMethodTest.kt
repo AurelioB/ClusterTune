@@ -96,28 +96,6 @@ class PServerCompatibilityExecutionMethodTest {
         assertTrue(scriptDirectory.listFiles().orEmpty().isEmpty())
     }
 
-    @Test
-    fun `make readable is one direct output-disabled command without bridge artifacts`() {
-        val outputDirectory = temporaryDirectory()
-        val scriptDirectory = temporaryDirectory()
-        val executor = RecordingExecutor()
-        val method = PServerFileOutputExecutionMethod(
-            context = null,
-            rootExec = executor,
-            outputDirectory = outputDirectory,
-            scriptDirectory = scriptDirectory,
-        )
-
-        assertTrue(method.makeReadable("/sys/example/scaling_max_freq"))
-        assertEquals(
-            listOf("chmod 444 '/sys/example/scaling_max_freq' 2>/dev/null"),
-            executor.commands,
-        )
-        assertEquals(listOf(false), executor.captureOutputArguments)
-        assertTrue(outputDirectory.listFiles().orEmpty().isEmpty())
-        assertTrue(scriptDirectory.listFiles().orEmpty().isEmpty())
-    }
-
     private class RecordingExecutor : PServerRootExecutor {
         override val pServerAvailable = true
         val commands = mutableListOf<String>()

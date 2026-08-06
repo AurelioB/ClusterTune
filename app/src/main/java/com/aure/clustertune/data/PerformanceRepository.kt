@@ -14,6 +14,7 @@ import com.aure.clustertune.root.PerformanceCommandBuilder
 import com.aure.clustertune.root.RootCommandRunner
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -21,6 +22,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 
 private data class StorageState(
@@ -43,6 +46,8 @@ private data class PartialStorageState(
     val profileSwitchHistory: List<ProfileSwitchHistoryEntry>,
 )
 
+internal data class ResolvedPerformanceTarget(val values: Map<Int, Int>, val profileId: String?, val isReset: Boolean)
+
 internal data class ImportedProfileMerge(
     val profiles: List<PerformanceProfile>,
     val restoredBundledProfileIds: Set<String>,
@@ -57,8 +62,12 @@ class PerformanceRepository(
     private val rootCommandRunner: RootCommandRunner,
 ) {
     companion object {
+        const val SYSFS_REPAIR_VERSION = 1
         @Volatile
         private var processCachedPolicies: List<CpuPolicyInfo> = emptyList()
+        private val processApplyMutex = Mutex()
+        private const val APPLY_VERIFICATION_ATTEMPTS = 5
+        private const val APPLY_VERIFICATION_DELAY_MS = 40L
     }
 
     data class ApplyOutcome(
@@ -121,8 +130,12 @@ class PerformanceRepository(
                     }
                 } else {
                     val liveValues = detector.readCurrentMaxValues(cachedPolicies)
+                    val liveMinValues = detector.readCurrentMinValues(cachedPolicies)
                     cachedPolicies.map { policy ->
-                        policy.copy(currentMaxFreq = liveValues[policy.id] ?: policy.currentMaxFreq)
+                        policy.copy(
+                            currentMaxFreq = liveValues[policy.id] ?: policy.currentMaxFreq,
+                            minFreq = liveMinValues[policy.id] ?: policy.minFreq,
+                        )
                     }
                 }
                 val actualValues = policies.associate { it.id to it.currentMaxFreq }
@@ -206,60 +219,132 @@ class PerformanceRepository(
         )
     }
 
+    /** Repairs stale minimum nodes left locked or raised by older releases. */
+    suspend fun repairSysfsMinimumsIfNeeded(): Result<Unit> {
+        if (profileStorage.sysfsRepairVersion.first() >= SYSFS_REPAIR_VERSION) return Result.success(Unit)
+        return processApplyMutex.withLock {
+            // Multiple services can create their own AppContainer at startup.
+            // Recheck after taking the process-wide lock so only one migration runs.
+            if (profileStorage.sysfsRepairVersion.first() >= SYSFS_REPAIR_VERSION) {
+                return@withLock Result.success(Unit)
+            }
+            val policies = detector.detectPolicies()
+            if (policies.isEmpty() || policies.any { it.hardwareMinFreq <= 0 }) {
+                return@withLock Result.failure(IllegalStateException("CPU policy minimums unavailable"))
+            }
+            val execution = rootCommandRunner.executeScript(commandBuilder.buildMinimumRepairScript(policies))
+            if (execution.isFailure) return@withLock execution.map { Unit }
+            val currentMax = detector.readCurrentMaxValues(policies)
+            val currentMin = detector.readCurrentMinValues(policies)
+            val verified = policies.all { policy ->
+                val min = currentMin[policy.id]
+                val max = currentMax[policy.id]
+                min != null && min > 0 && max != null && min <= max
+            }
+            if (!verified) return@withLock Result.failure(IllegalStateException("CPU minimum repair verification failed"))
+            profileStorage.markSysfsRepairComplete(SYSFS_REPAIR_VERSION)
+            Result.success(Unit)
+        }
+    }
+
     private suspend fun applyValuesInternal(
         policies: List<CpuPolicyInfo>,
         selectedValues: Map<Int, Int>,
         isReset: Boolean,
         appliedDisplayProfileId: String?,
         persistNormalState: Boolean,
+        allowObservedMaxValues: Boolean = false,
+    ): Result<ApplyOutcome> {
+        return processApplyMutex.withLock {
+            applyValuesLocked(policies, selectedValues, isReset, appliedDisplayProfileId, persistNormalState, allowObservedMaxValues)
+        }
+    }
+
+    private suspend fun applyValuesLocked(
+        policies: List<CpuPolicyInfo>,
+        selectedValues: Map<Int, Int>,
+        isReset: Boolean,
+        appliedDisplayProfileId: String?,
+        persistNormalState: Boolean,
+        allowObservedMaxValues: Boolean = false,
     ): Result<ApplyOutcome> {
         val filtered = selectedValues.filterKeys { policyId -> policies.any { it.id == policyId } }
-        val script = commandBuilder.buildApplyScript(policies, filtered, isReset)
+        if (!isCompleteValidValues(filtered, policies, isReset || allowObservedMaxValues)) {
+            return Result.failure(IllegalArgumentException("Invalid CPU policy values"))
+        }
+        val script = runCatching {
+            commandBuilder.buildApplyScript(policies, filtered, isReset)
+        }.getOrElse { error ->
+            return Result.failure(error)
+        }
+        if (script.isBlank()) return Result.failure(IllegalStateException("Empty CPU apply script"))
         return rootCommandRunner.executeScript(script).mapCatching { output ->
-            if (persistNormalState) {
-                profileStorage.persistLastValues(filtered)
-                profileStorage.persistLastAppliedDisplayProfile(appliedDisplayProfileId)
+            var actualValues = emptyMap<Int, Int>()
+            var actualMinValues = emptyMap<Int, Int>()
+            var verified = false
+            for (attempt in 0 until APPLY_VERIFICATION_ATTEMPTS) {
+                if (attempt > 0) delay(APPLY_VERIFICATION_DELAY_MS)
+                actualValues = detector.readCurrentMaxValues(policies)
+                actualMinValues = detector.readCurrentMinValues(policies)
+                val maxesMatch = filtered.all { (policyId, requestedValue) ->
+                    val policy = policies.firstOrNull { it.id == policyId } ?: return@all false
+                    val actualValue = actualValues[policyId] ?: return@all false
+                    actualValue == requestedValue || (
+                        (isReset || allowObservedMaxValues) &&
+                            ProfileStateResolver.isPolicyValueSatisfied(policy, requestedValue, actualValue)
+                    )
+                }
+                val minsMatch = policies.all { policy ->
+                    val actualMin = actualMinValues[policy.id] ?: return@all false
+                    val actualMax = actualValues[policy.id] ?: return@all false
+                    actualMin > 0 && actualMin <= actualMax &&
+                        actualMin <= (filtered[policy.id] ?: actualMax)
+                }
+                if (maxesMatch && minsMatch) {
+                    verified = true
+                    break
+                }
             }
-            val actualValues = detector.readCurrentMaxValues(policies)
+            if (!verified) {
+                throw IllegalStateException(
+                    "CPU policy verification failed: max=$actualValues min=$actualMinValues",
+                )
+            }
+            if (persistNormalState) {
+                val completeValues = policies.associate { policy -> policy.id to filtered.getValue(policy.id) }
+                profileStorage.persistNormalProfileState(completeValues, appliedDisplayProfileId)
+            }
             refreshLiveValues()
             ApplyOutcome(
                 actualValues = actualValues,
-                verificationPassed = filtered.all { (policyId, requestedValue) ->
-                    val policy = policies.firstOrNull { it.id == policyId } ?: return@all false
-                    val actualValue = actualValues[policyId] ?: return@all false
-                    ProfileStateResolver.isPolicyValueSatisfied(
-                        policy = policy,
-                        requestedValue = requestedValue,
-                        actualValue = actualValue,
-                    )
-                },
+                verificationPassed = true,
                 commandOutput = output,
             )
         }
     }
 
+
     suspend fun applySleepProfile(profileId: String): Result<ApplyOutcome> {
         if (!rootCommandRunner.isAvailable) {
             return Result.failure(IllegalStateException("PServer not available"))
         }
-        val state = observeState().first()
-        if (state.policies.isEmpty()) {
-            return Result.failure(IllegalStateException("No CPU clusters found"))
-        }
-        val sleepProfile = state.displayProfiles.firstOrNull { profile -> profile.id == profileId }
-            ?: return Result.failure(IllegalStateException("Sleep profile is unavailable"))
-        val currentValues = detector.readCurrentMaxValues(state.policies)
-        profileStorage.persistSleepRestoreState(
-            values = currentValues,
-            profileId = state.activeDisplayProfileId ?: state.lastAppliedDisplayProfileId,
-        )
-        val result = applyValuesInternal(
-            policies = state.policies,
-            selectedValues = sleepProfile.maxFrequencies,
-            isReset = sleepProfile.id == ProfileStateResolver.STOCK_PROFILE_ID,
-            appliedDisplayProfileId = sleepProfile.id,
-            persistNormalState = false,
-        )
+        val resultAndProfile = processApplyMutex.withLock {
+            val state = observeState().first()
+            if (state.policies.isEmpty()) return@withLock null
+            val sleepProfile = state.displayProfiles.firstOrNull { profile -> profile.id == profileId }
+                ?: return@withLock null
+            ensureNormalBaselineLocked(state)
+            val currentValues = detector.readCurrentMaxValues(state.policies)
+            // SCREEN_OFF can be delivered repeatedly while the display is
+            // transitioning. Preserve the first pre-sleep snapshot until the
+            // corresponding wake restore consumes it.
+            if (profileStorage.sleepRestoreValues.first().isEmpty()) {
+                profileStorage.persistSleepRestoreState(currentValues, state.activeDisplayProfileId ?: state.lastAppliedDisplayProfileId)
+            }
+            applyValuesLocked(state.policies, sleepProfile.maxFrequencies, sleepProfile.id == ProfileStateResolver.STOCK_PROFILE_ID, sleepProfile.id, false) to sleepProfile
+        } ?: return Result.failure(IllegalStateException("Sleep profile is unavailable"))
+        val result = resultAndProfile.first
+        val sleepProfile = resultAndProfile.second
         if (result.isSuccess) {
             logProfileSwitch(
                 profileId = sleepProfile.id,
@@ -278,17 +363,31 @@ class PerformanceRepository(
         if (policies.isEmpty()) {
             return Result.failure(IllegalStateException("No CPU clusters found"))
         }
-        val restoreValues = profileStorage.sleepRestoreValues.first()
-        if (restoreValues.isEmpty()) {
-            return Result.failure(IllegalStateException("No sleep restore state"))
-        }
-        val restoreProfileId = profileStorage.sleepRestoreDisplayProfileId.first()
-        val filteredValues = restoreValues.filterKeys { policyId ->
-            policies.any { it.id == policyId }
-        }
-        if (filteredValues.isEmpty()) {
-            return Result.failure(IllegalStateException("No stored values match detected policies"))
-        }
+        val resultAndName = processApplyMutex.withLock {
+            val restoreValues = profileStorage.sleepRestoreValues.first()
+            // A wake broadcast can be delivered more than once. The snapshot
+            // is consumed only after a successful restore, so an empty value
+            // set means there is no pending sleep transition to restore. Do
+            // not fall back to the normal profile on a duplicate wake: that
+            // could overwrite a profile selected after the first wake.
+            if (restoreValues.isEmpty()) return@withLock null
+            val restoreProfileId = profileStorage.sleepRestoreDisplayProfileId.first()
+            val state = observeState().first()
+            val target = resolvePersistedTarget(policies, state.displayProfiles, restoreProfileId, restoreValues)
+                ?: return@withLock null
+            val result = applyValuesLocked(
+                policies,
+                target.values,
+                target.isReset,
+                target.profileId,
+                false,
+                allowObservedMaxValues = allowsObservedMaxValues(target, policies),
+            )
+                .onSuccess { profileStorage.clearSleepRestoreState() }
+            result to target.profileId
+        } ?: return Result.failure(IllegalStateException("No valid sleep restore state"))
+        val result = resultAndName.first
+        val restoreProfileId = resultAndName.second
         val restoreProfileName = when (restoreProfileId) {
             ProfileStateResolver.STOCK_PROFILE_ID -> "Stock"
             null,
@@ -296,20 +395,6 @@ class PerformanceRepository(
             else -> observeState().first().displayProfiles.firstOrNull { profile ->
                 profile.id == restoreProfileId
             }?.name ?: "Previous profile"
-        }
-        val result = applyValuesInternal(
-            policies = policies,
-            selectedValues = filteredValues,
-            isReset = restoreProfileId == ProfileStateResolver.STOCK_PROFILE_ID,
-            appliedDisplayProfileId = restoreProfileId,
-            persistNormalState = true,
-        ).onSuccess {
-            profileStorage.persistSelectedProfile(
-                restoreProfileId?.takeUnless { id ->
-                    id == ProfileStateResolver.STOCK_PROFILE_ID || id == ProfileStateResolver.MANUAL_PROFILE_ID
-                },
-            )
-            profileStorage.clearSleepRestoreState()
         }
         if (result.isSuccess) {
             logProfileSwitch(
@@ -329,26 +414,29 @@ class PerformanceRepository(
         if (policies.isEmpty()) {
             return Result.failure(IllegalStateException("No CPU clusters found"))
         }
-        val persistedValues = profileStorage.lastValues.first()
-        if (persistedValues.isEmpty()) {
-            return Result.failure(IllegalStateException("No stored values to apply"))
+        return processApplyMutex.withLock {
+            val state = observeState().first()
+            ensureNormalBaselineLocked(state.copy(policies = policies))
+            val persistedValues = profileStorage.lastValues.first()
+            val lastAppliedDisplayProfileId = profileStorage.lastAppliedDisplayProfileId.first()
+            val target = resolvePersistedTarget(
+                policies,
+                state.displayProfiles,
+                lastAppliedDisplayProfileId,
+                persistedValues,
+            ) ?: return@withLock Result.failure(IllegalStateException("No valid stored values to apply"))
+            if (target.profileId == ProfileStateResolver.STOCK_PROFILE_ID) {
+                return@withLock Result.failure(IllegalStateException("Boot apply skipped: stock is active"))
+            }
+            applyValuesLocked(
+                policies,
+                target.values,
+                target.isReset,
+                target.profileId,
+                true,
+                allowObservedMaxValues = allowsObservedMaxValues(target, policies),
+            )
         }
-        val lastAppliedDisplayProfileId = profileStorage.lastAppliedDisplayProfileId.first()
-        if (lastAppliedDisplayProfileId == ProfileStateResolver.STOCK_PROFILE_ID) {
-            return Result.failure(IllegalStateException("Boot apply skipped: stock is active"))
-        }
-        val filteredValues = persistedValues.filterKeys { policyId ->
-            policies.any { it.id == policyId }
-        }
-        if (filteredValues.isEmpty()) {
-            return Result.failure(IllegalStateException("No stored values match detected policies"))
-        }
-        return applyValues(
-            policies = policies,
-            selectedValues = filteredValues,
-            isReset = false,
-            appliedDisplayProfileId = lastAppliedDisplayProfileId,
-        )
     }
 
     suspend fun cycleTileProfile(): Result<PerformanceProfile> {
@@ -505,65 +593,73 @@ class PerformanceRepository(
     }
 
     suspend fun applyProfileTemporarily(profileId: String): Result<ApplyOutcome> {
-        val state = observeState().first()
-        if (!state.isPServerAvailable || state.policies.isEmpty()) {
-            return Result.failure(IllegalStateException("Profile automation is unavailable"))
+        return processApplyMutex.withLock {
+            val state = observeState().first()
+            if (!state.isPServerAvailable || state.policies.isEmpty()) return@withLock Result.failure(IllegalStateException("Profile automation is unavailable"))
+            ensureNormalBaselineLocked(state)
+            val profile = state.displayProfiles.firstOrNull { it.id == profileId }
+                ?: return@withLock Result.failure(IllegalStateException("App profile is unavailable"))
+            applyValuesLocked(state.policies, profile.maxFrequencies, profile.id == ProfileStateResolver.STOCK_PROFILE_ID, profile.id, false)
         }
-        val profile = state.displayProfiles.firstOrNull { it.id == profileId }
-            ?: return Result.failure(IllegalStateException("App profile is unavailable"))
-        return applyValuesInternal(
-            policies = state.policies,
-            selectedValues = profile.maxFrequencies,
-            isReset = profile.id == ProfileStateResolver.STOCK_PROFILE_ID,
-            appliedDisplayProfileId = profile.id,
-            persistNormalState = false,
-        )
     }
 
     suspend fun applyAppProfileTemporarily(assignment: AppProfileAssignment): Result<ApplyOutcome> {
-        val state = observeState().first()
-        if (!state.isPServerAvailable || state.policies.isEmpty()) {
-            return Result.failure(IllegalStateException("Profile automation is unavailable"))
+        return processApplyMutex.withLock {
+            val state = observeState().first()
+            if (!state.isPServerAvailable || state.policies.isEmpty()) return@withLock Result.failure(IllegalStateException("Profile automation is unavailable"))
+            ensureNormalBaselineLocked(state)
+            val values = if (assignment.isCustom) assignment.customMaxFrequencies else {
+                val profile = state.displayProfiles.firstOrNull { it.id == assignment.profileId }
+                    ?: return@withLock Result.failure(IllegalStateException("App profile is unavailable"))
+                profile.maxFrequencies
+            }
+            val filteredValues = values.filterKeys { policyId -> state.policies.any { it.id == policyId } }
+            if (filteredValues.isEmpty()) return@withLock Result.failure(IllegalStateException("App profile has no matching CPU policies"))
+            val completeValues = if (assignment.isCustom) {
+                mergeCustomValues(state.policies, filteredValues, profileStorage.lastValues.first())
+                    ?: return@withLock Result.failure(IllegalStateException("App profile has invalid CPU policies"))
+            } else filteredValues
+            applyValuesLocked(state.policies, completeValues, !assignment.isCustom && assignment.profileId == ProfileStateResolver.STOCK_PROFILE_ID, assignment.profileId, false, assignment.isCustom)
         }
-        val values = if (assignment.isCustom) {
-            assignment.customMaxFrequencies
-        } else {
-            val profile = state.displayProfiles.firstOrNull { it.id == assignment.profileId }
-                ?: return Result.failure(IllegalStateException("App profile is unavailable"))
-            profile.maxFrequencies
-        }
-        val filteredValues = values.filterKeys { policyId -> state.policies.any { it.id == policyId } }
-        if (filteredValues.isEmpty()) {
-            return Result.failure(IllegalStateException("App profile has no matching CPU policies"))
-        }
-        return applyValuesInternal(
-            policies = state.policies,
-            selectedValues = filteredValues,
-            isReset = !assignment.isCustom && assignment.profileId == ProfileStateResolver.STOCK_PROFILE_ID,
-            appliedDisplayProfileId = assignment.profileId,
-            persistNormalState = false,
-        )
     }
 
     suspend fun restoreNormalProfileTemporarily(): Result<ApplyOutcome> {
-        val state = observeState().first()
-        if (!state.isPServerAvailable || state.policies.isEmpty()) {
-            return Result.failure(IllegalStateException("Profile automation is unavailable"))
+        return processApplyMutex.withLock {
+            val state = observeState().first()
+            if (!state.isPServerAvailable || state.policies.isEmpty()) return@withLock Result.failure(IllegalStateException("Profile automation is unavailable"))
+            ensureNormalBaselineLocked(state)
+            val id = profileStorage.lastAppliedDisplayProfileId.first()
+            val values = profileStorage.lastValues.first()
+            val target = resolvePersistedTarget(state.policies, state.displayProfiles, id, values)
+                ?: return@withLock Result.failure(IllegalStateException("No previous profile to restore"))
+            applyValuesLocked(
+                state.policies,
+                target.values,
+                target.isReset,
+                target.profileId,
+                false,
+                allowObservedMaxValues = allowsObservedMaxValues(target, state.policies),
+            )
         }
-        val restoreProfileId = profileStorage.lastAppliedDisplayProfileId.first()
-        val restoreProfile = restoreProfileId?.let { id ->
-            state.displayProfiles.firstOrNull { it.id == id }
+    }
+
+    private suspend fun ensureNormalBaselineLocked(state: TunerState) {
+        val values = profileStorage.lastValues.first()
+        val id = profileStorage.lastAppliedDisplayProfileId.first()
+        val resolved = resolvePersistedTarget(state.policies, state.displayProfiles, id, values)
+        if (resolved != null) {
+            if (resolved.values != values || resolved.profileId != id) {
+                profileStorage.persistNormalProfileState(resolved.values, resolved.profileId)
+            }
+            return
         }
-        val restoreValues = restoreProfile?.maxFrequencies
-            ?: profileStorage.lastValues.first().takeIf { it.isNotEmpty() }
-            ?: return Result.failure(IllegalStateException("No previous profile to restore"))
-        return applyValuesInternal(
-            policies = state.policies,
-            selectedValues = restoreValues,
-            isReset = restoreProfileId == ProfileStateResolver.STOCK_PROFILE_ID,
-            appliedDisplayProfileId = restoreProfileId,
-            persistNormalState = false,
-        )
+        // Live values can be a temporary app-profile cap that survived an
+        // update or process restart. Do not infer a named/manual baseline from
+        // those values when persisted state is missing or invalid. Re-establish
+        // a deterministic Stock target from observed hardware ceilings,
+        // including bins hidden from the selectable-frequency list.
+        val fallback = resolveLegacyStockBaseline(state.policies)
+        profileStorage.persistNormalProfileState(fallback.values, fallback.profileId)
     }
 
     suspend fun logProfileSwitch(profileId: String?, profileName: String, trigger: String) {
@@ -714,3 +810,66 @@ internal fun supportedAppProfileAssignments(
                 assignment.profileId in supportedProfileIds)
     }
 }
+
+private fun isCompleteValidValues(values: Map<Int, Int>, policies: List<CpuPolicyInfo>, isReset: Boolean = false): Boolean =
+    policies.isNotEmpty() && policies.all { policy ->
+        val value = values[policy.id]
+        value != null && (value in policy.supportedFrequencies || (isReset && value == policy.observedMaxFreq))
+    }
+
+internal fun mergeCustomValues(
+    policies: List<CpuPolicyInfo>, customValues: Map<Int, Int>, baselineValues: Map<Int, Int>,
+): Map<Int, Int>? {
+    if (customValues.keys.any { id -> policies.none { it.id == id } }) return null
+    val merged = policies.associate { policy ->
+        val custom = customValues[policy.id]
+        if (custom != null) {
+            if (custom !in policy.supportedFrequencies) return null
+            policy.id to custom
+        } else {
+            val baseline = baselineValues[policy.id] ?: return null
+            if (baseline !in policy.supportedFrequencies && baseline != policy.observedMaxFreq) return null
+            policy.id to baseline
+        }
+    }
+    return merged
+}
+
+internal fun resolvePersistedTarget(
+    policies: List<CpuPolicyInfo>, profiles: List<PerformanceProfile>, profileId: String?, values: Map<Int, Int>,
+): ResolvedPerformanceTarget? {
+    val profile = profileId?.let { id -> profiles.firstOrNull { it.id == id } }
+    fun normalized(source: Map<Int, Int>): Map<Int, Int> = policies.associate { it.id to source.getValue(it.id) }
+    if (profile != null) {
+        val reset = profile.id == ProfileStateResolver.STOCK_PROFILE_ID
+        return profile.maxFrequencies.takeIf { isCompleteValidValues(it, policies, reset) }
+            ?.let { ResolvedPerformanceTarget(normalized(it), profile.id, reset) }
+    }
+    if (profileId != null && profileId != ProfileStateResolver.MANUAL_PROFILE_ID) {
+        if (!isCompleteValidValues(values, policies, true)) return null
+        return ResolvedPerformanceTarget(normalized(values), ProfileStateResolver.MANUAL_PROFILE_ID, false)
+    }
+    return values.takeIf { isCompleteValidValues(it, policies, true) }
+        ?.let { ResolvedPerformanceTarget(normalized(it), ProfileStateResolver.MANUAL_PROFILE_ID, false) }
+}
+
+/**
+ * Returns the safe baseline used to repair missing or invalid legacy state.
+ * Stock is defined by the observed policy ceiling, rather than the current
+ * sysfs value, which may still reflect a temporary app-profile cap.
+ */
+internal fun resolveLegacyStockBaseline(policies: List<CpuPolicyInfo>): ResolvedPerformanceTarget {
+    val values = policies.associate { policy -> policy.id to policy.observedMaxFreq }
+    return ResolvedPerformanceTarget(
+        values = values,
+        profileId = ProfileStateResolver.STOCK_PROFILE_ID,
+        isReset = true,
+    )
+}
+
+internal fun allowsObservedMaxValues(target: ResolvedPerformanceTarget, policies: List<CpuPolicyInfo>): Boolean =
+    target.values.any { (policyId, value) ->
+        policies.firstOrNull { it.id == policyId }?.let { policy ->
+            value == policy.observedMaxFreq && value !in policy.supportedFrequencies
+        } == true
+    }

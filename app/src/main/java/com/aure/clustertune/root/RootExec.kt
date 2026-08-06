@@ -32,10 +32,10 @@ class RootExec : PServerRootExecutor {
         return try {
             data.writeStringArray(arrayOf(cmd, if (captureOutput) "1" else "0"))
             val accepted = activeBinder.transact(0, data, reply, 0)
-            if (captureOutput) {
-                check(accepted) { "PServer rejected the transaction" }
-            }
-            // Output-disabled calls have no reply contract. Their effects are verified by callers.
+            // Binder returning false means the transaction was not delivered.  Treat this as a
+            // failure for both output modes; otherwise output-disabled writes would be reported as
+            // successful even though no command ran.
+            check(accepted) { "PServer rejected the transaction" }
             Result.success(if (captureOutput) decodeReply(reply) else null)
         } catch (throwable: Throwable) {
             if (!activeBinder.isBinderAlive) {

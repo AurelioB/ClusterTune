@@ -31,13 +31,17 @@ class ForegroundAppResolver(context: Context) {
             when (event.eventType) {
                 UsageEvents.Event.ACTIVITY_RESUMED,
                 UsageEvents.Event.MOVE_TO_FOREGROUND -> {
-                    tracker.onActivityResumed(event.packageName, event.className)
+                    tracker.onActivityResumed(event.packageName, event.className, event.timeStamp)
                 }
                 UsageEvents.Event.ACTIVITY_PAUSED,
                 UsageEvents.Event.MOVE_TO_BACKGROUND -> {
-                    tracker.onActivityPaused(event.packageName, event.className)
+                    tracker.onActivityPaused(event.packageName, event.className, event.timeStamp)
                 }
-                UsageEvents.Event.ACTIVITY_STOPPED -> tracker.onActivityStopped()
+                UsageEvents.Event.ACTIVITY_STOPPED -> tracker.onActivityStopped(
+                    event.packageName,
+                    event.className,
+                    event.timeStamp,
+                )
             }
         }
 

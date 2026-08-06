@@ -16,6 +16,7 @@ class CpuPolicyDetectorTest {
             files = mapOf(
                 "/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq" to "2745600",
                 "/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_max_freq" to "3532800",
+                "/sys/devices/system/cpu/cpufreq/policy0/cpuinfo_min_freq" to "307200",
                 "/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq" to "998400",
                 "/sys/devices/system/cpu/cpufreq/policy0/scaling_available_frequencies" to "998400 1785600 2227200 2745600",
                 "/sys/devices/system/cpu/cpufreq/policy0/affected_cpus" to "0 1 2 3 4 5",
@@ -38,6 +39,7 @@ class CpuPolicyDetectorTest {
         assertEquals(listOf(0, 1, 2, 3, 4, 5), result.first().cpuIds)
         assertEquals(listOf(6, 7), result.last().cpuIds)
         assertEquals(listOf(998400, 1785600, 2227200, 2745600), result.first().supportedFrequencies)
+        assertEquals(307200, result.first().hardwareMinFreq)
         assertEquals(3072000, result.last().selectableMaxFreq)
         assertEquals(4320000, result.last().observedMaxFreq)
     }
@@ -78,6 +80,7 @@ class CpuPolicyDetectorTest {
             files = mapOf(
                 "/sys/devices/system/cpu/cpufreq/policy2/scaling_max_freq" to "2100000",
                 "/sys/devices/system/cpu/cpufreq/policy2/cpuinfo_max_freq" to "2500000",
+                "/sys/devices/system/cpu/cpufreq/policy2/cpuinfo_min_freq" to "800000",
                 "/sys/devices/system/cpu/cpufreq/policy2/scaling_min_freq" to "800000",
             ),
         )
@@ -166,12 +169,36 @@ class CpuPolicyDetectorTest {
         val result = detector.detectPolicies().single()
 
         assertEquals(1_958_400, result.minFreq)
+        assertEquals(1_017_600, result.hardwareMinFreq)
         assertEquals(
             listOf(1017600, 1209600, 1401600, 1689600, 1958400, 2246400, 2438400),
             result.supportedFrequencies,
         )
         assertEquals(2_438_400, result.selectableMaxFreq)
         assertEquals(4_320_000, result.observedMaxFreq)
+    }
+
+    @Test
+    fun `collects ordered minimum candidates from advertised and active frequencies`() {
+        val policyPath = "/sys/devices/system/cpu/cpufreq/policy7"
+        val detector = CpuPolicyDetector(
+            fileSystem = FakeSysfsFileSystem(listOf(policyPath), emptyMap()),
+            privilegedReader = FakePrivilegedSysfsReader(
+                mapOf(
+                    "$policyPath/scaling_available_frequencies" to "729600 960000 1200000",
+                    "$policyPath/cpuinfo_min_freq" to "595200",
+                    "$policyPath/cpuinfo_max_freq" to "3187200",
+                    "$policyPath/scaling_max_freq" to "3187200",
+                    "$policyPath/scaling_min_freq" to "960000",
+                    "$policyPath/stats/time_in_state" to "729600 0\n864000 12\n960000 0\n",
+                ),
+            ),
+        )
+
+        val result = detector.detectPolicies().single()
+
+        assertEquals(listOf(595200, 729600, 864000, 960000, 1200000), result.minimumCandidates)
+        assertEquals(595200, result.hardwareMinFreq)
     }
 
     @Test
@@ -208,6 +235,7 @@ class CpuPolicyDetectorTest {
             files = mapOf(
                 "/sys/devices/system/cpu/cpufreq/policy1/scaling_max_freq" to "1500000",
                 "/sys/devices/system/cpu/cpufreq/policy1/cpuinfo_max_freq" to "2000000",
+                "/sys/devices/system/cpu/cpufreq/policy1/cpuinfo_min_freq" to "500000",
                 "/sys/devices/system/cpu/cpufreq/policy1/scaling_min_freq" to "500000",
             ),
         )
@@ -313,7 +341,7 @@ class CpuPolicyDetectorTest {
     }
 
     @Test
-    fun `chmods protected files before falling back to privileged read`() {
+    fun `reads protected files through privileged reader without changing permissions`() {
         val policyPath = "/sys/devices/system/cpu/cpufreq/policy0"
         val protectedFiles = mapOf(
             "$policyPath/scaling_available_frequencies" to "300000 1228800 2745600",
@@ -321,11 +349,8 @@ class CpuPolicyDetectorTest {
             "$policyPath/scaling_max_freq" to "1228800",
             "$policyPath/scaling_min_freq" to "300000",
         )
-        val fileSystem = PermissionChangingSysfsFileSystem(
-            directories = listOf(policyPath),
-            files = protectedFiles,
-        )
-        val privilegedReader = ChmodOnlyPrivilegedSysfsReader(fileSystem)
+        val fileSystem = FakeSysfsFileSystem(listOf(policyPath), emptyMap())
+        val privilegedReader = RecordingPrivilegedSysfsReader(protectedFiles)
         val detector = CpuPolicyDetector(
             fileSystem = fileSystem,
             privilegedReader = privilegedReader,
@@ -336,8 +361,8 @@ class CpuPolicyDetectorTest {
         assertEquals(0, result.id)
         assertEquals(1_228_800, result.currentMaxFreq)
         assertEquals(listOf(300_000, 1_228_800, 2_745_600), result.supportedFrequencies)
-        assertTrue(privilegedReader.chmodCalls.isNotEmpty())
-        assertTrue(privilegedReader.readCalls.none { it in protectedFiles.keys })
+        assertTrue(privilegedReader.readCalls.any { it in protectedFiles.keys })
+        assertTrue(privilegedReader.chmodCalls.isEmpty())
     }
 
     private class FakeSysfsFileSystem(
@@ -354,42 +379,15 @@ class CpuPolicyDetectorTest {
         override fun readText(path: String): String? = files[path]
     }
 
-    private class PermissionChangingSysfsFileSystem(
-        private val directories: List<String>,
+    private class RecordingPrivilegedSysfsReader(
         private val files: Map<String, String>,
-    ) : SysfsFileSystem {
-        private val readablePaths = mutableSetOf<String>()
-
-        override fun listPolicyDirectories(root: String): List<String> = directories
-
-        override fun readText(path: String): String? {
-            return files[path]?.takeIf { path in readablePaths }
-        }
-
-        fun makeReadable(path: String): Boolean {
-            return if (path in files) {
-                readablePaths += path
-                true
-            } else {
-                false
-            }
-        }
-    }
-
-    private class ChmodOnlyPrivilegedSysfsReader(
-        private val fileSystem: PermissionChangingSysfsFileSystem,
     ) : PrivilegedSysfsReader {
-        val chmodCalls = mutableListOf<String>()
         val readCalls = mutableListOf<String>()
+        val chmodCalls = emptyList<String>()
 
         override fun readText(path: String): String? {
             readCalls += path
-            return null
-        }
-
-        override fun makeReadable(path: String): Boolean {
-            chmodCalls += path
-            return fileSystem.makeReadable(path)
+            return files[path]
         }
     }
 
