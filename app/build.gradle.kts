@@ -28,10 +28,6 @@ val hasReleaseSigningConfig = listOf(
 ).all { it != null }
 
 android {
-    dependenciesInfo {
-        includeInApk = false
-        includeInBundle = false
-    }
     namespace = "com.aure.clustertune"
     compileSdk = 34
 
@@ -39,8 +35,8 @@ android {
         applicationId = "com.aure.clustertune"
         minSdk = 31
         targetSdk = 34
-        versionCode = 302
-        versionName = "0.3.2-beta.1"
+        versionCode = 307
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -92,7 +88,7 @@ android {
     }
     testOptions {
         unitTests {
-            // Android framework calls (e.g. android.util.Log, DateFormat) have no
+            // Android framework calls (e.g. android.util.Log) have no
             // implementation under plain JVM unit tests. Returning default values
             // instead of throwing "not mocked" keeps the release pipeline's unit
             // tests from failing when exercised code paths touch Android stubs.
@@ -107,10 +103,6 @@ android {
 }
 
 dependencies {
-    // On-device JDWP injection (wireless-debugging) — vendored from
-    // github.com/wuyr/jdwp-injector-for-android (Apache-2.0). Used to run
-    // profile scripts as system on unrooted devices via GameAssistant.
-    implementation(project(":jdwp-injector"))
     val composeBom = platform("androidx.compose:compose-bom:2024.09.03")
 
     implementation("androidx.core:core-ktx:1.13.1")
@@ -130,17 +122,18 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.google.zxing:core:3.5.3")
-    implementation("dev.rikka.shizuku:api:13.1.5")
-    implementation("dev.rikka.shizuku:provider:13.1.5")
-    // Bypass Android's hidden-API reflection restriction so we can
-    // reflect on @hide framework classes like android.util.BoostFramework
-    // on Android 13. Robust on Android 10+ (does not rely on ART internals).
-    implementation("org.lsposed.hiddenapibypass:hiddenapibypass:4.3")
-
+    // Vendored fork of github.com/wuyr/jdwp-injector-for-android (Apache-2.0).
+    // Provides the adb transport + JDWP layer used by the no-root wireless
+    // debugging execution method.
+    implementation(project(":jdwp-injector"))
     debugImplementation(composeBom)
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
+
+    androidTestImplementation(composeBom)
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
 }

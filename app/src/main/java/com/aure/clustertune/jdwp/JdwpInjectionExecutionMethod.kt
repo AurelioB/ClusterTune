@@ -74,7 +74,17 @@ class JdwpInjectionExecutionMethod(
      * that runs it as system inside GameAssistant. Fire-and-forget: the
      * injected exec's stdout is not captured (supportsStdout=false).
      */
-    override fun executeScript(scriptName: String, scriptContents: String): Result<String?> {
+    /**
+     * [captureResult] is accepted for interface compatibility but ignored: the
+     * injected `Runtime.exec` runs inside GameAssistant and its stdout is not
+     * routed back to us (probe reports supportsStdout=false). Callers that need
+     * output must use [readText] against a file the script writes.
+     */
+    override fun executeScript(
+        scriptName: String,
+        scriptContents: String,
+        captureResult: Boolean,
+    ): Result<String?> {
         val conn = connectionProvider()
         if (conn == null) {
             Log.w(TAG, "executeScript: no wireless connection")

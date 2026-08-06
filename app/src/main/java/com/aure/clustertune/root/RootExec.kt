@@ -3,62 +3,46 @@ package com.aure.clustertune.root
 import android.annotation.SuppressLint
 import android.os.IBinder
 import android.os.Parcel
-import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 
 interface PServerRootExecutor {
     val pServerAvailable: Boolean
     fun executeAsRoot(cmd: String): Result<String?>
 
-    /**
-     * Execute [cmd] as root through PServer, choosing whether PServer
-     * should capture and return the command's stdout.
-     *
-     * On some firmware (notably the Odin 2 Mini) PServer's stdout-capture
-     * path is broken: requesting stdout ([captureStdout] = true) yields an
-     * empty reply AND the command may not run at all. Fire-and-forget
-     * execution ([captureStdout] = false) takes a different, working code
-     * path — this is exactly what Odin's own Settings app uses for every
-     * write it performs (chmod, echo > sysfs, etc). Reads that need output
-     * back should be done via direct File I/O rather than stdout capture on
-     * such devices.
-     *
-     * Default is stdout capture, matching historical behaviour.
-     */
-    fun executeAsRoot(cmd: String, captureStdout: Boolean): Result<String?> = executeAsRoot(cmd)
+    fun executeAsRoot(cmd: String, captureOutput: Boolean): Result<String?> = executeAsRoot(cmd)
 }
 
 @SuppressLint("DiscouragedPrivateApi", "PrivateApi")
 class RootExec : PServerRootExecutor {
 
-    private val binder: IBinder?
-    override var pServerAvailable: Boolean = false
-        private set
+    @Volatile
+    private var binder: IBinder? = findBinder()
 
-    init {
-        binder = runCatching {
-            val serviceManager = Class.forName("android.os.ServiceManager")
-            val getService = serviceManager.getDeclaredMethod("getService", String::class.java)
-            val rawBinder = getService.invoke(serviceManager, "PServerBinder") as IBinder
-            pServerAvailable = true
-            rawBinder
-        }.getOrDefault(null)
-    }
+    override val pServerAvailable: Boolean
+        get() = activeBinder() != null
 
-    override fun executeAsRoot(cmd: String): Result<String?> = executeAsRoot(cmd, captureStdout = true)
+    override fun executeAsRoot(cmd: String): Result<String?> = executeAsRoot(cmd, captureOutput = true)
 
-    override fun executeAsRoot(cmd: String, captureStdout: Boolean): Result<String?> {
-        if (binder == null) return Result.failure(IllegalStateException("PServer not available"))
+    override fun executeAsRoot(cmd: String, captureOutput: Boolean): Result<String?> {
+        val activeBinder = activeBinder()
+            ?: return Result.failure(IllegalStateException("PServer not available"))
 
         val data = Parcel.obtain()
         val reply = Parcel.obtain()
         return try {
-            // Matches com.odin2.common.PServiceBridgeV2.call(SU_CMD=0, [cmd, flag]).
-            // flag "1" = capture stdout, flag "0" = fire-and-forget.
-            val flag = if (captureStdout) "1" else "0"
-            data.writeStringArray(arrayOf(cmd, flag))
-            binder.transact(0, data, reply, 0)
-            Result.success(decodeReply(reply))
+            data.writeStringArray(arrayOf(cmd, if (captureOutput) "1" else "0"))
+            val accepted = activeBinder.transact(0, data, reply, 0)
+            if (captureOutput) {
+                check(accepted) { "PServer rejected the transaction" }
+            }
+            // Output-disabled calls have no reply contract. Their effects are verified by callers.
+            Result.success(if (captureOutput) decodeReply(reply) else null)
         } catch (throwable: Throwable) {
+            if (!activeBinder.isBinderAlive) {
+                synchronized(this) {
+                    if (binder === activeBinder) binder = null
+                }
+            }
             Result.failure(throwable)
         } finally {
             data.recycle()
@@ -66,9 +50,25 @@ class RootExec : PServerRootExecutor {
         }
     }
 
+    private fun activeBinder(): IBinder? {
+        binder?.takeIf(IBinder::isBinderAlive)?.let { return it }
+        return synchronized(this) {
+            binder?.takeIf(IBinder::isBinderAlive)
+                ?: findBinder().also { binder = it }
+        }
+    }
+
+    private fun findBinder(): IBinder? {
+        return runCatching {
+            val serviceManager = Class.forName("android.os.ServiceManager")
+            val getService = serviceManager.getDeclaredMethod("getService", String::class.java)
+            getService.invoke(serviceManager, "PServerBinder") as? IBinder
+        }.getOrNull()
+    }
+
     private fun decodeReply(reply: Parcel): String? {
         return reply.createByteArray()
-            ?.toString(Charset.defaultCharset())
+            ?.toString(StandardCharsets.UTF_8)
             ?.trim()
             ?.let { value -> if (value == "null") null else value }
     }

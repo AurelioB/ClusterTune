@@ -83,7 +83,7 @@ fun WirelessDebugSetupScreen(
     var busy by remember { mutableStateOf(false) }
 
     // On open, reflect whether we currently have a connection. (Verification is
-    // intentionally non-destructive now — it must never tear down a live session,
+    // intentionally non-destructive — it must never tear down a live session,
     // which previously caused connect→clear→reconnect loops and handshake
     // failures. A genuinely dead connection surfaces at apply time.)
     LaunchedEffect(Unit) {

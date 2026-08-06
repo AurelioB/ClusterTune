@@ -9,8 +9,20 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.aure.clustertune.model.AppColorSource
 import com.aure.clustertune.model.AppSettings
+import com.aure.clustertune.model.DEFAULT_EDGE_HANDLE_HEIGHT_DP
+import com.aure.clustertune.model.DEFAULT_EDGE_HANDLE_OPACITY_PERCENT
+import com.aure.clustertune.model.DEFAULT_EDGE_HANDLE_THICKNESS_DP
+import com.aure.clustertune.model.DEFAULT_EDGE_HANDLE_VERTICAL_POSITION_PERCENT
 import com.aure.clustertune.model.DEFAULT_PROFILE_SWITCH_HISTORY_LIMIT
+import com.aure.clustertune.model.MAX_EDGE_HANDLE_HEIGHT_DP
+import com.aure.clustertune.model.MAX_EDGE_HANDLE_OPACITY_PERCENT
+import com.aure.clustertune.model.MAX_EDGE_HANDLE_THICKNESS_DP
+import com.aure.clustertune.model.MAX_EDGE_HANDLE_VERTICAL_POSITION_PERCENT
 import com.aure.clustertune.model.MAX_PROFILE_SWITCH_HISTORY_LIMIT
+import com.aure.clustertune.model.MIN_EDGE_HANDLE_HEIGHT_DP
+import com.aure.clustertune.model.MIN_EDGE_HANDLE_OPACITY_PERCENT
+import com.aure.clustertune.model.MIN_EDGE_HANDLE_THICKNESS_DP
+import com.aure.clustertune.model.MIN_EDGE_HANDLE_VERTICAL_POSITION_PERCENT
 import com.aure.clustertune.model.MIN_PROFILE_SWITCH_HISTORY_LIMIT
 import com.aure.clustertune.model.TileInteractionBehavior
 import kotlinx.coroutines.flow.Flow
@@ -43,6 +55,12 @@ class SettingsStorage(private val context: Context) {
     private val includePrereleaseUpdatesKey = booleanPreferencesKey("include_prerelease_updates")
     private val lastUpdateCheckMillisKey = longPreferencesKey("last_update_check_millis")
     private val displayFrequenciesAsPercentKey = booleanPreferencesKey("display_frequencies_as_percent")
+    private val leftEdgeProfilePickerEnabledKey = booleanPreferencesKey("left_edge_profile_picker_enabled")
+    private val edgeHandleHeightDpKey = intPreferencesKey("edge_handle_height_dp")
+    private val edgeHandleThicknessDpKey = intPreferencesKey("edge_handle_thickness_dp")
+    private val edgeHandleVerticalPositionPercentKey =
+        intPreferencesKey("edge_handle_vertical_position_percent")
+    private val edgeHandleOpacityPercentKey = intPreferencesKey("edge_handle_opacity_percent")
     private val profileSwitchToastsEnabledKey = booleanPreferencesKey("profile_switch_toasts_enabled")
     private val profileSwitchHistoryLimitKey = intPreferencesKey("profile_switch_history_limit")
     private val privilegedExecutionMethodIdKey = stringPreferencesKey("privileged_execution_method_id")
@@ -69,11 +87,27 @@ class SettingsStorage(private val context: Context) {
             includePrereleaseUpdates = preferences[includePrereleaseUpdatesKey] ?: false,
             lastUpdateCheckMillis = preferences[lastUpdateCheckMillisKey] ?: 0L,
             displayFrequenciesAsPercent = preferences[displayFrequenciesAsPercentKey] ?: false,
-            profileSwitchToastsEnabled = preferences[profileSwitchToastsEnabledKey] ?: false,
+            leftEdgeProfilePickerEnabled = preferences[leftEdgeProfilePickerEnabledKey] ?: false,
+            edgeHandleHeightDp = (preferences[edgeHandleHeightDpKey] ?: DEFAULT_EDGE_HANDLE_HEIGHT_DP)
+                .coerceIn(MIN_EDGE_HANDLE_HEIGHT_DP, MAX_EDGE_HANDLE_HEIGHT_DP),
+            edgeHandleThicknessDp = normalizeEdgeHandleThicknessDp(
+                preferences[edgeHandleThicknessDpKey] ?: DEFAULT_EDGE_HANDLE_THICKNESS_DP,
+            ),
+            edgeHandleVerticalPositionPercent = (preferences[edgeHandleVerticalPositionPercentKey]
+                ?: DEFAULT_EDGE_HANDLE_VERTICAL_POSITION_PERCENT).coerceIn(
+                MIN_EDGE_HANDLE_VERTICAL_POSITION_PERCENT,
+                MAX_EDGE_HANDLE_VERTICAL_POSITION_PERCENT,
+            ),
+            edgeHandleOpacityPercent = normalizeEdgeHandleOpacityPercent(
+                preferences[edgeHandleOpacityPercentKey] ?: DEFAULT_EDGE_HANDLE_OPACITY_PERCENT,
+            ),
+            profileSwitchToastsEnabled = preferences[profileSwitchToastsEnabledKey] ?: true,
             profileSwitchHistoryLimit = (preferences[profileSwitchHistoryLimitKey]
                 ?: DEFAULT_PROFILE_SWITCH_HISTORY_LIMIT)
                 .coerceIn(MIN_PROFILE_SWITCH_HISTORY_LIMIT, MAX_PROFILE_SWITCH_HISTORY_LIMIT),
-            privilegedExecutionMethodId = preferences[privilegedExecutionMethodIdKey],
+            privilegedExecutionMethodId = supportedExecutionMethodId(
+                preferences[privilegedExecutionMethodIdKey],
+            ),
         )
     }
 
@@ -134,14 +168,16 @@ class SettingsStorage(private val context: Context) {
         }
     }
 
-    suspend fun persistAccentColor(accentColor: Int) {
+    suspend fun persistPresetAccentColor(accentColor: Int) {
         context.settingsDataStore.edit { preferences ->
+            preferences[colorSourceKey] = AppColorSource.CUSTOM_ACCENT.name
             preferences[accentColorKey] = accentColor
         }
     }
 
     suspend fun persistCustomAccentColor(accentColor: Int) {
         context.settingsDataStore.edit { preferences ->
+            preferences[colorSourceKey] = AppColorSource.CUSTOM_ACCENT.name
             preferences[accentColorKey] = accentColor
             preferences[customAccentColorKey] = accentColor
         }
@@ -177,6 +213,41 @@ class SettingsStorage(private val context: Context) {
         }
     }
 
+    suspend fun persistLeftEdgeProfilePickerEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[leftEdgeProfilePickerEnabledKey] = enabled
+        }
+    }
+
+    suspend fun persistEdgeHandleHeightDp(heightDp: Int) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[edgeHandleHeightDpKey] =
+                heightDp.coerceIn(MIN_EDGE_HANDLE_HEIGHT_DP, MAX_EDGE_HANDLE_HEIGHT_DP)
+        }
+    }
+
+    suspend fun persistEdgeHandleThicknessDp(thicknessDp: Int) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[edgeHandleThicknessDpKey] = normalizeEdgeHandleThicknessDp(thicknessDp)
+        }
+    }
+
+    suspend fun persistEdgeHandleVerticalPositionPercent(positionPercent: Int) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[edgeHandleVerticalPositionPercentKey] = positionPercent.coerceIn(
+                MIN_EDGE_HANDLE_VERTICAL_POSITION_PERCENT,
+                MAX_EDGE_HANDLE_VERTICAL_POSITION_PERCENT,
+            )
+        }
+    }
+
+    suspend fun persistEdgeHandleOpacityPercent(opacityPercent: Int) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[edgeHandleOpacityPercentKey] =
+                normalizeEdgeHandleOpacityPercent(opacityPercent)
+        }
+    }
+
     suspend fun persistProfileSwitchToastsEnabled(enabled: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[profileSwitchToastsEnabledKey] = enabled
@@ -209,4 +280,22 @@ class SettingsStorage(private val context: Context) {
         return runCatching { AppColorSource.valueOf(raw) }
             .getOrDefault(AppColorSource.SYSTEM)
     }
+}
+
+internal fun supportedExecutionMethodId(methodId: String?): String? {
+    return methodId?.takeIf { it == "pserver-stdout" || it == "root-shell" }
+}
+
+internal fun normalizeEdgeHandleThicknessDp(thicknessDp: Int): Int {
+    return thicknessDp.coerceIn(
+        MIN_EDGE_HANDLE_THICKNESS_DP,
+        MAX_EDGE_HANDLE_THICKNESS_DP,
+    )
+}
+
+internal fun normalizeEdgeHandleOpacityPercent(opacityPercent: Int): Int {
+    return opacityPercent.coerceIn(
+        MIN_EDGE_HANDLE_OPACITY_PERCENT,
+        MAX_EDGE_HANDLE_OPACITY_PERCENT,
+    )
 }

@@ -8,9 +8,9 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.compose.BackHandler
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
@@ -20,35 +20,42 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.aure.clustertune.apps.AppProfileMonitorService
+import com.aure.clustertune.overlay.OverlayHostService
 import com.aure.clustertune.overlay.OverlayPermission
+import com.aure.clustertune.permissions.AppAccess
+import com.aure.clustertune.permissions.AppAccessStatus
+import com.aure.clustertune.permissions.missingAppAccess
 import com.aure.clustertune.sleep.SleepProfileMonitorService
 import com.aure.clustertune.tile.QuickSettingsTileAddResult
 import com.aure.clustertune.tile.QuickSettingsTilePrompt
 import com.aure.clustertune.tile.QuickSettingsTileRefresher
-import com.aure.clustertune.root.ShizukuCommandRunner
 import com.aure.clustertune.ui.MainTunerScreen
+import com.aure.clustertune.ui.PermissionCheckDialog
 import com.aure.clustertune.ui.SettingsScreen
+import com.aure.clustertune.ui.WirelessDebugSetupScreen
+import com.aure.clustertune.ui.SupportScreen
 import com.aure.clustertune.ui.SingleToast
 import com.aure.clustertune.ui.TunerViewModel
-import com.aure.clustertune.ui.WirelessDebugSetupScreen
+import com.aure.clustertune.ui.theme.ClusterTuneSystemBars
 import com.aure.clustertune.ui.theme.ClusterTuneTheme
 import com.aure.clustertune.update.AppRelease
 import com.aure.clustertune.update.AppUpdateManager
 import com.aure.clustertune.update.InstallLaunchResult
 import com.aure.clustertune.update.UpdateCheckPolicy
 import com.aure.clustertune.update.UpdateCheckResult
-import com.wuyr.jdwp_injector.debug.JdwpDebugLog
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -56,16 +63,7 @@ class MainActivity : ComponentActivity() {
 
     private val container by lazy { AppContainer(this) }
     private val appUpdateManager by lazy { AppUpdateManager(this) }
-    private val shizukuCommandRunner by lazy { ShizukuCommandRunner() }
     private val pendingUpdateRelease = mutableStateOf<AppRelease?>(null)
-
-    // Tracks the notification-permission flow so we prompt at most once per
-    // session and never re-launch the permission dialog in a loop (that loop was
-    // the cause of the 100% CPU usage when notifications were denied).
-    private enum class MonitorStart { SLEEP, APP, BOTH }
-    private var notificationPermissionAsked = false
-    private var pendingMonitorStart: MonitorStart? = null
-
     private val viewModel by viewModels<TunerViewModel> {
         TunerViewModel.factory(
             repository = container.repository,
@@ -87,49 +85,20 @@ class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
-        // POST_NOTIFICATIONS is cosmetic here: it only controls whether the
-        // foreground-service notification is visible. The monitors must start
-        // either way. Previously, denying the permission sent the app into a
-        // request loop: the old callback called startAppProfileMonitor(), which
-        // saw the permission still ungranted and immediately re-launched the
-        // permission request — deny → callback → request → deny → ... This tight
-        // loop is what drove CPU to 100%. We now record the outcome once, start
-        // the pending monitor directly (never re-request from the callback), and
-        // guard against re-prompting on later resumes.
-        JdwpDebugLog.d("notif-permission result: granted=$granted; pending=$pendingMonitorStart")
-        notificationPermissionAsked = true
-        val pending = pendingMonitorStart
-        pendingMonitorStart = null
-        lifecycleScope.launch {
-            when (pending) {
-                MonitorStart.SLEEP -> SleepProfileMonitorService.start(this@MainActivity)
-                MonitorStart.APP -> AppProfileMonitorService.start(this@MainActivity)
-                MonitorStart.BOTH -> {
-                    val settings = container.settingsStorage.settings.first()
-                    if (settings.sleepProfileEnabled) {
-                        SleepProfileMonitorService.start(this@MainActivity)
-                    }
-                    if (container.repository.observeState().first().appProfileAssignments.isNotEmpty()) {
-                        AppProfileMonitorService.start(this@MainActivity)
-                    }
+        if (granted) {
+            lifecycleScope.launch {
+                val settings = container.settingsStorage.settings.first()
+                if (settings.sleepProfileEnabled) {
+                    SleepProfileMonitorService.start(this@MainActivity)
                 }
-                null -> Unit
+                maybeStartAppProfileMonitor()
             }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // DIAGNOSTIC: probe Qualcomm BoostFramework / vendor.perfservice as an
-        // alternative privileged write path (PServer is SELinux-blocked for
-        // untrusted_app on Odin 2 Mini). Logs under tag "ClusterTuneBoost".
-        Thread {
-            runCatching {
-                com.aure.clustertune.root.BoostFrameworkProbe.run(applicationContext)
-            }
-        }.start()
         enableEdgeToEdge()
-        maybeRequestQuickSettingsTileOnFirstRun()
         maybeAutoDetectPrivilegedExecutionOnFirstRun()
         maybeCheckForUpdatesOnLaunch()
         maybeStartSleepProfileMonitor()
@@ -138,31 +107,44 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings = viewModel.settings.collectAsStateWithLifecycle().value
             ClusterTuneTheme(settings = settings) {
+                ClusterTuneSystemBars()
                 Surface {
                     val state = viewModel.state.collectAsStateWithLifecycle().value
                     val launchableApps = viewModel.launchableApps.collectAsStateWithLifecycle().value
                     val recentActiveApps = viewModel.recentActiveApps.collectAsStateWithLifecycle().value
                     var showSettings by rememberSaveable { mutableStateOf(false) }
+                    var showSupport by rememberSaveable { mutableStateOf(false) }
                     var showWirelessSetup by rememberSaveable { mutableStateOf(false) }
-                    var overlayPermissionRefresh by remember { mutableStateOf(0) }
+                    BackHandler(enabled = showSettings || showSupport || showWirelessSetup) {
+                        showSettings = false
+                        showSupport = false
+                        if (showWirelessSetup) {
+                            showWirelessSetup = false
+                            // Connecting there changes availability; re-probe.
+                            viewModel.recheckExecutionAvailability()
+                        }
+                    }
 
                     // Wireless-debug connect state surfaced on the main menu so a
                     // device already paired this boot can reconnect without opening
                     // the setup screen.
                     val cm = container.wirelessDebugConnectionManager
                     var wirelessConnectStatus by remember {
-                        mutableStateOf(if (cm.connectionInfo != null) "Connected. Ready to apply profiles." else "Not connected")
+                        mutableStateOf(
+                            if (cm.connectionInfo != null) "Connected. Ready to apply profiles." else "Not connected",
+                        )
                     }
                     var isWirelessDebugConnected by remember { mutableStateOf(cm.connectionInfo != null) }
                     val onConnectWirelessDebug: () -> Unit = {
                         wirelessConnectStatus = "Looking for wireless debugging…"
                         // Try mDNS discovery first; if it doesn't resolve within a
                         // few seconds, fall back to the port scan (the reliable path
-                        // on this network). Mirrors the old setup-screen Connect.
+                        // on some networks).
                         cm.startConnectDiscovery(
                             onConnected = { info ->
                                 isWirelessDebugConnected = true
-                                wirelessConnectStatus = "Connected (${info.host}:${info.port}). Ready to apply profiles."
+                                wirelessConnectStatus =
+                                    "Connected (${info.host}:${info.port}). Ready to apply profiles."
                                 viewModel.recheckExecutionAvailability()
                             },
                             onUnavailable = {
@@ -193,27 +175,45 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    var permissionRefresh by remember { mutableStateOf(0) }
                     DisposableEffect(Unit) {
                         val observer = LifecycleEventObserver { _, event ->
                             if (event == Lifecycle.Event.ON_RESUME) {
-                                overlayPermissionRefresh++
+                                permissionRefresh++
                             }
                         }
                         lifecycle.addObserver(observer)
                         onDispose { lifecycle.removeObserver(observer) }
                     }
-                    val canDrawOverlays = remember(overlayPermissionRefresh) {
+                    val canDrawOverlays = remember(permissionRefresh) {
                         OverlayPermission.canDrawOverlays(this@MainActivity)
+                    }
+                    val hasUsageAccess = remember(permissionRefresh) {
+                        AppProfileMonitorService.hasUsageStatsPermission(this@MainActivity)
+                    }
+                    val hasNotificationAccess = remember(permissionRefresh) {
+                        NotificationManagerCompat.from(this@MainActivity)
+                            .areNotificationsEnabled()
+                    }
+                    val canInstallUpdates = remember(permissionRefresh) {
+                        packageManager.canRequestPackageInstalls()
+                    }
+                    val missingAccess = missingAppAccess(
+                        AppAccessStatus(
+                            overlayGranted = canDrawOverlays,
+                            usageGranted = hasUsageAccess,
+                            notificationsGranted = hasNotificationAccess,
+                        ),
+                    )
+                    var showPermissionDialog by rememberSaveable { mutableStateOf(true) }
+                    val permissionDialogVisible = showPermissionDialog && missingAccess.isNotEmpty()
+                    LaunchedEffect(permissionDialogVisible) {
+                        if (!permissionDialogVisible) {
+                            maybeRequestQuickSettingsTileOnFirstRun()
+                        }
                     }
 
                     if (showWirelessSetup) {
-                        // Hardware / controller B (back) should return to the main
-                        // menu, not exit the app. Without this handler the event
-                        // falls through to the activity default (finish).
-                        BackHandler(enabled = true) {
-                            showWirelessSetup = false
-                            viewModel.recheckExecutionAvailability()
-                        }
                         WirelessDebugSetupScreen(
                             connectionManager = container.wirelessDebugConnectionManager,
                             onBack = {
@@ -223,7 +223,6 @@ class MainActivity : ComponentActivity() {
                             },
                         )
                     } else if (showSettings) {
-                        BackHandler(enabled = true) { showSettings = false }
                         SettingsScreen(
                             settings = settings,
                             onBack = { showSettings = false },
@@ -261,11 +260,69 @@ class MainActivity : ComponentActivity() {
                                 requestQuickSettingsTile(showResultToast = true)
                             },
                             canRequestAddQuickSettingsTile = QuickSettingsTilePrompt.isSupported,
-                            isQuickSettingsTileAdded = settings.isQuickSettingsTileAdded,
                             canDrawOverlays = canDrawOverlays,
                             onOpenOverlayPermissionSettings = {
                                 startActivity(OverlayPermission.createSettingsIntent(this@MainActivity))
                             },
+                            hasUsageAccess = hasUsageAccess,
+                            onOpenUsageAccessSettings = {
+                                startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                            },
+                            hasNotificationAccess = hasNotificationAccess,
+                            onOpenNotificationSettings = {
+                                startActivity(
+                                    Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                        putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                                    },
+                                )
+                            },
+                            canInstallUpdates = canInstallUpdates,
+                            onOpenInstallPermissionSettings = {
+                                startActivity(
+                                    Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                        data = Uri.parse("package:$packageName")
+                                    },
+                                )
+                            },
+                            onLeftEdgeProfilePickerEnabledChange = { enabled ->
+                                viewModel.setLeftEdgeProfilePickerEnabled(enabled) {
+                                    when {
+                                        !enabled -> OverlayHostService.hideEdgeHandle(this@MainActivity)
+                                        !canDrawOverlays -> {
+                                            SingleToast.show(
+                                                this@MainActivity,
+                                                "Grant overlay permission to use the edge picker",
+                                                Toast.LENGTH_LONG,
+                                            )
+                                            startActivity(
+                                                OverlayPermission.createSettingsIntent(this@MainActivity),
+                                            )
+                                        }
+                                        !hasUsageAccess -> {
+                                            SingleToast.show(
+                                                this@MainActivity,
+                                                "Grant Usage Access to identify the current app",
+                                                Toast.LENGTH_LONG,
+                                            )
+                                            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                                        }
+                                        else -> OverlayHostService.showEdgeHandle(this@MainActivity)
+                                    }
+                                }
+                            },
+                            onEdgeHandlePreview = { height, thickness, position, opacity ->
+                                OverlayHostService.previewEdgeHandle(
+                                    context = this@MainActivity,
+                                    heightDp = height,
+                                    thicknessDp = thickness,
+                                    verticalPositionPercent = position,
+                                    opacityPercent = opacity,
+                                )
+                            },
+                            onEdgeHandleHeightChange = viewModel::setEdgeHandleHeightDp,
+                            onEdgeHandleThicknessChange = viewModel::setEdgeHandleThicknessDp,
+                            onEdgeHandleVerticalPositionChange = viewModel::setEdgeHandleVerticalPositionPercent,
+                            onEdgeHandleOpacityChange = viewModel::setEdgeHandleOpacityPercent,
                             onCheckForUpdates = { checkForUpdates(showUpToDateToast = true) },
                             onAutomaticUpdateChecksEnabledChange = viewModel::setAutomaticUpdateChecksEnabled,
                             onUpdateCheckIntervalDaysChange = viewModel::setUpdateCheckIntervalDays,
@@ -274,10 +331,9 @@ class MainActivity : ComponentActivity() {
                             onProfileSwitchHistoryLimitChange = viewModel::setProfileSwitchHistoryLimit,
                             onPrivilegedExecutionMethodChange = viewModel::setPrivilegedExecutionMethod,
                             onAutoDetectPrivilegedExecutionMethod = viewModel::autoDetectPrivilegedExecutionMethod,
-                            onOpenWirelessDebugSetup = { showWirelessSetup = true },
-                            isShizukuPermissionGranted = shizukuCommandRunner.hasPermission(),
-                            onRequestShizukuPermission = ::requestShizukuPermission,
                         )
+                    } else if (showSupport) {
+                        SupportScreen(onBack = { showSupport = false })
                     } else {
                         MainTunerScreen(
                             state = state,
@@ -295,13 +351,19 @@ class MainActivity : ComponentActivity() {
                             onMoveProfile = viewModel::moveProfile,
                             launchableApps = launchableApps,
                             recentActiveApps = recentActiveApps,
-                            onSaveAppProfileAssignment = { packageName, appLabel, profileId ->
-                                viewModel.saveAppProfileAssignment(packageName, appLabel, profileId)
+                            onSaveAppProfileAssignment = { packageName, appLabel, profileId, customMaxFrequencies ->
+                                viewModel.saveAppProfileAssignment(
+                                    packageName = packageName,
+                                    appLabel = appLabel,
+                                    profileId = profileId,
+                                    customMaxFrequencies = customMaxFrequencies,
+                                )
                                 startAppProfileMonitor()
                             },
                             onDeleteAppProfileAssignment = viewModel::deleteAppProfileAssignment,
                             onRefreshInstalledApps = viewModel::refreshInstalledApps,
                             onOpenSettings = { showSettings = true },
+                            onOpenSupport = { showSupport = true },
                             onOpenWirelessDebugSetup = { showWirelessSetup = true },
                             onConnectWirelessDebug = onConnectWirelessDebug,
                             wirelessConnectStatus = wirelessConnectStatus,
@@ -311,15 +373,41 @@ class MainActivity : ComponentActivity() {
                             onErrorMessageShown = viewModel::consumeErrorMessage,
                         )
                     }
-                    pendingUpdateRelease.value?.let { release ->
-                        UpdateAvailableDialog(
-                            release = release,
-                            onDismiss = { pendingUpdateRelease.value = null },
-                            onInstall = {
-                                pendingUpdateRelease.value = null
-                                downloadAndInstallUpdate(release)
+                    if (permissionDialogVisible) {
+                        PermissionCheckDialog(
+                            missingAccess = missingAccess,
+                            onFixAccess = { access ->
+                                when (access) {
+                                    AppAccess.OVERLAY -> {
+                                        startActivity(OverlayPermission.createSettingsIntent(this@MainActivity))
+                                    }
+
+                                    AppAccess.USAGE -> {
+                                        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                                    }
+
+                                    AppAccess.NOTIFICATIONS -> {
+                                        startActivity(
+                                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                                putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                                            },
+                                        )
+                                    }
+                                }
                             },
+                            onDismiss = { showPermissionDialog = false },
                         )
+                    } else {
+                        pendingUpdateRelease.value?.let { release ->
+                            UpdateAvailableDialog(
+                                release = release,
+                                onDismiss = { pendingUpdateRelease.value = null },
+                                onInstall = {
+                                    pendingUpdateRelease.value = null
+                                    downloadAndInstallUpdate(release)
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -328,21 +416,17 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Re-probe execution availability on every resume so a connection that
-        // Re-probe execution availability on every resume so the main screen
-        // reflects the current state (e.g. falls back to the setup prompt if there
-        // is no connection). We do NOT actively tear down the connection here — a
-        // dead connection is detected non-destructively at apply time. (An earlier
-        // version verified by opening a shell and cleared the session on failure,
-        // which killed working connections on some devices.)
-        viewModel.recheckExecutionAvailability()
         maybeStartSleepProfileMonitor()
         maybeStartAppProfileMonitor()
+        maybeStartLeftEdgeProfilePicker()
     }
 
     private fun startSleepProfileMonitor() {
-        if (needsNotificationPermission()) {
-            requestNotificationPermissionOnce(MonitorStart.SLEEP)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             return
         }
         SleepProfileMonitorService.start(this)
@@ -354,48 +438,14 @@ class MainActivity : ComponentActivity() {
             startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
             return
         }
-        if (needsNotificationPermission()) {
-            requestNotificationPermissionOnce(MonitorStart.APP)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             return
         }
         AppProfileMonitorService.start(this)
-    }
-
-    private fun needsNotificationPermission(): Boolean {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-    }
-
-    /**
-     * Requests POST_NOTIFICATIONS at most once per app session. If the user has
-     * already been asked (and presumably declined), we do NOT keep re-prompting
-     * on every onResume — instead we start the requested monitor directly. The
-     * monitor works fine without the notification; only the status notification
-     * is hidden. This is what stops both the repeated double-prompt and the
-     * restart-thrash that pinned clocks to max.
-     */
-    private fun requestNotificationPermissionOnce(which: MonitorStart) {
-        if (notificationPermissionAsked) {
-            JdwpDebugLog.d("notif-permission already asked; starting $which without prompting")
-            when (which) {
-                MonitorStart.SLEEP -> SleepProfileMonitorService.start(this)
-                MonitorStart.APP -> AppProfileMonitorService.start(this)
-                MonitorStart.BOTH -> {
-                    SleepProfileMonitorService.start(this)
-                    AppProfileMonitorService.start(this)
-                }
-            }
-            return
-        }
-        // Coalesce a simultaneous sleep+app request into one prompt.
-        pendingMonitorStart = when {
-            pendingMonitorStart == null -> which
-            pendingMonitorStart == which -> which
-            else -> MonitorStart.BOTH
-        }
-        JdwpDebugLog.d("requesting notif-permission; pending=$pendingMonitorStart")
-        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
 
     private fun maybeRequestQuickSettingsTileOnFirstRun() {
@@ -423,7 +473,7 @@ class MainActivity : ComponentActivity() {
     private fun maybeStartSleepProfileMonitor() {
         lifecycleScope.launch {
             val settings = container.settingsStorage.settings.first()
-            if (settings.sleepProfileEnabled) {
+            if (settings.sleepProfileEnabled && hasNotificationAccess()) {
                 startSleepProfileMonitor()
             }
         }
@@ -432,48 +482,36 @@ class MainActivity : ComponentActivity() {
     private fun maybeStartAppProfileMonitor() {
         lifecycleScope.launch {
             if (container.repository.observeState().first().appProfileAssignments.isNotEmpty() &&
-                AppProfileMonitorService.hasUsageStatsPermission(this@MainActivity)
+                AppProfileMonitorService.hasUsageStatsPermission(this@MainActivity) &&
+                hasNotificationAccess()
             ) {
                 startAppProfileMonitor()
             }
         }
     }
 
-    private fun requestQuickSettingsTile(showResultToast: Boolean) {
-        QuickSettingsTilePrompt.request(this) { result ->
-            if (result == QuickSettingsTileAddResult.ADDED || result == QuickSettingsTileAddResult.ALREADY_ADDED) {
-                lifecycleScope.launch {
-                    container.settingsStorage.persistQuickSettingsTileAdded(true)
-                }
+    private fun hasNotificationAccess(): Boolean =
+        NotificationManagerCompat.from(this).areNotificationsEnabled()
+
+    private fun maybeStartLeftEdgeProfilePicker() {
+        lifecycleScope.launch {
+            val settings = container.settingsStorage.settings.first()
+            if (
+                settings.leftEdgeProfilePickerEnabled &&
+                OverlayPermission.canDrawOverlays(this@MainActivity) &&
+                AppProfileMonitorService.hasUsageStatsPermission(this@MainActivity)
+            ) {
+                OverlayHostService.showEdgeHandle(this@MainActivity)
+            } else if (settings.leftEdgeProfilePickerEnabled) {
+                OverlayHostService.hideEdgeHandle(this@MainActivity)
             }
-            if (!showResultToast) return@request
-            SingleToast.show(applicationContext, result.toToastMessage(), Toast.LENGTH_SHORT)
         }
     }
 
-    private fun requestShizukuPermission() {
-        when {
-            !shizukuCommandRunner.isBinderAlive() -> {
-                SingleToast.show(applicationContext, "Shizuku is not running", Toast.LENGTH_LONG)
-            }
-
-            shizukuCommandRunner.hasPermission() -> {
-                SingleToast.show(applicationContext, "Shizuku permission is already granted", Toast.LENGTH_SHORT)
-            }
-
-            else -> {
-                shizukuCommandRunner.requestPermission(SHIZUKU_PERMISSION_REQUEST_CODE)
-                    .onSuccess {
-                        SingleToast.show(applicationContext, "Shizuku permission requested", Toast.LENGTH_SHORT)
-                    }
-                    .onFailure { throwable ->
-                        SingleToast.show(
-                            applicationContext,
-                            throwable.message ?: "Failed to request Shizuku permission",
-                            Toast.LENGTH_LONG,
-                        )
-                    }
-            }
+    private fun requestQuickSettingsTile(showResultToast: Boolean) {
+        QuickSettingsTilePrompt.request(this) { result ->
+            if (!showResultToast) return@request
+            SingleToast.show(applicationContext, result.toToastMessage(), Toast.LENGTH_SHORT)
         }
     }
 
@@ -606,9 +644,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    companion object {
-        private const val SHIZUKU_PERMISSION_REQUEST_CODE = 4100
-    }
 }
 
 @Composable
@@ -640,4 +675,3 @@ private fun UpdateAvailableDialog(
         },
     )
 }
-

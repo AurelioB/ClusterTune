@@ -1,13 +1,20 @@
 package com.aure.clustertune.ui
 
-import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.Color as AndroidColor
 import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -40,9 +47,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -64,7 +73,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
@@ -78,20 +86,6 @@ import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.foundation.focusGroup
-import androidx.compose.foundation.focusable
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusRestorer
-import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -114,6 +108,10 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -125,24 +123,24 @@ import com.aure.clustertune.R
 import com.aure.clustertune.model.CpuPolicyInfo
 import com.aure.clustertune.model.InstalledAppInfo
 import com.aure.clustertune.model.PerformanceProfile
-import com.aure.clustertune.model.ProfileSwitchHistoryEntry
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.model.ProfileSource
 import com.aure.clustertune.model.TunerState
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.qrcode.QRCodeWriter
+import com.aure.clustertune.ui.designsystem.component.CtConfirmationDialog
+import com.aure.clustertune.ui.designsystem.component.CtDashedCard
+import com.aure.clustertune.ui.designsystem.component.CtDivider
+import com.aure.clustertune.ui.designsystem.component.CtIcon
+import com.aure.clustertune.ui.designsystem.component.CtCompactOverlayFrame
+import com.aure.clustertune.ui.designsystem.component.CtSectionCard
+import com.aure.clustertune.ui.designsystem.component.CtSelectableRow
+import com.aure.clustertune.ui.designsystem.component.CtStatePanel
+import com.aure.clustertune.ui.designsystem.component.CtStatePanelState
+import com.aure.clustertune.ui.designsystem.component.CtSwitch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlin.math.roundToInt
 
 private const val NEW_PROFILE_DIALOG_ID = "__new_profile__"
-private const val KOFI_URL = "https://ko-fi.com/J3J518XVKR"
-private const val SUPPORT_MESSAGE =
-    "ClusterTune is built and maintained independently. If it helps you tune your device, consider supporting my work on Ko-fi."
-
 private enum class MainTab {
     PROFILES,
     APPS,
@@ -162,10 +160,11 @@ fun MainTunerScreen(
     onMoveProfile: (String, Int) -> Unit,
     launchableApps: List<InstalledAppInfo>,
     recentActiveApps: List<InstalledAppInfo>,
-    onSaveAppProfileAssignment: (String, String, String) -> Unit,
+    onSaveAppProfileAssignment: (String, String, String?, Map<Int, Int>) -> Unit,
     onDeleteAppProfileAssignment: (String) -> Unit,
     onRefreshInstalledApps: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenSupport: () -> Unit,
     onOpenWirelessDebugSetup: () -> Unit,
     onConnectWirelessDebug: () -> Unit,
     wirelessConnectStatus: String,
@@ -178,7 +177,6 @@ fun MainTunerScreen(
     var selectedTab by remember { mutableStateOf(MainTab.PROFILES) }
     var appToConfigure by remember { mutableStateOf<InstalledAppInfo?>(null) }
     var showAppAssignmentDialog by remember { mutableStateOf(false) }
-    var showSupportDialog by remember { mutableStateOf(false) }
 
     ScreenNotifications(
         state = state,
@@ -211,7 +209,7 @@ fun MainTunerScreen(
                     selectedTab = selectedTab,
                     onSelectTab = { selectedTab = it },
                     onOpenSettings = onOpenSettings,
-                    onOpenSupport = { showSupportDialog = true },
+                    onOpenSupport = onOpenSupport,
                     modifier = Modifier
                         .fillMaxHeight()
                         .width(188.dp)
@@ -235,43 +233,39 @@ fun MainTunerScreen(
                     if (state.isLoading) {
                         LoadingClustersCard()
                     } else if (!state.isPServerAvailable) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                        ) {
-                            Text(
-                                text = "No compatible privileged execution method found",
-                                style = MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Text(
-                                text = "If your device isn't rooted, you can apply profiles over " +
-                                    "Android's built-in Wireless debugging — no root, no PC. " +
-                                    "Set it up once per boot below.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = "Status: $wirelessConnectStatus",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isWirelessDebugConnected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                },
-                            )
-                            Button(onClick = onOpenWirelessDebugSetup) {
-                                Text("Set up wireless debugging (no root)")
-                            }
-                            Text(
-                                text = "Already paired this boot? Just tap Connect:",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Button(onClick = onConnectWirelessDebug) {
-                                Text("Connect")
-                            }
+                        Text(
+                            text = "No compatible privileged execution method found",
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = "If your device isn't rooted, you can apply profiles over " +
+                                "Android's built-in Wireless debugging — no root, no PC. " +
+                                "Set it up once per boot below.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            text = "Status: $wirelessConnectStatus",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isWirelessDebugConnected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                        )
+                        Button(onClick = onOpenWirelessDebugSetup) {
+                            Text("Set up wireless debugging (no root)")
+                        }
+                        Text(
+                            text = "Already paired this boot? Just tap Connect:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Button(onClick = onConnectWirelessDebug) {
+                            Text("Connect")
                         }
                     } else {
                         Box(
@@ -321,20 +315,43 @@ fun MainTunerScreen(
 
     if (showAppAssignmentDialog) {
         appToConfigure?.let { app ->
-            AppProfileAssignmentDialog(
-                app = app,
-                currentProfileId = state.appProfileAssignments.firstOrNull { it.packageName == app.packageName }?.profileId,
-                profiles = state.displayProfiles.filter { profile -> profile.source != ProfileSource.VIRTUAL },
-                onDismiss = { showAppAssignmentDialog = false },
-                onSave = { selectedProfile ->
-                    if (selectedProfile == null) {
+            val assignment = state.appProfileAssignments.firstOrNull { it.packageName == app.packageName }
+            var appOverlayMode by remember(app.packageName) { mutableStateOf(CompactOverlayMode.PROFILES) }
+            CtCompactOverlayFrame(onDismissRequest = { showAppAssignmentDialog = false }) {
+                CompactOverlayScreen(
+                    state = state,
+                    displayFrequenciesAsPercent = displayFrequenciesAsPercent,
+                    mode = appOverlayMode,
+                    onModeChange = { appOverlayMode = it },
+                    onApplyProfile = { profile, _ ->
+                        onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap())
+                        showAppAssignmentDialog = false
+                    },
+                    onApplyCurrent = { _, profile, customValues, _ ->
+                        if (profile == null && customValues == null) {
+                            onDeleteAppProfileAssignment(app.packageName)
+                        } else {
+                            onSaveAppProfileAssignment(app.packageName, app.label, profile?.id, customValues ?: emptyMap())
+                        }
+                        showAppAssignmentDialog = false
+                    },
+                    onDismissRequest = { showAppAssignmentDialog = false },
+                    onRefreshLiveValues = onRefreshLiveValues,
+                    contextPackageName = app.packageName,
+                    contextLabel = app.label,
+                    contextIcon = app.icon,
+                    onAppProfileAssignmentChange = { profile, customValues ->
+                        if (profile == null && customValues == null) onDeleteAppProfileAssignment(app.packageName)
+                        else onSaveAppProfileAssignment(app.packageName, app.label, profile?.id, customValues ?: emptyMap())
+                    },
+                    showAppProfileToggle = false,
+                    showAssignmentRemove = assignment != null,
+                    onRemoveAssignment = {
                         onDeleteAppProfileAssignment(app.packageName)
-                    } else {
-                        onSaveAppProfileAssignment(app.packageName, app.label, selectedProfile.id)
-                    }
-                    showAppAssignmentDialog = false
-                },
-            )
+                        showAppAssignmentDialog = false
+                    },
+                )
+            }
         }
     }
 
@@ -382,193 +399,259 @@ fun MainTunerScreen(
         )
     }
 
-    if (showSupportDialog) {
-        SupportClusterTuneDialog(onDismiss = { showSupportDialog = false })
-    }
 }
 
+enum class CompactOverlayMode { PROFILES, TUNER }
+
+/** Compact app-aware overlay shared by the edge picker and quick tuner. */
 @Composable
-fun CompactTunerScreen(
+fun CompactOverlayScreen(
     state: TunerState,
     displayFrequenciesAsPercent: Boolean,
-    onPolicyValueChange: (CpuPolicyInfo, Int) -> Unit,
-    onApplyProfile: (PerformanceProfile) -> Unit,
-    onClearSelection: () -> Unit,
-    onApplyCurrent: (TunerState) -> Unit,
+    mode: CompactOverlayMode,
+    onModeChange: (CompactOverlayMode) -> Unit,
+    onApplyProfile: (PerformanceProfile, Boolean) -> Unit,
+    onApplyCurrent: (TunerState, PerformanceProfile?, Map<Int, Int>?, Boolean) -> Unit,
     onDismissRequest: () -> Unit,
     onRefreshLiveValues: () -> Unit,
-    onOpenFullApp: () -> Unit,
-    showCompactScrim: Boolean = true,
+    contextPackageName: String? = null,
+    contextLabel: String? = null,
+    contextIcon: Drawable? = null,
+    onAppProfileAssignmentChange: ((PerformanceProfile?, Map<Int, Int>?) -> Unit)? = null,
+    showAppProfileToggle: Boolean = true,
+    showAssignmentRemove: Boolean = false,
+    onRemoveAssignment: (() -> Unit)? = null,
 ) {
-    ScreenNotifications(
-        state = state,
-        onStatusMessageShown = {},
-        onErrorMessageShown = {},
-    )
-
+    val colorScheme = MaterialTheme.colorScheme
+    val profiles = profilesForCompactPicker(state.displayProfiles)
+    val assignment = contextPackageName?.let { packageName ->
+        state.appProfileAssignments.firstOrNull { it.packageName == packageName }
+    }
+    val canAssign = !contextPackageName.isNullOrBlank() && onAppProfileAssignmentChange != null
+    var appProfileEnabled by remember(contextPackageName, assignment?.profileId, assignment?.customMaxFrequencies) {
+        mutableStateOf(assignment != null)
+    }
+    var stagedProfile by remember(assignment?.profileId, state.selectedDisplayProfileId) {
+        mutableStateOf(
+            if (assignment?.isCustom == true || (assignment == null && state.isManualSelection)) {
+                null
+            } else {
+                profiles.firstOrNull { it.id == assignment?.profileId }
+                    ?: listOfNotNull(state.selectedDisplayProfileId, state.activeDisplayProfileId, state.lastAppliedDisplayProfileId)
+                        .firstNotNullOfOrNull { id -> profiles.firstOrNull { it.id == id } }
+            },
+        )
+    }
+    val initialValues = remember(assignment?.profileId, assignment?.customMaxFrequencies, state.displayProfiles) {
+        assignment?.customMaxFrequencies?.takeIf { it.isNotEmpty() }
+            ?: profiles.firstOrNull { it.id == assignment?.profileId }?.maxFrequencies
+            ?: state.currentValues
+    }
+    var stagedCustomValues by remember(initialValues) { mutableStateOf(initialValues) }
+    var customDraft by remember(assignment?.profileId, assignment?.customMaxFrequencies) {
+        mutableStateOf(assignment?.isCustom == true || (assignment == null && state.isManualSelection))
+    }
+    // Keep the preset selection derived from the complete staged values. This also
+    // handles opening the overlay with values that already match a named profile.
+    LaunchedEffect(stagedCustomValues, state.policies, profiles) {
+        val matchingProfile = stagedProfile?.takeIf { profile ->
+            ProfileStateResolver.matchesProfile(stagedCustomValues, profile, state.policies)
+        } ?: listOfNotNull(
+            assignment?.profileId,
+            state.selectedDisplayProfileId,
+            state.activeDisplayProfileId,
+            state.lastAppliedDisplayProfileId,
+        ).asSequence().mapNotNull { id -> profiles.firstOrNull { it.id == id } }
+            .firstOrNull { profile ->
+                ProfileStateResolver.matchesProfile(stagedCustomValues, profile, state.policies)
+            }
+        ?: profiles.firstOrNull { profile ->
+            ProfileStateResolver.matchesProfile(stagedCustomValues, profile, state.policies)
+        }
+        if (matchingProfile != null) {
+            if (stagedProfile?.id != matchingProfile.id || customDraft) {
+                stagedProfile = matchingProfile
+                customDraft = false
+            }
+        } else if (stagedProfile != null || !customDraft) {
+            stagedProfile = null
+            customDraft = true
+        }
+    }
     LaunchedEffect(Unit) {
         while (true) {
             delay(1_000)
             onRefreshLiveValues()
         }
     }
+    val selectedProfileId = if (customDraft) null else stagedProfile?.id
+        ?: listOfNotNull(assignment?.profileId, state.activeDisplayProfileId, state.lastAppliedDisplayProfileId)
+            .firstOrNull { id -> profiles.any { it.id == id } }
 
-    ScreenContainer(compactMode = true, showCompactScrim = showCompactScrim) {
-        val colorScheme = MaterialTheme.colorScheme
-        Column(modifier = Modifier.fillMaxSize()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+    ScreenContainer(compactMode = true, showCompactScrim = false, compactFillHeight = false) {
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().background(colorScheme.surfaceContainer)
+                    .padding(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Header(
-                    state = state,
-                    compactMode = true,
-                    onOpenSettings = null,
-                )
-                if (state.isLoading) {
-                    LoadingClustersCard()
-                } else {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (contextPackageName != null || contextLabel != null || contextIcon != null) {
+                        AppIcon(icon = contextIcon, contentDescription = contextLabel, modifier = Modifier.size(40.dp))
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f).height(40.dp),
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Text(
+                            text = contextLabel ?: contextPackageName ?: "Pick a profile",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        if (!contextLabel.isNullOrBlank() && !contextPackageName.isNullOrBlank() && contextLabel != contextPackageName) {
+                            Text(
+                                text = contextPackageName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (canAssign && showAppProfileToggle) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text("App profile", style = MaterialTheme.typography.labelMedium, color = colorScheme.onSurface)
+                                CtSwitch(
+                                    checked = appProfileEnabled,
+                                    onCheckedChange = { enabled ->
+                                        appProfileEnabled = enabled
+                                        if (!enabled && mode == CompactOverlayMode.PROFILES) {
+                                            onAppProfileAssignmentChange?.invoke(null, null)
+                                        }
+                                    },
+                                    modifier = Modifier.scale(0.78f),
+                                )
+                            }
+                        }
+                        if (showAssignmentRemove && onRemoveAssignment != null) {
+                            TextButton(onClick = onRemoveAssignment) { Text("Remove") }
+                        }
+                        Row(
+                            modifier = Modifier.background(colorScheme.surfaceContainerHighest, RoundedCornerShape(10.dp))
+                                .padding(2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            listOf(CompactOverlayMode.PROFILES to "list", CompactOverlayMode.TUNER to "tune").forEach { (item, icon) ->
+                                val selected = mode == item
+                                Box(
+                                    modifier = Modifier.size(30.dp).clip(RoundedCornerShape(8.dp))
+                                        .background(if (selected) colorScheme.primaryContainer else Color.Transparent)
+                                        .clickable { onModeChange(item) },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CtIcon(icon, if (item == CompactOverlayMode.PROFILES) "Profiles" else "Tuner", tint = if (selected) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant, size = 18.dp)
+                                }
+                            }
+                        }
+                        IconButton(onClick = onDismissRequest, modifier = Modifier.size(30.dp)) {
+                            CtIcon("close", "Close", tint = colorScheme.onSurfaceVariant, size = 21.dp)
+                        }
+                    }
+                }
+            }
+            CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
+            if (mode == CompactOverlayMode.PROFILES) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 340.dp).verticalScroll(rememberScrollState()).padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (customDraft) {
+                        ProfileChoiceRow(
+                            title = "Custom",
+                            selected = true,
+                            onClick = { onModeChange(CompactOverlayMode.TUNER) },
+                        )
+                    }
+                    profiles.forEach { profile ->
+                        ProfileChoiceRow(
+                            title = profile.name,
+                            selected = selectedProfileId == profile.id,
+                            onClick = {
+                                stagedProfile = profile
+                                onApplyProfile(profile, appProfileEnabled)
+                            },
+                        )
+                    }
+                    if (profiles.isEmpty()) ProfilePickerEmptyOptionCard()
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 390.dp).verticalScroll(rememberScrollState()).padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     ProfileChipSelector(
-                        state = state,
-                        onApplyProfile = onApplyProfile,
-                        onClearSelection = onClearSelection,
-                        onOpenFullApp = onOpenFullApp,
+                        state = state.copy(
+                            currentValues = stagedCustomValues,
+                            activeDisplayProfileId = null,
+                            lastAppliedDisplayProfileId = null,
+                            selectedDisplayProfileId = stagedProfile?.id,
+                            isManualSelection = customDraft,
+                        ),
+                        onApplyProfile = { profile ->
+                            stagedProfile = profile
+                            customDraft = false
+                            stagedCustomValues = profile.maxFrequencies
+                            if (mode == CompactOverlayMode.PROFILES) onApplyProfile(profile, appProfileEnabled)
+                        },
+                        onClearSelection = {
+                            stagedProfile = null
+                            customDraft = true
+                        },
+                        onOpenFullApp = null,
+                        stripUnderclockSuffix = true,
                     )
                     PolicyEditorSection(
-                        state = state,
+                        state = state.copy(currentValues = stagedCustomValues),
                         displayFrequenciesAsPercent = displayFrequenciesAsPercent,
-                        onPolicyValueChange = onPolicyValueChange,
+                        onPolicyValueChange = { policy, value ->
+                            stagedCustomValues = stagedCustomValues + (policy.id to value)
+                        },
                         compactMode = true,
                     )
                 }
             }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(colorScheme.outlineVariant.copy(alpha = 0.48f)),
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .background(colorScheme.surfaceContainer),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        TextButton(
-                            onClick = onDismissRequest,
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
-                        ) {
-                            Text("Cancel")
-                        }
-                        Button(
-                            onClick = { onApplyCurrent(state) },
-                            enabled = state.policies.isNotEmpty() && state.isPServerAvailable,
-                            modifier = Modifier.height(30.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                        ) {
-                            Text("Apply")
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun CompactProfilePickerScreen(
-    state: TunerState,
-    onApplyProfile: (PerformanceProfile) -> Unit,
-    onDismissRequest: () -> Unit,
-    showCompactScrim: Boolean = true,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val profiles = state.displayProfiles.filter { profile -> profile.source != ProfileSource.VIRTUAL }
-    val selectedProfileId = listOfNotNull(
-        state.activeDisplayProfileId,
-        state.lastAppliedDisplayProfileId,
-        state.selectedDisplayProfileId,
-    ).firstOrNull { profileId -> profiles.any { profile -> profile.id == profileId } }
-
-    val firstRowFocus = remember { FocusRequester() }
-    LaunchedEffect(profiles.isEmpty()) {
-        if (profiles.isNotEmpty()) {
-            kotlinx.coroutines.delay(80)
-            runCatching { firstRowFocus.requestFocus() }
-        }
-    }
-
-    ScreenContainer(
-        compactMode = true,
-        showCompactScrim = showCompactScrim,
-        compactFillHeight = false,
-        compactWidthFraction = 1f,
-        compactMaxWidth = 360.dp,
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colorScheme.surfaceContainer)
-                    .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+            if (mode == CompactOverlayMode.TUNER) {
+                CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
+                Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "Pick a profile",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colorScheme.onSurface,
-                )
-                CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                    TextButton(
-                        onClick = onDismissRequest,
-                        modifier = Modifier.height(28.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
-                    ) {
-                        Text("Cancel", color = colorScheme.primary)
-                    }
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(colorScheme.outlineVariant.copy(alpha = 0.48f)),
-            )
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 340.dp)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (profiles.isEmpty()) {
-                    ProfilePickerEmptyOptionCard()
-                } else {
-                    profiles.forEachIndexed { index, profile ->
-                        ProfileChoiceRow(
-                            title = profile.name,
-                            selected = selectedProfileId == profile.id,
-                            onClick = { onApplyProfile(profile) },
-                            focusRequester = if (index == 0) firstRowFocus else null,
-                        )
-                    }
+                TextButton(onClick = onDismissRequest) { Text("Cancel") }
+                    Button(
+                        onClick = {
+                            onApplyCurrent(
+                                state.copy(currentValues = stagedCustomValues),
+                                stagedProfile.takeUnless { customDraft },
+                                stagedCustomValues.takeIf { customDraft },
+                                appProfileEnabled,
+                            )
+                        },
+                        enabled = state.policies.isNotEmpty() && state.isPServerAvailable,
+                        modifier = Modifier.height(30.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                    ) { Text("Apply") }
                 }
             }
         }
@@ -577,64 +660,40 @@ fun CompactProfilePickerScreen(
 
 @Composable
 private fun ProfilePickerEmptyOptionCard() {
-    val colorScheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(20.dp)
-    val borderColor = colorScheme.outlineVariant.copy(alpha = 0.28f)
-    val contentColor = colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp)
-            .background(colorScheme.surfaceContainerHigh.copy(alpha = 0.10f), shape),
-        contentAlignment = Alignment.Center,
+    CtDashedCard(
+        modifier = Modifier.height(54.dp),
     ) {
-        Canvas(Modifier.fillMaxSize()) {
-            val strokeWidth = 2.dp.toPx()
-            drawRoundRect(
-                color = borderColor,
-                topLeft = Offset(strokeWidth / 2f, strokeWidth / 2f),
-                size = Size(size.width - strokeWidth, size.height - strokeWidth),
-                cornerRadius = CornerRadius(20.dp.toPx(), 20.dp.toPx()),
-                style = Stroke(
-                    width = strokeWidth,
-                    pathEffect = PathEffect.dashPathEffect(
-                        floatArrayOf(9.dp.toPx(), 6.dp.toPx()),
-                    ),
-                ),
-            )
-        }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(
             text = "No profiles available",
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
-            color = contentColor,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
         )
+        }
     }
 }
 
 @Composable
 private fun LoadingClustersCard() {
-    SectionCard(
-        title = null,
-        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                strokeWidth = 2.5.dp,
-            )
+    CtStatePanel(
+        state = CtStatePanelState.Loading,
+        shape = RoundedCornerShape(24.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+        title = {
             Text(
                 text = "Scanning CPU clusters...",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
             )
-        }
-    }
+        },
+        leading = {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.5.dp,
+            )
+        },
+    )
 }
 
 @Composable
@@ -688,7 +747,12 @@ private fun ScreenContainer(
         )
     }
 
-    Box(modifier = backgroundModifier) {
+    if (compactMode && !showCompactScrim) {
+        // Overlay hosts provide their own scrim and panel surface. Rendering the
+        // content directly here avoids nesting a second full-screen Card inside
+        // that panel, which would otherwise paint an opaque layer over the host.
+        content()
+    } else Box(modifier = backgroundModifier) {
         val containerModifier = if (compactMode) {
             var modifier = Modifier.align(Alignment.Center)
                 .navigationBarsPadding()
@@ -789,90 +853,6 @@ private fun MainSideMenu(
 }
 
 @Composable
-private fun SupportClusterTuneDialog(onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val qrCode = remember { generateQrCodeBitmap(KOFI_URL, 520).asImageBitmap() }
-    val openKofi: () -> Unit = {
-        runCatching {
-            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(KOFI_URL)))
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        icon = {
-            MaterialSymbol(
-                name = "favorite",
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                size = 28.dp,
-            )
-        },
-        title = {
-            Text(
-                text = "Support ClusterTune",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-        },
-        text = {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-            ) {
-                Text(
-                    text = SUPPORT_MESSAGE,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color.White,
-                ) {
-                    Image(
-                        bitmap = qrCode,
-                        contentDescription = "Ko-fi donation QR code",
-                        modifier = Modifier
-                            .size(196.dp)
-                            .padding(12.dp),
-                    )
-                }
-                Text(
-                    text = KOFI_URL,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.clickable(onClick = openKofi),
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = openKofi) {
-                Text("Open Ko-fi")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Close")
-            }
-        },
-    )
-}
-
-private fun generateQrCodeBitmap(content: String, size: Int): Bitmap {
-    val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, size, size)
-    return Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).apply {
-        for (x in 0 until size) {
-            for (y in 0 until size) {
-                setPixel(x, y, if (matrix[x, y]) AndroidColor.BLACK else AndroidColor.WHITE)
-            }
-        }
-    }
-}
-
-@Composable
 private fun SideMenuItem(
     label: String,
     symbol: String,
@@ -894,7 +874,11 @@ private fun SideMenuItem(
             .fillMaxWidth()
             .height(44.dp)
             .clip(itemShape)
-            .clickable(onClick = onClick),
+            .selectable(
+                selected = selected,
+                role = Role.Tab,
+                onClick = onClick,
+            ),
         shape = itemShape,
         color = containerColor,
         contentColor = contentColor,
@@ -911,8 +895,8 @@ private fun SideMenuItem(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            MaterialSymbol(
-                name = symbol,
+            CtIcon(
+                symbol = symbol,
                 contentDescription = null,
                 tint = contentColor,
                 size = 26.dp,
@@ -961,13 +945,13 @@ private fun Header(
                 state.privilegedExecutionMethodId?.let { methodId ->
                     AssistChip(
                         onClick = {},
-                        label = { Text("Execution: $methodId") },
+                        label = { Text("Execution: ${executionMethodLabel(methodId)}") },
                         enabled = false,
                     )
                 }
                 onOpenSettings?.let { openSettings ->
                     IconButton(onClick = openSettings) {
-                        Icon(
+                        CtIcon(
                             imageVector = Icons.Outlined.Settings,
                             contentDescription = "Settings",
                             tint = MaterialTheme.colorScheme.onSurface,
@@ -1067,7 +1051,7 @@ private fun MainTabSelector(
         AssistChip(
             onClick = { onSelect(MainTab.PROFILES) },
             label = { Text("Profiles") },
-            leadingIcon = { Icon(Icons.Outlined.Memory, contentDescription = null) },
+            leadingIcon = { CtIcon(Icons.Outlined.Memory, contentDescription = null) },
             colors = AssistChipDefaults.assistChipColors(
                 containerColor = if (selectedTab == MainTab.PROFILES) {
                     MaterialTheme.colorScheme.primaryContainer
@@ -1079,7 +1063,7 @@ private fun MainTabSelector(
         AssistChip(
             onClick = { onSelect(MainTab.APPS) },
             label = { Text("Apps") },
-            leadingIcon = { Icon(Icons.Outlined.Apps, contentDescription = null) },
+            leadingIcon = { CtIcon(Icons.Outlined.Apps, contentDescription = null) },
             colors = AssistChipDefaults.assistChipColors(
                 containerColor = if (selectedTab == MainTab.APPS) {
                     MaterialTheme.colorScheme.primaryContainer
@@ -1091,7 +1075,7 @@ private fun MainTabSelector(
         AssistChip(
             onClick = { onSelect(MainTab.HISTORY) },
             label = { Text("History") },
-            leadingIcon = { Icon(Icons.Outlined.History, contentDescription = null) },
+            leadingIcon = { CtIcon(Icons.Outlined.History, contentDescription = null) },
             colors = AssistChipDefaults.assistChipColors(
                 containerColor = if (selectedTab == MainTab.HISTORY) {
                     MaterialTheme.colorScheme.primaryContainer
@@ -1116,90 +1100,6 @@ private data class RailMarker(
     val isDot: Boolean,
     val isRecents: Boolean = false,
 )
-
-@Composable
-private fun ProfileSwitchHistorySection(
-    entries: List<ProfileSwitchHistoryEntry>,
-    modifier: Modifier = Modifier,
-) {
-    val timestampFormatter = remember { SimpleDateFormat("MMM d, h:mm:ss a", Locale.getDefault()) }
-    if (entries.isEmpty()) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = "No profile switches logged yet.",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-        }
-    } else {
-        LazyColumn(
-            modifier = modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            itemsIndexed(
-                items = entries,
-                key = { index, entry -> "${entry.timestampMillis}-$index" },
-            ) { _, entry ->
-                ProfileSwitchHistoryRow(
-                    entry = entry,
-                    timestamp = timestampFormatter.format(Date(entry.timestampMillis)),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProfileSwitchHistoryRow(
-    entry: ProfileSwitchHistoryEntry,
-    timestamp: String,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val rowShape = RoundedCornerShape(20.dp)
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = rowShape,
-        color = colorScheme.surfaceContainerHigh.copy(alpha = 0.46f),
-        border = BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.28f)),
-    ) {
-        Column(
-            modifier = Modifier.padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = entry.profileName,
-                    modifier = Modifier.weight(1f),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colorScheme.onSurface,
-                    maxLines = 1,
-                )
-                Text(
-                    text = timestamp,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colorScheme.onSurfaceVariant.copy(alpha = 0.84f),
-                    textAlign = TextAlign.End,
-                    maxLines = 1,
-                )
-            }
-            Text(
-                text = entry.trigger,
-                style = MaterialTheme.typography.bodySmall,
-                color = colorScheme.onSurfaceVariant.copy(alpha = 0.84f),
-                maxLines = 2,
-            )
-        }
-    }
-}
 
 private sealed interface AppListItem {
     val key: String
@@ -1326,7 +1226,9 @@ private fun AppProfilesSection(
                                     is AppListItem.Header -> AppListHeader(section = item.section)
                                     is AppListItem.App -> {
                                         val assignment = assignmentsByPackage[item.app.packageName]
-                                        val profileName = assignment?.let { profilesById[it.profileId]?.name ?: "Missing profile" }
+                                        val profileName = assignment?.let {
+                                            if (it.isCustom) "Custom" else profilesById[it.profileId]?.name ?: "Missing profile"
+                                        }
                                         AppProfileAppRow(
                                             app = item.app,
                                             profileName = profileName,
@@ -1512,8 +1414,8 @@ private fun AlphabetScrubber(
                     MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
                 }
                 if (marker.isRecents) {
-                    MaterialSymbol(
-                        name = "history",
+                    CtIcon(
+                        symbol = "history",
                         contentDescription = "Recents",
                         tint = markerColor,
                         size = 16.dp,
@@ -1634,194 +1536,174 @@ private fun CenteredModalSurface(
     heightFraction: Float = 0.86f,
     content: @Composable () -> Unit,
 ) {
+    val outsideInteractionSource = remember { MutableInteractionSource() }
     val surfaceInteractionSource = remember { MutableInteractionSource() }
 
-    // A real Dialog creates its own focus-capturing window, so D-pad/controller
-    // navigation stays inside the dialog instead of leaking to the content
-    // behind it. usePlatformDefaultWidth=false lets us size it ourselves.
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            dismissOnClickOutside = true,
-            dismissOnBackPress = true,
-        ),
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.38f))
+            .clickable(
+                interactionSource = outsideInteractionSource,
+                indication = null,
+                onClick = onDismiss,
+            ),
+        contentAlignment = Alignment.Center,
     ) {
-        // A single Back/B press closes the whole dialog. BackHandler catches the
-        // system BACK key (which most controllers' B button maps to); the
-        // onPreviewKeyEvent below additionally catches controllers that report a
-        // distinct ButtonB. Together this guarantees one press dismisses.
-        BackHandler(enabled = true) { onDismiss() }
-        BoxWithConstraints(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(widthFraction)
+                .height(maxHeight * heightFraction)
+                .widthIn(max = maxWidth)
+                .clickable(
+                    interactionSource = surfaceInteractionSource,
+                    indication = null,
+                    onClick = {},
+                ),
+            shape = RoundedCornerShape(28.dp),
+            tonalElevation = 6.dp,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f)),
         ) {
-            Surface(
+            // Controller support for modals. This surface is an inline overlay
+            // rather than a real Dialog window, so focus is not captured for us:
+            //  - focusGroup bounds the 2-D focus search to the modal's contents so
+            //    D-pad up/down/left/right resolves inside it (rows AND buttons).
+            //  - focusRestorer remembers the last-focused child and restores it
+            //    when focus re-enters, so a touch doesn't leave the controller
+            //    with no target to resume from.
+            //  - BackHandler + ButtonB make a single Back/B press close the modal
+            //    rather than only dropping an inner highlight state.
+            BackHandler(enabled = true) { onDismiss() }
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth(widthFraction)
-                    .height(maxHeight * heightFraction)
-                    .widthIn(max = maxWidth)
-                    .clickable(
-                        interactionSource = surfaceInteractionSource,
-                        indication = null,
-                        onClick = {},
-                    ),
-                shape = RoundedCornerShape(28.dp),
-                tonalElevation = 6.dp,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f)),
-            ) {
-                // focusGroup gives Compose's 2-D focus search a bounded region to
-                // resolve D-pad Up/Down/Left/Right within. Material's AlertDialog
-                // provides this automatically; this custom Dialog did not, which
-                // is why controller navigation (rows AND the Save/Cancel buttons)
-                // was dead in the two dialogs built on CenteredModalSurface.
-                //
-                // focusRestorer() remembers the last-focused child and restores it
-                // when focus re-enters the group. Without it, a single touch clears
-                // D-pad focus and the next D-pad press has no target to resume from,
-                // which left the controller dead after any touch. Restorer must be
-                // applied BEFORE focusGroup.
-                Box(
-                    modifier = Modifier
-                        .onPreviewKeyEvent { event ->
-                            if (event.type == KeyEventType.KeyDown && event.key == Key.ButtonB) {
-                                onDismiss()
-                                true
-                            } else {
-                                false
-                            }
+                    .onPreviewKeyEvent { event ->
+                        if (event.type == KeyEventType.KeyDown && event.key == Key.ButtonB) {
+                            onDismiss()
+                            true
+                        } else {
+                            false
                         }
-                        .focusRestorer()
-                        .focusGroup(),
-                ) {
-                    content()
-                }
+                    }
+                    .focusRestorer()
+                    .focusGroup(),
+            ) {
+                content()
             }
         }
     }
 }
 
+/**
+ * Profile-name field with a controller-friendly "hover" state. When navigating by
+ * D-pad the field is a plain focusable row (no keyboard), so you can pass over it
+ * and move back down to the cluster cards. Pressing A/Center (or tapping) enters
+ * edit mode: the real text field takes focus and the keyboard opens. Back/Enter
+ * or focus loss commits and returns to hover. A directly-focusable text field
+ * would force the keyboard open every time focus landed on it.
+ */
 @Composable
-private fun AppProfileAssignmentDialog(
-    app: InstalledAppInfo,
-    currentProfileId: String?,
-    profiles: List<PerformanceProfile>,
-    onDismiss: () -> Unit,
-    onSave: (PerformanceProfile?) -> Unit,
+private fun ProfileNameField(
+    value: String,
+    onValueChange: (String) -> Unit,
 ) {
-    var selectedProfileId by remember(app.packageName, currentProfileId) { mutableStateOf(currentProfileId) }
-    val selectedProfile = profiles.firstOrNull { it.id == selectedProfileId }
     val colorScheme = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(20.dp)
+    var editing by remember { mutableStateOf(false) }
+    var hoverFocused by remember { mutableStateOf(false) }
+    val editFocus = remember { FocusRequester() }
 
-    CenteredModalSurface(maxWidth = 520.dp, onDismiss = onDismiss) {
-        val firstRowFocus = remember { FocusRequester() }
-        LaunchedEffect(Unit) {
-            kotlinx.coroutines.delay(80)
-            runCatching { firstRowFocus.requestFocus() }
-        }
-        Column(modifier = Modifier.fillMaxHeight()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(colorScheme.surfaceContainer)
-                    .padding(18.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                    AppIcon(
-                        icon = app.icon,
-                        contentDescription = app.label,
-                        modifier = Modifier.size(48.dp),
-                    )
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+    if (editing) {
+        var everFocused by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { runCatching { editFocus.requestFocus() } }
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 62.dp)
+                .focusRequester(editFocus)
+                .onFocusChanged {
+                    if (it.isFocused) {
+                        everFocused = true
+                    } else if (everFocused) {
+                        // Only leave edit mode once focus was actually acquired and
+                        // then lost, not during the frame before requestFocus().
+                        editing = false
+                    }
+                }
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown &&
+                        (event.key == Key.Back || event.key == Key.ButtonB ||
+                            event.key == Key.Enter || event.key == Key.NumPadEnter)
                     ) {
-                        Text(
-                            text = app.label,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            text = app.packageName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
+                        editing = false
+                        true
+                    } else {
+                        false
+                    }
+                },
+            singleLine = true,
+            label = { Text("Profile name") },
+            shape = shape,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = colorScheme.primary.copy(alpha = 0.72f),
+                unfocusedBorderColor = colorScheme.outlineVariant.copy(alpha = 0.28f),
+                focusedContainerColor = colorScheme.surfaceContainerHigh.copy(alpha = 0.46f),
+                unfocusedContainerColor = colorScheme.surfaceContainerHigh.copy(alpha = 0.46f),
+                cursorColor = colorScheme.primary,
+            ),
+        )
+    } else {
+        val borderColor = if (hoverFocused) {
+            colorScheme.primary.copy(alpha = 0.82f)
+        } else {
+            colorScheme.outlineVariant.copy(alpha = 0.28f)
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 62.dp)
+                .onFocusChanged { hoverFocused = it.isFocused }
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown &&
+                        (event.key == Key.DirectionCenter || event.key == Key.Enter ||
+                            event.key == Key.NumPadEnter || event.key == Key.Spacebar ||
+                            event.key == Key.ButtonA)
+                    ) {
+                        editing = true
+                        true
+                    } else {
+                        false
                     }
                 }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(colorScheme.outlineVariant.copy(alpha = 0.48f)),
+                .focusable()
+                .clickable { editing = true }
+                .background(colorScheme.surfaceContainerHigh.copy(alpha = 0.46f), shape)
+                .border(BorderStroke(if (hoverFocused) 2.dp else 1.dp, borderColor), shape)
+                .clip(shape)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = "Profile name",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onSurfaceVariant.copy(alpha = 0.84f),
             )
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    ProfileChoiceRow(
-                        title = "None",
-                        selected = selectedProfileId == null,
-                        onClick = { selectedProfileId = null },
-                        focusRequester = firstRowFocus,
-                    )
-                    profiles.forEach { profile ->
-                        ProfileChoiceRow(
-                            title = profile.name,
-                            selected = selectedProfileId == profile.id,
-                            onClick = { selectedProfileId = profile.id },
-                        )
-                    }
-                }
-
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(colorScheme.outlineVariant.copy(alpha = 0.48f)),
-                )
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .background(colorScheme.surfaceContainer)
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            TextButton(
-                                onClick = onDismiss,
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 4.dp),
-                            ) {
-                                Text("Cancel")
-                            }
-                            Button(
-                                onClick = { onSave(selectedProfile) },
-                                modifier = Modifier.height(30.dp),
-                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                            ) {
-                                Text("Save")
-                            }
-                        }
-                    }
-                }
-            }
+            Text(
+                text = value.ifEmpty { "Tap or press to edit" },
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (value.isEmpty()) {
+                    colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                } else {
+                    colorScheme.onSurface
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
     }
+}
 
 @Composable
 private fun ProfileChoiceRow(
@@ -1829,17 +1711,9 @@ private fun ProfileChoiceRow(
     selected: Boolean,
     onClick: () -> Unit,
     compact: Boolean = false,
-    focusRequester: FocusRequester? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val rowShape = RoundedCornerShape(20.dp)
-    val interactionSource = remember { MutableInteractionSource() }
-    var focused by remember { mutableStateOf(false) }
-
-    // Beige, system-color surfaces matching the main-menu profile rows and the
-    // customize dialog. Selected rows get the translucent primary-container fill;
-    // focus is shown with the app's beige primary outline (never a black border),
-    // plus a subtle scale-up so it animates the way the old rows did.
     val containerColor = colorScheme.surfaceContainerHigh.copy(alpha = 0.46f)
     val containerBrush = if (selected) {
         Brush.horizontalGradient(
@@ -1851,37 +1725,19 @@ private fun ProfileChoiceRow(
     } else {
         Brush.horizontalGradient(listOf(containerColor, containerColor))
     }
-    val borderColor = when {
-        focused -> colorScheme.primary
-        selected -> colorScheme.primary.copy(alpha = 0.82f)
-        else -> colorScheme.outlineVariant.copy(alpha = 0.28f)
+    val borderColor = if (selected) {
+        colorScheme.primary.copy(alpha = 0.82f)
+    } else {
+        colorScheme.outlineVariant.copy(alpha = 0.28f)
     }
-    val borderWidth = if (focused || selected) 2.dp else 1.dp
-    val titleColor = if (selected) colorScheme.primary.copy(alpha = 0.82f) else colorScheme.onSurface
-    val scale by animateFloatAsState(if (focused) 1.03f else 1f, label = "choiceScale")
+    val titleColor = if (selected) borderColor else colorScheme.onSurface
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = if (compact) 38.dp else 48.dp)
-            .scale(scale)
-            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-            .onFocusChanged { focused = it.isFocused }
-            .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown &&
-                    (event.key == Key.DirectionCenter || event.key == Key.Enter ||
-                        event.key == Key.NumPadEnter || event.key == Key.Spacebar ||
-                        event.key == Key.ButtonA)
-                ) {
-                    onClick()
-                    true
-                } else {
-                    false
-                }
-            }
-            .focusable(interactionSource = interactionSource)
             .background(containerBrush, rowShape)
-            .border(BorderStroke(borderWidth, borderColor), rowShape)
+            .border(BorderStroke(1.dp, borderColor), rowShape)
             .clip(rowShape)
             .clickable(onClick = onClick)
             .padding(
@@ -1912,8 +1768,8 @@ private fun ProfileChoiceRow(
             contentColor = colorScheme.onPrimary,
         ) {
             if (selected) {
-                MaterialSymbol(
-                    name = "check",
+                CtIcon(
+                    symbol = "check",
                     contentDescription = "Selected",
                     tint = colorScheme.onPrimary,
                     size = if (compact) 15.dp else 18.dp,
@@ -1972,8 +1828,8 @@ private fun AppIcon(
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
         ) {
             Box(contentAlignment = Alignment.Center) {
-                MaterialSymbol(
-                    name = "apps",
+                CtIcon(
+                    symbol = "apps",
                     contentDescription = contentDescription,
                     size = 24.dp,
                 )
@@ -2059,6 +1915,16 @@ private fun ProfileListSection(
                             isDragging = isDragging,
                             dragActive = draggingProfileId != null,
                             onActivate = { onActivateProfile(profile) },
+                            onMoveUp = if (canMove && originalIndex > 0) {
+                                { onMoveProfile(profile.id, -1) }
+                            } else {
+                                null
+                            },
+                            onMoveDown = if (canMove && originalIndex < profiles.lastIndex) {
+                                { onMoveProfile(profile.id, 1) }
+                            } else {
+                                null
+                            },
                             onEdit = {
                                 if (profile.isEditable) {
                                     onEditProfile(profile.id)
@@ -2134,8 +2000,8 @@ private fun AddProfileSkeletonButton(onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            MaterialSymbol(
-                name = "add",
+            CtIcon(
+                symbol = "add",
                 contentDescription = null,
                 tint = contentColor,
                 size = 24.dp,
@@ -2166,6 +2032,8 @@ private fun ProfileListRow(
     isDragging: Boolean,
     dragActive: Boolean,
     onActivate: () -> Unit,
+    onMoveUp: (() -> Unit)?,
+    onMoveDown: (() -> Unit)?,
     onEdit: () -> Unit,
     onDragStart: () -> Unit,
     onDrag: (Float) -> Unit,
@@ -2215,6 +2083,9 @@ private fun ProfileListRow(
                 enabled = true,
                 canMoveUp = canMoveUp,
                 canMoveDown = canMoveDown,
+                profileName = profile.name,
+                onMoveUp = onMoveUp,
+                onMoveDown = onMoveDown,
                 onDragStart = onDragStart,
                 onDrag = onDrag,
                 onDragEnd = onDragEnd,
@@ -2238,8 +2109,8 @@ private fun ProfileListRow(
                     color = profileNameColor,
                 )
                 if (isSleepProfile) {
-                    MaterialSymbol(
-                        name = "dark_mode",
+                    CtIcon(
+                        symbol = "dark_mode",
                         contentDescription = "Sleep profile",
                         tint = contentColor.copy(alpha = 0.78f),
                         size = 18.dp,
@@ -2257,8 +2128,8 @@ private fun ProfileListRow(
         }
         if (showEdit) {
             IconButton(onClick = onEdit) {
-                MaterialSymbol(
-                    name = "tune",
+                CtIcon(
+                symbol = "tune",
                     contentDescription = "Edit ${profile.name}",
                     tint = colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
                     size = 26.dp,
@@ -2308,8 +2179,8 @@ private fun ProfileActivationControl(
             contentColor = colorScheme.onPrimary,
         ) {
             if (selected) {
-                MaterialSymbol(
-                    name = "check",
+                CtIcon(
+                    symbol = "check",
                     contentDescription = "Active profile",
                     tint = colorScheme.onPrimary,
                     size = 18.dp,
@@ -2325,6 +2196,9 @@ private fun ReorderControl(
     enabled: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
+    profileName: String,
+    onMoveUp: (() -> Unit)?,
+    onMoveDown: (() -> Unit)?,
     onDragStart: () -> Unit,
     onDrag: (Float) -> Unit,
     onDragEnd: () -> Unit,
@@ -2335,6 +2209,26 @@ private fun ReorderControl(
     Box(
         modifier = Modifier
             .size(width = 40.dp, height = 48.dp)
+            .semantics {
+                customActions = buildList {
+                    if (canMoveUp && onMoveUp != null) {
+                        add(
+                            CustomAccessibilityAction("Move $profileName up") {
+                                onMoveUp()
+                                true
+                            },
+                        )
+                    }
+                    if (canMoveDown && onMoveDown != null) {
+                        add(
+                            CustomAccessibilityAction("Move $profileName down") {
+                                onMoveDown()
+                                true
+                            },
+                        )
+                    }
+                }
+            }
             .pointerInput(canDrag, canMoveUp, canMoveDown) {
                 if (!canDrag) return@pointerInput
                 detectVerticalDragGestures(
@@ -2349,8 +2243,8 @@ private fun ReorderControl(
             },
         contentAlignment = Alignment.Center,
     ) {
-        MaterialSymbol(
-            name = "drag_indicator",
+        CtIcon(
+            symbol = "drag_indicator",
             contentDescription = "Drag to reorder ${if (canDrag) "profile" else "profile unavailable"}",
             tint = if (canDrag) {
                 colorScheme.onSurfaceVariant.copy(alpha = 0.72f)
@@ -2420,31 +2314,50 @@ private fun ProfileChipSelector(
     onApplyProfile: (PerformanceProfile) -> Unit,
     onClearSelection: () -> Unit,
     onOpenFullApp: (() -> Unit)?,
+    stripUnderclockSuffix: Boolean = false,
 ) {
+    val listState = rememberLazyListState()
+    LaunchedEffect(state.selectedDisplayProfileId, state.isManualSelection, state.displayProfiles) {
+        val selectedIndex = when {
+            state.isManualSelection -> state.displayProfiles.size
+            state.selectedDisplayProfileId != null -> state.displayProfiles.indexOfFirst {
+                it.id == state.selectedDisplayProfileId
+            }.takeIf { it >= 0 } ?: 0
+            else -> 0
+        }
+        listState.animateScrollToItem(selectedIndex)
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(
-            modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+        LazyRow(
+            state = listState,
+            modifier = Modifier.weight(1f),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 2.dp),
         ) {
-            state.displayProfiles.forEach { profile ->
+            itemsIndexed(
+                items = state.displayProfiles,
+                key = { _, profile -> profile.id },
+            ) { _, profile ->
                 ProfileSelectorChip(
-                    label = profile.name,
+                    label = profile.name.displayNameForTuner(stripUnderclockSuffix),
                     isApplied = profile.id == state.activeDisplayProfileId,
                     isSelected = profile.id == state.selectedDisplayProfileId,
                     onClick = { onApplyProfile(profile) },
                 )
             }
             if (state.isManualSelection) {
-                ProfileSelectorChip(
-                    label = "Manual",
-                    isApplied = false,
-                    isSelected = true,
-                    onClick = onClearSelection,
-                )
+                item(key = "custom") {
+                    ProfileSelectorChip(
+                        label = "Custom",
+                        isApplied = false,
+                        isSelected = true,
+                        onClick = onClearSelection,
+                    )
+                }
             }
         }
         onOpenFullApp?.let { openFullApp ->
@@ -2455,7 +2368,7 @@ private fun ProfileChipSelector(
                     onClick = openFullApp,
                     modifier = Modifier.size(40.dp),
                 ) {
-                    Icon(
+                    CtIcon(
                         imageVector = Icons.Outlined.Settings,
                         contentDescription = "Open full app",
                         tint = MaterialTheme.colorScheme.primary,
@@ -2465,6 +2378,9 @@ private fun ProfileChipSelector(
         }
     }
 }
+
+private fun String.displayNameForTuner(stripUnderclockSuffix: Boolean): String =
+    if (stripUnderclockSuffix) removeSuffix(" Underclock") else this
 
 @Composable
 private fun ProfileSelectorChip(
@@ -2504,7 +2420,7 @@ private fun PolicyEditorSection(
     }
 
     state.policies.forEach { policy ->
-        PolicyCard(
+        TunerPolicyCard(
             policy = policy,
             selectedValue = state.currentValues[policy.id] ?: policy.currentMaxFreq,
             actualValue = state.actualValues[policy.id] ?: policy.currentMaxFreq,
@@ -2541,14 +2457,13 @@ private fun ProfileEditorDialog(
     val colorScheme = MaterialTheme.colorScheme
 
     CenteredModalSurface(maxWidth = 900.dp, onDismiss = onDismiss) {
-        // Initial focus lands on the first cluster card, not the name field.
-        // Focusing the OutlinedTextField auto-opened the soft keyboard every time
-        // the dialog opened, which was disruptive on a controller. The name field
-        // is still reachable by pressing up from the first card.
-        val firstSliderFocus = remember { FocusRequester() }
+        // Initial controller focus lands on the first cluster card, not the name
+        // field: focusing a text field auto-opens the soft keyboard, which is
+        // disruptive on a handheld. The name field is reachable by pressing up.
+        val firstCardFocus = remember { FocusRequester() }
         LaunchedEffect(manualMode) {
             kotlinx.coroutines.delay(80)
-            runCatching { firstSliderFocus.requestFocus() }
+            runCatching { firstCardFocus.requestFocus() }
         }
         Column(modifier = Modifier.fillMaxHeight()) {
             Column(
@@ -2567,7 +2482,7 @@ private fun ProfileEditorDialog(
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     baseState.policies.forEachIndexed { index, policy ->
-                        PolicyCard(
+                        TunerPolicyCard(
                             policy = policy,
                             selectedValue = editedValues[policy.id] ?: policy.currentMaxFreq,
                             actualValue = baseState.actualValues[policy.id] ?: policy.currentMaxFreq,
@@ -2576,18 +2491,13 @@ private fun ProfileEditorDialog(
                             },
                             compactMode = true,
                             displayFrequenciesAsPercent = displayFrequenciesAsPercent,
-                            sliderFocusRequester = if (index == 0) firstSliderFocus else null,
+                            focusRequester = if (index == 0) firstCardFocus else null,
                         )
                     }
                 }
             }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(1.dp)
-                    .background(colorScheme.outlineVariant.copy(alpha = 0.48f)),
-            )
+            CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
 
             Row(
                 modifier = Modifier
@@ -2604,7 +2514,7 @@ private fun ProfileEditorDialog(
                             onClick = { showDeleteConfirmation = true },
                             modifier = Modifier.size(36.dp),
                         ) {
-                            Icon(
+                            CtIcon(
                                 Icons.Outlined.Delete,
                                 contentDescription = "Delete profile",
                                 tint = MaterialTheme.colorScheme.error,
@@ -2644,25 +2554,17 @@ private fun ProfileEditorDialog(
     }
 
     if (showDeleteConfirmation) {
-        AlertDialog(
+        CtConfirmationDialog(
+            title = "Delete profile?",
+            message = "This profile will be removed until you reset profiles to default.",
+            confirmLabel = "Delete",
+            dismissLabel = "Cancel",
+            onConfirm = {
+                showDeleteConfirmation = false
+                onDelete()
+            },
             onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("Delete profile?") },
-            text = { Text("This profile will be removed until you reset profiles to default.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteConfirmation = false
-                        onDelete()
-                    },
-                ) {
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteConfirmation = false }) {
-                    Text("Cancel")
-                }
-            },
+            destructive = true,
         )
     }
 }
@@ -2680,351 +2582,6 @@ private fun EmptyState(state: TunerState) {
     }
 }
 
-/**
- * Profile-name field with a controller-friendly "hover" state. When navigating
- * by D-pad the field is a plain focusable row (dark focus border, no keyboard),
- * so you can pass over it and move back down to the sliders. Pressing A/Center
- * (or tapping) enters edit mode: the real text field takes focus and the soft
- * keyboard opens. Back / focus-loss commits the text and returns to hover.
- * Previously the OutlinedTextField grabbed focus directly, which force-opened
- * the keyboard and trapped D-pad focus.
- */
-@Composable
-private fun ProfileNameField(
-    value: String,
-    onValueChange: (String) -> Unit,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(20.dp)
-    var editing by remember { mutableStateOf(false) }
-    var hoverFocused by remember { mutableStateOf(false) }
-    val editFocus = remember { FocusRequester() }
-
-    if (editing) {
-        var everFocused by remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) {
-            runCatching { editFocus.requestFocus() }
-        }
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 62.dp)
-                .focusRequester(editFocus)
-                .onFocusChanged {
-                    if (it.isFocused) {
-                        everFocused = true
-                    } else if (everFocused) {
-                        // Only leave edit mode once focus was actually acquired and
-                        // then lost (tapping away / closing keyboard), not during
-                        // the initial frame before requestFocus() resolves.
-                        editing = false
-                    }
-                }
-                .onPreviewKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyDown &&
-                        (event.key == Key.Back || event.key == Key.ButtonB ||
-                            event.key == Key.Enter || event.key == Key.NumPadEnter)
-                    ) {
-                        editing = false
-                        true
-                    } else {
-                        false
-                    }
-                },
-            singleLine = true,
-            label = { Text("Profile name") },
-            shape = shape,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = colorScheme.primary.copy(alpha = 0.72f),
-                unfocusedBorderColor = colorScheme.outlineVariant.copy(alpha = 0.28f),
-                focusedContainerColor = colorScheme.surfaceContainerHigh.copy(alpha = 0.46f),
-                unfocusedContainerColor = colorScheme.surfaceContainerHigh.copy(alpha = 0.46f),
-                cursorColor = colorScheme.primary,
-            ),
-        )
-    } else {
-        val borderColor = if (hoverFocused) colorScheme.primary else colorScheme.outlineVariant.copy(alpha = 0.28f)
-        val borderWidth = if (hoverFocused) 2.dp else 1.dp
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 62.dp)
-                .onFocusChanged { hoverFocused = it.isFocused }
-                .onPreviewKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyDown &&
-                        (event.key == Key.DirectionCenter || event.key == Key.Enter ||
-                            event.key == Key.NumPadEnter || event.key == Key.Spacebar ||
-                            event.key == Key.ButtonA)
-                    ) {
-                        editing = true
-                        true
-                    } else {
-                        false
-                    }
-                }
-                .focusable()
-                .clickable { editing = true }
-                .background(colorScheme.surfaceContainerHigh.copy(alpha = 0.46f), shape)
-                .border(BorderStroke(borderWidth, borderColor), shape)
-                .clip(shape)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                text = "Profile name",
-                style = MaterialTheme.typography.bodySmall,
-                color = colorScheme.onSurfaceVariant.copy(alpha = 0.84f),
-            )
-            Text(
-                text = value.ifEmpty { "Tap or press to edit" },
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (value.isEmpty()) colorScheme.onSurfaceVariant.copy(alpha = 0.6f) else colorScheme.onSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
-private fun PolicyCard(
-    policy: CpuPolicyInfo,
-    selectedValue: Int,
-    onValueChanged: (Int) -> Unit,
-    compactMode: Boolean = false,
-    displayFrequenciesAsPercent: Boolean = false,
-    actualValue: Int = selectedValue,
-    sliderFocusRequester: FocusRequester? = null,
-) {
-    val supported = policy.supportedFrequencies
-    val displaySelectedValue = policy.clampToWritableMax(selectedValue)
-    val currentIndex = supported.indexOf(displaySelectedValue).takeIf { it >= 0 } ?: supported.lastIndex
-    val colorScheme = MaterialTheme.colorScheme
-    val rowShape = RoundedCornerShape(20.dp)
-    val interactionSource = remember { MutableInteractionSource() }
-
-    var focused by remember { mutableStateOf(false) }
-    // "Adjust mode" is entered by pressing A/Center on a focused card. While in
-    // adjust mode the D-pad left/right changes the frequency; pressing A again
-    // (or B/Back) exits. This mirrors the main menu, where you focus a profile
-    // (outlined) and then press to act on it (translucent primary fill).
-    var adjusting by remember { mutableStateOf(false) }
-
-    fun step(delta: Int) {
-        val maxIndex = supported.lastIndex
-        if (maxIndex <= 0) return
-        val next = (currentIndex + delta).coerceIn(0, maxIndex)
-        if (next != currentIndex) onValueChanged(supported[next])
-    }
-
-    // Highlight styling copied from the main-menu profile rows so the two
-    // screens feel identical: outlined primary border when focused, translucent
-    // primaryContainer fill when actively adjusting.
-    val containerColor = colorScheme.surfaceContainerHigh.copy(alpha = 0.46f)
-    val containerBrush = if (adjusting) {
-        Brush.horizontalGradient(
-            listOf(
-                colorScheme.primaryContainer.copy(alpha = 0.24f),
-                colorScheme.surfaceContainerHigh.copy(alpha = 0.56f),
-            ),
-        )
-    } else {
-        Brush.horizontalGradient(listOf(containerColor, containerColor))
-    }
-    val borderColor = when {
-        adjusting -> colorScheme.primary.copy(alpha = 0.82f)
-        focused -> colorScheme.primary.copy(alpha = 0.58f)
-        else -> colorScheme.outlineVariant.copy(alpha = 0.28f)
-    }
-    val borderWidth = if (focused || adjusting) 2.dp else 1.dp
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (sliderFocusRequester != null) Modifier.focusRequester(sliderFocusRequester) else Modifier)
-            .onFocusChanged {
-                focused = it.isFocused
-                if (!it.isFocused) adjusting = false
-            }
-            .onPreviewKeyEvent { event ->
-                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                when (event.key) {
-                    Key.DirectionCenter, Key.Enter, Key.NumPadEnter, Key.Spacebar, Key.ButtonA -> {
-                        adjusting = !adjusting
-                        true
-                    }
-                    // B / Back is intentionally NOT consumed here. It falls through
-                    // to the dialog-level BackHandler so a single press closes the
-                    // whole editor (previously B only dropped out of adjust mode,
-                    // forcing a second press to actually dismiss).
-                    Key.DirectionLeft -> if (adjusting) { step(-1); true } else false
-                    Key.DirectionRight -> if (adjusting) { step(1); true } else false
-                    else -> false
-                }
-            }
-            .focusable(interactionSource = interactionSource)
-            .background(containerBrush, rowShape)
-            .border(BorderStroke(borderWidth, borderColor), rowShape)
-            .clip(rowShape),
-    ) {
-        CompositionLocalProvider(
-            LocalMinimumInteractiveComponentSize provides if (compactMode) Dp.Unspecified else 48.dp,
-        ) {
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val tightRow = maxWidth < 420.dp
-                val veryTightRow = maxWidth < 340.dp
-                val horizontalGap = when {
-                    veryTightRow -> 4.dp
-                    tightRow -> 5.dp
-                    else -> 6.dp
-                }
-                val clusterColumnWidth = when {
-                    veryTightRow -> 72.dp
-                    tightRow -> 84.dp
-                    else -> 96.dp
-                }
-                val valueColumnWidth = when {
-                    veryTightRow -> 58.dp
-                    tightRow -> 66.dp
-                    else -> 76.dp
-                }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 62.dp)
-                    .padding(start = 12.dp, top = 8.dp, end = 12.dp, bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(horizontalGap),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(
-                    modifier = Modifier.width(clusterColumnWidth),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Text(
-                        text = "Cluster ${policy.id}",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = "Now ${formatFrequency(actualValue, boosted = policy.isBoosted(actualValue), policy = policy, displayAsPercent = displayFrequenciesAsPercent)}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.84f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-
-                CompactFrequencySlider(
-                    valueIndex = currentIndex,
-                    maxIndex = supported.lastIndex,
-                    onIndexChange = { index -> onValueChanged(supported[index]) },
-                    modifier = Modifier.weight(1f),
-                    active = adjusting,
-                )
-
-                Text(
-                    text = formatFrequency(selectedValue, boosted = policy.isBoosted(selectedValue), policy = policy, displayAsPercent = displayFrequenciesAsPercent),
-                    modifier = Modifier.width(valueColumnWidth),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colorScheme.primary,
-                    textAlign = TextAlign.End,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CompactFrequencySlider(
-    valueIndex: Int,
-    maxIndex: Int,
-    onIndexChange: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-    active: Boolean = false,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    val density = LocalDensity.current
-    val trackHeight = with(density) { 4.dp.toPx() }
-    val tickRadius = with(density) { 1.4.dp.toPx() }
-    val thumbRadius = with(density) { if (active) 9.dp.toPx() else 7.dp.toPx() }
-    val cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
-
-    // This slider is display + direct touch only. Controller focus and D-pad
-    // stepping live on the parent PolicyCard so that touching the slider can
-    // never steal or break D-pad focus (the previous design made both the app
-    // and customize dialogs lose controller control after a single touch).
-    BoxWithConstraints(modifier = modifier.height(24.dp)) {
-        val widthPx = with(density) { maxWidth.toPx() }.coerceAtLeast(1f)
-        fun indexForPosition(x: Float): Int {
-            if (maxIndex <= 0) return 0
-            return ((x / widthPx) * maxIndex).roundToInt().coerceIn(0, maxIndex)
-        }
-
-        Canvas(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(maxIndex, widthPx) {
-                    awaitEachGesture {
-                        val down = awaitFirstDown()
-                        onIndexChange(indexForPosition(down.position.x))
-                        val pointerId = down.id
-                        do {
-                            val event = awaitPointerEvent()
-                            val change = event.changes.firstOrNull { it.id == pointerId }
-                            if (change != null) {
-                                onIndexChange(indexForPosition(change.position.x))
-                                change.consume()
-                            }
-                        } while (event.changes.any { it.pressed })
-                    }
-                },
-        ) {
-            val centerY = size.height / 2f
-            val clampedMax = maxIndex.coerceAtLeast(1)
-            val progress = valueIndex.coerceIn(0, clampedMax).toFloat() / clampedMax.toFloat()
-            val thumbX = size.width * progress
-
-            drawRoundRect(
-                color = colorScheme.outlineVariant.copy(alpha = 0.34f),
-                topLeft = Offset(0f, centerY - trackHeight / 2f),
-                size = Size(size.width, trackHeight),
-                cornerRadius = cornerRadius,
-            )
-            drawRoundRect(
-                color = colorScheme.primary,
-                topLeft = Offset(0f, centerY - trackHeight / 2f),
-                size = Size(thumbX, trackHeight),
-                cornerRadius = cornerRadius,
-            )
-            if (maxIndex > 1) {
-                for (index in 0..maxIndex) {
-                    val tickX = size.width * (index.toFloat() / maxIndex.toFloat())
-                    drawCircle(
-                        color = colorScheme.onSurfaceVariant.copy(alpha = 0.14f),
-                        radius = tickRadius,
-                        center = Offset(tickX, centerY),
-                    )
-                }
-            }
-            drawCircle(
-                color = colorScheme.primary,
-                radius = thumbRadius,
-                center = Offset(thumbX, centerY),
-            )
-        }
-    }
-}
-
 @Composable
 private fun SectionCard(
     title: String?,
@@ -3034,32 +2591,30 @@ private fun SectionCard(
     contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        shape = RoundedCornerShape(24.dp),
+    CtSectionCard(
         modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        containerColor = containerColor,
+        contentPadding = contentPadding,
+        contentModifier = contentModifier,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Column(
-            modifier = contentModifier.padding(contentPadding),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            title?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
-            content()
+        title?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
         }
+        content()
     }
 }
 
-private fun CpuPolicyInfo.clampToWritableMax(valueKhz: Int): Int {
+internal fun CpuPolicyInfo.clampToWritableMax(valueKhz: Int): Int {
     return valueKhz.coerceAtMost(selectableMaxFreq)
 }
 
-private fun CpuPolicyInfo.isBoosted(valueKhz: Int): Boolean {
+internal fun CpuPolicyInfo.isBoosted(valueKhz: Int): Boolean {
     return valueKhz > selectableMaxFreq
 }
 

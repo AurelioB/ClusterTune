@@ -122,6 +122,13 @@ class TunerViewModel(
         }
     }
 
+    /** Discards values staged by a compact tuner without changing the applied state. */
+    fun discardEdits() {
+        edits.value = emptyMap()
+        transientMessage.value = null
+        transientError.value = null
+    }
+
     fun consumeStatusMessage() {
         transientMessage.value = null
     }
@@ -207,18 +214,46 @@ class TunerViewModel(
         }
     }
 
-    fun saveAppProfileAssignment(packageName: String, appLabel: String, profileId: String) {
+    fun saveAppProfileAssignment(
+        packageName: String,
+        appLabel: String,
+        profileId: String?,
+        customMaxFrequencies: Map<Int, Int> = emptyMap(),
+    ) {
         viewModelScope.launch {
             repository.saveAppProfileAssignment(
                 AppProfileAssignment(
                     packageName = packageName,
                     appLabel = appLabel,
                     profileId = profileId,
+                    customMaxFrequencies = customMaxFrequencies,
                 ),
             )
             transientMessage.value = "Saved app profile for $appLabel"
             transientError.value = null
         }
+    }
+
+    suspend fun saveAppProfileAssignmentAwait(
+        packageName: String,
+        appLabel: String,
+        profileId: String?,
+        customMaxFrequencies: Map<Int, Int> = emptyMap(),
+    ) {
+        repository.saveAppProfileAssignment(
+            AppProfileAssignment(packageName, appLabel, profileId, customMaxFrequencies),
+        )
+    }
+
+    suspend fun deleteAppProfileAssignmentAwait(packageName: String) {
+        repository.deleteAppProfileAssignment(packageName)
+    }
+
+    suspend fun applyAppProfileTemporarily(assignment: AppProfileAssignment): Result<PerformanceRepository.ApplyOutcome> =
+        repository.applyAppProfileTemporarily(assignment)
+
+    suspend fun logProfileSwitchAwait(profileId: String?, profileName: String, trigger: String) {
+        repository.logProfileSwitch(profileId, profileName, trigger)
     }
 
     fun deleteAppProfileAssignment(packageName: String) {
@@ -299,7 +334,7 @@ class TunerViewModel(
 
     fun setAccentColor(accentColor: Int) {
         viewModelScope.launch {
-            settingsStorage.persistAccentColor(accentColor)
+            settingsStorage.persistPresetAccentColor(accentColor)
         }
     }
 
@@ -330,6 +365,37 @@ class TunerViewModel(
     fun setDisplayFrequenciesAsPercent(enabled: Boolean) {
         viewModelScope.launch {
             settingsStorage.persistDisplayFrequenciesAsPercent(enabled)
+        }
+    }
+
+    fun setLeftEdgeProfilePickerEnabled(enabled: Boolean, onSaved: () -> Unit = {}) {
+        viewModelScope.launch {
+            settingsStorage.persistLeftEdgeProfilePickerEnabled(enabled)
+            onSaved()
+        }
+    }
+
+    fun setEdgeHandleHeightDp(heightDp: Int) {
+        viewModelScope.launch {
+            settingsStorage.persistEdgeHandleHeightDp(heightDp)
+        }
+    }
+
+    fun setEdgeHandleThicknessDp(thicknessDp: Int) {
+        viewModelScope.launch {
+            settingsStorage.persistEdgeHandleThicknessDp(thicknessDp)
+        }
+    }
+
+    fun setEdgeHandleVerticalPositionPercent(positionPercent: Int) {
+        viewModelScope.launch {
+            settingsStorage.persistEdgeHandleVerticalPositionPercent(positionPercent)
+        }
+    }
+
+    fun setEdgeHandleOpacityPercent(opacityPercent: Int) {
+        viewModelScope.launch {
+            settingsStorage.persistEdgeHandleOpacityPercent(opacityPercent)
         }
     }
 
@@ -368,22 +434,28 @@ class TunerViewModel(
         }
     }
 
+    fun refreshLiveState() {
+        repository.refreshLiveValues()
+    }
+
     /**
-     * Re-check which execution method is available and refresh state. Called
-     * when returning from the wireless-debug setup screen, since connecting (or
-     * disconnecting) there changes availability but doesn't otherwise re-probe.
+     * Re-probes which privileged execution method is available and refreshes
+     * live state so the UI reflects it. Used by the no-root wireless-debugging
+     * flow: connecting/disconnecting changes availability, and the main screen
+     * needs to switch between the profile list and the setup prompt.
+     *
+     * Unlike [autoDetectPrivilegedExecutionMethod] this does not persist the
+     * detected id or post a user-facing message — it is a silent re-check.
      */
     fun recheckExecutionAvailability() {
         viewModelScope.launch {
             com.wuyr.jdwp_injector.debug.JdwpDebugLog.d("recheckExecutionAvailability: called")
             val id = privilegedExecutionResolver.autoDetectBestMethod(forceReprobe = true)
-            com.wuyr.jdwp_injector.debug.JdwpDebugLog.d("recheckExecutionAvailability: detected=${id ?: "null"}")
+            com.wuyr.jdwp_injector.debug.JdwpDebugLog.d(
+                "recheckExecutionAvailability: detected=${id ?: "null"}",
+            )
             repository.refreshLiveValues()
         }
-    }
-
-    fun refreshLiveState() {
-        repository.refreshLiveValues()
     }
 
     private fun snapToSupported(policy: CpuPolicyInfo, rawValue: Int): Int {
@@ -426,14 +498,7 @@ class TunerViewModel(
     }
 
     private fun formatExecutionMethod(methodId: String): String {
-        return when (methodId) {
-            "pserver-stdout" -> "PServer"
-            "pserver-noout" -> "PServer (write-only)"
-            "pserver-file-output" -> "PServer fallback"
-            "root-shell" -> "Root shell"
-            "shizuku" -> "Shizuku"
-            else -> methodId
-        }
+        return executionMethodLabel(methodId)
     }
 
     companion object {

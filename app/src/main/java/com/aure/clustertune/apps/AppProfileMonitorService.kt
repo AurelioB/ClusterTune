@@ -15,13 +15,12 @@ import android.os.Process
 import androidx.core.app.NotificationCompat
 import com.aure.clustertune.AppContainer
 import com.aure.clustertune.R
+import com.aure.clustertune.tile.QuickSettingsTileRefresher
 import com.aure.clustertune.ui.SingleToast
-import com.wuyr.jdwp_injector.debug.JdwpDebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.currentCoroutineContext
@@ -33,28 +32,22 @@ class AppProfileMonitorService : Service() {
     private var monitorJob: Job? = null
     private lateinit var container: AppContainer
     private var activeAssignedPackage: String? = null
-    private var lastObservedForegroundPackage: String? = null
+    private val foregroundAppTracker = ForegroundAppTracker()
     private var lastUsageEventTimestamp: Long = 0L
 
     override fun onCreate() {
         super.onCreate()
-        instanceCount++
-        JdwpDebugLog.d("AppProfileMonitor onCreate (live instances=$instanceCount)")
         container = AppContainer(this)
         startForeground(NOTIFICATION_ID, buildNotification())
         monitorJob = scope.launch { monitorForegroundApps() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        JdwpDebugLog.d("AppProfileMonitor onStartCommand (startId=$startId, flags=$flags)")
         return START_STICKY
     }
 
     override fun onDestroy() {
-        instanceCount--
-        JdwpDebugLog.d("AppProfileMonitor onDestroy (live instances=$instanceCount)")
         monitorJob?.cancel()
-        scope.cancel()
         super.onDestroy()
     }
 
@@ -73,6 +66,7 @@ class AppProfileMonitorService : Service() {
                     container.repository.restoreNormalProfileTemporarily().onSuccess {
                         val trigger = "No assigned app focused; restored previous profile"
                         container.repository.logProfileSwitch(state.lastAppliedDisplayProfileId, restoreProfileName, trigger)
+                        QuickSettingsTileRefresher.requestUpdate(applicationContext)
                         showProfileToast(restoreProfileName)
                     }
                 }
@@ -88,11 +82,12 @@ class AppProfileMonitorService : Service() {
             when {
                 assignment != null && assignment.packageName != activeAssignedPackage -> {
                     val profile = state.displayProfiles.firstOrNull { it.id == assignment.profileId }
-                    val profileName = profile?.name ?: assignment.profileId
+                    val profileName = profile?.name ?: if (assignment.isCustom) "Custom" else assignment.profileId ?: "Unknown"
                     activeAssignedPackage = assignment.packageName
-                    container.repository.applyProfileTemporarily(assignment.profileId).onSuccess {
+                    container.repository.applyAppProfileTemporarily(assignment).onSuccess {
                         val trigger = "App focused: ${assignment.appLabel} (${assignment.packageName})"
                         container.repository.logProfileSwitch(assignment.profileId, profileName, trigger)
+                        QuickSettingsTileRefresher.requestUpdate(applicationContext)
                         showProfileToast(profileName)
                     }
                 }
@@ -106,6 +101,7 @@ class AppProfileMonitorService : Service() {
                             ?.let { "Focused app has no assigned profile: $it" }
                             ?: "No foreground app detected"
                         container.repository.logProfileSwitch(state.lastAppliedDisplayProfileId, restoreProfileName, trigger)
+                        QuickSettingsTileRefresher.requestUpdate(applicationContext)
                         showProfileToast(restoreProfileName)
                     }
                 }
@@ -121,25 +117,31 @@ class AppProfileMonitorService : Service() {
         val queryStart = maxOf(now - LOOKBACK_MS, lastUsageEventTimestamp + 1)
         val events = usageStatsManager.queryEvents(queryStart, now)
         val event = UsageEvents.Event()
+        var newestEventTimestamp = lastUsageEventTimestamp
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
-            if (event.timeStamp <= lastUsageEventTimestamp) continue
-            lastUsageEventTimestamp = event.timeStamp
+            if (event.timeStamp < queryStart) continue
+            newestEventTimestamp = maxOf(newestEventTimestamp, event.timeStamp)
             when (event.eventType) {
                 UsageEvents.Event.ACTIVITY_RESUMED,
                 UsageEvents.Event.MOVE_TO_FOREGROUND -> {
-                    lastObservedForegroundPackage = event.packageName
+                    foregroundAppTracker.onActivityResumed(
+                        packageName = event.packageName,
+                        className = event.className,
+                    )
                 }
                 UsageEvents.Event.ACTIVITY_PAUSED,
-                UsageEvents.Event.ACTIVITY_STOPPED,
                 UsageEvents.Event.MOVE_TO_BACKGROUND -> {
-                    if (lastObservedForegroundPackage == event.packageName) {
-                        lastObservedForegroundPackage = null
-                    }
+                    foregroundAppTracker.onActivityPaused(
+                        packageName = event.packageName,
+                        className = event.className,
+                    )
                 }
+                UsageEvents.Event.ACTIVITY_STOPPED -> foregroundAppTracker.onActivityStopped()
             }
         }
-        return lastObservedForegroundPackage
+        lastUsageEventTimestamp = newestEventTimestamp
+        return foregroundAppTracker.foregroundPackage
     }
 
     private fun showProfileToast(profileName: String) {
@@ -173,11 +175,6 @@ class AppProfileMonitorService : Service() {
         private const val NOTIFICATION_ID = 2002
         private const val POLL_INTERVAL_MS = 750L
         private const val LOOKBACK_MS = 30_000L
-
-        // Number of live service instances. Should never exceed 1. If diagnostics
-        // show this climbing, the service is being restart-thrashed.
-        @Volatile
-        private var instanceCount = 0
 
         fun start(context: Context) {
             if (!hasUsageStatsPermission(context)) return

@@ -17,7 +17,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.transformLatest
@@ -180,15 +179,15 @@ class PerformanceRepository(
                                 stockProfile = stockProfile,
                                 orderedIds = storage.displayOrder,
                             ),
-                            appProfileAssignments = storage.appProfileAssignments.filter { assignment ->
-                                orderedRealProfiles.any { profile -> profile.id == assignment.profileId }
-                            },
+                            appProfileAssignments = supportedAppProfileAssignments(
+                                assignments = storage.appProfileAssignments,
+                                realProfiles = orderedRealProfiles,
+                            ),
                             profileSwitchHistory = storage.profileSwitchHistory,
                         ),
                     ),
                 )
             }
-            .distinctUntilChanged()
             .flowOn(Dispatchers.IO)
     }
 
@@ -220,14 +219,6 @@ class PerformanceRepository(
             if (persistNormalState) {
                 profileStorage.persistLastValues(filtered)
                 profileStorage.persistLastAppliedDisplayProfile(appliedDisplayProfileId)
-            }
-            // The JDWP injection method applies asynchronously (fire-and-forget:
-            // the injected `echo > scaling_max_freq` runs inside GameAssistant a
-            // moment after executeScript returns). Give it time to land before
-            // reading back, otherwise verification races and falsely reports
-            // "did not stick".
-            if (rootCommandRunner.selectedExecutionMethodId == "jdwp-inject") {
-                kotlinx.coroutines.delay(1200)
             }
             val actualValues = detector.readCurrentMaxValues(policies)
             refreshLiveValues()
@@ -483,12 +474,28 @@ class PerformanceRepository(
     }
 
     suspend fun saveAppProfileAssignment(assignment: AppProfileAssignment) {
+        if (assignment.packageName.isBlank() || !assignment.hasValidTarget) return
         val state = observeState().first()
+        if (assignment.isCustom) {
+            val validValues = assignment.customMaxFrequencies.filter { (policyId, frequency) ->
+                state.policies.firstOrNull { it.id == policyId }?.supportedFrequencies?.contains(frequency) == true
+            }
+            if (validValues.isEmpty()) return
+            profileStorage.saveAppProfileAssignment(
+                assignment.copy(
+                    appLabel = assignment.appLabel.ifBlank { assignment.packageName },
+                    profileId = null,
+                    customMaxFrequencies = validValues,
+                ),
+            )
+            return
+        }
         val profile = state.displayProfiles.firstOrNull { it.id == assignment.profileId } ?: return
         profileStorage.saveAppProfileAssignment(
             assignment.copy(
                 appLabel = assignment.appLabel.ifBlank { assignment.packageName },
                 profileId = profile.id,
+                customMaxFrequencies = emptyMap(),
             ),
         )
     }
@@ -509,6 +516,31 @@ class PerformanceRepository(
             selectedValues = profile.maxFrequencies,
             isReset = profile.id == ProfileStateResolver.STOCK_PROFILE_ID,
             appliedDisplayProfileId = profile.id,
+            persistNormalState = false,
+        )
+    }
+
+    suspend fun applyAppProfileTemporarily(assignment: AppProfileAssignment): Result<ApplyOutcome> {
+        val state = observeState().first()
+        if (!state.isPServerAvailable || state.policies.isEmpty()) {
+            return Result.failure(IllegalStateException("Profile automation is unavailable"))
+        }
+        val values = if (assignment.isCustom) {
+            assignment.customMaxFrequencies
+        } else {
+            val profile = state.displayProfiles.firstOrNull { it.id == assignment.profileId }
+                ?: return Result.failure(IllegalStateException("App profile is unavailable"))
+            profile.maxFrequencies
+        }
+        val filteredValues = values.filterKeys { policyId -> state.policies.any { it.id == policyId } }
+        if (filteredValues.isEmpty()) {
+            return Result.failure(IllegalStateException("App profile has no matching CPU policies"))
+        }
+        return applyValuesInternal(
+            policies = state.policies,
+            selectedValues = filteredValues,
+            isReset = !assignment.isCustom && assignment.profileId == ProfileStateResolver.STOCK_PROFILE_ID,
+            appliedDisplayProfileId = assignment.profileId,
             persistNormalState = false,
         )
     }
@@ -667,4 +699,18 @@ internal fun mergeImportedProfiles(
         profiles = profiles,
         restoredBundledProfileIds = restoredBundledProfileIds,
     )
+}
+
+internal fun supportedAppProfileAssignments(
+    assignments: List<AppProfileAssignment>,
+    realProfiles: List<PerformanceProfile>,
+): List<AppProfileAssignment> {
+    val supportedProfileIds = realProfiles.mapTo(mutableSetOf()) { profile -> profile.id }
+    supportedProfileIds += ProfileStateResolver.STOCK_PROFILE_ID
+    val supportedPolicyIds = realProfiles.flatMapTo(mutableSetOf()) { profile -> profile.maxFrequencies.keys }
+    return assignments.filter { assignment ->
+        assignment.hasValidTarget &&
+            ((assignment.isCustom && assignment.customMaxFrequencies.keys.all { it in supportedPolicyIds }) ||
+                assignment.profileId in supportedProfileIds)
+    }
 }
