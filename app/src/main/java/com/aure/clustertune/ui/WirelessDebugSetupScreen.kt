@@ -63,14 +63,17 @@ import kotlinx.coroutines.withContext
  * github.com/wuyr/jdwp-injector-for-android (Apache-2.0).
  */
 /**
- * How long to let mDNS resolve the *current* adb connect port before falling back
- * to the port scan. Measured on the Odin 2 Mini, mDNS typically resolves in ~6s;
- * the old 3s window meant the scan almost always won the race. That mattered
- * because the scan can latch onto a stale adb port that still completes a TLS
- * handshake (old keys remain valid) but is no longer the live wireless-debugging
- * transport — connection looked fine, then every injection failed.
+ * How long to wait for mDNS before falling back to the port scan.
+ *
+ * This is deliberately short. Logs showed `_adb-tls-connect._tcp` is never
+ * observed by a long-running discovery session (34s with no hit), because this
+ * device does not appear to answer its own mDNS queries — we only ever see a
+ * service at the moment it is *announced*. Waiting longer therefore does not
+ * help; what helps is restarting discovery right when adbd re-announces (see
+ * WirelessDebugConnectionManager.restartConnectDiscovery, called on pairing
+ * success). A long wait just stalls the user before the scan runs.
  */
-private const val MDNS_GRACE_MS = 10000
+private const val MDNS_GRACE_MS = 4000
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -340,6 +343,19 @@ fun WirelessDebugSetupScreen(
                                                 // accepts us.
                                                 connectionManager.clearConnection()
                                                 connected = false
+                                                // adbd re-announces the connect
+                                                // service right now. Restart
+                                                // discovery so we actually catch
+                                                // that announcement instead of
+                                                // listening on a stale session
+                                                // that will never see it.
+                                                connectionManager.restartConnectDiscovery(
+                                                    onConnected = { info ->
+                                                        connected = true
+                                                        connectedThisVisit = true
+                                                        status = "Connected (${info.host}:${info.port}). You're ready."
+                                                    },
+                                                )
                                                 startConnect()
                                             } else {
                                                 status = "Pairing failed: ${errorMsg ?: "check the code and try again"}"

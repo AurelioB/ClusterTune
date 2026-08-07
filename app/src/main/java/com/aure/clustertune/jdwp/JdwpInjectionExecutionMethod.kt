@@ -149,10 +149,22 @@ class JdwpInjectionExecutionMethod(
                 appendLine("chmod 666 '${outFile.absolutePath}' 2>/dev/null")
             }
             val scriptPath = stageScript("ct_read.sh", copyScript)
-            AdbClient.openShell(conn.host, conn.port).use { adb ->
-                val pid = findTargetPid(adb)
+            // Prefer the shared, already-open adb transport. Opening a fresh
+            // AdbClient here made Android post a new "Wireless debugging
+            // connected" heads-up on EVERY read, which is why the notification
+            // flashed on and off continuously while simply sitting in the menus.
+            // executeScript already reuses the shared shell for this reason.
+            val shared = sharedShellProvider?.invoke()
+            if (shared != null) {
+                val pid = findTargetPid(shared)
                 if (pid <= 0) throw IllegalStateException("GameAssistant is not running")
-                injectExec(conn, adb, "sh ${scriptPath}")
+                injectExec(conn, shared, "sh ${scriptPath}")
+            } else {
+                AdbClient.openShell(conn.host, conn.port).use { adb ->
+                    val pid = findTargetPid(adb)
+                    if (pid <= 0) throw IllegalStateException("GameAssistant is not running")
+                    injectExec(conn, adb, "sh ${scriptPath}")
+                }
             }
             // Give the injected process a moment to write the file.
             var text: String? = null

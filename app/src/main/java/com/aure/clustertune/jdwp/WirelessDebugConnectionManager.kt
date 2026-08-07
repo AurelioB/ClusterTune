@@ -258,6 +258,31 @@ class WirelessDebugConnectionManager private constructor(
      * Safe to call repeatedly (e.g. when the screen opens and on each Connect
      * tap); it won't tear down a discovery that's mid-flight if already running.
      */
+    /**
+     * Stop and immediately restart connect discovery.
+     *
+     * Android appears not to answer this device's own mDNS queries, so we only
+     * ever observe services at the moment they are *announced*. That is why
+     * `_adb-tls-pairing._tcp` resolves instantly (it is registered fresh when the
+     * pairing dialog opens) while `_adb-tls-connect._tcp` is never seen by a
+     * long-running discovery session — it was announced back when wireless
+     * debugging was switched on, long before we started listening.
+     *
+     * adbd re-announces the connect service right after a successful pairing, so
+     * restarting discovery at that exact moment is what lets us catch it.
+     */
+    fun restartConnectDiscovery(
+        onConnected: (AdbConnectionInfo) -> Unit,
+        onUnavailable: () -> Unit = {},
+    ) {
+        JdwpDebugLog.d("restartConnectDiscovery: tearing down and relistening for fresh announcement")
+        runCatching { connectResolver?.stop() }
+        runCatching { wirelessConnectResolver?.stop() }
+        connectResolver = null
+        wirelessConnectResolver = null
+        startConnectDiscovery(onConnected, onUnavailable)
+    }
+
     fun startConnectDiscovery(
         onConnected: (AdbConnectionInfo) -> Unit,
         onUnavailable: () -> Unit = {},
