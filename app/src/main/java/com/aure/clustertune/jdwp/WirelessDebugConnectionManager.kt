@@ -306,7 +306,22 @@ class WirelessDebugConnectionManager private constructor(
      */
     private fun validateAndConnect(host: String, port: Int) {
         lastResolvedEndpoint = host to port
-        if (connectionInfo != null || validatingEndpoint) return
+        if (validatingEndpoint) return
+        val current = connectionInfo
+        if (current != null) {
+            // Already on this exact endpoint — nothing to do.
+            if (current.host == host && current.port == port) return
+            // Different endpoint. mDNS is authoritative about the *current* adb
+            // connect port, whereas the port scan can latch onto a stale port
+            // that still completes a TLS handshake (old keys stay valid) but is
+            // no longer the live transport — which looked connected yet failed
+            // every injection. So let a freshly-resolved endpoint replace it,
+            // but only after the new one proves itself below.
+            JdwpDebugLog.d(
+                "connect: mDNS reports $host:$port but we are on " +
+                    "${current.host}:${current.port} — revalidating",
+            )
+        }
         validatingEndpoint = true
         Thread {
             val ok = runCatching {
@@ -316,6 +331,12 @@ class WirelessDebugConnectionManager private constructor(
             validatingEndpoint = false
             if (ok) {
                 val info = AdbConnectionInfo(host, port)
+                val previous = connectionInfo
+                if (previous != null && previous != info) {
+                    // Switching endpoints: drop sessions bound to the old one.
+                    JdwpDebugLog.d("connect: replacing ${previous.host}:${previous.port} with $host:$port")
+                    clearConnection()
+                }
                 connectionInfo = info
                 JdwpDebugLog.d("connect: adb handshake OK -> CONNECTED $host:$port")
                 connectOnConnected?.invoke(info)

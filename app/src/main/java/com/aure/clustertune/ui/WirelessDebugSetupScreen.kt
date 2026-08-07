@@ -62,6 +62,16 @@ import kotlinx.coroutines.withContext
  * Split-screen + pairing approach adapted from
  * github.com/wuyr/jdwp-injector-for-android (Apache-2.0).
  */
+/**
+ * How long to let mDNS resolve the *current* adb connect port before falling back
+ * to the port scan. Measured on the Odin 2 Mini, mDNS typically resolves in ~6s;
+ * the old 3s window meant the scan almost always won the race. That mattered
+ * because the scan can latch onto a stale adb port that still completes a TLS
+ * handshake (old keys remain valid) but is no longer the live wireless-debugging
+ * transport — connection looked fine, then every injection failed.
+ */
+private const val MDNS_GRACE_MS = 10000
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WirelessDebugSetupScreen(
@@ -158,7 +168,7 @@ fun WirelessDebugSetupScreen(
         // automatic connect after a successful pairing — gets this fallback.
         scope.launch {
             var waited = 0
-            while (waited < 3000 && !connected) {
+            while (waited < MDNS_GRACE_MS && !connected) {
                 kotlinx.coroutines.delay(500)
                 waited += 500
             }

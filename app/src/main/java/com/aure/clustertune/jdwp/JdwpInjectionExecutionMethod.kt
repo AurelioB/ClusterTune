@@ -44,7 +44,7 @@ class JdwpInjectionExecutionMethod(
     override val id: String = "jdwp-inject"
 
     @Volatile
-    private var cachedProbe: Pair<Long, ExecutionProbeResult>? = null
+    private var cachedProbe: Triple<Long, AdbConnectionInfo?, ExecutionProbeResult>? = null
 
     override fun probe(): ExecutionProbeResult {
         // Cheap probe: this is called frequently (state refreshes, app-monitor),
@@ -53,10 +53,16 @@ class JdwpInjectionExecutionMethod(
         // connection". The actual GameAssistant/injection check happens lazily
         // at executeScript time. Result is cached briefly to avoid churn.
         val now = System.currentTimeMillis()
-        cachedProbe?.let { (ts, result) ->
-            if (now - ts < PROBE_CACHE_MS) return result
-        }
+        // Read the connection first so the cache can be keyed on it. Reading the
+        // provider is just a field read — it opens nothing. Keying on the
+        // connection matters: previously a "not connected" result stayed cached
+        // for 5s AFTER a connection was established, so availability re-checks
+        // right after connecting reported nothing available and the UI showed
+        // "No privileged execution method available" while actually connected.
         val conn = connectionProvider()
+        cachedProbe?.let { (ts, cachedConn, result) ->
+            if (now - ts < PROBE_CACHE_MS && cachedConn == conn) return result
+        }
         val result = if (conn == null) {
             unavailable("Wireless debugging not connected")
         } else {
@@ -65,7 +71,7 @@ class JdwpInjectionExecutionMethod(
         com.wuyr.jdwp_injector.debug.JdwpDebugLog.d(
             "probe(jdwp-inject): conn=${conn?.let { "${it.host}:${it.port}" } ?: "null"} -> available=${result.isAvailable}"
         )
-        cachedProbe = now to result
+        cachedProbe = Triple(now, conn, result)
         return result
     }
 

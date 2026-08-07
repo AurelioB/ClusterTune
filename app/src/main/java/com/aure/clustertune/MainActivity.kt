@@ -59,6 +59,9 @@ import com.aure.clustertune.update.UpdateCheckResult
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+/** See WirelessDebugSetupScreen: give mDNS time to win over the port scan. */
+private const val MDNS_GRACE_MS = 10000
+
 class MainActivity : ComponentActivity() {
 
     private val container by lazy { AppContainer(this) }
@@ -161,7 +164,7 @@ class MainActivity : ComponentActivity() {
                         )
                         lifecycleScope.launch {
                             var waited = 0
-                            while (waited < 3000 && !isWirelessDebugConnected) {
+                            while (waited < MDNS_GRACE_MS && !isWirelessDebugConnected) {
                                 kotlinx.coroutines.delay(500)
                                 waited += 500
                             }
