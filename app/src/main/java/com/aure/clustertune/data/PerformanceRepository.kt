@@ -66,13 +66,11 @@ class PerformanceRepository(
         @Volatile
         private var processCachedPolicies: List<CpuPolicyInfo> = emptyList()
         private val processApplyMutex = Mutex()
-        // The verification loop exits as soon as the read-back matches, so a
-        // longer schedule costs nothing on fast paths (root / PServer block until
-        // the command has run and match on the first attempt). It matters for the
-        // no-root JDWP path, which is fire-and-forget: the injected
-        // Runtime.exec() returns before the script has written sysfs, so the old
-        // ~160ms window reported a false "Apply did not stick" even though the
-        // values landed a moment later. ~1.3s matches what this device needs.
+        // The loop exits as soon as the read-back matches, so a longer schedule
+        // costs nothing on root/PServer (which match on attempt 0). It matters
+        // for the JDWP path, which is fire-and-forget: the injected exec returns
+        // before the script has written sysfs, so the old ~160ms window reported
+        // a false "Apply did not stick".
         private const val APPLY_VERIFICATION_ATTEMPTS = 12
         private const val APPLY_VERIFICATION_DELAY_MS = 120L
     }

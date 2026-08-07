@@ -52,19 +52,15 @@ class AdbWirelessPortResolver private constructor(private val onLost: () -> Unit
 
     override fun onDiscoveryStarted(serviceType: String) {
         discoveryStarted = true
-        discoveryStartedAtMs = System.currentTimeMillis()
-        servicesFoundCount = 0
         JdwpDebugLog.d("discovery started: $serviceType")
     }
 
     override fun onDiscoveryStopped(serviceType: String) {
         discoveryStarted = false
-        JdwpDebugLog.d("discovery stopped: $serviceType (listened ${(System.currentTimeMillis() - discoveryStartedAtMs) / 1000}s, servicesFound=$servicesFoundCount)")
+        JdwpDebugLog.d("discovery stopped: $serviceType")
     }
 
     private var foundServiceName = ""
-    private var discoveryStartedAtMs = 0L
-    private var servicesFoundCount = 0
 
     /**
      * Service names with a resolve currently in flight. NsdManager only permits
@@ -77,7 +73,6 @@ class AdbWirelessPortResolver private constructor(private val onLost: () -> Unit
 
     override fun onServiceFound(serviceInfo: NsdServiceInfo) {
         foundServiceName = serviceInfo.serviceName
-        servicesFoundCount++
         JdwpDebugLog.d("service found: ${serviceInfo.serviceName} (${serviceInfo.serviceType})")
         if (!resolvesInFlight.add(serviceInfo.serviceName)) {
             JdwpDebugLog.d("resolve already in flight for ${serviceInfo.serviceName}; skipping duplicate")

@@ -33,13 +33,9 @@ class AppContainer(context: Context) {
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /**
-     * Holds the on-device wireless-debugging connection used by the no-root
-     * JDWP injection execution method.
-     *
-     * MUST be a process-wide singleton: AppContainer is instantiated in several
-     * places (MainActivity, services, receivers), and the setup screen writes the
-     * connection into ONE instance while the execution method's resolver reads it
-     * from another. Sharing a single manager fixes that mismatch.
+     * Process-wide singleton: AppContainer is constructed by MainActivity,
+     * services AND receivers. The setup screen writes the connection into one
+     * instance while the resolver reads it from another, so they must share.
      */
     val wirelessDebugConnectionManager: WirelessDebugConnectionManager
         get() = WirelessDebugConnectionManager.getInstance(appContext)
@@ -110,6 +106,21 @@ class AppContainer(context: Context) {
         var delayMs = SYSFS_REPAIR_INITIAL_DELAY_MS
         var settingsLoaded = false
         repeat(SYSFS_REPAIR_ATTEMPTS) { attempt ->
+            // Do NOT attempt the repair unless a privileged method is actually
+            // usable right now.
+            //
+            // Upstream wrote this for root/PServer, where executeScript is cheap
+            // and synchronous. On the no-root JDWP path it is not: each attempt
+            // opens adb connections (making Android flash "Wireless debugging
+            // connected" repeatedly), performs a JDWP injection, and does so
+            // while holding processApplyMutex — which blocks every profile apply
+            // — and while contending for AdbClient's global @Synchronized lock,
+            // which produced ANRs. At startup there is never a connection yet, so
+            // all 5 attempts were guaranteed to fail expensively.
+            if (!privilegedExecutionResolver.isAvailable) {
+                Log.i(TAG, "Sysfs minimum repair skipped: no privileged method available yet")
+                return
+            }
             val result = try {
                 if (!settingsLoaded) {
                     val settings = settingsStorage.settings.first()

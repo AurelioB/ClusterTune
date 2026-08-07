@@ -44,7 +44,7 @@ class JdwpInjectionExecutionMethod(
     override val id: String = "jdwp-inject"
 
     @Volatile
-    private var cachedProbe: Triple<Long, AdbConnectionInfo?, ExecutionProbeResult>? = null
+    private var cachedProbe: Pair<Long, ExecutionProbeResult>? = null
 
     override fun probe(): ExecutionProbeResult {
         // Cheap probe: this is called frequently (state refreshes, app-monitor),
@@ -53,16 +53,10 @@ class JdwpInjectionExecutionMethod(
         // connection". The actual GameAssistant/injection check happens lazily
         // at executeScript time. Result is cached briefly to avoid churn.
         val now = System.currentTimeMillis()
-        // Read the connection first so the cache can be keyed on it. Reading the
-        // provider is just a field read — it opens nothing. Keying on the
-        // connection matters: previously a "not connected" result stayed cached
-        // for 5s AFTER a connection was established, so availability re-checks
-        // right after connecting reported nothing available and the UI showed
-        // "No privileged execution method available" while actually connected.
-        val conn = connectionProvider()
-        cachedProbe?.let { (ts, cachedConn, result) ->
-            if (now - ts < PROBE_CACHE_MS && cachedConn == conn) return result
+        cachedProbe?.let { (ts, result) ->
+            if (now - ts < PROBE_CACHE_MS) return result
         }
+        val conn = connectionProvider()
         val result = if (conn == null) {
             unavailable("Wireless debugging not connected")
         } else {
@@ -71,7 +65,7 @@ class JdwpInjectionExecutionMethod(
         com.wuyr.jdwp_injector.debug.JdwpDebugLog.d(
             "probe(jdwp-inject): conn=${conn?.let { "${it.host}:${it.port}" } ?: "null"} -> available=${result.isAvailable}"
         )
-        cachedProbe = Triple(now, conn, result)
+        cachedProbe = now to result
         return result
     }
 
@@ -149,11 +143,9 @@ class JdwpInjectionExecutionMethod(
                 appendLine("chmod 666 '${outFile.absolutePath}' 2>/dev/null")
             }
             val scriptPath = stageScript("ct_read.sh", copyScript)
-            // Prefer the shared, already-open adb transport. Opening a fresh
-            // AdbClient here made Android post a new "Wireless debugging
-            // connected" heads-up on EVERY read, which is why the notification
-            // flashed on and off continuously while simply sitting in the menus.
-            // executeScript already reuses the shared shell for this reason.
+            // Reuse the already-open transport. Opening a fresh AdbClient per read
+            // made Android post a new "Wireless debugging connected" heads-up on
+            // EVERY sysfs read, which is why the notification flashed constantly.
             val shared = sharedShellProvider?.invoke()
             if (shared != null) {
                 val pid = findTargetPid(shared)
@@ -179,12 +171,7 @@ class JdwpInjectionExecutionMethod(
         }.getOrNull()
     }
 
-    /**
-     * Not part of the PrivilegedExecutionMethod interface as of ClusterTune
-     * 1.0.2 (upstream removed it), so this is a plain helper rather than an
-     * override. Kept because the JDWP path may still need to relax permissions
-     * on a staged file it wrote as system.
-     */
+    /** Not part of the 1.0.2 interface; kept as a plain helper. */
     fun makeReadable(path: String): Boolean {
         val conn = connectionProvider() ?: return false
         return runCatching {

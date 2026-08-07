@@ -123,28 +123,13 @@ class WirelessDebugConnectionManager private constructor(
      */
     fun verifyConnection(): Boolean {
         val conn = connectionInfo ?: return false
-        // Deliberately a plain TCP connect, NOT AdbClient.openShell().
-        //
-        // AdbClient.openShell/connect2jdwp/connectAdb are all @Synchronized on the
-        // same companion object, i.e. one global lock. Doing a full adb handshake
-        // here held that lock for up to ~16s against a stale endpoint (connect +
-        // handshake timeouts, twice), which blocked every profile apply behind it
-        // — the setup screen sat on "Checking existing connection…" and pressing
-        // A did nothing. A socket connect touches no adb state and finishes in
-        // ~1.5s worst case.
-        //
-        // This detects exactly the case we care about: wireless debugging being
-        // switched off closes the port, so the connect fails. A port that is open
-        // but no longer paired still fails later at apply time, which reports a
-        // real error rather than silently wedging the app.
         val alive = runCatching {
-            java.net.Socket().use { socket ->
-                socket.connect(java.net.InetSocketAddress(conn.host, conn.port), 1500)
-                true
-            }
+            AdbClient.openShell(conn.host, conn.port, connectTimeout = 3000L, maxRetryCount = 1)
+                .use { }
+            true
         }.getOrDefault(false)
         if (!alive) {
-            JdwpDebugLog.w("verifyConnection: ${conn.host}:${conn.port} unreachable — clearing")
+            JdwpDebugLog.w("verifyConnection: ${conn.host}:${conn.port} is dead — clearing")
             clearConnection()
         }
         return alive
@@ -258,31 +243,6 @@ class WirelessDebugConnectionManager private constructor(
      * Safe to call repeatedly (e.g. when the screen opens and on each Connect
      * tap); it won't tear down a discovery that's mid-flight if already running.
      */
-    /**
-     * Stop and immediately restart connect discovery.
-     *
-     * Android appears not to answer this device's own mDNS queries, so we only
-     * ever observe services at the moment they are *announced*. That is why
-     * `_adb-tls-pairing._tcp` resolves instantly (it is registered fresh when the
-     * pairing dialog opens) while `_adb-tls-connect._tcp` is never seen by a
-     * long-running discovery session — it was announced back when wireless
-     * debugging was switched on, long before we started listening.
-     *
-     * adbd re-announces the connect service right after a successful pairing, so
-     * restarting discovery at that exact moment is what lets us catch it.
-     */
-    fun restartConnectDiscovery(
-        onConnected: (AdbConnectionInfo) -> Unit,
-        onUnavailable: () -> Unit = {},
-    ) {
-        JdwpDebugLog.d("restartConnectDiscovery: tearing down and relistening for fresh announcement")
-        runCatching { connectResolver?.stop() }
-        runCatching { wirelessConnectResolver?.stop() }
-        connectResolver = null
-        wirelessConnectResolver = null
-        startConnectDiscovery(onConnected, onUnavailable)
-    }
-
     fun startConnectDiscovery(
         onConnected: (AdbConnectionInfo) -> Unit,
         onUnavailable: () -> Unit = {},
@@ -331,22 +291,7 @@ class WirelessDebugConnectionManager private constructor(
      */
     private fun validateAndConnect(host: String, port: Int) {
         lastResolvedEndpoint = host to port
-        if (validatingEndpoint) return
-        val current = connectionInfo
-        if (current != null) {
-            // Already on this exact endpoint — nothing to do.
-            if (current.host == host && current.port == port) return
-            // Different endpoint. mDNS is authoritative about the *current* adb
-            // connect port, whereas the port scan can latch onto a stale port
-            // that still completes a TLS handshake (old keys stay valid) but is
-            // no longer the live transport — which looked connected yet failed
-            // every injection. So let a freshly-resolved endpoint replace it,
-            // but only after the new one proves itself below.
-            JdwpDebugLog.d(
-                "connect: mDNS reports $host:$port but we are on " +
-                    "${current.host}:${current.port} — revalidating",
-            )
-        }
+        if (connectionInfo != null || validatingEndpoint) return
         validatingEndpoint = true
         Thread {
             val ok = runCatching {
@@ -356,12 +301,6 @@ class WirelessDebugConnectionManager private constructor(
             validatingEndpoint = false
             if (ok) {
                 val info = AdbConnectionInfo(host, port)
-                val previous = connectionInfo
-                if (previous != null && previous != info) {
-                    // Switching endpoints: drop sessions bound to the old one.
-                    JdwpDebugLog.d("connect: replacing ${previous.host}:${previous.port} with $host:$port")
-                    clearConnection()
-                }
                 connectionInfo = info
                 JdwpDebugLog.d("connect: adb handshake OK -> CONNECTED $host:$port")
                 connectOnConnected?.invoke(info)

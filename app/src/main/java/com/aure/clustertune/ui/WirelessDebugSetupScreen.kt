@@ -62,19 +62,6 @@ import kotlinx.coroutines.withContext
  * Split-screen + pairing approach adapted from
  * github.com/wuyr/jdwp-injector-for-android (Apache-2.0).
  */
-/**
- * How long to wait for mDNS before falling back to the port scan.
- *
- * This is deliberately short. Logs showed `_adb-tls-connect._tcp` is never
- * observed by a long-running discovery session (34s with no hit), because this
- * device does not appear to answer its own mDNS queries — we only ever see a
- * service at the moment it is *announced*. Waiting longer therefore does not
- * help; what helps is restarting discovery right when adbd re-announces (see
- * WirelessDebugConnectionManager.restartConnectDiscovery, called on pairing
- * success). A long wait just stalls the user before the scan runs.
- */
-private const val MDNS_GRACE_MS = 4000
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WirelessDebugSetupScreen(
@@ -171,7 +158,7 @@ fun WirelessDebugSetupScreen(
         // automatic connect after a successful pairing — gets this fallback.
         scope.launch {
             var waited = 0
-            while (waited < MDNS_GRACE_MS && !connected) {
+            while (waited < 3000 && !connected) {
                 kotlinx.coroutines.delay(500)
                 waited += 500
             }
@@ -249,10 +236,16 @@ fun WirelessDebugSetupScreen(
                 // switched off) this drops it and reveals the pairing steps again.
                 OutlinedButton(
                     onClick = {
-                        connectionManager.clearConnection()
+                        // clearConnection() closes adb/JDWP sockets. Doing that on
+                        // the main thread froze the UI ("ClusterTune isn't
+                        // responding") when the sockets were wedged, so it runs
+                        // off-thread and the UI updates immediately.
                         connected = false
                         connectedThisVisit = false
                         status = "Connection cleared. Pair/connect again below."
+                        scope.launch {
+                            withContext(Dispatchers.IO) { connectionManager.clearConnection() }
+                        }
                     },
                     modifier = Modifier.fillMaxWidth().focusHighlight(),
                 ) {
@@ -334,28 +327,6 @@ fun WirelessDebugSetupScreen(
                                             if (paired) {
                                                 pairingReady = false
                                                 status = "Paired. Connecting…"
-                                                // Re-pairing means adbd has a new
-                                                // connect port. Drop the old
-                                                // connection first, otherwise the
-                                                // connect path short-circuits on
-                                                // the stale endpoint and we keep
-                                                // talking to a port that no longer
-                                                // accepts us.
-                                                connectionManager.clearConnection()
-                                                connected = false
-                                                // adbd re-announces the connect
-                                                // service right now. Restart
-                                                // discovery so we actually catch
-                                                // that announcement instead of
-                                                // listening on a stale session
-                                                // that will never see it.
-                                                connectionManager.restartConnectDiscovery(
-                                                    onConnected = { info ->
-                                                        connected = true
-                                                        connectedThisVisit = true
-                                                        status = "Connected (${info.host}:${info.port}). You're ready."
-                                                    },
-                                                )
                                                 startConnect()
                                             } else {
                                                 status = "Pairing failed: ${errorMsg ?: "check the code and try again"}"

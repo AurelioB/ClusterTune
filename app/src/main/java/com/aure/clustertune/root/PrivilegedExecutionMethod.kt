@@ -122,17 +122,10 @@ class PrivilegedExecutionResolver(
         val DEFAULT_AUTO_DETECTION_ORDER = listOf(
             "pserver-stdout",
             "root-shell",
-            // No-root path via on-device wireless debugging; tried last so it
-            // only activates when no privileged (root/PServer) path exists.
+            // No-root path; tried last so it only activates when nothing else works.
             "jdwp-inject",
         )
 
-        /**
-         * @param jdwpConnectionProvider supplies the on-device wireless-debugging
-         *   host/port once paired. When non-null the no-root JDWP injection
-         *   method is registered (for unrooted devices). Defaults to null so
-         *   upstream callers/tests using default(context) behave unchanged.
-         */
         fun default(
             context: Context,
             jdwpConnectionProvider: (() -> com.aure.clustertune.jdwp.AdbConnectionInfo?)? = null,
