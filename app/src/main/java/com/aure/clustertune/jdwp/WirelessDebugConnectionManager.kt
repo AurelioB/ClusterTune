@@ -123,13 +123,28 @@ class WirelessDebugConnectionManager private constructor(
      */
     fun verifyConnection(): Boolean {
         val conn = connectionInfo ?: return false
+        // Deliberately a plain TCP connect, NOT AdbClient.openShell().
+        //
+        // AdbClient.openShell/connect2jdwp/connectAdb are all @Synchronized on the
+        // same companion object, i.e. one global lock. Doing a full adb handshake
+        // here held that lock for up to ~16s against a stale endpoint (connect +
+        // handshake timeouts, twice), which blocked every profile apply behind it
+        // — the setup screen sat on "Checking existing connection…" and pressing
+        // A did nothing. A socket connect touches no adb state and finishes in
+        // ~1.5s worst case.
+        //
+        // This detects exactly the case we care about: wireless debugging being
+        // switched off closes the port, so the connect fails. A port that is open
+        // but no longer paired still fails later at apply time, which reports a
+        // real error rather than silently wedging the app.
         val alive = runCatching {
-            AdbClient.openShell(conn.host, conn.port, connectTimeout = 3000L, maxRetryCount = 1)
-                .use { }
-            true
+            java.net.Socket().use { socket ->
+                socket.connect(java.net.InetSocketAddress(conn.host, conn.port), 1500)
+                true
+            }
         }.getOrDefault(false)
         if (!alive) {
-            JdwpDebugLog.w("verifyConnection: ${conn.host}:${conn.port} is dead — clearing")
+            JdwpDebugLog.w("verifyConnection: ${conn.host}:${conn.port} unreachable — clearing")
             clearConnection()
         }
         return alive

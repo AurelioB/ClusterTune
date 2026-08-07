@@ -321,6 +321,15 @@ fun WirelessDebugSetupScreen(
                                             if (paired) {
                                                 pairingReady = false
                                                 status = "Paired. Connecting…"
+                                                // Re-pairing means adbd has a new
+                                                // connect port. Drop the old
+                                                // connection first, otherwise the
+                                                // connect path short-circuits on
+                                                // the stale endpoint and we keep
+                                                // talking to a port that no longer
+                                                // accepts us.
+                                                connectionManager.clearConnection()
+                                                connected = false
                                                 startConnect()
                                             } else {
                                                 status = "Pairing failed: ${errorMsg ?: "check the code and try again"}"
