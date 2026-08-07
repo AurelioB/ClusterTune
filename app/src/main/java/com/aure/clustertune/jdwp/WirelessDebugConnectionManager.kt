@@ -96,6 +96,26 @@ class WirelessDebugConnectionManager private constructor(
      */
     val shellUseLock: Any = Any()
 
+    /**
+     * Release only the JDWP attachment, keeping the adb connection.
+     *
+     * A debuggable process accepts ONE debugger at a time. If our process dies
+     * without disposing, GameAssistant still believes a debugger is attached and
+     * every later attach times out on the handshake (observed: a clean 2s
+     * timeout on every attempt until the target was restarted). Calling this on
+     * teardown stops us leaving that state behind.
+     */
+    fun releaseJdwpSession() {
+        synchronized(jdwpLock) {
+            if (persistentDebugger != null) {
+                JdwpDebugLog.d("jdwp: releasing persistent session (pid=$persistentDebuggerPid)")
+            }
+            runCatching { persistentDebugger?.close() }
+            persistentDebugger = null
+            persistentDebuggerPid = -1
+        }
+    }
+
     /** Drop the persistent shell (e.g. after a failure or disconnect). */
     fun invalidateShell() {
         synchronized(shellLock) {
@@ -217,7 +237,15 @@ class WirelessDebugConnectionManager private constructor(
                 debugger = runCatching {
                     JdwpDebugLog.d("jdwp: connect2jdwp ${conn.host}:${conn.port} pid=$currentPid …")
                     com.wuyr.jdwp_injector.debugger.Debugger(
-                        AdbClient.connect2jdwp(conn.host, conn.port, currentPid)
+                        // 2s (the library default) is tight for the JDWP
+                        // handshake; give the target more room before the
+                        // watchdog closes the socket ("Socket closed").
+                        AdbClient.connect2jdwp(
+                            conn.host,
+                            conn.port,
+                            currentPid,
+                            connectTimeout = JDWP_FORWARD_TIMEOUT_MS,
+                        )
                     )
                 }.getOrElse { error ->
                     // This used to be .getOrNull(), which swallowed the reason
@@ -377,7 +405,21 @@ class WirelessDebugConnectionManager private constructor(
      */
     private fun validateAndConnect(host: String, port: Int) {
         lastResolvedEndpoint = host to port
-        if (connectionInfo != null || validatingEndpoint) return
+        if (validatingEndpoint) return
+        val current = connectionInfo
+        if (current != null) {
+            if (current.host == host && current.port == port) return
+            // mDNS is AUTHORITATIVE about the live connect port; the port scan is
+            // a guess and can latch onto a stale listener that still completes a
+            // TLS handshake (observed: scan chose 37985 while Android's settings
+            // screen and mDNS both said 45309). So a freshly-announced endpoint
+            // is allowed to replace a scan-derived one — after it proves itself
+            // with a real handshake below.
+            JdwpDebugLog.d(
+                "connect: mDNS announced $host:$port, currently on " +
+                    "${current.host}:${current.port} — revalidating",
+            )
+        }
         validatingEndpoint = true
         Thread {
             val ok = runCatching {
@@ -387,6 +429,15 @@ class WirelessDebugConnectionManager private constructor(
             validatingEndpoint = false
             if (ok) {
                 val info = AdbConnectionInfo(host, port)
+                val previous = connectionInfo
+                if (previous != null && previous != info) {
+                    JdwpDebugLog.d(
+                        "connect: switching ${previous.host}:${previous.port} -> $host:$port",
+                    )
+                    // Sessions are bound to the old transport; drop them.
+                    invalidateShell()
+                    releaseJdwpSession()
+                }
                 connectionInfo = info
                 JdwpDebugLog.d("connect: adb handshake OK -> CONNECTED $host:$port")
                 connectOnConnected?.invoke(info)
@@ -489,6 +540,14 @@ class WirelessDebugConnectionManager private constructor(
     @Volatile
     private var scanning = false
     private val JDWP_BUSY_TIMEOUT_MS = 20_000L
+
+    /**
+     * JDWP handshake timeout. The library default of 2s was being hit exactly on
+     * every attempt once GameAssistant had a stale debugger attachment from a
+     * previous app process — a debuggable process accepts only ONE debugger, so
+     * the handshake never completes until that target is restarted.
+     */
+    private val JDWP_FORWARD_TIMEOUT_MS = 8_000L
 
     /** Last endpoint mDNS resolved, so we can re-validate after pairing completes. */
     @Volatile

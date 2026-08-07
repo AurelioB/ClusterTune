@@ -136,7 +136,18 @@ fun WirelessDebugSetupScreen(
                 status = "Connected (${info.host}:${info.port}). You're ready."
             },
         )
-        onDispose { connectionManager.stopAll() }
+        onDispose {
+            // Only stop PAIRING discovery here. Connect discovery stays alive for
+            // the life of the app (MainActivity stops it in onDestroy).
+            //
+            // This device only ever reveals _adb-tls-connect._tcp at the moment
+            // adbd ANNOUNCES it — which happens when wireless debugging is
+            // toggled, not on a timer. Tearing discovery down when this screen
+            // closes meant we were almost never listening when that happened, so
+            // mDNS looked permanently broken and the port scan (which can pick a
+            // stale port) always won.
+            connectionManager.stopPairingDiscovery()
+        }
     }
 
     fun startConnect() {
@@ -164,7 +175,7 @@ fun WirelessDebugSetupScreen(
             }
             if (!connected) {
                 JdwpDebugLog.d("startConnect(): mDNS timed out; falling back to port scan")
-                status = "mDNS didn't respond; scanning directly…"
+                status = "Scanning for the adb port…"
                 connectionManager.scanForConnectPort { info ->
                     if (info != null) {
                         connected = true

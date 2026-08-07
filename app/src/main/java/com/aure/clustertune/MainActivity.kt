@@ -456,6 +456,21 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onDestroy() {
+        // Don't leave a dangling JDWP attachment on GameAssistant. A debuggable
+        // process accepts only one debugger, so a session we fail to dispose
+        // makes every later attach time out on the handshake until that target
+        // is restarted. The adb connection itself is left intact.
+        if (isFinishing) {
+            runCatching { container.wirelessDebugConnectionManager.releaseJdwpSession() }
+            // Connect discovery now outlives the setup screen (so we can hear an
+            // adbd announcement whenever wireless debugging is toggled). Stop it
+            // here, at the end of the app's life, rather than on screen dispose.
+            runCatching { container.wirelessDebugConnectionManager.stopAll() }
+        }
+        super.onDestroy()
+    }
+
     override fun onResume() {
         super.onResume()
         // If we believed we were connected, confirm it. verifyConnection() clears
