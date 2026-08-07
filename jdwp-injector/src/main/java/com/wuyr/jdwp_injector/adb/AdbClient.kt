@@ -1,5 +1,6 @@
 package com.wuyr.jdwp_injector.adb
 
+import com.wuyr.jdwp_injector.debug.JdwpDebugLog
 import com.wuyr.jdwp_injector.exception.AdbCommunicationException
 import java.io.ByteArrayInputStream
 import java.io.Closeable
@@ -239,6 +240,9 @@ class AdbClient private constructor(host: String, port: Int) : Closeable {
         @JvmStatic
         @Synchronized
         fun openShell(host: String, port: Int, connectTimeout: Long = CONNECT_TIMEOUT, maxRetryCount: Int = 3): AdbClient {
+            // Each new adb connection makes Android post a "Wireless debugging
+            // connected" heads-up, so this maps notification flashing to a caller.
+            JdwpDebugLog.d("adb: opening NEW shell connection to $host:$port")
             return connectAdb(host, port, connectTimeout, maxRetryCount).apply { openShell() }
         }
 

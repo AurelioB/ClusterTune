@@ -121,15 +121,35 @@ class WirelessDebugConnectionManager private constructor(
      * Doing the real handshake is now safe because AdbClient has bounded connect
      * and read timeouts, so this cannot hang. Call off the main thread.
      */
+    /**
+     * Cheap liveness check. MUST NOT perform an adb handshake.
+     *
+     * AdbClient.openShell/connect2jdwp/connectAdb are all @Synchronized on the
+     * same companion — one process-wide lock. Doing a handshake here held that
+     * lock for up to ~16s against a stale endpoint, and the apply path
+     * (injectExecPersistent) takes jdwpLock and THEN needs that same global
+     * lock — so an apply blocked while holding jdwpLock and wedged every other
+     * apply. It also produced false negatives that destroyed live connections
+     * (observed: declared an endpoint dead, then a successful handshake on that
+     * exact endpoint 31s later), and each call opened a new adb connection,
+     * making Android flash "Wireless debugging connected" repeatedly.
+     *
+     * A plain TCP connect takes no adb lock, finishes in <=1.5s, and detects the
+     * case that actually matters: wireless debugging being switched off closes
+     * the port. A port that is open but no longer paired surfaces as a real
+     * error at apply time instead of silently nuking the connection.
+     */
     fun verifyConnection(): Boolean {
         val conn = connectionInfo ?: return false
         val alive = runCatching {
-            AdbClient.openShell(conn.host, conn.port, connectTimeout = 3000L, maxRetryCount = 1)
-                .use { }
-            true
+            java.net.Socket().use { socket ->
+                socket.connect(java.net.InetSocketAddress(conn.host, conn.port), 1500)
+                true
+            }
         }.getOrDefault(false)
+        JdwpDebugLog.d("verifyConnection(tcp): ${conn.host}:${conn.port} alive=$alive")
         if (!alive) {
-            JdwpDebugLog.w("verifyConnection: ${conn.host}:${conn.port} is dead — clearing")
+            JdwpDebugLog.w("verifyConnection: ${conn.host}:${conn.port} unreachable — clearing")
             clearConnection()
         }
         return alive
