@@ -274,15 +274,21 @@ class PerformanceRepository(
         allowObservedMaxValues: Boolean = false,
     ): Result<ApplyOutcome> {
         val filtered = selectedValues.filterKeys { policyId -> policies.any { it.id == policyId } }
+        com.wuyr.jdwp_injector.debug.JdwpDebugLog.d("APPLY/start: requested=$filtered isReset=$isReset profile=$appliedDisplayProfileId")
         if (!isCompleteValidValues(filtered, policies, isReset || allowObservedMaxValues)) {
+            com.wuyr.jdwp_injector.debug.JdwpDebugLog.w("APPLY/abort: invalid CPU policy values (filtered=$filtered)")
             return Result.failure(IllegalArgumentException("Invalid CPU policy values"))
         }
         val script = runCatching {
             commandBuilder.buildApplyScript(policies, filtered, isReset)
         }.getOrElse { error ->
+            com.wuyr.jdwp_injector.debug.JdwpDebugLog.w("APPLY/abort: buildApplyScript threw", error)
             return Result.failure(error)
         }
-        if (script.isBlank()) return Result.failure(IllegalStateException("Empty CPU apply script"))
+        if (script.isBlank()) {
+            com.wuyr.jdwp_injector.debug.JdwpDebugLog.w("APPLY/abort: empty apply script")
+            return Result.failure(IllegalStateException("Empty CPU apply script"))
+        }
         return rootCommandRunner.executeScript(script).mapCatching { output ->
             var actualValues = emptyMap<Int, Int>()
             var actualMinValues = emptyMap<Int, Int>()
@@ -290,6 +296,7 @@ class PerformanceRepository(
             for (attempt in 0 until APPLY_VERIFICATION_ATTEMPTS) {
                 if (attempt > 0) delay(APPLY_VERIFICATION_DELAY_MS)
                 actualValues = detector.readCurrentMaxValues(policies)
+                com.wuyr.jdwp_injector.debug.JdwpDebugLog.d("APPLY/verify attempt=$attempt readBackMax=$actualValues")
                 actualMinValues = detector.readCurrentMinValues(policies)
                 val maxesMatch = filtered.all { (policyId, requestedValue) ->
                     val policy = policies.firstOrNull { it.id == policyId } ?: return@all false

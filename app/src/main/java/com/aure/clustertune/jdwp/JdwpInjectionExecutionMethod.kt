@@ -104,7 +104,11 @@ class JdwpInjectionExecutionMethod(
                 val ok = injector(targetPackage, "sh ${scriptPath}", pid) {
                     shell.sendShellCommand("am attach-agent ${targetPackage} /")
                 }
-                if (!ok) throw IllegalStateException("Injection failed")
+                if (!ok) {
+                    com.wuyr.jdwp_injector.debug.JdwpDebugLog.w("APPLY/jdwp: persistent injector returned FALSE (pid=$pid)")
+                    throw IllegalStateException("Injection failed")
+                }
+                com.wuyr.jdwp_injector.debug.JdwpDebugLog.d("APPLY/jdwp: persistent injection OK (pid=$pid)")
             } else if (shell != null) {
                 val pid = findTargetPid(shell)
                 if (pid <= 0) throw IllegalStateException("GameAssistant is not running")
@@ -119,9 +123,11 @@ class JdwpInjectionExecutionMethod(
                 }
             }
             Log.d(TAG, "executeScript: injection dispatched OK")
+            com.wuyr.jdwp_injector.debug.JdwpDebugLog.d("APPLY/jdwp: injection dispatched OK")
             null
         }.onFailure {
             Log.w(TAG, "executeScript: FAILED", it)
+            com.wuyr.jdwp_injector.debug.JdwpDebugLog.w("APPLY/jdwp: executeScript FAILED", it)
             shellInvalidator?.invoke()
         }
     }

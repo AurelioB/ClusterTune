@@ -23,11 +23,17 @@ class RootCommandRunner(
         get() = executionResolver.selectedMethodId
 
     suspend fun executeScript(script: String): Result<String?> = withContext(dispatcher) {
+        com.wuyr.jdwp_injector.debug.JdwpDebugLog.d(
+            "APPLY/exec: method=${executionResolver.selectedMethodId} " +
+                "supportsStdout=${executionResolver.selectedMethodSupportsStdout}",
+        )
         executionResolver.executeScript(
             scriptName = "apply-frequencies.sh",
             scriptContents = script,
             captureResult = true,
-        ).flatMapCatching { output ->
+        ).onFailure { com.wuyr.jdwp_injector.debug.JdwpDebugLog.w("APPLY/exec: executeScript FAILED", it) }
+            .onSuccess { com.wuyr.jdwp_injector.debug.JdwpDebugLog.d("APPLY/exec: executeScript returned output=${it?.take(80) ?: "null"}") }
+            .flatMapCatching { output ->
             // 1.0.2 began requiring the script to echo a completion marker on
             // stdout. Fire-and-forget executors (the no-root JDWP injection) can
             // never satisfy that: the injected Runtime.exec() runs in another
@@ -37,10 +43,13 @@ class RootCommandRunner(
             // that actually report stdout; for the others the caller's sysfs
             // read-back verification is the real check.
             if (!executionResolver.selectedMethodSupportsStdout) {
+                com.wuyr.jdwp_injector.debug.JdwpDebugLog.d("APPLY/exec: marker check skipped (method has no stdout)")
                 Result.success(output)
             } else if (output.orEmpty().lineSequence().any { it.trim() == PerformanceCommandBuilder.COMPLETION_MARKER }) {
+                com.wuyr.jdwp_injector.debug.JdwpDebugLog.d("APPLY/exec: completion marker present")
                 Result.success(output)
             } else {
+                com.wuyr.jdwp_injector.debug.JdwpDebugLog.w("APPLY/exec: completion marker MISSING")
                 Result.failure(IllegalStateException("Privileged script did not report completion"))
             }
         }.onFailure { error ->
