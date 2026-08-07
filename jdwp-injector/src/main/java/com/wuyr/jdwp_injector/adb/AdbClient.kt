@@ -1,5 +1,6 @@
 package com.wuyr.jdwp_injector.adb
 
+import com.wuyr.jdwp_injector.debug.JdwpDebugLog
 import com.wuyr.jdwp_injector.exception.AdbCommunicationException
 import java.io.ByteArrayInputStream
 import java.io.Closeable
