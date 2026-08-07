@@ -189,6 +189,14 @@ class WirelessDebugConnectionManager private constructor(
         triggerAgent: () -> Unit,
     ): Boolean {
         val conn = connectionInfo ?: return false
+        // Bound how long an apply may hold jdwpLock. A wedged attach previously
+        // held it indefinitely, so every later profile press queued behind it and
+        // produced no log line at all — the UI simply stopped responding.
+        if (!jdwpBusy.tryAcquire(JDWP_BUSY_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS)) {
+            JdwpDebugLog.w("jdwp: another injection is still running; dropping this request")
+            return false
+        }
+        try {
         synchronized(jdwpLock) {
             // (Re)attach if we have no session, or GA's pid changed (restarted).
             var debugger = persistentDebugger
@@ -237,6 +245,9 @@ class WirelessDebugConnectionManager private constructor(
                 persistentDebuggerPid = -1
                 false
             }
+        }
+        } finally {
+            jdwpBusy.release()
         }
     }
 
@@ -440,6 +451,7 @@ class WirelessDebugConnectionManager private constructor(
 
     @Volatile
     private var scanning = false
+    private val JDWP_BUSY_TIMEOUT_MS = 20_000L
 
     /** Last endpoint mDNS resolved, so we can re-validate after pairing completes. */
     @Volatile
@@ -448,6 +460,9 @@ class WirelessDebugConnectionManager private constructor(
     /** Guards against overlapping handshake validations. */
     @Volatile
     private var validatingEndpoint = false
+
+    /** Serialises injections and refuses (rather than queues forever) if one is stuck. */
+    private val jdwpBusy = java.util.concurrent.Semaphore(1, true)
 
     /**
      * Scan the device's Wi-Fi IP for the adb connect port and, if found,

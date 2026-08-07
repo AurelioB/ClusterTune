@@ -138,43 +138,42 @@ class JdwpInjectionExecutionMethod(
      * file-output pattern used by the PServer fallback method.
      */
     override fun readText(path: String): String? {
-        val conn = connectionProvider() ?: return null
+        connectionProvider() ?: return null
+        // Reads do NOT need system privileges — the adb shell user can read these
+        // sysfs nodes directly. The previous implementation performed a FULL JDWP
+        // injection per read (findTargetPid, connect2jdwp, attach, Runtime.exec,
+        // resumeVM, dispose, then poll a file for up to a second).
+        //
+        // That was survivable until 1.0.2 added minimum-frequency reads
+        // (readCurrentMinValues + cpuinfo_min_freq). Those nodes aren't
+        // world-readable here, so every state refresh triggered several
+        // injections in a loop. Logs showed findTargetPid firing in pairs every
+        // 2s with interleaved, corrupted shell output — concurrent traffic on one
+        // adb socket — until a thread wedged holding the apply lock and button
+        // presses stopped doing anything at all.
+        val shell = sharedShellProvider?.invoke() ?: return null
         return runCatching {
-            val outFile = File(sharedDirFile(), "ct_read.out")
-            outFile.delete()
-            // Build a tiny copy script and run it as system.
-            val copyScript = buildString {
-                appendLine("#!/system/bin/sh")
-                appendLine("cat '${path}' > '${outFile.absolutePath}' 2>/dev/null")
-                appendLine("chmod 666 '${outFile.absolutePath}' 2>/dev/null")
-            }
-            val scriptPath = stageScript("ct_read.sh", copyScript)
-            // Reuse the already-open transport. Opening a fresh AdbClient per read
-            // made Android post a new "Wireless debugging connected" heads-up on
-            // EVERY sysfs read, which is why the notification flashed constantly.
-            val shared = sharedShellProvider?.invoke()
-            if (shared != null) {
-                val pid = findTargetPid(shared)
-                if (pid <= 0) throw IllegalStateException("GameAssistant is not running")
-                injectExec(conn, shared, "sh ${scriptPath}")
-            } else {
-                AdbClient.openShell(conn.host, conn.port).use { adb ->
-                    val pid = findTargetPid(adb)
-                    if (pid <= 0) throw IllegalStateException("GameAssistant is not running")
-                    injectExec(conn, adb, "sh ${scriptPath}")
-                }
-            }
-            // Give the injected process a moment to write the file.
-            var text: String? = null
-            repeat(10) {
-                Thread.sleep(100)
-                if (outFile.isFile) {
-                    val t = outFile.readText().trim()
-                    if (t.isNotEmpty()) { text = t; return@repeat }
-                }
-            }
-            text
-        }.getOrNull()
+            // Markers make parsing robust against the shell echoing the command
+            // back (which is what corrupted the old line-index parsing).
+            val raw = shell.sendShellCommand(
+                "echo $READ_BEGIN; cat '${path}' 2>/dev/null; echo $READ_END",
+            )
+            val lines = raw.lines()
+            val begin = lines.indexOfLast { it.trim() == READ_BEGIN }
+            if (begin < 0) return@runCatching null
+            val end = lines.drop(begin + 1).indexOfFirst { it.trim() == READ_END }
+            if (end < 0) return@runCatching null
+            lines.subList(begin + 1, begin + 1 + end)
+                .joinToString("\n")
+                .trim()
+                .takeIf { it.isNotEmpty() }
+        }.getOrElse { error ->
+            com.wuyr.jdwp_injector.debug.JdwpDebugLog.w(
+                "readText('${path}') failed: ${error.javaClass.simpleName}: ${error.message}",
+            )
+            shellInvalidator?.invoke()
+            null
+        }
     }
 
     /** Not part of the 1.0.2 interface; kept as a plain helper. */
@@ -281,6 +280,8 @@ class JdwpInjectionExecutionMethod(
     companion object {
         const val TAG = "ClusterTuneJdwp"
         private const val PROBE_CACHE_MS = 5000L
+        private const val READ_BEGIN = "__CT_READ_BEGIN__"
+        private const val READ_END = "__CT_READ_END__"
         const val GAME_ASSISTANT_PKG = "com.odin2.gameassistant"
 
         private const val SHARED_DIR_NAME = "ClusterScripts"
