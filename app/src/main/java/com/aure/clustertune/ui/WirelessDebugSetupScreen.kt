@@ -327,6 +327,28 @@ fun WirelessDebugSetupScreen(
                                             if (paired) {
                                                 pairingReady = false
                                                 status = "Paired. Connecting…"
+                                                // adbd re-announces the connect
+                                                // service (on a NEW port) right
+                                                // now. Relisten so mDNS actually
+                                                // catches it — a discovery session
+                                                // started earlier will never see
+                                                // an announcement it already
+                                                // missed. Also drop the stale
+                                                // connection so the old port
+                                                // can't short-circuit the connect.
+                                                connected = false
+                                                scope.launch {
+                                                    withContext(Dispatchers.IO) {
+                                                        connectionManager.clearConnection()
+                                                    }
+                                                }
+                                                connectionManager.restartConnectDiscovery(
+                                                    onConnected = { info ->
+                                                        connected = true
+                                                        connectedThisVisit = true
+                                                        status = "Connected (${info.host}:${info.port}). You're ready."
+                                                    },
+                                                )
                                                 startConnect()
                                             } else {
                                                 status = "Pairing failed: ${errorMsg ?: "check the code and try again"}"

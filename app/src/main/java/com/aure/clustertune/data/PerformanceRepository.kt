@@ -312,6 +312,9 @@ class PerformanceRepository(
                 actualValues = detector.readCurrentMaxValues(policies)
                 com.wuyr.jdwp_injector.debug.JdwpDebugLog.d("APPLY/verify attempt=$attempt readBackMax=$actualValues")
                 actualMinValues = detector.readCurrentMinValues(policies)
+                com.wuyr.jdwp_injector.debug.JdwpDebugLog.d(
+                    "APPLY/verify attempt=$attempt readBackMin=$actualMinValues",
+                )
                 val maxesMatch = filtered.all { (policyId, requestedValue) ->
                     val policy = policies.firstOrNull { it.id == policyId } ?: return@all false
                     val actualValue = actualValues[policyId] ?: return@all false
@@ -321,7 +324,14 @@ class PerformanceRepository(
                     )
                 }
                 val minsMatch = policies.all { policy ->
-                    val actualMin = actualMinValues[policy.id] ?: return@all false
+                    // An UNKNOWN minimum is not a failure. This check is a 1.0.2
+                    // addition supporting the minimum-repair migration; what we
+                    // actually apply here is the maximum. On the no-root path
+                    // scaling_min_freq often can't be read, so this returned false
+                    // forever: the log showed the maxes matching exactly at
+                    // attempt 2 yet the loop running to attempt 11 and reporting
+                    // "CPU policy verification failed" on an apply that worked.
+                    val actualMin = actualMinValues[policy.id] ?: return@all true
                     val actualMax = actualValues[policy.id] ?: return@all false
                     actualMin > 0 && actualMin <= actualMax &&
                         actualMin <= (filtered[policy.id] ?: actualMax)

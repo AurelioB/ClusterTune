@@ -508,6 +508,11 @@ fun CompactOverlayScreen(
         ?: listOfNotNull(assignment?.profileId, state.activeDisplayProfileId, state.lastAppliedDisplayProfileId)
             .firstOrNull { id -> profiles.any { it.id == id } }
 
+    // Back / B must close this overlay, not fall through to the activity (which
+    // exited the whole app). Also handle ButtonB explicitly for controllers that
+    // report it separately from KEYCODE_BACK.
+    BackHandler(enabled = true) { onDismissRequest() }
+
     val firstRowFocus = remember { FocusRequester() }
     LaunchedEffect(mode) {
         if (mode == CompactOverlayMode.PROFILES) {
@@ -525,6 +530,14 @@ fun CompactOverlayScreen(
                 // escaped to the app list / nav rail behind it and could not get
                 // back. Cancelling the group's exit blocks focus *movement* out
                 // without consuming any key, so children still receive left/right.
+                .onPreviewKeyEvent { event ->
+                    if (event.type == KeyEventType.KeyDown && event.key == Key.ButtonB) {
+                        onDismissRequest()
+                        true
+                    } else {
+                        false
+                    }
+                }
                 .focusProperties { exit = { FocusRequester.Cancel } }
                 .focusRestorer()
                 .focusGroup(),
