@@ -22,9 +22,9 @@ data class AppSettings(
     val sleepProfileId: String? = null,
     val hasPromptedQuickSettingsTile: Boolean = false,
     val isQuickSettingsTileAdded: Boolean = false,
-    val automaticUpdateChecksEnabled: Boolean = true,
+    val automaticUpdateChecksEnabled: Boolean = DEFAULT_AUTOMATIC_UPDATE_CHECKS_ENABLED,
     val updateCheckIntervalDays: Int = 7,
-    val includePrereleaseUpdates: Boolean = false,
+    val includePrereleaseUpdates: Boolean = DEFAULT_INCLUDE_PRERELEASE_UPDATES,
     val lastUpdateCheckMillis: Long = 0L,
     val displayFrequenciesAsPercent: Boolean = false,
     val leftEdgeProfilePickerEnabled: Boolean = false,
@@ -38,6 +38,8 @@ data class AppSettings(
 )
 
 const val DEFAULT_PROFILE_SWITCH_HISTORY_LIMIT = 100
+const val DEFAULT_AUTOMATIC_UPDATE_CHECKS_ENABLED = true
+const val DEFAULT_INCLUDE_PRERELEASE_UPDATES = false
 const val MIN_PROFILE_SWITCH_HISTORY_LIMIT = 1
 const val MAX_PROFILE_SWITCH_HISTORY_LIMIT = 1_000
 

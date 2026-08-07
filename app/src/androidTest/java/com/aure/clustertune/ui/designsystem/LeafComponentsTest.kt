@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.performClick
@@ -149,6 +150,21 @@ class LeafComponentsTest {
 
         composeRule.onNode(hasRadioRole).assertHeightIsAtLeast(48.dp).performClick()
         composeRule.runOnIdle { assertTrue(selected) }
+    }
+
+    @Test
+    fun selectionIndicator_exposesApplyingDescription() {
+        composeRule.setContent {
+            MaterialTheme {
+                CtSelectionIndicator(
+                    selected = false,
+                    applying = true,
+                    contentDescription = "Applying Small",
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Applying Small").assertIsDisplayed()
     }
 
     @Test

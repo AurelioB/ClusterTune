@@ -6,7 +6,7 @@ object ProfileStateResolver {
     const val STOCK_PROFILE_ID = "virtual_stock"
 
     fun resolve(state: TunerState, currentValues: Map<Int, Int> = state.currentValues): TunerState {
-        val stockProfile = buildStockProfile(state.policies)
+        val stockProfile = buildStockProfile(state.policies, state.gpuPolicy)
         val realProfiles = (state.bundledProfiles + state.userProfiles).sortedBy { it.order }
         val userProfiles = realProfiles.filter { it.source == ProfileSource.USER }
         val bundledProfiles = realProfiles.filter { it.source == ProfileSource.BUNDLED }
@@ -22,14 +22,21 @@ object ProfileStateResolver {
             profiles = displayProfiles,
             preferredId = state.selectedProfileId,
             policies = state.policies,
+            gpuPolicy = state.gpuPolicy,
+            gpuValue = state.currentGpuMaxFrequencyHz,
         )
         val activeProfile = resolveProfileForValues(
             values = state.actualValues,
             profiles = displayProfiles,
             preferredId = state.selectedProfileId,
             policies = state.policies,
+            gpuPolicy = state.gpuPolicy,
+            gpuValue = state.actualGpuMaxFrequencyHz,
         )
-        val hasPolicies = state.policies.isNotEmpty()
+        // CPU policies are the required execution domain. GPU tuning is an
+        // optional additional domain and must not make an otherwise unusable
+        // device appear tunable.
+        val hasTuningPolicies = state.policies.isNotEmpty()
 
         return state.copy(
             currentValues = currentValues,
@@ -40,20 +47,20 @@ object ProfileStateResolver {
             selectedDisplayProfileName = selectedProfile?.name,
             activeDisplayProfileId = when {
                 activeProfile != null -> activeProfile.id
-                hasPolicies -> MANUAL_PROFILE_ID
+                hasTuningPolicies -> MANUAL_PROFILE_ID
                 else -> null
             },
             activeDisplayProfileName = when {
                 activeProfile != null -> activeProfile.name
-                hasPolicies -> "Manual"
+                hasTuningPolicies -> "Manual"
                 else -> null
             },
-            isManualSelection = hasPolicies && selectedProfile == null,
-            isManualActive = hasPolicies && activeProfile == null,
+            isManualSelection = hasTuningPolicies && selectedProfile == null,
+            isManualActive = hasTuningPolicies && activeProfile == null,
         )
     }
 
-    fun buildStockProfile(policies: List<CpuPolicyInfo>): PerformanceProfile? {
+    fun buildStockProfile(policies: List<CpuPolicyInfo>, gpuPolicy: GpuPolicyInfo? = null): PerformanceProfile? {
         if (policies.isEmpty()) return null
         return PerformanceProfile(
             id = STOCK_PROFILE_ID,
@@ -61,6 +68,7 @@ object ProfileStateResolver {
             maxFrequencies = policies.associate { policy ->
                 policy.id to policy.observedMaxFreq
             },
+            gpuMaxFrequencyHz = gpuPolicy?.observedMaxFrequencyHz,
             source = ProfileSource.VIRTUAL,
             isEditable = false,
             isDeletable = false,
@@ -71,13 +79,34 @@ object ProfileStateResolver {
         values: Map<Int, Int>,
         profile: PerformanceProfile,
         policies: List<CpuPolicyInfo> = emptyList(),
+        gpuPolicy: GpuPolicyInfo? = null,
+        gpuValue: Int? = null,
     ): Boolean {
         val policiesById = policies.associateBy { it.id }
-        return profile.maxFrequencies.isNotEmpty() && profile.maxFrequencies.all { (policyId, value) ->
+        val cpuMatches = profile.maxFrequencies.isNotEmpty() && profile.maxFrequencies.all { (policyId, value) ->
             val actual = values[policyId] ?: return@all false
             val policy = policiesById[policyId] ?: return@all false
             isPolicyValueSatisfied(policy = policy, requestedValue = value, actualValue = actual)
         }
+        // Legacy profiles predate the optional GPU field. Keep that field
+        // unspecified: selecting one must not change the GPU domain. Bundled
+        // profiles that mean Stock are materialized with an explicit value by
+        // the repository before they reach the resolver.
+        val gpuMatches = when {
+            gpuPolicy == null -> true
+            profile.gpuMaxFrequencyHz == null -> true
+            gpuValue == null -> false
+            else -> isGpuValueSatisfied(gpuPolicy, profile.gpuMaxFrequencyHz, gpuValue)
+        }
+        return cpuMatches && gpuMatches
+    }
+
+    fun isGpuValueSatisfied(policy: GpuPolicyInfo, requestedValue: Int, actualValue: Int): Boolean {
+        if (actualValue == requestedValue) return true
+        return requestedValue >= policy.selectableMaxFrequencyHz &&
+            requestedValue <= policy.observedMaxFrequencyHz &&
+            actualValue >= policy.selectableMaxFrequencyHz &&
+            actualValue <= policy.observedMaxFrequencyHz
     }
 
     fun isPolicyValueSatisfied(
@@ -95,9 +124,9 @@ object ProfileStateResolver {
 
     fun preferredProfileForCurrentValues(state: TunerState): PerformanceProfile? {
         return state.displayProfiles.firstOrNull { profile ->
-            profile.id == state.selectedDisplayProfileId && matchesProfile(state.currentValues, profile, state.policies)
+            profile.id == state.selectedDisplayProfileId && matchesProfile(state.currentValues, profile, state.policies, state.gpuPolicy, state.currentGpuMaxFrequencyHz)
         } ?: state.displayProfiles.firstOrNull { profile ->
-            matchesProfile(state.currentValues, profile, state.policies)
+            matchesProfile(state.currentValues, profile, state.policies, state.gpuPolicy, state.currentGpuMaxFrequencyHz)
         }
     }
 
@@ -119,12 +148,14 @@ object ProfileStateResolver {
         profiles: List<PerformanceProfile>,
         preferredId: String?,
         policies: List<CpuPolicyInfo>,
+        gpuPolicy: GpuPolicyInfo? = null,
+        gpuValue: Int? = null,
     ): PerformanceProfile? {
         if (values.isEmpty()) return null
         val preferred = preferredId?.let { id -> profiles.firstOrNull { it.id == id } }
-        if (preferred != null && matchesProfile(values, preferred, policies)) {
+        if (preferred != null && matchesProfile(values, preferred, policies, gpuPolicy, gpuValue)) {
             return preferred
         }
-        return profiles.firstOrNull { matchesProfile(values, it, policies) }
+        return profiles.firstOrNull { matchesProfile(values, it, policies, gpuPolicy, gpuValue) }
     }
 }

@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -64,6 +65,16 @@ class SleepProfileMonitorService : Service() {
             val settings = container.settingsStorage.settings.first()
             if (!settings.sleepProfileEnabled) {
                 stopSelf()
+                return@launch
+            }
+            // START_STICKY recreation and package replacement may not deliver
+            // a matching screen broadcast. Reconcile persisted state here so
+            // a sleep cap cannot remain stranded across process death.
+            val powerManager = getSystemService<PowerManager>()
+            if (powerManager?.isInteractive == true) {
+                restorePreSleepState()
+            } else if (settings.sleepProfileId != null) {
+                applySleepProfile()
             }
         }
         return START_STICKY

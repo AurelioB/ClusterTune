@@ -174,7 +174,7 @@ class PerformanceTileService : TileService() {
     )
 
     private fun buildTilePresentation(state: TunerState, settings: AppSettings): TilePresentation {
-        if (!state.isPServerAvailable) {
+        if (!state.isPrivilegedHostAvailable) {
             return TilePresentation(
                 label = getString(R.string.tile_title),
                 subtitle = getString(R.string.tile_state_unavailable),
@@ -194,7 +194,7 @@ class PerformanceTileService : TileService() {
     }
 
     private fun buildTileVisualState(state: TunerState): Int {
-        if (!state.isPServerAvailable) return Tile.STATE_INACTIVE
+        if (!state.isPrivilegedHostAvailable) return Tile.STATE_INACTIVE
         val activeProfileId = effectiveTileProfileId(state)
         val activeName = effectiveTileProfileName(state)
         val stockIsActive = activeProfileId == ProfileStateResolver.STOCK_PROFILE_ID || activeName == "Stock"

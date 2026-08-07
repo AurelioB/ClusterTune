@@ -3,17 +3,14 @@ package com.aure.clustertune.root
 import android.annotation.SuppressLint
 import android.os.IBinder
 import android.os.Parcel
-import java.nio.charset.StandardCharsets
 
-interface PServerRootExecutor {
+internal interface PServerHostExecutor {
     val pServerAvailable: Boolean
-    fun executeAsRoot(cmd: String): Result<String?>
-
-    fun executeAsRoot(cmd: String, captureOutput: Boolean): Result<String?> = executeAsRoot(cmd)
+    fun launchHost(command: String): Result<Unit>
 }
 
 @SuppressLint("DiscouragedPrivateApi", "PrivateApi")
-class RootExec : PServerRootExecutor {
+internal class RootExec : PServerHostExecutor {
 
     @Volatile
     private var binder: IBinder? = findBinder()
@@ -21,22 +18,22 @@ class RootExec : PServerRootExecutor {
     override val pServerAvailable: Boolean
         get() = activeBinder() != null
 
-    override fun executeAsRoot(cmd: String): Result<String?> = executeAsRoot(cmd, captureOutput = true)
+    override fun launchHost(command: String): Result<Unit> {
+        return transact(command).map { Unit }
+    }
 
-    override fun executeAsRoot(cmd: String, captureOutput: Boolean): Result<String?> {
+    private fun transact(cmd: String): Result<Unit> {
         val activeBinder = activeBinder()
             ?: return Result.failure(IllegalStateException("PServer not available"))
 
         val data = Parcel.obtain()
         val reply = Parcel.obtain()
         return try {
-            data.writeStringArray(arrayOf(cmd, if (captureOutput) "1" else "0"))
+            data.writeStringArray(arrayOf(cmd, "0"))
             val accepted = activeBinder.transact(0, data, reply, 0)
-            // Binder returning false means the transaction was not delivered.  Treat this as a
-            // failure for both output modes; otherwise output-disabled writes would be reported as
-            // successful even though no command ran.
+            // Binder returning false means the host launch transaction was not delivered.
             check(accepted) { "PServer rejected the transaction" }
-            Result.success(if (captureOutput) decodeReply(reply) else null)
+            Result.success(Unit)
         } catch (throwable: Throwable) {
             if (!activeBinder.isBinderAlive) {
                 synchronized(this) {
@@ -66,10 +63,4 @@ class RootExec : PServerRootExecutor {
         }.getOrNull()
     }
 
-    private fun decodeReply(reply: Parcel): String? {
-        return reply.createByteArray()
-            ?.toString(StandardCharsets.UTF_8)
-            ?.trim()
-            ?.let { value -> if (value == "null") null else value }
-    }
 }

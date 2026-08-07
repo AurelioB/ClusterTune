@@ -112,6 +112,70 @@ class ProfileStateResolverTest {
         assertEquals("Policy 3 Max", state.activeDisplayProfileName)
     }
 
+    @Test
+    fun `legacy cpu-only profile leaves gpu unspecified while gpu profile requires matching cap`() {
+        val cpu = policy(0, 2_000_000, 2_500_000, listOf(1_000_000, 2_000_000, 2_500_000))
+        val gpu = GpuPolicyInfo("/gpu", "/gpu/max", currentMaxFrequencyHz = 600, selectableMaxFrequencyHz = 600, observedMaxFrequencyHz = 800, supportedFrequenciesHz = listOf(400, 600, 800))
+        val cpuOnly = PerformanceProfile("cpu", "CPU", mapOf(0 to 2_000_000), ProfileSource.USER)
+        val gpuAware = cpuOnly.copy(id = "gpu", name = "GPU", gpuMaxFrequencyHz = 600)
+        assertTrue(ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), cpuOnly, listOf(cpu), gpu, 400))
+        assertTrue(ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), cpuOnly, listOf(cpu), gpu, 600))
+        assertTrue(ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), cpuOnly, listOf(cpu), gpu, 800))
+        assertTrue(ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), gpuAware, listOf(cpu), gpu, 600))
+        assertTrue(!ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), gpuAware, listOf(cpu), gpu, 400))
+    }
+
+    @Test
+    fun `stock profile includes observed gpu ceiling`() {
+        val cpu = policy(0, 2_500_000, 2_500_000, listOf(1_000_000, 2_500_000))
+        val gpu = GpuPolicyInfo("/gpu", "/gpu/max", currentMaxFrequencyHz = 600, selectableMaxFrequencyHz = 600, observedMaxFrequencyHz = 800, supportedFrequenciesHz = listOf(400, 600, 800))
+        assertEquals(800, ProfileStateResolver.buildStockProfile(listOf(cpu), gpu)?.gpuMaxFrequencyHz)
+    }
+
+    @Test
+    fun `legacy null gpu profile leaves gpu domain unspecified`() {
+        val cpu = policy(0, 2_000_000, 2_000_000, listOf(1_000_000, 2_000_000))
+        val gpu = GpuPolicyInfo(
+            "/gpu", "/gpu/max", currentMaxFrequencyHz = 600,
+            selectableMaxFrequencyHz = 600, observedMaxFrequencyHz = 800,
+            supportedFrequenciesHz = listOf(400, 600, 800),
+        )
+        val legacy = PerformanceProfile("legacy", "Legacy", mapOf(0 to 2_000_000), ProfileSource.USER)
+
+        assertTrue(ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), legacy, listOf(cpu), gpu, 800))
+        assertTrue(ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), legacy, listOf(cpu), gpu, 600))
+        assertTrue(ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), legacy, listOf(cpu), gpu, 400))
+    }
+
+    @Test
+    fun `switching from capped gpu profile to legacy profile leaves gpu unchanged`() {
+        val cpu = policy(0, 2_000_000, 2_000_000, listOf(1_000_000, 2_000_000))
+        val gpu = GpuPolicyInfo(
+            "/gpu", "/gpu/max", currentMaxFrequencyHz = 600,
+            selectableMaxFrequencyHz = 600, observedMaxFrequencyHz = 800,
+            supportedFrequenciesHz = listOf(400, 600, 800),
+        )
+        val capped = PerformanceProfile("capped", "Capped", mapOf(0 to 2_000_000), ProfileSource.USER, gpuMaxFrequencyHz = 600)
+        val legacy = PerformanceProfile("legacy", "Legacy", mapOf(0 to 2_000_000), ProfileSource.USER)
+        val state = ProfileStateResolver.resolve(
+            TunerState(
+                isLoading = false,
+                policies = listOf(cpu),
+                gpuPolicy = gpu,
+                actualValues = mapOf(0 to 2_000_000),
+                currentValues = mapOf(0 to 2_000_000),
+                actualGpuMaxFrequencyHz = 800,
+                currentGpuMaxFrequencyHz = 800,
+                userProfiles = listOf(capped, legacy),
+                selectedProfileId = legacy.id,
+            ),
+        )
+
+        assertEquals(legacy.id, state.activeDisplayProfileId)
+        assertEquals(legacy.id, state.selectedDisplayProfileId)
+        assertEquals(800, state.currentGpuMaxFrequencyHz)
+    }
+
     private fun policy(
         id: Int,
         current: Int,

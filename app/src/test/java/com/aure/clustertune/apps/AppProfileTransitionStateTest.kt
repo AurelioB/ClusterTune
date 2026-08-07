@@ -40,6 +40,22 @@ class AppProfileTransitionStateTest {
         assertEquals(AppProfileTransitionState.Action.Apply(changed), state.observe(2, "assigned.app", listOf(changed)))
     }
 
+    @Test fun `custom gpu target change applies`() {
+        val state = AppProfileTransitionState(100)
+        val gpuAssignment = assignment.copy(customGpuMaxFrequencyHz = 400_000_000)
+        val changed = gpuAssignment.copy(customGpuMaxFrequencyHz = 300_000_000)
+
+        assertEquals(
+            AppProfileTransitionState.Action.Apply(gpuAssignment),
+            state.observe(0, "assigned.app", listOf(gpuAssignment)),
+        )
+        state.onApplied(gpuAssignment)
+        assertEquals(
+            AppProfileTransitionState.Action.Apply(changed),
+            state.observe(1, "assigned.app", listOf(changed)),
+        )
+    }
+
     @Test fun `restore retries until success and state survives service style restart`() {
         val state = AppProfileTransitionState(0)
         state.onApplied(assignment)

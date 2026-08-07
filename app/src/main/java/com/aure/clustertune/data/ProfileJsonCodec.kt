@@ -24,6 +24,7 @@ object ProfileJsonCodec {
                         id = profile.id,
                         name = profile.name,
                         maxFrequencies = profile.maxFrequencies.mapKeys { (policyId, _) -> policyId.toString() },
+                        gpuMaxFrequencyHz = profile.gpuMaxFrequencyHz,
                     )
                 },
             ),
@@ -38,12 +39,13 @@ object ProfileJsonCodec {
                     id = profile.id,
                     name = profile.name,
                     maxFrequencies = profile.maxFrequencies.mapNotNull { (policyId, frequency) ->
-                        policyId.toIntOrNull()?.let { it to frequency }
+                        policyId.toIntOrNull()?.takeIf { frequency > 0 }?.let { it to frequency }
                     }.toMap(),
                     source = ProfileSource.USER,
                     order = index,
                     isEditable = true,
                     isDeletable = true,
+                    gpuMaxFrequencyHz = profile.gpuMaxFrequencyHz?.takeIf { it > 0 },
                 )
             }
         }.getOrDefault(emptyList())
@@ -51,7 +53,7 @@ object ProfileJsonCodec {
 
     @Serializable
     private data class ProfileShareFile(
-        val schemaVersion: Int = 1,
+        val schemaVersion: Int = 2,
         val socModel: String? = null,
         val profiles: List<ProfileShareProfile> = emptyList(),
     )
@@ -62,5 +64,6 @@ object ProfileJsonCodec {
         val name: String,
         @SerialName("maxFrequencies")
         val maxFrequencies: Map<String, Int>,
+        val gpuMaxFrequencyHz: Int? = null,
     )
 }

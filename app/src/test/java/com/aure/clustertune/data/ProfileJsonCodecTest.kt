@@ -69,4 +69,25 @@ class ProfileJsonCodecTest {
         assertEquals(mapOf(0 to 2_745_600, 6 to 3_072_000), profiles.first().maxFrequencies)
         assertEquals(ProfileSource.USER, profiles.first().source)
     }
+
+    @Test
+    fun `share codec decodes v1 legacy and round trips v2 gpu cap`() {
+        val legacy = ProfileJsonCodec.parseShareProfiles(
+            """{"schemaVersion":1,"profiles":[{"id":"legacy","name":"Legacy","maxFrequencies":{}}]}""",
+        ).single()
+        assertEquals(null, legacy.gpuMaxFrequencyHz)
+
+        val profile = PerformanceProfile("gpu", "GPU", emptyMap(), ProfileSource.USER, gpuMaxFrequencyHz = 700_000_000)
+        val parsed = ProfileJsonCodec.parseShareProfiles(ProfileJsonCodec.encodeShareFile(listOf(profile), "soc")).single()
+        assertEquals(700_000_000, parsed.gpuMaxFrequencyHz)
+    }
+
+    @Test
+    fun `share import ignores non-positive frequency values`() {
+        val parsed = ProfileJsonCodec.parseShareProfiles(
+            """{"schemaVersion":1,"profiles":[{"id":"bad","name":"Bad","maxFrequencies":{"0":-1},"gpuMaxFrequencyHz":0}]}""",
+        ).single()
+        assertEquals(emptyMap<Int, Int>(), parsed.maxFrequencies)
+        assertEquals(null, parsed.gpuMaxFrequencyHz)
+    }
 }

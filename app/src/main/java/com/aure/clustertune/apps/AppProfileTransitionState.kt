@@ -10,8 +10,6 @@ internal class AppProfileTransitionState(
     private var unassignedSince: Long? = null
     private var startupPending = true
 
-    fun activeAssignment(): AppProfileAssignment? = activeAssignment
-
     fun observe(
         nowMs: Long,
         foregroundPackage: String?,

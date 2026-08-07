@@ -1,5 +1,6 @@
 package com.aure.clustertune.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -9,7 +10,6 @@ import com.aure.clustertune.data.SettingsStorage
 import com.aure.clustertune.model.AppColorSource
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.AppSettings
-import com.aure.clustertune.model.CpuPolicyInfo
 import com.aure.clustertune.model.InstalledAppInfo
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileStateResolver
@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlin.math.abs
+import java.util.concurrent.atomic.AtomicLong
 
 class TunerViewModel(
     private val repository: PerformanceRepository,
@@ -33,21 +33,49 @@ class TunerViewModel(
 ) : ViewModel() {
 
     private val edits = MutableStateFlow<Map<Int, Int>>(emptyMap())
+    private val gpuEdit = MutableStateFlow<Int?>(null)
     private val transientMessage = MutableStateFlow<String?>(null)
     private val transientError = MutableStateFlow<String?>(null)
     private val installedApps = MutableStateFlow<List<InstalledAppInfo>>(emptyList())
     private val recentApps = MutableStateFlow<List<InstalledAppInfo>>(emptyList())
+    private val applyingProfile = MutableStateFlow<String?>(null)
+    private val applyingToken = AtomicLong(0L)
+    private val applyingLock = Any()
+    private var currentApplyingToken: Long? = null
+
+    val applyingProfileId: StateFlow<String?> = applyingProfile
+
+    /** Starts a transient UI-only apply indicator. The token prevents stale completions clearing newer work. */
+    fun beginApplyingProfile(profileId: String): Long {
+        synchronized(applyingLock) {
+            val token = applyingToken.incrementAndGet()
+            currentApplyingToken = token
+            applyingProfile.value = profileId
+            return token
+        }
+    }
+
+    fun finishApplyingProfile(token: Long) {
+        synchronized(applyingLock) {
+            if (currentApplyingToken == token) {
+                currentApplyingToken = null
+                applyingProfile.value = null
+            }
+        }
+    }
 
     val state: StateFlow<TunerState> = combine(
         repository.observeState(),
         edits,
+        gpuEdit,
         transientMessage,
         transientError,
-    ) { repoState, localEdits, message, error ->
+    ) { repoState, localEdits, localGpuEdit, message, error ->
         ProfileStateResolver.resolve(
             repoState.copy(
                 statusMessage = message,
                 errorMessage = error,
+                currentGpuMaxFrequencyHz = localGpuEdit ?: repoState.currentGpuMaxFrequencyHz,
             ),
             currentValues = repoState.currentValues + localEdits,
         )
@@ -86,45 +114,56 @@ class TunerViewModel(
         }
     }
 
-    fun setPolicyValue(policy: CpuPolicyInfo, rawValue: Int) {
-        val snapped = snapToSupported(policy, rawValue)
-        val updatedEdits = edits.value + (policy.id to snapped)
-        edits.value = updatedEdits
+    fun applyProfile(profile: PerformanceProfile, onApplied: (() -> Unit)? = null) {
         transientMessage.value = null
         transientError.value = null
-
-        val baseValues = state.value.policies.associate { cpuPolicy ->
-            cpuPolicy.id to (state.value.actualValues[cpuPolicy.id] ?: cpuPolicy.currentMaxFreq)
-        }
-        val pendingValues = baseValues + updatedEdits
-        val selectedProfile = state.value.displayProfiles
-            .firstOrNull { it.id == state.value.selectedProfileId }
-
-        if (selectedProfile != null &&
-            !ProfileStateResolver.matchesProfile(pendingValues, selectedProfile, state.value.policies)
-        ) {
-            viewModelScope.launch {
-                repository.selectProfile(null)
+        val manualRequestToken = PerformanceRepository.allocateManualRequestToken()
+        val applyingUiToken = beginApplyingProfile(profile.id)
+        viewModelScope.launch {
+            try {
+                val snapshot = state.value
+                val result = repository.applyValues(
+                    policies = snapshot.policies,
+                    selectedValues = profile.maxFrequencies,
+                    gpuPolicy = snapshot.gpuPolicy,
+                    selectedGpuMaxFrequencyHz = profile.gpuMaxFrequencyHz,
+                    isReset = profile.id == ProfileStateResolver.STOCK_PROFILE_ID,
+                    appliedDisplayProfileId = profile.id,
+                    manualRequestToken = manualRequestToken,
+                    onHardwareApplied = {
+                        if (!PerformanceRepository.isManualRequestCurrent(manualRequestToken)) return@applyValues
+                        edits.value = emptyMap()
+                        gpuEdit.value = null
+                        transientMessage.value = buildAppliedMessage(profile, it.commandOutput)
+                        transientError.value = null
+                        finishApplyingProfile(applyingUiToken)
+                        onApplied?.invoke()
+                    },
+                )
+                result.onSuccess {
+                    if (!PerformanceRepository.isManualRequestCurrent(manualRequestToken)) return@onSuccess
+                    repository.logProfileSwitch(
+                        profileId = profile.id,
+                        profileName = profile.name,
+                        trigger = "Manual apply from Profiles tab",
+                    )
+                }.onFailure {
+                    if (it !is PerformanceRepository.SupersededManualApplyException &&
+                        PerformanceRepository.isManualRequestCurrent(manualRequestToken)) {
+                        Log.e(TAG, "Profile apply failed for ${profile.id}: ${it.message}", it)
+                        transientError.value = it.message ?: "Failed to apply profile"
+                    }
+                }
+            } finally {
+                finishApplyingProfile(applyingUiToken)
             }
-        }
-    }
-
-    fun applyProfile(profile: PerformanceProfile) {
-        edits.value = edits.value + profile.maxFrequencies
-        viewModelScope.launch {
-            repository.selectProfile(profile.id.takeUnless { it == ProfileStateResolver.STOCK_PROFILE_ID })
-        }
-    }
-
-    fun clearSelection() {
-        viewModelScope.launch {
-            repository.selectProfile(null)
         }
     }
 
     /** Discards values staged by a compact tuner without changing the applied state. */
     fun discardEdits() {
         edits.value = emptyMap()
+        gpuEdit.value = null
         transientMessage.value = null
         transientError.value = null
     }
@@ -140,34 +179,45 @@ class TunerViewModel(
     fun applyCurrent(state: TunerState, onApplied: (String) -> Unit = {}) {
         transientMessage.value = null
         transientError.value = null
+        val manualRequestToken = PerformanceRepository.allocateManualRequestToken()
 
         viewModelScope.launch {
             val appliedProfile = ProfileStateResolver.preferredProfileForCurrentValues(state)
             val applyResult = repository.applyValues(
                 policies = state.policies,
                 selectedValues = state.currentValues,
+                gpuPolicy = state.gpuPolicy,
+                selectedGpuMaxFrequencyHz = state.currentGpuMaxFrequencyHz,
                 isReset = appliedProfile?.id == ProfileStateResolver.STOCK_PROFILE_ID,
                 appliedDisplayProfileId = appliedProfile?.id ?: ProfileStateResolver.MANUAL_PROFILE_ID,
+                manualRequestToken = manualRequestToken,
+                onHardwareApplied = { outcome ->
+                    if (!PerformanceRepository.isManualRequestCurrent(manualRequestToken)) return@applyValues
+                    edits.value = emptyMap()
+                    gpuEdit.value = null
+                    transientMessage.value = if (outcome.verificationPassed) {
+                        buildAppliedMessage(appliedProfile, outcome.commandOutput)
+                    } else {
+                        buildVerificationFailureMessage(state, outcome.actualValues, outcome.commandOutput)
+                    }
+                    transientError.value = null
+                    onApplied(appliedProfile?.name ?: "Custom values")
+                },
             )
-            applyResult.onSuccess { outcome ->
-                edits.value = emptyMap()
-                transientMessage.value = if (outcome.verificationPassed) {
-                    buildAppliedMessage(appliedProfile, outcome.commandOutput)
-                } else {
-                    buildVerificationFailureMessage(state, outcome.actualValues, outcome.commandOutput)
+            if (applyResult.isFailure) {
+                val throwable = applyResult.exceptionOrNull() ?: return@launch
+                if (throwable !is PerformanceRepository.SupersededManualApplyException &&
+                    PerformanceRepository.isManualRequestCurrent(manualRequestToken)) {
+                    transientError.value = throwable.message ?: "Failed to apply limits"
                 }
-                transientError.value = null
-            }.onFailure { throwable ->
-                transientError.value = throwable.message ?: "Failed to apply limits"
             }
             if (applyResult.isSuccess) {
-                repository.selectProfile(appliedProfile?.id?.takeUnless { it == ProfileStateResolver.STOCK_PROFILE_ID })
+                if (!PerformanceRepository.isManualRequestCurrent(manualRequestToken)) return@launch
                 repository.logProfileSwitch(
                     profileId = appliedProfile?.id ?: ProfileStateResolver.MANUAL_PROFILE_ID,
                     profileName = appliedProfile?.name ?: "Manual",
                     trigger = "Manual apply from Profiles tab",
                 )
-                onApplied(appliedProfile?.name ?: "Custom values")
             }
         }
     }
@@ -183,7 +233,7 @@ class TunerViewModel(
                 transientError.value = "Profile name already exists"
                 return@launch
             }
-            repository.createUserProfile(trimmedName, state.currentValues)
+            repository.createUserProfile(trimmedName, state.currentValues, state.currentGpuMaxFrequencyHz)
             transientMessage.value = "Saved profile \"$trimmedName\""
             transientError.value = null
         }
@@ -200,7 +250,7 @@ class TunerViewModel(
                 transientError.value = "Profile name already exists"
                 return@launch
             }
-            repository.updateProfile(profileId, trimmedName, state.currentValues)
+            repository.updateProfile(profileId, trimmedName, state.currentValues, state.currentGpuMaxFrequencyHz)
             transientMessage.value = "Updated profile \"$trimmedName\""
             transientError.value = null
         }
@@ -219,6 +269,7 @@ class TunerViewModel(
         appLabel: String,
         profileId: String?,
         customMaxFrequencies: Map<Int, Int> = emptyMap(),
+        customGpuMaxFrequencyHz: Int? = null,
     ) {
         viewModelScope.launch {
             repository.saveAppProfileAssignment(
@@ -227,6 +278,7 @@ class TunerViewModel(
                     appLabel = appLabel,
                     profileId = profileId,
                     customMaxFrequencies = customMaxFrequencies,
+                    customGpuMaxFrequencyHz = customGpuMaxFrequencyHz,
                 ),
             )
             transientMessage.value = "Saved app profile for $appLabel"
@@ -239,9 +291,16 @@ class TunerViewModel(
         appLabel: String,
         profileId: String?,
         customMaxFrequencies: Map<Int, Int> = emptyMap(),
+        customGpuMaxFrequencyHz: Int? = null,
     ) {
         repository.saveAppProfileAssignment(
-            AppProfileAssignment(packageName, appLabel, profileId, customMaxFrequencies),
+            AppProfileAssignment(
+                packageName = packageName,
+                appLabel = appLabel,
+                profileId = profileId,
+                customMaxFrequencies = customMaxFrequencies,
+                customGpuMaxFrequencyHz = customGpuMaxFrequencyHz,
+            ),
         )
     }
 
@@ -303,13 +362,6 @@ class TunerViewModel(
     fun setApplyLastProfileOnBoot(enabled: Boolean) {
         viewModelScope.launch {
             settingsStorage.persistApplyLastProfileOnBoot(enabled)
-        }
-    }
-
-    fun setSleepProfileEnabled(enabled: Boolean, onSaved: () -> Unit = {}) {
-        viewModelScope.launch {
-            settingsStorage.persistSleepProfileEnabled(enabled)
-            onSaved()
         }
     }
 
@@ -438,11 +490,6 @@ class TunerViewModel(
         repository.refreshLiveValues()
     }
 
-    private fun snapToSupported(policy: CpuPolicyInfo, rawValue: Int): Int {
-        return policy.supportedFrequencies.minByOrNull { supported -> abs(supported - rawValue) }
-            ?: rawValue
-    }
-
     private fun hasDuplicateProfileName(
         name: String,
         excludedId: String?,
@@ -502,3 +549,5 @@ class TunerViewModel(
         }
     }
 }
+
+private const val TAG = "ClusterTuneTuner"

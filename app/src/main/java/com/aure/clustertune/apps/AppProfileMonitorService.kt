@@ -17,6 +17,8 @@ import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import com.aure.clustertune.AppContainer
 import com.aure.clustertune.R
+import com.aure.clustertune.model.AppProfileAssignment
+import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.tile.QuickSettingsTileRefresher
 import com.aure.clustertune.ui.SingleToast
 import kotlinx.coroutines.CoroutineScope
@@ -81,7 +83,7 @@ class AppProfileMonitorService : Service() {
                 is AppProfileTransitionState.Action.Apply -> {
                     val assignment = action.assignment
                     val profile = state.displayProfiles.firstOrNull { it.id == assignment.profileId }
-                    val retryKey = "apply:${assignment.packageName}:${assignment.profileId}:${profile?.maxFrequencies}:${assignment.customMaxFrequencies}"
+                    val retryKey = appProfileTransitionRetryKey(assignment, profile)
                     if (!shouldAttemptTransition(retryKey, nowElapsed)) {
                         delay(POLL_INTERVAL_MS)
                         continue
@@ -247,10 +249,6 @@ class AppProfileMonitorService : Service() {
             }
         }
 
-        fun stop(context: Context) {
-            context.stopService(Intent(context, AppProfileMonitorService::class.java))
-        }
-
         fun hasUsageStatsPermission(context: Context): Boolean {
             val appOps = context.getSystemService(AppOpsManager::class.java)
             val mode = appOps.unsafeCheckOpNoThrow(
@@ -267,4 +265,27 @@ class AppProfileMonitorService : Service() {
         val failures: Int,
         val nextAttemptAt: Long,
     )
+}
+
+/**
+ * Identifies the complete target for a transition retry.  GPU-only custom
+ * assignments must not share a retry budget with an otherwise identical CPU
+ * assignment, otherwise a failed CPU attempt can suppress the GPU update.
+ */
+internal fun appProfileTransitionRetryKey(
+    assignment: AppProfileAssignment,
+    profile: PerformanceProfile?,
+): String = buildString {
+    append("apply:")
+    append(assignment.packageName)
+    append(':')
+    append(assignment.profileId)
+    append(':')
+    append(profile?.maxFrequencies)
+    append(':')
+    append(profile?.gpuMaxFrequencyHz)
+    append(':')
+    append(assignment.customMaxFrequencies)
+    append(':')
+    append(assignment.customGpuMaxFrequencyHz)
 }

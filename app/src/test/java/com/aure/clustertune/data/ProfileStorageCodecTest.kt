@@ -12,7 +12,7 @@ class ProfileStorageCodecTest {
     fun `app assignments preserve named and custom targets`() {
         val assignments = listOf(
             AppProfileAssignment("named.app", "Named", profileId = "small"),
-            AppProfileAssignment("custom.app", "Custom", customMaxFrequencies = mapOf(0 to 2_000_000)),
+            AppProfileAssignment("custom.app", "Custom", customMaxFrequencies = mapOf(0 to 2_000_000), customGpuMaxFrequencyHz = 500_000_000),
         )
 
         val parsed = ProfileStorageCodec.parseAppProfileAssignments(
@@ -89,6 +89,43 @@ class ProfileStorageCodecTest {
         assertEquals("custom", parsed.single().id)
         assertEquals(3, parsed.single().order)
         assertEquals(mapOf(0 to 2_227_200, 6 to 3_072_000), parsed.single().maxFrequencies)
+        assertEquals(null, parsed.single().gpuMaxFrequencyHz)
+    }
+
+    @Test
+    fun `profile storage v2 round trips gpu cap while decoding v1 legacy`() {
+        val legacy = ProfileStorageCodec.parseProfiles(
+            "[{\"id\":\"legacy\",\"name\":\"Legacy\",\"source\":\"USER\",\"maxFrequencies\":{}}]",
+        ).single()
+        assertEquals(null, legacy.gpuMaxFrequencyHz)
+
+        val profile = PerformanceProfile("gpu", "GPU", emptyMap(), ProfileSource.USER, gpuMaxFrequencyHz = 650_000_000)
+        val parsed = ProfileStorageCodec.parseProfiles(ProfileStorageCodec.encodeProfiles(listOf(profile))).single()
+        assertEquals(650_000_000, parsed.gpuMaxFrequencyHz)
+    }
+
+    @Test
+    fun `profile storage rejects invalid gpu values and normalizes mixed app targets`() {
+        val profile = ProfileStorageCodec.parseProfiles(
+            "[{\"id\":\"bad\",\"name\":\"Bad\",\"maxFrequencies\":{},\"gpuMaxFrequencyHz\":-1}]",
+        ).single()
+        assertEquals(null, profile.gpuMaxFrequencyHz)
+
+        val assignments = ProfileStorageCodec.parseAppProfileAssignments(
+            """
+            [
+              {"packageName":"mixed","appLabel":"Mixed","profileId":"stock","customGpuMaxFrequencyHz":400},
+              {"packageName":"gpu","appLabel":"GPU","customGpuMaxFrequencyHz":500}
+            ]
+            """.trimIndent(),
+        )
+        assertEquals(
+            listOf(
+                AppProfileAssignment("gpu", "GPU", customGpuMaxFrequencyHz = 500),
+                AppProfileAssignment("mixed", "Mixed", profileId = "stock"),
+            ),
+            assignments,
+        )
     }
 
     @Test

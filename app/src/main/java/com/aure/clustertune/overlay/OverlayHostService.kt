@@ -273,6 +273,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                     initialValue = initialSettings,
                 )
                 val state by viewModel.state.collectAsStateWithLifecycle()
+                val applyingProfileId by viewModel.applyingProfileId.collectAsStateWithLifecycle()
                 val currentForegroundApp by compactProfilePickerForeground.collectAsStateWithLifecycle()
                 val overlayMode by compactOverlayMode.collectAsStateWithLifecycle()
                 ClusterTuneTheme(settings = settings) {
@@ -281,6 +282,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                     ) {
                         CompactOverlayScreen(
                             state = state,
+                            applyingProfileId = applyingProfileId,
                             displayFrequenciesAsPercent = settings.displayFrequenciesAsPercent,
                             mode = overlayMode,
                             onModeChange = { compactOverlayMode.value = it },
@@ -298,17 +300,27 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                             contextLabel = currentForegroundApp?.label,
                             contextIcon = currentForegroundApp?.icon,
                             onAppProfileAssignmentChange = currentForegroundApp?.let { app ->
-                                { profile, customValues ->
+                                { profile, customValues, customGpuMaxFrequencyHz ->
                                     compactAssignmentMutationJob?.cancel()
                                     compactAssignmentMutationJob = lifecycleScope.launch {
-                                        if (profile == null) {
+                                        if (profile == null && customValues == null && customGpuMaxFrequencyHz == null) {
                                             viewModel.deleteAppProfileAssignmentAwait(app.packageName)
-                                        } else {
+                                        } else if (profile != null) {
+                                            // A named profile is self-contained; do not freeze its
+                                            // current values as custom assignment metadata.
                                             viewModel.saveAppProfileAssignmentAwait(
                                                 app.packageName,
                                                 app.label,
                                                 profile.id,
+                                            )
+                                            AppProfileMonitorService.start(this@OverlayHostService)
+                                        } else {
+                                            viewModel.saveAppProfileAssignmentAwait(
+                                                app.packageName,
+                                                app.label,
+                                                profile?.id,
                                                 customMaxFrequencies = customValues ?: emptyMap(),
+                                                customGpuMaxFrequencyHz = customGpuMaxFrequencyHz,
                                             )
                                             AppProfileMonitorService.start(this@OverlayHostService)
                                         }
@@ -513,38 +525,46 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         foregroundApp: ForegroundAppInfo?,
     ) {
         lifecycleScope.launch {
-            if (foregroundApp != null && appProfileEnabled) {
-                val assignment = AppProfileAssignment(
-                    packageName = foregroundApp.packageName,
-                    appLabel = foregroundApp.label,
-                    profileId = assignmentProfile?.id,
-                    customMaxFrequencies = customMaxFrequencies ?: emptyMap(),
-                )
-                viewModel.applyAppProfileTemporarily(assignment).onSuccess {
-                    viewModel.saveAppProfileAssignmentAwait(
-                        foregroundApp.packageName,
-                        foregroundApp.label,
-                        assignment.profileId,
-                        assignment.customMaxFrequencies,
+            val applyingToken = assignmentProfile?.let { viewModel.beginApplyingProfile(it.id) }
+            try {
+                if (foregroundApp != null && appProfileEnabled) {
+                    val assignment = AppProfileAssignment(
+                        packageName = foregroundApp.packageName,
+                        appLabel = foregroundApp.label,
+                        profileId = assignmentProfile?.id,
+                        customMaxFrequencies = customMaxFrequencies ?: emptyMap(),
+                        customGpuMaxFrequencyHz = state.currentGpuMaxFrequencyHz
+                            .takeIf { assignmentProfile == null },
                     )
-                    viewModel.logProfileSwitchAwait(assignment.profileId, assignmentProfile?.name ?: "Custom", "App profile overlay")
-                    QuickSettingsTileRefresher.requestUpdate(applicationContext)
-                    SingleToast.show(applicationContext, "Applied ${assignmentProfile?.name ?: "Custom"}", android.widget.Toast.LENGTH_SHORT)
-                    AppProfileMonitorService.start(this@OverlayHostService)
+                    viewModel.applyAppProfileTemporarily(assignment).onSuccess {
+                        viewModel.saveAppProfileAssignmentAwait(
+                            foregroundApp.packageName,
+                            foregroundApp.label,
+                            assignment.profileId,
+                            assignment.customMaxFrequencies,
+                            assignment.customGpuMaxFrequencyHz,
+                        )
+                        viewModel.logProfileSwitchAwait(assignment.profileId, assignmentProfile?.name ?: "Custom", "App profile overlay")
+                        QuickSettingsTileRefresher.requestUpdate(applicationContext)
+                        SingleToast.show(applicationContext, "Applied ${assignmentProfile?.name ?: "Custom"}", android.widget.Toast.LENGTH_SHORT)
+                        AppProfileMonitorService.start(this@OverlayHostService)
+                        dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                    }
+                    return@launch
+                }
+                val handler = QuickTunerApplyHandler(
+                    repository = PerformanceQuickTunerApplyRepository(container.repository),
+                    showToast = { message, duration -> SingleToast.show(applicationContext, message, duration) },
+                    refreshTile = { QuickSettingsTileRefresher.requestUpdate(applicationContext) },
+                )
+                handler.applyCurrent(state).onSuccess {
+                    foregroundApp?.let { app ->
+                        viewModel.deleteAppProfileAssignmentAwait(app.packageName)
+                    }
                     dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
                 }
-                return@launch
-            }
-            val handler = QuickTunerApplyHandler(
-                repository = PerformanceQuickTunerApplyRepository(container.repository),
-                showToast = { message, duration -> SingleToast.show(applicationContext, message, duration) },
-                refreshTile = { QuickSettingsTileRefresher.requestUpdate(applicationContext) },
-            )
-            handler.applyCurrent(state).onSuccess {
-                foregroundApp?.let { app ->
-                    viewModel.deleteAppProfileAssignmentAwait(app.packageName)
-                }
-                dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+            } finally {
+                applyingToken?.let(viewModel::finishApplyingProfile)
             }
         }
     }
@@ -556,33 +576,38 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         appProfileEnabled: Boolean,
     ) {
         lifecycleScope.launch {
-            if (foregroundApp != null && appProfileEnabled) {
-                val assignment = AppProfileAssignment(foregroundApp.packageName, foregroundApp.label, profile.id)
-                viewModel.applyAppProfileTemporarily(assignment).onSuccess {
-                    viewModel.saveAppProfileAssignmentAwait(foregroundApp.packageName, foregroundApp.label, profile.id)
-                    viewModel.logProfileSwitchAwait(profile.id, profile.name, "App profile overlay")
-                    QuickSettingsTileRefresher.requestUpdate(applicationContext)
-                    SingleToast.show(applicationContext, "Applied ${profile.name}", android.widget.Toast.LENGTH_SHORT)
-                    AppProfileMonitorService.start(this@OverlayHostService)
+            val applyingToken = viewModel.beginApplyingProfile(profile.id)
+            try {
+                if (foregroundApp != null && appProfileEnabled) {
+                    val assignment = AppProfileAssignment(foregroundApp.packageName, foregroundApp.label, profile.id)
+                    viewModel.applyAppProfileTemporarily(assignment).onSuccess {
+                        viewModel.saveAppProfileAssignmentAwait(foregroundApp.packageName, foregroundApp.label, profile.id)
+                        viewModel.logProfileSwitchAwait(profile.id, profile.name, "App profile overlay")
+                        QuickSettingsTileRefresher.requestUpdate(applicationContext)
+                        SingleToast.show(applicationContext, "Applied ${profile.name}", android.widget.Toast.LENGTH_SHORT)
+                        AppProfileMonitorService.start(this@OverlayHostService)
+                        dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                    }
+                    return@launch
+                }
+                val handler = QuickTunerApplyHandler(
+                    repository = PerformanceQuickTunerApplyRepository(container.repository),
+                    showToast = { message, duration -> SingleToast.show(applicationContext, message, duration) },
+                    refreshTile = { QuickSettingsTileRefresher.requestUpdate(applicationContext) },
+                )
+                handler.applyProfile(state, profile).onSuccess {
+                    foregroundApp?.let { app ->
+                        if (appProfileEnabled) {
+                            viewModel.saveAppProfileAssignmentAwait(app.packageName, app.label, profile.id)
+                            AppProfileMonitorService.start(this@OverlayHostService)
+                        } else {
+                            viewModel.deleteAppProfileAssignmentAwait(app.packageName)
+                        }
+                    }
                     dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
                 }
-                return@launch
-            }
-            val handler = QuickTunerApplyHandler(
-                repository = PerformanceQuickTunerApplyRepository(container.repository),
-                showToast = { message, duration -> SingleToast.show(applicationContext, message, duration) },
-                refreshTile = { QuickSettingsTileRefresher.requestUpdate(applicationContext) },
-            )
-            handler.applyProfile(state, profile).onSuccess {
-                foregroundApp?.let { app ->
-                    if (appProfileEnabled) {
-                        viewModel.saveAppProfileAssignmentAwait(app.packageName, app.label, profile.id)
-                        AppProfileMonitorService.start(this@OverlayHostService)
-                    } else {
-                        viewModel.deleteAppProfileAssignmentAwait(app.packageName)
-                    }
-                }
-                dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+            } finally {
+                viewModel.finishApplyingProfile(applyingToken)
             }
         }
     }

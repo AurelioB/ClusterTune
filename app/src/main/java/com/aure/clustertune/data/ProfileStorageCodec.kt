@@ -27,6 +27,7 @@ object ProfileStorageCodec {
                     isEditable = profile.isEditable,
                     isDeletable = profile.isDeletable,
                     maxFrequencies = profile.maxFrequencies.mapKeys { (policyId, _) -> policyId.toString() },
+                    gpuMaxFrequencyHz = profile.gpuMaxFrequencyHz?.takeIf { it > 0 },
                 )
             },
         )
@@ -47,6 +48,7 @@ object ProfileStorageCodec {
                     order = profile.order,
                     isEditable = profile.isEditable,
                     isDeletable = profile.isDeletable,
+                    gpuMaxFrequencyHz = profile.gpuMaxFrequencyHz?.takeIf { it > 0 },
                 )
             }
         }.getOrDefault(emptyList()).sortedBy { it.order }
@@ -86,6 +88,7 @@ object ProfileStorageCodec {
                     profileId = assignment.profileId,
                     customMaxFrequencies = assignment.customMaxFrequencies
                         .mapKeys { (policyId, _) -> policyId.toString() },
+                    customGpuMaxFrequencyHz = assignment.customGpuMaxFrequencyHz,
                 )
             },
         )
@@ -98,15 +101,21 @@ object ProfileStorageCodec {
                 .mapNotNull { assignment ->
                     val packageName = assignment.packageName.trim()
                     val profileId = assignment.profileId?.trim()?.takeIf { it.isNotBlank() }
-                    val customValues = assignment.customMaxFrequencies.mapNotNull { (policyId, frequency) ->
+                    val parsedCustomValues = assignment.customMaxFrequencies.mapNotNull { (policyId, frequency) ->
                         policyId.toIntOrNull()?.takeIf { frequency > 0 }?.let { it to frequency }
                     }.toMap()
-                    if (packageName.isBlank() || (profileId == null && customValues.isEmpty())) return@mapNotNull null
+                    val customValues = if (profileId == null) parsedCustomValues else emptyMap()
+                    // Older builds could persist the profile's GPU value next
+                    // to its profileId. Treat that as redundant metadata and
+                    // keep the named assignment rather than dropping it.
+                    val customGpu = if (profileId == null) assignment.customGpuMaxFrequencyHz?.takeIf { it > 0 } else null
+                    if (packageName.isBlank() || (profileId == null && customValues.isEmpty() && customGpu == null)) return@mapNotNull null
                     AppProfileAssignment(
                         packageName = packageName,
                         appLabel = assignment.appLabel.ifBlank { packageName },
                         profileId = profileId,
                         customMaxFrequencies = customValues,
+                        customGpuMaxFrequencyHz = customGpu,
                     )
                 }
                 .sortedBy { it.appLabel.lowercase() }
@@ -159,6 +168,7 @@ object ProfileStorageCodec {
         val isDeletable: Boolean = true,
         @SerialName("maxFrequencies")
         val maxFrequencies: Map<String, Int> = emptyMap(),
+        val gpuMaxFrequencyHz: Int? = null,
     )
 
     @Serializable
@@ -167,6 +177,7 @@ object ProfileStorageCodec {
         val appLabel: String,
         val profileId: String? = null,
         val customMaxFrequencies: Map<String, Int> = emptyMap(),
+        val customGpuMaxFrequencyHz: Int? = null,
     )
 
     @Serializable

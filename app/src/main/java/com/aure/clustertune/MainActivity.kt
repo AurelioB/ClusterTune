@@ -109,6 +109,7 @@ class MainActivity : ComponentActivity() {
                 ClusterTuneSystemBars()
                 Surface {
                     val state = viewModel.state.collectAsStateWithLifecycle().value
+                    val applyingProfileId = viewModel.applyingProfileId.collectAsStateWithLifecycle().value
                     val launchableApps = viewModel.launchableApps.collectAsStateWithLifecycle().value
                     val recentActiveApps = viewModel.recentActiveApps.collectAsStateWithLifecycle().value
                     var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -270,9 +271,14 @@ class MainActivity : ComponentActivity() {
                     } else {
                         MainTunerScreen(
                             state = state,
+                            applyingProfileId = applyingProfileId,
                             displayFrequenciesAsPercent = settings.displayFrequenciesAsPercent,
                             sleepProfileId = settings.sleepProfileId.takeIf { settings.sleepProfileEnabled },
-                            onApplyProfile = viewModel::applyProfile,
+                            onApplyProfile = { profile ->
+                                viewModel.applyProfile(profile) {
+                                    QuickSettingsTileRefresher.requestUpdate(this@MainActivity)
+                                }
+                            },
                             onApplyCurrent = { tunerState ->
                                 viewModel.applyCurrent(tunerState) {
                                     QuickSettingsTileRefresher.requestUpdate(this@MainActivity)
@@ -284,12 +290,13 @@ class MainActivity : ComponentActivity() {
                             onMoveProfile = viewModel::moveProfile,
                             launchableApps = launchableApps,
                             recentActiveApps = recentActiveApps,
-                            onSaveAppProfileAssignment = { packageName, appLabel, profileId, customMaxFrequencies ->
+                            onSaveAppProfileAssignment = { packageName, appLabel, profileId, customMaxFrequencies, customGpuMaxFrequencyHz ->
                                 viewModel.saveAppProfileAssignment(
                                     packageName = packageName,
                                     appLabel = appLabel,
                                     profileId = profileId,
                                     customMaxFrequencies = customMaxFrequencies,
+                                    customGpuMaxFrequencyHz = customGpuMaxFrequencyHz,
                                 )
                                 startAppProfileMonitor()
                             },

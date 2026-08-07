@@ -61,6 +61,9 @@ class BootCompletedReceiver : BroadcastReceiver() {
                 QuickSettingsTileRefresher.requestUpdate(context)
                 val container = AppContainer(context)
                 val settings = container.settingsStorage.settings.first()
+                if (settings.sleepProfileEnabled) {
+                    SleepProfileMonitorService.start(context)
+                }
                 if (container.repository.observeState().first().appProfileAssignments.isNotEmpty() &&
                     AppProfileMonitorService.hasUsageStatsPermission(context)
                 ) {

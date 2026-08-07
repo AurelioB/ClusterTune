@@ -252,7 +252,7 @@ class CpuPolicyDetectorTest {
     }
 
     @Test
-    fun `falls back to privileged lister when normal policy listing is empty`() {
+    fun `does not use privileged lister when normal policy listing is empty`() {
         val fileSystem = FakeSysfsFileSystem(
             directories = emptyList(),
             files = emptyMap(),
@@ -288,8 +288,8 @@ class CpuPolicyDetectorTest {
 
         val result = detector.detectPolicies()
 
-        assertEquals(listOf(0, 7), result.map { it.id })
-        assertEquals(1, privilegedLister.callCount)
+        assertTrue(result.isEmpty())
+        assertEquals(0, privilegedLister.callCount)
     }
 
     @Test

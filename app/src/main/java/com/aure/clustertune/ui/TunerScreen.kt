@@ -98,6 +98,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -120,6 +121,7 @@ import com.aure.clustertune.ui.designsystem.component.CtIcon
 import com.aure.clustertune.ui.designsystem.component.CtCompactOverlayFrame
 import com.aure.clustertune.ui.designsystem.component.CtSectionCard
 import com.aure.clustertune.ui.designsystem.component.CtSelectableRow
+import com.aure.clustertune.ui.designsystem.component.CtSelectionIndicator
 import com.aure.clustertune.ui.designsystem.component.CtStatePanel
 import com.aure.clustertune.ui.designsystem.component.CtStatePanelState
 import com.aure.clustertune.ui.designsystem.component.CtSwitch
@@ -137,6 +139,7 @@ private enum class MainTab {
 @Composable
 fun MainTunerScreen(
     state: TunerState,
+    applyingProfileId: String? = null,
     displayFrequenciesAsPercent: Boolean,
     sleepProfileId: String?,
     onApplyProfile: (PerformanceProfile) -> Unit,
@@ -147,7 +150,7 @@ fun MainTunerScreen(
     onMoveProfile: (String, Int) -> Unit,
     launchableApps: List<InstalledAppInfo>,
     recentActiveApps: List<InstalledAppInfo>,
-    onSaveAppProfileAssignment: (String, String, String?, Map<Int, Int>) -> Unit,
+    onSaveAppProfileAssignment: (String, String, String?, Map<Int, Int>, Int?) -> Unit,
     onDeleteAppProfileAssignment: (String) -> Unit,
     onRefreshInstalledApps: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -215,7 +218,7 @@ fun MainTunerScreen(
                 ) {
                     if (state.isLoading) {
                         LoadingClustersCard()
-                    } else if (!state.isPServerAvailable) {
+                    } else if (!state.isPrivilegedHostAvailable) {
                         Text(
                             text = "No compatible privileged execution method found",
                             style = MaterialTheme.typography.headlineSmall,
@@ -236,9 +239,8 @@ fun MainTunerScreen(
                                     onOpenCreateProfile = { dialogProfileId = NEW_PROFILE_DIALOG_ID },
                                     onEditProfile = { dialogProfileId = it },
                                     onMoveProfile = onMoveProfile,
-                                    onActivateProfile = { profile ->
-                                        onApplyCurrent(state.copy(currentValues = profile.maxFrequencies))
-                                    },
+                                    onActivateProfile = onApplyProfile,
+                                    applyingProfileId = applyingProfileId,
                                     onEditManual = { dialogProfileId = ProfileStateResolver.MANUAL_PROFILE_ID },
                                     modifier = Modifier
                                         .fillMaxSize()
@@ -279,14 +281,24 @@ fun MainTunerScreen(
                     mode = appOverlayMode,
                     onModeChange = { appOverlayMode = it },
                     onApplyProfile = { profile, _ ->
-                        onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap())
+                        // Named profiles carry their CPU and GPU values in profile storage.
+                        // Keep the assignment declarative so later profile edits are picked up.
+                        onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null)
                         showAppAssignmentDialog = false
                     },
-                    onApplyCurrent = { _, profile, customValues, _ ->
-                        if (profile == null && customValues == null) {
+                    onApplyCurrent = { customState, profile, customValues, _ ->
+                        if (profile != null) {
+                            onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null)
+                        } else if (customValues == null && customState.currentGpuMaxFrequencyHz == null) {
                             onDeleteAppProfileAssignment(app.packageName)
                         } else {
-                            onSaveAppProfileAssignment(app.packageName, app.label, profile?.id, customValues ?: emptyMap())
+                            onSaveAppProfileAssignment(
+                                app.packageName,
+                                app.label,
+                                null,
+                                customValues ?: emptyMap(),
+                                customState.currentGpuMaxFrequencyHz,
+                            )
                         }
                         showAppAssignmentDialog = false
                     },
@@ -295,9 +307,10 @@ fun MainTunerScreen(
                     contextPackageName = app.packageName,
                     contextLabel = app.label,
                     contextIcon = app.icon,
-                    onAppProfileAssignmentChange = { profile, customValues ->
-                        if (profile == null && customValues == null) onDeleteAppProfileAssignment(app.packageName)
-                        else onSaveAppProfileAssignment(app.packageName, app.label, profile?.id, customValues ?: emptyMap())
+                    onAppProfileAssignmentChange = { profile, customValues, customGpu ->
+                        if (profile == null && customValues == null && customGpu == null) onDeleteAppProfileAssignment(app.packageName)
+                        else if (profile != null) onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null)
+                        else onSaveAppProfileAssignment(app.packageName, app.label, null, customValues ?: emptyMap(), customGpu)
                     },
                     showAppProfileToggle = false,
                     showAssignmentRemove = assignment != null,
@@ -311,7 +324,7 @@ fun MainTunerScreen(
     }
 
     dialogProfileId?.let { profileId ->
-        val manualProfile = remember(state.actualValues, state.policies) {
+        val manualProfile = remember(state.actualValues, state.policies, state.actualGpuMaxFrequencyHz) {
             if (state.policies.isEmpty()) {
                 null
             } else {
@@ -321,6 +334,7 @@ fun MainTunerScreen(
                     maxFrequencies = state.policies.associate { policy ->
                         policy.id to (state.actualValues[policy.id] ?: policy.currentMaxFreq)
                     },
+                    gpuMaxFrequencyHz = state.actualGpuMaxFrequencyHz,
                     source = ProfileSource.VIRTUAL,
                     isEditable = true,
                     isDeletable = false,
@@ -338,8 +352,8 @@ fun MainTunerScreen(
             creatingNewProfile = profileId == NEW_PROFILE_DIALOG_ID,
             manualMode = profileId == ProfileStateResolver.MANUAL_PROFILE_ID,
             onDismiss = { dialogProfileId = null },
-            onSave = { name, values ->
-                val editedState = state.copy(currentValues = values)
+            onSave = { name, values, gpuValue ->
+                val editedState = state.copy(currentValues = values, currentGpuMaxFrequencyHz = gpuValue)
                 when {
                     profileId == NEW_PROFILE_DIALOG_ID -> onCreateProfile(name, editedState)
                     profileId == ProfileStateResolver.MANUAL_PROFILE_ID -> onApplyCurrent(editedState)
@@ -362,6 +376,7 @@ enum class CompactOverlayMode { PROFILES, TUNER }
 @Composable
 fun CompactOverlayScreen(
     state: TunerState,
+    applyingProfileId: String? = null,
     displayFrequenciesAsPercent: Boolean,
     mode: CompactOverlayMode,
     onModeChange: (CompactOverlayMode) -> Unit,
@@ -372,7 +387,7 @@ fun CompactOverlayScreen(
     contextPackageName: String? = null,
     contextLabel: String? = null,
     contextIcon: Drawable? = null,
-    onAppProfileAssignmentChange: ((PerformanceProfile?, Map<Int, Int>?) -> Unit)? = null,
+    onAppProfileAssignmentChange: ((PerformanceProfile?, Map<Int, Int>?, Int?) -> Unit)? = null,
     showAppProfileToggle: Boolean = true,
     showAssignmentRemove: Boolean = false,
     onRemoveAssignment: (() -> Unit)? = null,
@@ -403,14 +418,20 @@ fun CompactOverlayScreen(
             ?: state.currentValues
     }
     var stagedCustomValues by remember(initialValues) { mutableStateOf(initialValues) }
+    val initialGpuValue = remember(assignment?.profileId, assignment?.customGpuMaxFrequencyHz, state.currentGpuMaxFrequencyHz) {
+        assignment?.customGpuMaxFrequencyHz
+            ?: profiles.firstOrNull { it.id == assignment?.profileId }?.gpuMaxFrequencyHz
+            ?: state.currentGpuMaxFrequencyHz
+    }
+    var stagedGpuValue by remember(initialGpuValue) { mutableStateOf(initialGpuValue) }
     var customDraft by remember(assignment?.profileId, assignment?.customMaxFrequencies) {
         mutableStateOf(assignment?.isCustom == true || (assignment == null && state.isManualSelection))
     }
     // Keep the preset selection derived from the complete staged values. This also
     // handles opening the overlay with values that already match a named profile.
-    LaunchedEffect(stagedCustomValues, state.policies, profiles) {
+    LaunchedEffect(stagedCustomValues, stagedGpuValue, state.policies, state.gpuPolicy, profiles) {
         val matchingProfile = stagedProfile?.takeIf { profile ->
-            ProfileStateResolver.matchesProfile(stagedCustomValues, profile, state.policies)
+            profileMatchesStagedValues(stagedCustomValues, profile, state, stagedGpuValue)
         } ?: listOfNotNull(
             assignment?.profileId,
             state.selectedDisplayProfileId,
@@ -418,10 +439,10 @@ fun CompactOverlayScreen(
             state.lastAppliedDisplayProfileId,
         ).asSequence().mapNotNull { id -> profiles.firstOrNull { it.id == id } }
             .firstOrNull { profile ->
-                ProfileStateResolver.matchesProfile(stagedCustomValues, profile, state.policies)
+                profileMatchesStagedValues(stagedCustomValues, profile, state, stagedGpuValue)
             }
         ?: profiles.firstOrNull { profile ->
-            ProfileStateResolver.matchesProfile(stagedCustomValues, profile, state.policies)
+            profileMatchesStagedValues(stagedCustomValues, profile, state, stagedGpuValue)
         }
         if (matchingProfile != null) {
             if (stagedProfile?.id != matchingProfile.id || customDraft) {
@@ -491,8 +512,8 @@ fun CompactOverlayScreen(
                                     checked = appProfileEnabled,
                                     onCheckedChange = { enabled ->
                                         appProfileEnabled = enabled
-                                        if (!enabled && mode == CompactOverlayMode.PROFILES) {
-                                            onAppProfileAssignmentChange?.invoke(null, null)
+                                        if (!enabled) {
+                                            onAppProfileAssignmentChange?.invoke(null, null, null)
                                         }
                                     },
                                     modifier = Modifier.scale(0.78f),
@@ -535,6 +556,7 @@ fun CompactOverlayScreen(
                         ProfileChoiceRow(
                             title = "Custom",
                             selected = true,
+                            applying = false,
                             onClick = { onModeChange(CompactOverlayMode.TUNER) },
                         )
                     }
@@ -542,8 +564,12 @@ fun CompactOverlayScreen(
                         ProfileChoiceRow(
                             title = profile.name,
                             selected = selectedProfileId == profile.id,
+                            applying = applyingProfileId == profile.id,
                             onClick = {
                                 stagedProfile = profile
+                                stagedCustomValues = profile.maxFrequencies
+                                stagedGpuValue = profile.gpuMaxFrequencyHz ?: state.currentGpuMaxFrequencyHz
+                                customDraft = false
                                 onApplyProfile(profile, appProfileEnabled)
                             },
                         )
@@ -558,6 +584,7 @@ fun CompactOverlayScreen(
                     ProfileChipSelector(
                         state = state.copy(
                             currentValues = stagedCustomValues,
+                            currentGpuMaxFrequencyHz = stagedGpuValue,
                             activeDisplayProfileId = null,
                             lastAppliedDisplayProfileId = null,
                             selectedDisplayProfileId = stagedProfile?.id,
@@ -567,6 +594,7 @@ fun CompactOverlayScreen(
                             stagedProfile = profile
                             customDraft = false
                             stagedCustomValues = profile.maxFrequencies
+                            stagedGpuValue = profile.gpuMaxFrequencyHz ?: state.currentGpuMaxFrequencyHz
                             if (mode == CompactOverlayMode.PROFILES) onApplyProfile(profile, appProfileEnabled)
                         },
                         onClearSelection = {
@@ -575,13 +603,15 @@ fun CompactOverlayScreen(
                         },
                         onOpenFullApp = null,
                         stripUnderclockSuffix = true,
+                        applyingProfileId = applyingProfileId,
                     )
                     PolicyEditorSection(
-                        state = state.copy(currentValues = stagedCustomValues),
+                        state = state.copy(currentValues = stagedCustomValues, currentGpuMaxFrequencyHz = stagedGpuValue),
                         displayFrequenciesAsPercent = displayFrequenciesAsPercent,
                         onPolicyValueChange = { policy, value ->
                             stagedCustomValues = stagedCustomValues + (policy.id to value)
                         },
+                        onGpuValueChange = { stagedGpuValue = it },
                         compactMode = true,
                     )
                 }
@@ -597,13 +627,13 @@ fun CompactOverlayScreen(
                     Button(
                         onClick = {
                             onApplyCurrent(
-                                state.copy(currentValues = stagedCustomValues),
+                                state.copy(currentValues = stagedCustomValues, currentGpuMaxFrequencyHz = stagedGpuValue),
                                 stagedProfile.takeUnless { customDraft },
                                 stagedCustomValues.takeIf { customDraft },
                                 appProfileEnabled,
                             )
                         },
-                        enabled = state.policies.isNotEmpty() && state.isPServerAvailable,
+                        enabled = state.policies.isNotEmpty() && state.isPrivilegedHostAvailable,
                         modifier = Modifier.height(30.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                     ) { Text("Apply") }
@@ -628,6 +658,20 @@ private fun ProfilePickerEmptyOptionCard() {
         }
     }
 }
+
+/** Matches staged values, treating a legacy profile's missing GPU as unchanged. */
+internal fun profileMatchesStagedValues(
+    values: Map<Int, Int>,
+    profile: PerformanceProfile,
+    state: TunerState,
+    gpuValue: Int?,
+): Boolean = ProfileStateResolver.matchesProfile(
+    values,
+    profile,
+    state.policies,
+    state.gpuPolicy,
+    gpuValue,
+)
 
 @Composable
 private fun LoadingClustersCard() {
@@ -937,6 +981,8 @@ private fun Header(
 private fun CurrentFrequenciesCard(
     state: TunerState,
     displayFrequenciesAsPercent: Boolean,
+    gpuPolicy: com.aure.clustertune.model.GpuPolicyInfo?,
+    gpuValue: Int?,
     onEditManual: () -> Unit = {},
 ) {
     if (state.policies.isEmpty()) {
@@ -972,6 +1018,9 @@ private fun CurrentFrequenciesCard(
                 },
                 policies = state.policies,
                 displayAsPercent = displayFrequenciesAsPercent,
+                gpuPolicy = gpuPolicy,
+                gpuValue = gpuValue,
+                formatTargets = false,
                 modifier = Modifier.weight(1f),
             )
             CompositionLocalProvider(
@@ -1528,6 +1577,7 @@ private fun CenteredModalSurface(
 private fun ProfileChoiceRow(
     title: String,
     selected: Boolean,
+    applying: Boolean = false,
     onClick: () -> Unit,
     compact: Boolean = false,
 ) {
@@ -1576,26 +1626,13 @@ private fun ProfileChoiceRow(
             color = titleColor,
             maxLines = 1,
         )
-        Surface(
-            modifier = Modifier.size(if (compact) 22.dp else 26.dp),
-            shape = RoundedCornerShape(999.dp),
-            color = if (selected) colorScheme.primary else Color.Transparent,
-            border = BorderStroke(
-                2.dp,
-                if (selected) colorScheme.primary else colorScheme.outline.copy(alpha = 0.78f),
-            ),
-            contentColor = colorScheme.onPrimary,
-        ) {
-            if (selected) {
-                CtIcon(
-                    symbol = "check",
-                    contentDescription = "Selected",
-                    tint = colorScheme.onPrimary,
-                    size = if (compact) 15.dp else 18.dp,
-                    modifier = Modifier.padding(if (compact) 3.dp else 4.dp),
-                )
-            }
-        }
+        CtSelectionIndicator(
+            selected = selected,
+            applying = applying,
+            size = if (compact) 22.dp else 26.dp,
+            targetSize = if (compact) 22.dp else 26.dp,
+            contentDescription = if (applying) "Applying $title" else if (selected) "Selected" else null,
+        )
     }
 }
 
@@ -1676,6 +1713,7 @@ private fun ProfileListSection(
     onEditProfile: (String) -> Unit,
     onMoveProfile: (String, Int) -> Unit,
     onActivateProfile: (PerformanceProfile) -> Unit,
+    applyingProfileId: String? = null,
     onEditManual: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1686,6 +1724,8 @@ private fun ProfileListSection(
         CurrentFrequenciesCard(
             state = state,
             displayFrequenciesAsPercent = displayFrequenciesAsPercent,
+            gpuPolicy = state.gpuPolicy,
+            gpuValue = state.actualGpuMaxFrequencyHz,
             onEditManual = onEditManual,
         )
 
@@ -1730,9 +1770,12 @@ private fun ProfileListSection(
                             showEdit = profile.isEditable,
                             valuePreview = profile.maxFrequencies,
                             policies = state.policies,
+                            gpuPolicy = state.gpuPolicy,
+                            gpuValue = profile.gpuMaxFrequencyHz,
                             displayFrequenciesAsPercent = displayFrequenciesAsPercent,
                             isDragging = isDragging,
                             dragActive = draggingProfileId != null,
+                            applying = applyingProfileId == profile.id,
                             onActivate = { onActivateProfile(profile) },
                             onMoveUp = if (canMove && originalIndex > 0) {
                                 { onMoveProfile(profile.id, -1) }
@@ -1847,9 +1890,12 @@ private fun ProfileListRow(
     showEdit: Boolean,
     valuePreview: Map<Int, Int>,
     policies: List<CpuPolicyInfo>,
+    gpuPolicy: com.aure.clustertune.model.GpuPolicyInfo?,
+    gpuValue: Int?,
     displayFrequenciesAsPercent: Boolean,
     isDragging: Boolean,
     dragActive: Boolean,
+    applying: Boolean = false,
     onActivate: () -> Unit,
     onMoveUp: (() -> Unit)?,
     onMoveDown: (() -> Unit)?,
@@ -1862,7 +1908,7 @@ private fun ProfileListRow(
     val colorScheme = MaterialTheme.colorScheme
     val rowShape = RoundedCornerShape(20.dp)
     val containerColor = colorScheme.surfaceContainerHigh.copy(alpha = 0.46f)
-    val containerBrush = if (isApplied) {
+    val containerBrush = if (isApplied || applying) {
         Brush.horizontalGradient(
             listOf(
                 colorScheme.primaryContainer.copy(alpha = 0.24f),
@@ -1876,10 +1922,11 @@ private fun ProfileListRow(
     val borderColor = when {
         isDragging -> colorScheme.primary
         isApplied -> colorScheme.primary.copy(alpha = 0.82f)
+        applying -> colorScheme.primary.copy(alpha = 0.62f)
         isSelected -> colorScheme.primary.copy(alpha = 0.58f)
         else -> colorScheme.outlineVariant.copy(alpha = 0.28f)
     }
-    val profileNameColor = if (isApplied) borderColor else contentColor
+    val profileNameColor = if (isApplied || applying) borderColor else contentColor
     val metadataContentColor = colorScheme.onSurfaceVariant.copy(alpha = 0.84f)
 
     Row(
@@ -1937,12 +1984,15 @@ private fun ProfileListRow(
                 }
             }
             if (valuePreview.isNotEmpty()) {
-                InlineFrequencyMetadata(
-                    values = valuePreview,
-                    policies = policies,
-                    displayAsPercent = displayFrequenciesAsPercent,
-                    valueColor = metadataContentColor,
-                )
+            InlineFrequencyMetadata(
+                values = valuePreview,
+                policies = policies,
+                displayAsPercent = displayFrequenciesAsPercent,
+                valueColor = metadataContentColor,
+                gpuPolicy = gpuPolicy,
+                gpuValue = gpuValue,
+                forceNumeric = profile.id == ProfileStateResolver.STOCK_PROFILE_ID,
+            )
             }
         }
         if (showEdit) {
@@ -1959,6 +2009,8 @@ private fun ProfileListRow(
         }
         ProfileActivationControl(
             selected = isApplied,
+            applying = applying,
+            profileName = profile.name,
             onClick = onActivate,
             enabled = valuePreview.isNotEmpty() && !dragActive,
         )
@@ -1968,46 +2020,18 @@ private fun ProfileListRow(
 @Composable
 private fun ProfileActivationControl(
     selected: Boolean,
+    applying: Boolean = false,
+    profileName: String = "profile",
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val colorScheme = MaterialTheme.colorScheme
-    val borderColor = when {
-        !enabled -> colorScheme.outline.copy(alpha = 0.36f)
-        selected -> colorScheme.primary
-        else -> colorScheme.outline.copy(alpha = 0.78f)
-    }
-    val fillColor = if (selected) {
-        colorScheme.primary.copy(alpha = if (enabled) 1f else 0.42f)
-    } else {
-        Color.Transparent
-    }
-
-    Box(
-        modifier = Modifier
-            .size(48.dp)
-            .clip(RoundedCornerShape(999.dp))
-            .clickable(enabled = enabled, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Surface(
-            modifier = Modifier.size(26.dp),
-            shape = RoundedCornerShape(999.dp),
-            color = fillColor,
-            border = BorderStroke(2.dp, borderColor),
-            contentColor = colorScheme.onPrimary,
-        ) {
-            if (selected) {
-                CtIcon(
-                    symbol = "check",
-                    contentDescription = "Active profile",
-                    tint = colorScheme.onPrimary,
-                    size = 18.dp,
-                    modifier = Modifier.padding(4.dp),
-                )
-            }
-        }
-    }
+    CtSelectionIndicator(
+        selected = selected,
+        applying = applying,
+        enabled = enabled,
+        onClick = onClick,
+        contentDescription = if (applying) "Applying $profileName" else if (selected) "Active profile" else null,
+    )
 }
 
 @Composable
@@ -2083,6 +2107,10 @@ private fun InlineFrequencyMetadata(
     labelColor: Color = MaterialTheme.colorScheme.primary.copy(alpha = 0.82f),
     policies: List<CpuPolicyInfo> = emptyList(),
     displayAsPercent: Boolean = false,
+    gpuPolicy: com.aure.clustertune.model.GpuPolicyInfo? = null,
+    gpuValue: Int? = null,
+    formatTargets: Boolean = true,
+    forceNumeric: Boolean = false,
 ) {
     val policiesById = policies.associateBy { it.id }
     Row(
@@ -2112,12 +2140,36 @@ private fun InlineFrequencyMetadata(
                 )
                 val policy = policiesById[policyId]
                 Text(
-                    text = formatFrequency(
-                        valueKhz = value,
-                        boosted = policy?.isBoosted(value) == true,
-                        policy = policy,
-                        displayAsPercent = displayAsPercent,
-                    ),
+                    text = if (forceNumeric) {
+                        formatFrequency(
+                            value,
+                            boosted = policy?.isBoosted(value) == true,
+                            policy = policy,
+                            displayAsPercent = displayAsPercent,
+                            showStockLabel = false,
+                        )
+                    } else if (!formatTargets) {
+                        formatFrequency(
+                            value,
+                            boosted = policy?.isBoosted(value) == true,
+                            policy = policy,
+                            displayAsPercent = displayAsPercent,
+                            showStockLabel = false,
+                        )
+                    } else formatTargetFrequency(value, policy, displayAsPercent),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = valueColor,
+                    maxLines = 1,
+                )
+            }
+        }
+        if (gpuPolicy != null && gpuValue != null) {
+            if (values.isNotEmpty()) Text("•", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline.copy(alpha = 0.62f))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("GPU", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = labelColor, maxLines = 1)
+                Text(
+                    if (forceNumeric || !formatTargets) formatGpuFrequency(gpuValue)
+                    else formatGpuFrequency(gpuValue, gpuPolicy),
                     style = MaterialTheme.typography.bodySmall,
                     color = valueColor,
                     maxLines = 1,
@@ -2134,6 +2186,7 @@ private fun ProfileChipSelector(
     onClearSelection: () -> Unit,
     onOpenFullApp: (() -> Unit)?,
     stripUnderclockSuffix: Boolean = false,
+    applyingProfileId: String? = null,
 ) {
     val listState = rememberLazyListState()
     LaunchedEffect(state.selectedDisplayProfileId, state.isManualSelection, state.displayProfiles) {
@@ -2165,6 +2218,7 @@ private fun ProfileChipSelector(
                     label = profile.name.displayNameForTuner(stripUnderclockSuffix),
                     isApplied = profile.id == state.activeDisplayProfileId,
                     isSelected = profile.id == state.selectedDisplayProfileId,
+                    applying = applyingProfileId == profile.id,
                     onClick = { onApplyProfile(profile) },
                 )
             }
@@ -2206,6 +2260,7 @@ private fun ProfileSelectorChip(
     label: String,
     isApplied: Boolean,
     isSelected: Boolean,
+    applying: Boolean = false,
     onClick: () -> Unit,
 ) {
     AssistChip(
@@ -2222,7 +2277,22 @@ private fun ProfileSelectorChip(
             isSelected -> BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
             else -> null
         },
-        label = { Text(label) },
+        label = {
+            Row(
+                modifier = if (applying) Modifier.semantics { contentDescription = "Applying $label" } else Modifier,
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(label)
+                if (applying) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp,
+                    )
+                }
+            }
+        },
     )
 }
 
@@ -2231,6 +2301,7 @@ private fun PolicyEditorSection(
     state: TunerState,
     displayFrequenciesAsPercent: Boolean,
     onPolicyValueChange: (CpuPolicyInfo, Int) -> Unit,
+    onGpuValueChange: (Int) -> Unit = {},
     compactMode: Boolean,
 ) {
     if (state.policies.isEmpty()) {
@@ -2248,6 +2319,15 @@ private fun PolicyEditorSection(
             displayFrequenciesAsPercent = displayFrequenciesAsPercent,
         )
     }
+    state.gpuPolicy?.let { gpuPolicy ->
+        TunerGpuPolicyCard(
+            policy = gpuPolicy,
+            selectedValue = state.currentGpuMaxFrequencyHz ?: gpuPolicy.currentMaxFrequencyHz,
+            actualValue = state.actualGpuMaxFrequencyHz ?: gpuPolicy.currentMaxFrequencyHz,
+            onValueChanged = onGpuValueChange,
+            compactMode = compactMode,
+        )
+    }
 }
 
 @Composable
@@ -2258,7 +2338,7 @@ private fun ProfileEditorDialog(
     creatingNewProfile: Boolean,
     manualMode: Boolean,
     onDismiss: () -> Unit,
-    onSave: (String, Map<Int, Int>) -> Unit,
+    onSave: (String, Map<Int, Int>, Int?) -> Unit,
     onDelete: () -> Unit,
 ) {
     val initialValues = remember(profile?.id, creatingNewProfile, manualMode, baseState.actualValues) {
@@ -2272,6 +2352,12 @@ private fun ProfileEditorDialog(
     }
     var profileName by remember(profile?.id, creatingNewProfile) { mutableStateOf(profile?.name.orEmpty()) }
     var editedValues by remember(profile?.id, initialValues) { mutableStateOf(initialValues) }
+    var editedGpuValue by remember(profile?.id, creatingNewProfile, manualMode, baseState.actualGpuMaxFrequencyHz) {
+        mutableStateOf(
+                profile?.gpuMaxFrequencyHz
+                ?: if (creatingNewProfile || manualMode) baseState.actualGpuMaxFrequencyHz else null,
+        )
+    }
     var showDeleteConfirmation by remember(profile?.id) { mutableStateOf(false) }
     val colorScheme = MaterialTheme.colorScheme
 
@@ -2317,6 +2403,15 @@ private fun ProfileEditorDialog(
                             displayFrequenciesAsPercent = displayFrequenciesAsPercent,
                         )
                     }
+                    baseState.gpuPolicy?.let { gpuPolicy ->
+                        TunerGpuPolicyCard(
+                            policy = gpuPolicy,
+                            selectedValue = editedGpuValue ?: gpuPolicy.currentMaxFrequencyHz,
+                            actualValue = baseState.actualGpuMaxFrequencyHz ?: gpuPolicy.currentMaxFrequencyHz,
+                            onValueChanged = { editedGpuValue = it },
+                            compactMode = true,
+                        )
+                    }
                 }
             }
 
@@ -2359,9 +2454,9 @@ private fun ProfileEditorDialog(
                         Button(
                             onClick = {
                                 if (manualMode) {
-                                    onSave(profile?.name.orEmpty(), editedValues)
+                                    onSave(profile?.name.orEmpty(), editedValues, editedGpuValue)
                                 } else {
-                                    onSave(profileName, editedValues)
+                                    onSave(profileName, editedValues, editedGpuValue)
                                 }
                             },
                             modifier = Modifier.height(30.dp),
@@ -2446,7 +2541,9 @@ internal fun formatFrequency(
     boosted: Boolean = false,
     policy: CpuPolicyInfo? = null,
     displayAsPercent: Boolean = false,
+    showStockLabel: Boolean = true,
 ): String {
+    if (showStockLabel && !boosted && policy != null && valueKhz == policy.selectableMaxFreq) return "Stock"
     val base = if (displayAsPercent && policy != null && policy.selectableMaxFreq > 0) {
         val percent = ((valueKhz.toFloat() / policy.selectableMaxFreq.toFloat()) * 100f).roundToInt()
         "$percent%"
@@ -2459,3 +2556,7 @@ internal fun formatFrequency(
     }
     return if (boosted) "$base+" else base
 }
+
+internal fun formatTargetFrequency(valueKhz: Int, policy: CpuPolicyInfo?, displayAsPercent: Boolean = false): String =
+    if (policy != null && valueKhz >= policy.selectableMaxFreq) "Stock"
+    else formatFrequency(valueKhz, policy = policy, displayAsPercent = displayAsPercent)

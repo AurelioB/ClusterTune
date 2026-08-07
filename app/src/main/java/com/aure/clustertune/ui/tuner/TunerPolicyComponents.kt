@@ -1,6 +1,5 @@
 package com.aure.clustertune.ui
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -11,12 +10,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
@@ -37,6 +36,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import com.aure.clustertune.model.CpuPolicyInfo
+import com.aure.clustertune.model.GpuPolicyInfo
+import com.aure.clustertune.ui.designsystem.component.CtRowSurface
 
 @Composable
 internal fun TunerPolicyCard(
@@ -47,22 +48,53 @@ internal fun TunerPolicyCard(
     displayFrequenciesAsPercent: Boolean = false,
     actualValue: Int = selectedValue,
 ) {
-    val supported = policy.supportedFrequencies
+    val supported = policy.supportedFrequencies.filter { it <= policy.selectableMaxFreq }.ifEmpty { listOf(policy.selectableMaxFreq) }
     val displaySelectedValue = policy.clampToWritableMax(selectedValue)
     val currentIndex = supported.indexOf(displaySelectedValue).takeIf { it >= 0 } ?: supported.lastIndex
-    val colorScheme = MaterialTheme.colorScheme
-    val rowShape = RoundedCornerShape(20.dp)
+    TunerFrequencyCard(
+        title = "Cluster ${policy.id}",
+        actualLabel = formatFrequency(
+            actualValue,
+            boosted = policy.isBoosted(actualValue),
+            policy = policy,
+            displayAsPercent = displayFrequenciesAsPercent,
+            showStockLabel = false,
+        ),
+        selectedLabel = formatFrequency(
+            displaySelectedValue,
+            boosted = false,
+            policy = policy,
+            displayAsPercent = displayFrequenciesAsPercent,
+        ),
+        valueIndex = currentIndex,
+        maxIndex = supported.lastIndex,
+        onIndexChange = { index -> onValueChanged(supported[index]) },
+        compactMode = compactMode,
+    )
+}
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = rowShape,
-        color = colorScheme.surfaceContainerHigh.copy(alpha = 0.46f),
-        border = BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.28f)),
+@Composable
+private fun TunerFrequencyCard(
+    title: String,
+    actualLabel: String,
+    selectedLabel: String,
+    valueIndex: Int,
+    maxIndex: Int,
+    onIndexChange: (Int) -> Unit,
+    compactMode: Boolean,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val stock = valueIndex >= maxIndex
+    val sliderColor = if (stock) colorScheme.onSurfaceVariant.copy(alpha = 0.58f) else colorScheme.primary
+    CtRowSurface(
+        minimumHeight = 62.dp,
+        shape = RoundedCornerShape(20.dp),
+        contentPadding = PaddingValues(0.dp),
     ) {
         CompositionLocalProvider(
             LocalMinimumInteractiveComponentSize provides if (compactMode) Dp.Unspecified else 48.dp,
         ) {
-            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            BoxWithConstraints(modifier = Modifier.weight(1f)) {
                 val tightRow = maxWidth < 420.dp
                 val veryTightRow = maxWidth < 340.dp
                 val horizontalGap = when {
@@ -70,7 +102,7 @@ internal fun TunerPolicyCard(
                     tightRow -> 5.dp
                     else -> 6.dp
                 }
-                val clusterColumnWidth = when {
+                val labelColumnWidth = when {
                     veryTightRow -> 72.dp
                     tightRow -> 84.dp
                     else -> 96.dp
@@ -80,7 +112,6 @@ internal fun TunerPolicyCard(
                     tightRow -> 66.dp
                     else -> 76.dp
                 }
-
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -90,11 +121,11 @@ internal fun TunerPolicyCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(
-                        modifier = Modifier.width(clusterColumnWidth),
+                        modifier = Modifier.width(labelColumnWidth),
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         androidx.compose.material3.Text(
-                            text = "Cluster ${policy.id}",
+                            text = title,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = colorScheme.onSurface,
@@ -102,27 +133,25 @@ internal fun TunerPolicyCard(
                             overflow = TextOverflow.Ellipsis,
                         )
                         androidx.compose.material3.Text(
-                            text = "Now ${formatFrequency(actualValue, boosted = policy.isBoosted(actualValue), policy = policy, displayAsPercent = displayFrequenciesAsPercent)}",
+                            text = "Now $actualLabel",
                             style = MaterialTheme.typography.bodySmall,
                             color = colorScheme.onSurfaceVariant.copy(alpha = 0.84f),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-
                     TunerFrequencySlider(
-                        valueIndex = currentIndex,
-                        maxIndex = supported.lastIndex,
-                        onIndexChange = { index -> onValueChanged(supported[index]) },
+                        valueIndex = valueIndex,
+                        maxIndex = maxIndex,
+                        onIndexChange = onIndexChange,
                         modifier = Modifier.weight(1f),
                     )
-
                     androidx.compose.material3.Text(
-                        text = formatFrequency(selectedValue, boosted = policy.isBoosted(selectedValue), policy = policy, displayAsPercent = displayFrequenciesAsPercent),
+                        text = selectedLabel,
                         modifier = Modifier.width(valueColumnWidth),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = colorScheme.primary,
+                        color = sliderColor,
                         textAlign = TextAlign.End,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -141,6 +170,7 @@ private fun TunerFrequencySlider(
     modifier: Modifier = Modifier,
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val sliderColor = if (valueIndex >= maxIndex) colorScheme.onSurfaceVariant.copy(alpha = 0.58f) else colorScheme.primary
     val density = LocalDensity.current
     val trackHeight = with(density) { 4.dp.toPx() }
     val tickRadius = with(density) { 1.4.dp.toPx() }
@@ -201,7 +231,7 @@ private fun TunerFrequencySlider(
                 cornerRadius = cornerRadius,
             )
             drawRoundRect(
-                color = colorScheme.primary,
+                color = sliderColor,
                 topLeft = Offset(0f, centerY - trackHeight / 2f),
                 size = Size(thumbX, trackHeight),
                 cornerRadius = cornerRadius,
@@ -216,7 +246,39 @@ private fun TunerFrequencySlider(
                     )
                 }
             }
-            drawCircle(color = colorScheme.primary, radius = thumbRadius, center = Offset(thumbX, centerY))
+            drawCircle(color = sliderColor, radius = thumbRadius, center = Offset(thumbX, centerY))
         }
     }
+}
+
+@Composable
+internal fun TunerGpuPolicyCard(
+    policy: GpuPolicyInfo,
+    selectedValue: Int,
+    actualValue: Int = selectedValue,
+    onValueChanged: (Int) -> Unit,
+    compactMode: Boolean = false,
+) {
+    val supported = policy.supportedFrequenciesHz.filter { it <= policy.selectableMaxFrequencyHz }
+        .ifEmpty { listOf(policy.selectableMaxFrequencyHz) }.distinct().sorted()
+    val selected = selectedValue.coerceIn(supported.first(), supported.last())
+    val currentIndex = supported.indexOf(selected).takeIf { it >= 0 }
+        ?: supported.indexOfLast { it <= selected }.coerceAtLeast(0)
+    TunerFrequencyCard(
+        title = "GPU",
+        actualLabel = formatGpuFrequency(actualValue),
+        selectedLabel = formatGpuFrequency(selected, policy),
+        valueIndex = currentIndex,
+        maxIndex = supported.lastIndex.coerceAtLeast(0),
+        onIndexChange = { index ->
+            onValueChanged(supported[index.coerceIn(0, supported.lastIndex)])
+        },
+        compactMode = compactMode,
+    )
+}
+
+internal fun formatGpuFrequency(valueHz: Int, policy: GpuPolicyInfo? = null): String {
+    if (policy != null && valueHz >= policy.selectableMaxFrequencyHz) return "Stock"
+    val mhz = valueHz / 1_000_000f
+    return if (mhz >= 1000f) "${"%.1f".format(mhz / 1000f)} GHz" else "${mhz.roundToInt()} MHz"
 }
