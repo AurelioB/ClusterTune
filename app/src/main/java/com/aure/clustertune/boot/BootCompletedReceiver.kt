@@ -29,6 +29,10 @@ class BootCompletedReceiver : BroadcastReceiver() {
             try {
                 val container = AppContainer(context)
                 val settings = container.settingsStorage.settings.first()
+                if (settings.applyLastProfileOnBoot) {
+                    container.repository.applyPersistedLastValuesOnBoot()
+                    QuickSettingsTileRefresher.requestUpdate(context)
+                }
                 if (settings.sleepProfileEnabled) {
                     SleepProfileMonitorService.start(context)
                 }
@@ -44,11 +48,6 @@ class BootCompletedReceiver : BroadcastReceiver() {
                 ) {
                     OverlayHostService.showEdgeHandle(context)
                 }
-                if (!settings.applyLastProfileOnBoot) {
-                    return@launch
-                }
-                container.repository.applyPersistedLastValuesOnBoot()
-                QuickSettingsTileRefresher.requestUpdate(context)
             } finally {
                 pendingResult.finish()
             }

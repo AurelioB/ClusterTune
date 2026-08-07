@@ -41,8 +41,10 @@ class ExecutionOperationRoutingTest {
     }
 
     @Test
-    fun `profile apply does not request captured output`() = runTest {
-        val method = RecordingMethod(scriptResult = Result.success(null))
+    fun `profile apply requires captured completion marker`() = runTest {
+        val method = RecordingMethod(
+            scriptResult = Result.success(PerformanceCommandBuilder.COMPLETION_MARKER),
+        )
         val resolver = resolver(method)
         val runner = RootCommandRunner(
             context = ContextWrapper(null),
@@ -50,8 +52,23 @@ class ExecutionOperationRoutingTest {
             dispatcher = StandardTestDispatcher(testScheduler),
         )
 
-        assertNull(runner.executeScript("echo 1200000 > /sys/example").getOrThrow())
-        assertEquals(listOf(false), method.captureResultArguments)
+        assertEquals(
+            PerformanceCommandBuilder.COMPLETION_MARKER,
+            runner.executeScript("echo 1200000 > /sys/example").getOrThrow(),
+        )
+        assertEquals(listOf(true), method.captureResultArguments)
+    }
+
+    @Test
+    fun `profile apply fails when completion marker is missing`() = runTest {
+        val method = RecordingMethod(scriptResult = Result.success(""))
+        val runner = RootCommandRunner(
+            context = ContextWrapper(null),
+            executionResolver = resolver(method),
+            dispatcher = StandardTestDispatcher(testScheduler),
+        )
+
+        assertTrue(runner.executeScript("false").isFailure)
     }
 
     @Test
@@ -72,35 +89,58 @@ class ExecutionOperationRoutingTest {
     }
 
     @Test
-    fun `direct PServer chmod dispatches without output capture`() {
-        val executor = RecordingPServerExecutor(
-            results = ArrayDeque(listOf(Result.success(null))),
-        )
-        val method = PServerStdoutExecutionMethod(ContextWrapper(null), executor)
-
-        assertTrue(method.makeReadable("/sys/example/scaling_max_freq"))
-        assertEquals(listOf(false), executor.captureOutputArguments)
-    }
-
-    @Test
     fun `direct PServer profile apply dispatches without output capture`() {
         val scriptDirectory = temporaryDirectory()
         val context = object : ContextWrapper(null) {
             override fun getFilesDir(): File = scriptDirectory
         }
-        val executor = RecordingPServerExecutor(
-            results = ArrayDeque(listOf(Result.success(null))),
-        )
+        val executor = ShellBackedExecutor()
         val method = PServerStdoutExecutionMethod(context, executor)
 
         assertNull(
             method.executeScript(
                 scriptName = "apply.sh",
-                scriptContents = "echo 1200000 > /sys/example/scaling_max_freq",
+                scriptContents = "printf '%s' applied",
                 captureResult = false,
             ).getOrThrow(),
         )
         assertEquals(listOf(false), executor.captureOutputArguments)
+    }
+
+    @Test
+    fun `direct PServer script returns captured output after successful completion`() {
+        val directory = temporaryDirectory()
+        val context = object : ContextWrapper(null) {
+            override fun getFilesDir(): File = directory
+        }
+        val method = PServerStdoutExecutionMethod(context, ShellBackedExecutor())
+
+        assertEquals(
+            "applied\n",
+            method.executeScript(
+                scriptName = "apply.sh",
+                scriptContents = "printf '%s\\n' applied",
+                captureResult = true,
+            ).getOrThrow(),
+        )
+    }
+
+    @Test
+    fun `direct PServer script reports nonzero status`() {
+        val directory = temporaryDirectory()
+        val context = object : ContextWrapper(null) {
+            override fun getFilesDir(): File = directory
+        }
+        val method = PServerStdoutExecutionMethod(context, ShellBackedExecutor())
+
+        val result = method.executeScript(
+            scriptName = "apply.sh",
+            scriptContents = "printf '%s' failed >&2; exit 7",
+            captureResult = true,
+        )
+
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull()?.message.orEmpty().contains("failed"))
     }
 
     @Test
@@ -113,6 +153,7 @@ class ExecutionOperationRoutingTest {
                 "$policy/scaling_available_frequencies" to "300000 1200000 2400000",
                 "$policy/affected_cpus" to "0 1 2 3",
                 "$policy/cpuinfo_max_freq" to "2400000",
+                "$policy/cpuinfo_min_freq" to "300000",
                 "$policy/scaling_max_freq" to "1200000",
                 "$policy/stats/time_in_state" to "300000 1\n2400000 1",
                 "$policy/scaling_min_freq" to "300000",
@@ -130,7 +171,6 @@ class ExecutionOperationRoutingTest {
 
         assertEquals(listOf(0), policies.map { it.id })
         assertEquals(0, reader.readCount)
-        assertEquals(0, reader.makeReadableCount)
         assertEquals(0, lister.callCount)
     }
 
@@ -177,6 +217,29 @@ class ExecutionOperationRoutingTest {
         }
     }
 
+    private class ShellBackedExecutor : PServerRootExecutor {
+        override val pServerAvailable = true
+        val captureOutputArguments = mutableListOf<Boolean>()
+
+        override fun executeAsRoot(cmd: String): Result<String?> {
+            error("Operation must explicitly declare whether output is captured")
+        }
+
+        override fun executeAsRoot(cmd: String, captureOutput: Boolean): Result<String?> {
+            captureOutputArguments += captureOutput
+            val process = ProcessBuilder("sh", "-c", cmd)
+                .redirectErrorStream(true)
+                .start()
+            val output = process.inputStream.bufferedReader().readText()
+            val exitCode = process.waitFor()
+            return if (exitCode == 0) {
+                Result.success(output.takeIf { it.isNotEmpty() })
+            } else {
+                Result.failure(IllegalStateException("shell exited $exitCode"))
+            }
+        }
+    }
+
     private class MapSysfsFileSystem(
         private val directories: List<String>,
         private val files: Map<String, String>,
@@ -188,18 +251,12 @@ class ExecutionOperationRoutingTest {
     private class CountingPrivilegedReader : PrivilegedSysfsReader {
         var readCount = 0
             private set
-        var makeReadableCount = 0
-            private set
 
         override fun readText(path: String): String? {
             readCount += 1
             return null
         }
 
-        override fun makeReadable(path: String): Boolean {
-            makeReadableCount += 1
-            return false
-        }
     }
 
     private class CountingPrivilegedLister : PrivilegedSysfsLister {

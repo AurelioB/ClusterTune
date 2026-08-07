@@ -25,20 +25,34 @@ class CpuPolicyDetector(
         }.toMap()
     }
 
+    fun readCurrentMinValues(policies: List<CpuPolicyInfo>): Map<Int, Int> {
+        return policies.mapNotNull { policy ->
+            readText(policy.scalingMinPath)?.toIntOrNull()?.let { policy.id to it }
+        }.toMap()
+    }
+
     private fun parsePolicy(policyPath: String): CpuPolicyInfo? {
         val policyName = policyPath.substringAfterLast('/')
         val id = policyName.removePrefix("policy").toIntOrNull() ?: return null
         val scalingMaxPath = "$policyPath/scaling_max_freq"
+        val scalingMinPath = "$policyPath/scaling_min_freq"
         val rawSupported = parseFrequencies(readText("$policyPath/scaling_available_frequencies"))
         val cpuIds = parseCpuIds(readText("$policyPath/affected_cpus"))
             .ifEmpty { parseCpuIds(readText("$policyPath/related_cpus")) }
             .ifEmpty { listOf(id) }
         val cpuInfoMax = readText("$policyPath/cpuinfo_max_freq")?.toIntOrNull()
+        val cpuInfoMin = readText("$policyPath/cpuinfo_min_freq")?.toIntOrNull()
         val scalingMax = readText(scalingMaxPath)?.toIntOrNull()
-        val timeInStateMax = readTimeInStateMax("$policyPath/stats/time_in_state")
-        val minFreq = readText("$policyPath/scaling_min_freq")?.toIntOrNull()
-            ?: rawSupported.firstOrNull()
-            ?: 0
+        val timeInStateFrequencies = readTimeInStateFrequencies("$policyPath/stats/time_in_state")
+        val positiveTimeInStateFrequencies = readPositiveTimeInStateFrequencies("$policyPath/stats/time_in_state")
+        val timeInStateMax = timeInStateFrequencies.maxOrNull()
+        // scaling_min_freq is mutable and may have been left artificially high by a
+        // previous build or an OEM service. Never use it as the repair floor.
+        val minimumCandidates = listOfNotNull(cpuInfoMin?.takeIf { it > 0 }) +
+            rawSupported.filter { it > 0 } +
+            positiveTimeInStateFrequencies.filter { it > 0 }
+        val hardwareMinFreq = minimumCandidates.minOrNull() ?: return null
+        val minFreq = readText(scalingMinPath)?.toIntOrNull()?.takeIf { it > 0 } ?: hardwareMinFreq
         val supported = rawSupported.ifEmpty {
             buildFallbackFrequencies(
                 minFreq = minFreq,
@@ -60,6 +74,9 @@ class CpuPolicyDetector(
             minFreq = minFreq,
             supportedFrequencies = supported,
             cpuIds = cpuIds,
+            scalingMinPath = scalingMinPath,
+            hardwareMinFreq = hardwareMinFreq,
+            minimumCandidates = minimumCandidates.distinct().sorted(),
         )
     }
 
@@ -90,7 +107,7 @@ class CpuPolicyDetector(
             .sorted()
     }
 
-    private fun readTimeInStateMax(path: String): Int? {
+    private fun readTimeInStateFrequencies(path: String): List<Int> {
         return readText(path)
             ?.lineSequence()
             ?.mapNotNull { line ->
@@ -99,7 +116,21 @@ class CpuPolicyDetector(
                     .firstOrNull()
                     ?.toIntOrNull()
             }
-            ?.maxOrNull()
+            ?.toList()
+            .orEmpty()
+    }
+
+    private fun readPositiveTimeInStateFrequencies(path: String): List<Int> {
+        return readText(path)
+            ?.lineSequence()
+            ?.mapNotNull { line ->
+                val fields = line.trim().split(Regex("\\s+"))
+                val frequency = fields.getOrNull(0)?.toIntOrNull()
+                val residency = fields.getOrNull(1)?.toLongOrNull()
+                frequency?.takeIf { it > 0 && residency != null && residency > 0 }
+            }
+            ?.toList()
+            .orEmpty()
     }
 
     private fun maxOfNotNull(vararg values: Int?): Int? {
@@ -107,18 +138,11 @@ class CpuPolicyDetector(
     }
 
     private fun readText(path: String): String? {
-        val direct = fileSystem.readText(path)?.trim()?.takeIf { it.isNotEmpty() }
-        if (direct != null) return direct
-
-        if (privilegedReader.makeReadable(path)) {
-            val afterChmod = fileSystem.readText(path)?.trim()?.takeIf { it.isNotEmpty() }
-            if (afterChmod != null) return afterChmod
-        }
-
-        return privilegedReader
-            .readText(path)
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() }
+        // Reading sysfs must not mutate its permissions. Some vendor services
+        // temporarily adjust these nodes, and a persistent chmod can leave a
+        // policy stuck at a stale minimum after the app exits.
+        return fileSystem.readText(path)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: privilegedReader.readText(path)?.trim()?.takeIf { it.isNotEmpty() }
     }
 
     private fun policyIdOrMax(policyPath: String): Int {

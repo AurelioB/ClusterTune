@@ -35,8 +35,8 @@ android {
         applicationId = "com.aure.clustertune"
         minSdk = 31
         targetSdk = 34
-        versionCode = 307
-        versionName = "1.0.1"
+        versionCode = 308
+        versionName = "1.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -89,9 +89,8 @@ android {
     testOptions {
         unitTests {
             // Android framework calls (e.g. android.util.Log) have no
-            // implementation under plain JVM unit tests. Returning default values
-            // instead of throwing "not mocked" keeps the release pipeline's unit
-            // tests from failing when exercised code paths touch Android stubs.
+            // implementation under plain JVM unit tests. Returning defaults
+            // instead of throwing keeps the release pipeline's tests passing.
             isReturnDefaultValues = true
         }
     }
@@ -123,8 +122,6 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("com.google.zxing:core:3.5.3")
     // Vendored fork of github.com/wuyr/jdwp-injector-for-android (Apache-2.0).
-    // Provides the adb transport + JDWP layer used by the no-root wireless
-    // debugging execution method.
     implementation(project(":jdwp-injector"))
     debugImplementation(composeBom)
     debugImplementation("androidx.compose.ui:ui-tooling")

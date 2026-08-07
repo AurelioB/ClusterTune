@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.PerformanceProfile
@@ -26,6 +27,7 @@ class ProfileStorage(private val context: Context) {
     private val displayOrderKey = stringPreferencesKey("display_order")
     private val appProfileAssignmentsKey = stringPreferencesKey("app_profile_assignments")
     private val profileSwitchHistoryKey = stringPreferencesKey("profile_switch_history")
+    private val sysfsRepairVersionKey = intPreferencesKey("sysfs_repair_version")
 
     val profiles: Flow<List<PerformanceProfile>> = context.dataStore.data.map { preferences ->
         ProfileStorageCodec.parseProfiles(preferences[profilesKey])
@@ -65,6 +67,14 @@ class ProfileStorage(private val context: Context) {
 
     val sleepRestoreDisplayProfileId: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[sleepRestoreDisplayProfileKey]
+    }
+
+    val sysfsRepairVersion: Flow<Int> = context.dataStore.data.map { preferences ->
+        preferences[sysfsRepairVersionKey] ?: 0
+    }
+
+    suspend fun markSysfsRepairComplete(version: Int) {
+        context.dataStore.edit { preferences -> preferences[sysfsRepairVersionKey] = version }
     }
 
     suspend fun saveProfile(profile: PerformanceProfile) {
@@ -199,6 +209,17 @@ class ProfileStorage(private val context: Context) {
 
     suspend fun persistLastAppliedDisplayProfile(profileId: String?) {
         context.dataStore.edit { preferences ->
+            if (profileId == null) {
+                preferences.remove(lastAppliedDisplayProfileKey)
+            } else {
+                preferences[lastAppliedDisplayProfileKey] = profileId
+            }
+        }
+    }
+
+    suspend fun persistNormalProfileState(values: Map<Int, Int>, profileId: String?) {
+        context.dataStore.edit { preferences ->
+            preferences[lastValuesKey] = ProfileStorageCodec.encodeIntMap(values)
             if (profileId == null) {
                 preferences.remove(lastAppliedDisplayProfileKey)
             } else {

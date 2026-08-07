@@ -161,7 +161,13 @@ class JdwpInjectionExecutionMethod(
         }.getOrNull()
     }
 
-    override fun makeReadable(path: String): Boolean {
+    /**
+     * Not part of the PrivilegedExecutionMethod interface as of ClusterTune
+     * 1.0.2 (upstream removed it), so this is a plain helper rather than an
+     * override. Kept because the JDWP path may still need to relax permissions
+     * on a staged file it wrote as system.
+     */
+    fun makeReadable(path: String): Boolean {
         val conn = connectionProvider() ?: return false
         return runCatching {
             val script = buildString {
