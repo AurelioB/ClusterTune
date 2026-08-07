@@ -508,6 +508,14 @@ fun CompactOverlayScreen(
         ?: listOfNotNull(assignment?.profileId, state.activeDisplayProfileId, state.lastAppliedDisplayProfileId)
             .firstOrNull { id -> profiles.any { it.id == id } }
 
+    val firstRowFocus = remember { FocusRequester() }
+    LaunchedEffect(mode) {
+        if (mode == CompactOverlayMode.PROFILES) {
+            kotlinx.coroutines.delay(120)
+            runCatching { firstRowFocus.requestFocus() }
+        }
+    }
+
     ScreenContainer(compactMode = true, showCompactScrim = false, compactFillHeight = false) {
         Column(
             modifier = Modifier
@@ -612,9 +620,10 @@ fun CompactOverlayScreen(
                             title = "Custom",
                             selected = true,
                             onClick = { onModeChange(CompactOverlayMode.TUNER) },
+                            focusRequester = firstRowFocus,
                         )
                     }
-                    profiles.forEach { profile ->
+                    profiles.forEachIndexed { index, profile ->
                         ProfileChoiceRow(
                             title = profile.name,
                             selected = selectedProfileId == profile.id,
@@ -622,6 +631,10 @@ fun CompactOverlayScreen(
                                 stagedProfile = profile
                                 onApplyProfile(profile, appProfileEnabled)
                             },
+                            // Give the first row initial focus so the overlay opens
+                            // with the controller already inside it, instead of the
+                            // user having to press left to get in.
+                            focusRequester = if (!customDraft && index == 0) firstRowFocus else null,
                         )
                     }
                     if (profiles.isEmpty()) ProfilePickerEmptyOptionCard()
@@ -1754,6 +1767,7 @@ private fun ProfileChoiceRow(
     selected: Boolean,
     onClick: () -> Unit,
     compact: Boolean = false,
+    focusRequester: FocusRequester? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val rowShape = RoundedCornerShape(20.dp)
@@ -1779,6 +1793,7 @@ private fun ProfileChoiceRow(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = if (compact) 38.dp else 48.dp)
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .background(containerBrush, rowShape)
             .border(BorderStroke(1.dp, borderColor), rowShape)
             .clip(rowShape)

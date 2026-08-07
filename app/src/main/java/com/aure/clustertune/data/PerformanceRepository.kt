@@ -290,6 +290,20 @@ class PerformanceRepository(
             return Result.failure(IllegalStateException("Empty CPU apply script"))
         }
         return rootCommandRunner.executeScript(script).mapCatching { output ->
+            // Verification reads MUST run off the main thread.
+            //
+            // applyProfile is launched from viewModelScope, which defaults to
+            // Dispatchers.Main. In 1.0.1 these read-backs came straight off the
+            // filesystem, so that was harmless. 1.0.2 added minimum-frequency
+            // reads that fall through to the privileged reader — real network
+            // I/O — so every read threw NetworkOnMainThreadException, killed the
+            // shared adb shell, and reopened a connection (one "Wireless
+            // debugging connected" notice each time). Hundreds of those per apply
+            // caused the ANR, and the failed read-back made a successful apply
+            // report "CPU policy verification failed".
+            // mapCatching is inline, so the suspend context is preserved and we
+            // can switch dispatchers properly instead of blocking a thread.
+            kotlinx.coroutines.withContext(Dispatchers.IO) {
             var actualValues = emptyMap<Int, Int>()
             var actualMinValues = emptyMap<Int, Int>()
             var verified = false
@@ -332,6 +346,7 @@ class PerformanceRepository(
                 verificationPassed = true,
                 commandOutput = output,
             )
+            }
         }
     }
 

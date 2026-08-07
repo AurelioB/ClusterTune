@@ -155,6 +155,21 @@ class JdwpInjectionExecutionMethod(
         // 2s with interleaved, corrupted shell output — concurrent traffic on one
         // adb socket — until a thread wedged holding the apply lock and button
         // presses stopped doing anything at all.
+        // Safety net: if a caller reaches us on the main thread, do the socket
+        // work on a worker instead of throwing NetworkOnMainThreadException
+        // (which killed the shared shell and forced a reconnect on every read).
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) {
+            var result: String? = null
+            val worker = Thread { result = readTextBlocking(path) }
+            worker.isDaemon = true
+            worker.start()
+            worker.join(5_000)
+            return result
+        }
+        return readTextBlocking(path)
+    }
+
+    private fun readTextBlocking(path: String): String? {
         return synchronized(shellUseLock) {
         val shell = sharedShellProvider?.invoke() ?: return@synchronized null
         runCatching {
