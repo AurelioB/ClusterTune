@@ -2,6 +2,7 @@ package com.aure.clustertune.ui.designsystem.component
 
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.BasicTextField
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.PaddingValues
@@ -128,6 +129,9 @@ internal fun CtNumericField(
     if (editing && enabled && !readOnly) {
         var everFocused by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { runCatching { editFocus.requestFocus() } }
+        // While editing, Back/B should only dismiss the keyboard and return to
+        // the hover state — not navigate away from the screen.
+        BackHandler(enabled = true) { editing = false }
         CtCompactOutlinedField(
             value = value,
             onValueChange = { next -> onValueChange(numericDigits(next, maxDigits)) },

@@ -424,6 +424,7 @@ enum class CompactOverlayMode { PROFILES, TUNER }
 
 /** Compact app-aware overlay shared by the edge picker and quick tuner. */
 @Composable
+@OptIn(ExperimentalComposeUiApi::class)
 fun CompactOverlayScreen(
     state: TunerState,
     displayFrequenciesAsPercent: Boolean,
@@ -508,7 +509,18 @@ fun CompactOverlayScreen(
             .firstOrNull { id -> profiles.any { it.id == id } }
 
     ScreenContainer(compactMode = true, showCompactScrim = false, compactFillHeight = false) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                // Contain controller focus inside this overlay. This screen is
+                // the app-profile picker; without containment D-pad left/right
+                // escaped to the app list / nav rail behind it and could not get
+                // back. Cancelling the group's exit blocks focus *movement* out
+                // without consuming any key, so children still receive left/right.
+                .focusProperties { exit = { FocusRequester.Cancel } }
+                .focusRestorer()
+                .focusGroup(),
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth().background(colorScheme.surfaceContainer)
                     .padding(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp),

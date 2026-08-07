@@ -64,6 +64,13 @@ class MainActivity : ComponentActivity() {
     private val container by lazy { AppContainer(this) }
     private val appUpdateManager by lazy { AppUpdateManager(this) }
     private val pendingUpdateRelease = mutableStateOf<AppRelease?>(null)
+
+    /**
+     * Set when a previously-working wireless-debugging connection is found dead
+     * on resume, so the main screen can tell the user what happened and offer to
+     * reopen setup (rather than silently showing profiles that can't be applied).
+     */
+    private val wirelessConnectionLost = mutableStateOf(false)
     private val viewModel by viewModels<TunerViewModel> {
         TunerViewModel.factory(
             repository = container.repository,
@@ -211,6 +218,37 @@ class MainActivity : ComponentActivity() {
                         if (!permissionDialogVisible) {
                             maybeRequestQuickSettingsTileOnFirstRun()
                         }
+                    }
+
+                    // Wireless-debugging link dropped (e.g. the user turned
+                    // wireless debugging off, or it reset on reboot). Say so
+                    // plainly and offer to reopen setup, instead of leaving a
+                    // profile list that silently fails to apply.
+                    if (wirelessConnectionLost.value) {
+                        AlertDialog(
+                            onDismissRequest = { wirelessConnectionLost.value = false },
+                            title = { Text("Wireless debugging disconnected") },
+                            text = {
+                                Text(
+                                    "ClusterTune can no longer reach Android's Wireless debugging, " +
+                                        "so profiles can't be applied. Check that Wireless debugging " +
+                                        "is still switched on, then pair again.",
+                                )
+                            },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    wirelessConnectionLost.value = false
+                                    showSettings = false
+                                    showSupport = false
+                                    showWirelessSetup = true
+                                }) { Text("Set up") }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { wirelessConnectionLost.value = false }) {
+                                    Text("Dismiss")
+                                }
+                            },
+                        )
                     }
 
                     if (showWirelessSetup) {
@@ -420,6 +458,21 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        // If we believed we were connected, confirm it. verifyConnection() clears
+        // a dead connection, so this both updates availability and lets us tell
+        // the user their wireless-debugging link dropped.
+        lifecycleScope.launch {
+            val cm = container.wirelessDebugConnectionManager
+            if (cm.connectionInfo != null) {
+                val alive = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    cm.verifyConnection()
+                }
+                if (!alive) {
+                    wirelessConnectionLost.value = true
+                }
+            }
+            viewModel.recheckExecutionAvailability()
+        }
         maybeStartSleepProfileMonitor()
         maybeStartAppProfileMonitor()
         maybeStartLeftEdgeProfilePicker()

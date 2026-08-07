@@ -62,23 +62,39 @@ class AdbWirelessPortResolver private constructor(private val onLost: () -> Unit
 
     private var foundServiceName = ""
 
+    /**
+     * Service names with a resolve currently in flight. NsdManager only permits
+     * one resolve at a time, and onServiceFound is routinely delivered more than
+     * once for the same service — the duplicates were each starting a resolve,
+     * colliding with FAILURE_ALREADY_ACTIVE and then failing outright. Skipping
+     * duplicates removes that self-inflicted collision entirely.
+     */
+    private val resolvesInFlight = java.util.Collections.synchronizedSet(HashSet<String>())
+
     override fun onServiceFound(serviceInfo: NsdServiceInfo) {
         foundServiceName = serviceInfo.serviceName
         JdwpDebugLog.d("service found: ${serviceInfo.serviceName} (${serviceInfo.serviceType})")
+        if (!resolvesInFlight.add(serviceInfo.serviceName)) {
+            JdwpDebugLog.d("resolve already in flight for ${serviceInfo.serviceName}; skipping duplicate")
+            return
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             nsdManager.registerServiceInfoCallback(serviceInfo, { it.run() }, object : ServiceInfoCallback {
                 override fun onServiceInfoCallbackRegistrationFailed(errorCode: Int) {
                     JdwpDebugLog.w("serviceInfo callback registration failed (errorCode=$errorCode)")
+                    resolvesInFlight.remove(serviceInfo.serviceName)
                 }
 
                 override fun onServiceUpdated(serviceInfo: NsdServiceInfo) {
                     val host = serviceInfo.hostAddresses.firstOrNull()?.hostAddress ?: "127.0.0.1"
                     JdwpDebugLog.d("resolved (14+): $host:${serviceInfo.port}")
                     onResolved(host, serviceInfo.port)
+                    resolvesInFlight.remove(serviceInfo.serviceName)
                     nsdManager.unregisterServiceInfoCallback(this)
                 }
 
                 override fun onServiceLost() {
+                    resolvesInFlight.remove(serviceInfo.serviceName)
                     nsdManager.unregisterServiceInfoCallback(this)
                 }
 
@@ -105,12 +121,14 @@ class AdbWirelessPortResolver private constructor(private val onLost: () -> Unit
                     }, 300L)
                 } else {
                     JdwpDebugLog.w("resolve FAILED for ${serviceInfo.serviceName} (errorCode=$errorCode, attempt=$attempt)")
+                    resolvesInFlight.remove(serviceInfo.serviceName)
                 }
             }
 
             override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
                 val host = serviceInfo.host?.hostAddress ?: "127.0.0.1"
                 JdwpDebugLog.d("resolved: $host:${serviceInfo.port}")
+                resolvesInFlight.remove(serviceInfo.serviceName)
                 onResolved(host, serviceInfo.port)
             }
         })
