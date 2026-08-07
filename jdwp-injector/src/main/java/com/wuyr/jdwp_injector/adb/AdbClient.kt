@@ -168,8 +168,19 @@ class AdbClient private constructor(host: String, port: Int) : Closeable {
             sendMessage(CMD_WRITE, "JDWP-Handshake") ?: throw AdbCommunicationException("failed to handshake with target process: $targetPid")
             jdwpConnected = true
             timeoutThread.interrupt()
-        }.onFailure {
-            throw SocketTimeoutException("time out to connect jdwp")
+        }.onFailure { cause ->
+            // Previously this rethrew a bare SocketTimeoutException for EVERY
+            // failure, so a refused/absent jdwp service was reported as a
+            // "timeout" and the real reason was discarded. Keep the type for
+            // compatibility but carry the actual cause and message through.
+            JdwpDebugLog.w(
+                "forward2jdwp(pid=$targetPid) failed: " +
+                    "${cause.javaClass.simpleName}: ${cause.message}",
+                cause,
+            )
+            throw SocketTimeoutException(
+                "jdwp forward failed for pid=$targetPid: ${cause.javaClass.simpleName}: ${cause.message}",
+            ).apply { initCause(cause) }
         }
         return true
     }

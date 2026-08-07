@@ -201,7 +201,20 @@ class JdwpInjectionExecutionMethod(
         val raw = adb.sendShellCommand(
             "ps -A -o PID,NAME | grep -w ${targetPackage} | awk 'NR==1{print \$1}'"
         )
-        val pid = raw.split("\n").getOrNull(1)?.trim()?.toIntOrNull() ?: 0
+        // Do NOT assume the pid is on a fixed line. This used to read line index
+        // 1 unconditionally, which only holds when the shell echoes something
+        // first — on a freshly opened shell it doesn't, so the pid landed on
+        // line 0 and we reported "GameAssistant is not running" while it was
+        // demonstrably running. Scan every line for the first plausible pid.
+        val pid = raw.lineSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .mapNotNull { it.toIntOrNull() }
+            .firstOrNull { it > 0 }
+            ?: 0
+        com.wuyr.jdwp_injector.debug.JdwpDebugLog.d(
+            "findTargetPid: raw='${raw.replace("\n", "\\n").take(120)}' -> pid=$pid",
+        )
         Log.d(TAG, "findTargetPid: raw=${raw.replace("\n", "\\n")} -> pid=$pid")
         pid
     }.getOrElse {
