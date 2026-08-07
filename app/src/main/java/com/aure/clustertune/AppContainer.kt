@@ -117,8 +117,22 @@ class AppContainer(context: Context) {
             // — and while contending for AdbClient's global @Synchronized lock,
             // which produced ANRs. At startup there is never a connection yet, so
             // all 5 attempts were guaranteed to fail expensively.
-            if (!privilegedExecutionResolver.isAvailable) {
+            val methodId = privilegedExecutionResolver.selectedMethodId
+            if (methodId == null) {
                 Log.i(TAG, "Sysfs minimum repair skipped: no privileged method available yet")
+                return
+            }
+            // Never run this migration on the fire-and-forget JDWP path.
+            //
+            // It is a 1.0.2 addition written for root/PServer, where executeScript
+            // blocks until the command has run. It takes processApplyMutex — the
+            // SAME mutex every profile apply needs — and retries 5x with backoff.
+            // On the no-root path the write cannot be verified in that window, so
+            // it always failed, held the mutex across all 5 attempts, and blocked
+            // every apply (logs showed the JDWP session never even attaching).
+            // The Odin does not need this migration; skipping it is correct.
+            if (methodId == "jdwp-inject") {
+                Log.i(TAG, "Sysfs minimum repair skipped: not applicable to the JDWP path")
                 return
             }
             val result = try {

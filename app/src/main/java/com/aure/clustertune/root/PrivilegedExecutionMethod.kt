@@ -45,6 +45,17 @@ class PrivilegedExecutionResolver(
     val selectedMethodId: String?
         get() = selectedMethod()?.id
 
+    /**
+     * Whether the currently selected method can return a script's stdout.
+     *
+     * Fire-and-forget methods (the no-root JDWP injection) cannot: the injected
+     * Runtime.exec() runs inside another process and its output never comes back
+     * to us. Callers that verify a completion marker in stdout must not enforce
+     * that contract against such a method, or every operation looks failed.
+     */
+    val selectedMethodSupportsStdout: Boolean
+        get() = selectedMethod()?.probe()?.supportsStdout == true
+
     val availableMethodIds: List<String>
         get() = methods.map { it.id }
 

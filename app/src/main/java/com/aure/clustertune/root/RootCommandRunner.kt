@@ -28,7 +28,17 @@ class RootCommandRunner(
             scriptContents = script,
             captureResult = true,
         ).flatMapCatching { output ->
-            if (output.orEmpty().lineSequence().any { it.trim() == PerformanceCommandBuilder.COMPLETION_MARKER }) {
+            // 1.0.2 began requiring the script to echo a completion marker on
+            // stdout. Fire-and-forget executors (the no-root JDWP injection) can
+            // never satisfy that: the injected Runtime.exec() runs in another
+            // process and its stdout never returns here, so output is always
+            // null and EVERY apply was reported as failed even though the script
+            // ran and the caps were written. Only enforce the marker for methods
+            // that actually report stdout; for the others the caller's sysfs
+            // read-back verification is the real check.
+            if (!executionResolver.selectedMethodSupportsStdout) {
+                Result.success(output)
+            } else if (output.orEmpty().lineSequence().any { it.trim() == PerformanceCommandBuilder.COMPLETION_MARKER }) {
                 Result.success(output)
             } else {
                 Result.failure(IllegalStateException("Privileged script did not report completion"))
