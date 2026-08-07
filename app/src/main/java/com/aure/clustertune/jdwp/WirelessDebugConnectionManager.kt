@@ -66,10 +66,17 @@ class WirelessDebugConnectionManager private constructor(
             val existing = persistentShell
             if (existing != null) {
                 // Verify it still works with a cheap command; reopen if not.
-                val ok = runCatching { existing.sendShellCommand("true") }.isSuccess
-                if (ok) return existing
+                val probe = runCatching { existing.sendShellCommand("true") }
+                if (probe.isSuccess) return existing
+                JdwpDebugLog.w(
+                    "sharedShell: persistent shell died, reopening " +
+                        "(${probe.exceptionOrNull()?.javaClass?.simpleName}: " +
+                        "${probe.exceptionOrNull()?.message})",
+                )
                 runCatching { existing.close() }
                 persistentShell = null
+            } else {
+                JdwpDebugLog.d("sharedShell: no persistent shell yet, opening one")
             }
             return runCatching {
                 AdbClient.openShell(conn.host, conn.port).also { persistentShell = it }
@@ -188,10 +195,21 @@ class WirelessDebugConnectionManager private constructor(
             if (debugger == null || persistentDebuggerPid != currentPid) {
                 runCatching { debugger?.close() }
                 debugger = runCatching {
+                    JdwpDebugLog.d("jdwp: connect2jdwp ${conn.host}:${conn.port} pid=$currentPid …")
                     com.wuyr.jdwp_injector.debugger.Debugger(
                         AdbClient.connect2jdwp(conn.host, conn.port, currentPid)
                     )
-                }.getOrNull() ?: return false
+                }.getOrElse { error ->
+                    // This used to be .getOrNull(), which swallowed the reason
+                    // entirely — the apply just reported "Injection failed" with
+                    // no clue why. Surface it.
+                    JdwpDebugLog.w(
+                        "jdwp: connect2jdwp FAILED for pid=$currentPid " +
+                            "(${error.javaClass.simpleName}: ${error.message})",
+                        error,
+                    )
+                    return false
+                }
                 persistentDebugger = debugger
                 persistentDebuggerPid = currentPid
                 JdwpDebugLog.d("jdwp: attached persistent session to pid=$currentPid")
