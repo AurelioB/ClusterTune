@@ -49,6 +49,7 @@ class AppContainer(context: Context) {
             jdwpPersistentInjector = { pkg, command, pid, trigger ->
                 wirelessDebugConnectionManager.injectExecPersistent(pkg, command, pid, trigger)
             },
+            jdwpShellUseLock = wirelessDebugConnectionManager.shellUseLock,
         )
     }
 

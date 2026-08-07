@@ -36,6 +36,8 @@ class JdwpInjectionExecutionMethod(
     private val connectionProvider: () -> AdbConnectionInfo?,
     private val sharedShellProvider: (() -> AdbClient?)? = null,
     private val shellInvalidator: (() -> Unit)? = null,
+    /** Serialises command traffic over the shared adb shell. */
+    private val shellUseLock: Any = Any(),
     private val persistentInjector: ((targetPackage: String, command: String, pid: Int, trigger: () -> Unit) -> Boolean)? = null,
     private val targetPackage: String = GAME_ASSISTANT_PKG,
     private val sharedDir: File = defaultSharedDir(),
@@ -90,7 +92,8 @@ class JdwpInjectionExecutionMethod(
             Log.w(TAG, "executeScript: no wireless connection")
             return Result.failure(IllegalStateException("Wireless debugging not connected"))
         }
-        return runCatching {
+        return synchronized(shellUseLock) {
+        runCatching {
             val scriptPath = stageScript(scriptName, scriptContents)
             Log.d(TAG, "executeScript: staged '$scriptName' -> $scriptPath (${scriptContents.length} bytes)")
             val shell = sharedShellProvider?.invoke()
@@ -130,6 +133,7 @@ class JdwpInjectionExecutionMethod(
             com.wuyr.jdwp_injector.debug.JdwpDebugLog.w("APPLY/jdwp: executeScript FAILED", it)
             shellInvalidator?.invoke()
         }
+        }
     }
 
     /**
@@ -151,8 +155,9 @@ class JdwpInjectionExecutionMethod(
         // 2s with interleaved, corrupted shell output — concurrent traffic on one
         // adb socket — until a thread wedged holding the apply lock and button
         // presses stopped doing anything at all.
-        val shell = sharedShellProvider?.invoke() ?: return null
-        return runCatching {
+        return synchronized(shellUseLock) {
+        val shell = sharedShellProvider?.invoke() ?: return@synchronized null
+        runCatching {
             // Markers make parsing robust against the shell echoing the command
             // back (which is what corrupted the old line-index parsing).
             val raw = shell.sendShellCommand(
@@ -173,6 +178,7 @@ class JdwpInjectionExecutionMethod(
             )
             shellInvalidator?.invoke()
             null
+        }
         }
     }
 

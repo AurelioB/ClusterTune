@@ -84,6 +84,18 @@ class WirelessDebugConnectionManager private constructor(
         }
     }
 
+    /**
+     * Serialises *use* of the shared shell.
+     *
+     * sharedShell() only guarded acquisition, so an apply and a concurrent state
+     * refresh could both call sendShellCommand() on the SAME AdbClient socket.
+     * The adb protocol is request/response on one stream, so the replies
+     * interleaved (logs showed a command echoed back spliced into itself) and the
+     * socket then died with "Socket is closed" seconds after being opened. Every
+     * caller must hold this while talking to the shell.
+     */
+    val shellUseLock: Any = Any()
+
     /** Drop the persistent shell (e.g. after a failure or disconnect). */
     fun invalidateShell() {
         synchronized(shellLock) {
