@@ -117,6 +117,8 @@ fun SettingsScreen(
     onOpenOverlayPermissionSettings: () -> Unit,
     hasUsageAccess: Boolean,
     onOpenUsageAccessSettings: () -> Unit,
+    hasAppProfileAccessibilityAccess: Boolean,
+    onOpenAppProfileAccessibilitySettings: () -> Unit,
     hasNotificationAccess: Boolean,
     onOpenNotificationSettings: () -> Unit,
     canInstallUpdates: Boolean,
@@ -249,6 +251,13 @@ fun SettingsScreen(
                 description = stringResource(R.string.settings_overlay_access_description),
                 granted = canDrawOverlays,
                 onClick = onOpenOverlayPermissionSettings,
+                missingActionLabel = stringResource(R.string.settings_grant),
+            )
+            SettingsAccessRow(
+                title = stringResource(R.string.settings_app_profile_accessibility),
+                description = stringResource(R.string.settings_app_profile_accessibility_description),
+                granted = hasAppProfileAccessibilityAccess,
+                onClick = onOpenAppProfileAccessibilitySettings,
                 missingActionLabel = stringResource(R.string.settings_grant),
             )
             SettingsAccessRow(

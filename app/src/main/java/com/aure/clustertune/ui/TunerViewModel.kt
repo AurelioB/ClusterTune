@@ -137,7 +137,6 @@ class TunerViewModel(
                         transientMessage.value = buildAppliedMessage(profile, it.commandOutput)
                         transientError.value = null
                         finishApplyingProfile(applyingUiToken)
-                        onApplied?.invoke()
                     },
                 )
                 result.onSuccess {
@@ -147,6 +146,7 @@ class TunerViewModel(
                         profileName = profile.name,
                         trigger = "Manual apply from Profiles tab",
                     )
+                    onApplied?.invoke()
                 }.onFailure {
                     if (it !is PerformanceRepository.SupersededManualApplyException &&
                         PerformanceRepository.isManualRequestCurrent(manualRequestToken)) {
@@ -201,7 +201,6 @@ class TunerViewModel(
                         buildVerificationFailureMessage(state, outcome.actualValues, outcome.commandOutput)
                     }
                     transientError.value = null
-                    onApplied(appliedProfile?.name ?: "Custom values")
                 },
             )
             if (applyResult.isFailure) {
@@ -218,6 +217,7 @@ class TunerViewModel(
                     profileName = appliedProfile?.name ?: "Manual",
                     trigger = "Manual apply from Profiles tab",
                 )
+                onApplied(appliedProfile?.name ?: "Custom values")
             }
         }
     }
@@ -306,13 +306,6 @@ class TunerViewModel(
 
     suspend fun deleteAppProfileAssignmentAwait(packageName: String) {
         repository.deleteAppProfileAssignment(packageName)
-    }
-
-    suspend fun applyAppProfileTemporarily(assignment: AppProfileAssignment): Result<PerformanceRepository.ApplyOutcome> =
-        repository.applyAppProfileTemporarily(assignment)
-
-    suspend fun logProfileSwitchAwait(profileId: String?, profileName: String, trigger: String) {
-        repository.logProfileSwitch(profileId, profileName, trigger)
     }
 
     fun deleteAppProfileAssignment(packageName: String) {

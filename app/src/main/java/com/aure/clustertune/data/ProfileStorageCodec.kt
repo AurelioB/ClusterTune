@@ -4,6 +4,8 @@ import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileSwitchHistoryEntry
 import com.aure.clustertune.model.ProfileSource
+import com.aure.clustertune.model.EffectiveProfileSource
+import com.aure.clustertune.model.EffectiveProfileState
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -77,6 +79,38 @@ object ProfileStorageCodec {
     fun parseStringList(raw: String?): List<String> {
         if (raw.isNullOrBlank()) return emptyList()
         return runCatching { json.decodeFromString<List<String>>(raw) }.getOrDefault(emptyList())
+    }
+
+    fun encodeEffectiveProfileState(state: EffectiveProfileState): String = json.encodeToString(
+        StoredEffectiveProfileState(
+            id = state.id,
+            name = state.name,
+            source = state.source.name,
+            contributingPackageNames = state.contributingPackageNames.distinct().sorted(),
+            timestampMillis = state.timestampMillis,
+            generation = state.generation,
+        ),
+    )
+
+    fun parseEffectiveProfileState(raw: String?): EffectiveProfileState? {
+        if (raw.isNullOrBlank()) return null
+        return runCatching {
+            json.decodeFromString<StoredEffectiveProfileState>(raw).let { value ->
+                val id = value.id.trim()
+                val name = value.name.trim()
+                if (id.isBlank() || name.isBlank()) return@runCatching null
+                EffectiveProfileState(
+                    id = id,
+                    name = name,
+                    source = runCatching { EffectiveProfileSource.valueOf(value.source) }
+                        .getOrDefault(EffectiveProfileSource.NORMAL),
+                    contributingPackageNames = value.contributingPackageNames.map(String::trim)
+                        .filter(String::isNotBlank).distinct(),
+                    timestampMillis = value.timestampMillis.coerceAtLeast(0L),
+                    generation = value.generation.coerceAtLeast(0L),
+                )
+            }
+        }.getOrNull()
     }
 
     fun encodeAppProfileAssignments(assignments: List<AppProfileAssignment>): String {
@@ -186,5 +220,15 @@ object ProfileStorageCodec {
         val profileId: String? = null,
         val profileName: String,
         val trigger: String,
+    )
+
+    @Serializable
+    private data class StoredEffectiveProfileState(
+        val id: String,
+        val name: String,
+        val source: String = EffectiveProfileSource.NORMAL.name,
+        val contributingPackageNames: List<String> = emptyList(),
+        val timestampMillis: Long = 0L,
+        val generation: Long = 0L,
     )
 }

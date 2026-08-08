@@ -75,12 +75,16 @@
         </service>
 
         <service
-            android:name=".apps.AppProfileMonitorService"
-            android:exported="false"
-            android:foregroundServiceType="specialUse">
-            <property
-                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="User-enabled CPU profile automation for focused apps" />
+            android:name=".apps.AppProfileAccessibilityService"
+            android:exported="true"
+            android:label="@string/app_profile_accessibility_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/app_profile_accessibility_service" />
         </service>
 
         <service

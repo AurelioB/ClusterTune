@@ -32,6 +32,10 @@ class AppContainer(context: Context) {
         InstalledAppRepository(appContext)
     }
 
+    val profileStorage: ProfileStorage by lazy {
+        ProfileStorage(appContext)
+    }
+
     // Keep the repository delegate ahead of init so startup work can never observe a partially
     // initialized dependency graph when a container is created by a background component.
     val repository: PerformanceRepository by lazy {
@@ -42,7 +46,7 @@ class AppContainer(context: Context) {
                 ceilingStore = SharedPreferencesGpuCeilingStore(appContext),
             ),
             bundledProfileProvider = BundledProfileProvider(appContext),
-            profileStorage = ProfileStorage(appContext),
+            profileStorage = profileStorage,
             settingsStorage = settingsStorage,
             hostClient = ClusterTuneHostClient(appContext, privilegedExecutionResolver),
         )

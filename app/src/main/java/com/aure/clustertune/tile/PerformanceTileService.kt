@@ -14,12 +14,15 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
 import com.aure.clustertune.AppContainer
+import com.aure.clustertune.data.ProfileStorage
 import com.aure.clustertune.R
 import com.aure.clustertune.TileControlActivity
 import com.aure.clustertune.model.AppSettings
+import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.model.TileInteractionBehavior
-import com.aure.clustertune.model.TunerState
+import com.aure.clustertune.model.EffectiveProfileSource
+import com.aure.clustertune.model.EffectiveProfileState
 import com.aure.clustertune.overlay.OverlayPermission
 import com.aure.clustertune.overlay.OverlayHostService
 import com.aure.clustertune.ui.SingleToast
@@ -34,16 +37,28 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.lang.ref.WeakReference
 
-internal fun resolveTileProfileId(state: TunerState): String? {
-    fun isKnownProfile(id: String): Boolean {
-        return id == ProfileStateResolver.MANUAL_PROFILE_ID ||
-            id == ProfileStateResolver.STOCK_PROFILE_ID ||
-            state.displayProfiles.any { profile -> profile.id == id }
+internal fun resolveEffectiveTileState(
+    effective: EffectiveProfileState?,
+    storedProfiles: List<PerformanceProfile>,
+    fallbackId: String?,
+): EffectiveProfileState? {
+    if (effective != null) return effective
+    return when (fallbackId) {
+        ProfileStateResolver.STOCK_PROFILE_ID -> EffectiveProfileState(
+            id = fallbackId,
+            name = "Stock",
+            source = EffectiveProfileSource.STOCK,
+        )
+        ProfileStateResolver.MANUAL_PROFILE_ID -> EffectiveProfileState(
+            id = fallbackId,
+            name = "Manual",
+            source = EffectiveProfileSource.MANUAL,
+        )
+        null -> null
+        else -> storedProfiles.firstOrNull { it.id == fallbackId }?.let { profile ->
+            EffectiveProfileState(profile.id, profile.name, EffectiveProfileSource.NORMAL)
+        }
     }
-
-    return state.activeDisplayProfileId
-        ?.takeIf(::isKnownProfile)
-        ?: state.lastAppliedDisplayProfileId?.takeIf(::isKnownProfile)
 }
 
 internal enum class TileTapAction {
@@ -138,15 +153,22 @@ class PerformanceTileService : TileService() {
             runCatching {
                 val (state, settings) = withContext(Dispatchers.IO) {
                     val settings = container.settingsStorage.settings.first()
-                    container.privilegedExecutionResolver.setConfiguredMethodId(settings.privilegedExecutionMethodId)
-                    container.repository.observeState().first() to settings
+                    val storage = ProfileStorage(applicationContext)
+                    val effective = storage.effectiveProfileState.first()
+                    val profiles = storage.profiles.first()
+                    val fallbackId = effective?.id
+                        ?: storage.lastAppliedDisplayProfileId.first()
+                        ?: storage.selectedProfileId.first()
+                    Triple(effective, profiles, fallbackId) to settings
                 }
                 cachedTileTapBehavior = settings.tileTapBehavior
-                val presentation = buildTilePresentation(state, settings)
+                val (effective, profiles, fallbackId) = state
+                val resolved = resolveEffectiveTileState(effective, profiles, fallbackId)
+                val presentation = buildTilePresentation(resolved, settings)
                 qsTile?.apply {
                     label = presentation.label
                     subtitle = presentation.subtitle
-                    this.state = buildTileVisualState(state)
+                    this.state = buildTileVisualState(resolved)
                     updateTile()
                 }
             }.onFailure { throwable ->
@@ -173,14 +195,14 @@ class PerformanceTileService : TileService() {
         val subtitle: String,
     )
 
-    private fun buildTilePresentation(state: TunerState, settings: AppSettings): TilePresentation {
-        if (!state.isPrivilegedHostAvailable) {
+    private fun buildTilePresentation(state: EffectiveProfileState?, settings: AppSettings): TilePresentation {
+        if (state == null) {
             return TilePresentation(
                 label = getString(R.string.tile_title),
                 subtitle = getString(R.string.tile_state_unavailable),
             )
         }
-        val currentName = effectiveTileProfileName(state) ?: getString(R.string.tile_state_manual)
+        val currentName = state.name
         if (settings.tileTapBehavior != TileInteractionBehavior.CYCLE_PROFILES) {
             return TilePresentation(
                 label = getString(R.string.tile_title),
@@ -193,25 +215,10 @@ class PerformanceTileService : TileService() {
         )
     }
 
-    private fun buildTileVisualState(state: TunerState): Int {
-        if (!state.isPrivilegedHostAvailable) return Tile.STATE_INACTIVE
-        val activeProfileId = effectiveTileProfileId(state)
-        val activeName = effectiveTileProfileName(state)
-        val stockIsActive = activeProfileId == ProfileStateResolver.STOCK_PROFILE_ID || activeName == "Stock"
+    private fun buildTileVisualState(state: EffectiveProfileState?): Int {
+        if (state == null) return Tile.STATE_INACTIVE
+        val stockIsActive = state.source == EffectiveProfileSource.STOCK || state.id == ProfileStateResolver.STOCK_PROFILE_ID || state.name == "Stock"
         return if (stockIsActive) Tile.STATE_INACTIVE else Tile.STATE_ACTIVE
-    }
-
-    private fun effectiveTileProfileId(state: TunerState): String? {
-        return resolveTileProfileId(state)
-    }
-
-    private fun effectiveTileProfileName(state: TunerState): String? {
-        val effectiveId = effectiveTileProfileId(state)
-        if (effectiveId == ProfileStateResolver.MANUAL_PROFILE_ID) {
-            return getString(R.string.tile_state_manual)
-        }
-        return state.displayProfiles.firstOrNull { it.id == effectiveId }?.name
-            ?: state.activeDisplayProfileName
     }
 
     private fun persistTileAddedState(isAdded: Boolean) {

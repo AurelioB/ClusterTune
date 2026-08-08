@@ -1,6 +1,8 @@
 package com.aure.clustertune.data
 
 import android.util.Log
+import com.aure.clustertune.apps.CombinedAppProfileResolver
+import com.aure.clustertune.apps.VisibleAppProfileTarget
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.CpuPolicyInfo
 import com.aure.clustertune.model.DEFAULT_PROFILE_SWITCH_HISTORY_LIMIT
@@ -12,6 +14,8 @@ import com.aure.clustertune.model.ProfileSwitchHistoryEntry
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.model.ProfileSource
 import com.aure.clustertune.model.TunerState
+import com.aure.clustertune.model.EffectiveProfileSource
+import com.aure.clustertune.model.EffectiveProfileState
 import com.aure.clustertune.root.host.ApplyRequest
 import com.aure.clustertune.root.host.ClusterTuneHostClient
 import com.aure.clustertune.root.host.HostState
@@ -54,6 +58,12 @@ private data class PartialStorageState(
 
 internal data class ResolvedPerformanceTarget(val values: Map<Int, Int>, val profileId: String?, val isReset: Boolean, val gpuValue: Int? = null)
 
+private data class SleepRestoreApply(
+    val result: Result<PerformanceRepository.ApplyOutcome>,
+    val profileId: String?,
+    val effectiveProfileState: EffectiveProfileState?,
+)
+
 internal data class ImportedProfileMerge(
     val profiles: List<PerformanceProfile>,
     val restoredBundledProfileIds: Set<String>,
@@ -88,6 +98,20 @@ class PerformanceRepository(
         val verificationPassed: Boolean,
         val commandOutput: String?,
         val actualGpuMaxFrequencyHz: Int? = null,
+    )
+
+    data class AppProfileApplyOutcome(
+        val hardware: ApplyOutcome,
+        val profileId: String,
+        val profileName: String,
+        val contributingPackages: List<String>,
+        val isCombined: Boolean,
+    )
+
+    data class TemporaryRestoreOutcome(
+        val hardware: ApplyOutcome,
+        val profileId: String,
+        val profileName: String,
     )
 
     private val liveRefreshToken = MutableStateFlow(0)
@@ -503,6 +527,7 @@ class PerformanceRepository(
                     state.activeDisplayProfileId ?: state.lastAppliedDisplayProfileId,
                     currentGpu,
                     gpuKnown = gpuPolicy != null && currentGpu != null,
+                    effectiveProfileState = profileStorage.effectiveProfileState.first(),
                 )
             }
             val sleepGpuTarget = if (currentGpu == null) null else sleepProfile.gpuMaxFrequencyHz
@@ -515,17 +540,19 @@ class PerformanceRepository(
                 profileId = sleepProfile.id,
                 profileName = sleepProfile.name,
                 trigger = "Device sleep",
+                effectiveSource = EffectiveProfileSource.SLEEP,
             )
         }
         return result
     }
 
     suspend fun restorePreSleepState(): Result<ApplyOutcome> {
-        val resultAndName = processApplyMutex.withLock {
+        val resultAndIdentity = processApplyMutex.withLock {
             val state = observeState().first()
             if (!state.isPrivilegedHostAvailable) {
-                return@withLock Pair<Result<ApplyOutcome>, String?>(
+                return@withLock SleepRestoreApply(
                     Result.failure(IllegalStateException("Privileged host unavailable")),
+                    null,
                     null,
                 )
             }
@@ -539,15 +566,17 @@ class PerformanceRepository(
             // could overwrite a profile selected after the first wake.
             if (restoreValues.isEmpty()) return@withLock null
             val restoreProfileId = profileStorage.sleepRestoreDisplayProfileId.first()
+            val restoreEffectiveState = profileStorage.sleepRestoreEffectiveProfileState.first()
             val restoreGpu = profileStorage.sleepRestoreGpuValue.first()
             val restoreGpuKnown = profileStorage.sleepRestoreGpuKnown.first()
             // A known GPU domain with no snapshotted value is unresolved, not
             // a wildcard. Keep the snapshot so a later capability refresh can
             // restore it instead of stranding the sleep cap as "completed".
             if (restoreGpuKnown && (state.gpuPolicy == null || restoreGpu == null)) {
-                return@withLock Pair<Result<ApplyOutcome>, String?>(
+                return@withLock SleepRestoreApply(
                     Result.failure(IllegalStateException("GPU restore state is unavailable")),
                     null,
+                    restoreEffectiveState,
                 )
             }
             val target = resolvePersistedTarget(policies, state.displayProfiles, restoreProfileId, restoreValues, restoreGpu)
@@ -563,11 +592,12 @@ class PerformanceRepository(
                 selectedGpuMaxFrequencyHz = restoreGpu,
             )
                 .onSuccess { profileStorage.clearSleepRestoreState() }
-            result to target.profileId
+            SleepRestoreApply(result, target.profileId, restoreEffectiveState)
         } ?: return Result.failure(IllegalStateException("No valid sleep restore state"))
-        val result = resultAndName.first
-        val restoreProfileId = resultAndName.second
-        val restoreProfileName = when (restoreProfileId) {
+        val result = resultAndIdentity.result
+        val restoreProfileId = resultAndIdentity.profileId
+        val persistedEffective = resultAndIdentity.effectiveProfileState
+        val restoreProfileName = persistedEffective?.name ?: when (restoreProfileId) {
             ProfileStateResolver.STOCK_PROFILE_ID -> "Stock"
             null,
             ProfileStateResolver.MANUAL_PROFILE_ID -> "Manual"
@@ -577,16 +607,23 @@ class PerformanceRepository(
         }
         if (result.isSuccess) {
             logProfileSwitch(
-                profileId = restoreProfileId ?: ProfileStateResolver.MANUAL_PROFILE_ID,
+                profileId = persistedEffective?.id ?: restoreProfileId ?: ProfileStateResolver.MANUAL_PROFILE_ID,
                 profileName = restoreProfileName,
                 trigger = "Device wake",
+                effectiveSource = persistedEffective?.source ?: when (restoreProfileId) {
+                    ProfileStateResolver.STOCK_PROFILE_ID -> EffectiveProfileSource.STOCK
+                    ProfileStateResolver.MANUAL_PROFILE_ID, null -> EffectiveProfileSource.MANUAL
+                    else -> EffectiveProfileSource.NORMAL
+                },
+                contributingPackageNames = persistedEffective?.contributingPackageNames.orEmpty(),
             )
         }
         return result
     }
 
     suspend fun applyPersistedLastValuesOnBoot(): Result<ApplyOutcome> {
-        return processApplyMutex.withLock {
+        var effectiveIdentity: Pair<String, String>? = null
+        val result = processApplyMutex.withLock {
             val state = observeState().first()
             if (!state.isPrivilegedHostAvailable) {
                 return@withLock Result.failure(IllegalStateException("Privileged host unavailable"))
@@ -607,8 +644,21 @@ class PerformanceRepository(
                 gpuStockFallback = state.gpuPolicy?.observedMaxFrequencyHz,
             ) ?: return@withLock Result.failure(IllegalStateException("No valid stored values to apply"))
             if (target.profileId == ProfileStateResolver.STOCK_PROFILE_ID) {
+                // Stock is already the device baseline; still refresh the
+                // persisted identity so the tile cannot retain a stale app
+                // override after a reboot.
+                profileStorage.persistEffectiveProfileState(
+                    EffectiveProfileState(
+                        id = ProfileStateResolver.STOCK_PROFILE_ID,
+                        name = "Stock",
+                        source = EffectiveProfileSource.STOCK,
+                    ),
+                )
                 return@withLock Result.failure(IllegalStateException("Boot apply skipped: stock is active"))
             }
+            effectiveIdentity = target.profileId?.let { id ->
+                id to (state.displayProfiles.firstOrNull { profile -> profile.id == id }?.name ?: "Manual")
+            } ?: (ProfileStateResolver.MANUAL_PROFILE_ID to "Manual")
             applyValuesLocked(
                 policies,
                 target.values,
@@ -620,6 +670,17 @@ class PerformanceRepository(
                 selectedGpuMaxFrequencyHz = target.gpuValue,
             )
         }
+        if (result.isSuccess) {
+            val (id, name) = effectiveIdentity ?: (ProfileStateResolver.MANUAL_PROFILE_ID to "Manual")
+            profileStorage.persistEffectiveProfileState(
+                EffectiveProfileState(
+                    id = id,
+                    name = name,
+                    source = if (id == ProfileStateResolver.MANUAL_PROFILE_ID) EffectiveProfileSource.MANUAL else EffectiveProfileSource.NORMAL,
+                ),
+            )
+        }
+        return result
     }
 
     suspend fun cycleTileProfile(): Result<PerformanceProfile> {
@@ -658,6 +719,11 @@ class PerformanceRepository(
                 profileId = nextProfile.id,
                 profileName = nextProfile.name,
                 trigger = "Quick Settings tile",
+                effectiveSource = if (nextProfile.id == ProfileStateResolver.STOCK_PROFILE_ID) {
+                    EffectiveProfileSource.STOCK
+                } else {
+                    EffectiveProfileSource.NORMAL
+                },
             )
             nextProfile
         }
@@ -756,6 +822,10 @@ class PerformanceRepository(
         if (profileStorage.selectedProfileId.first() == profileId) {
             profileStorage.persistSelectedProfile(null)
         }
+        // The event-driven app-profile coordinator consumes assignments
+        // directly, so never leave an assignment pointing at a deleted
+        // profile.
+        profileStorage.deleteAppProfileAssignmentsForProfile(profileId)
     }
 
     suspend fun saveAppProfileAssignment(assignment: AppProfileAssignment) {
@@ -795,67 +865,106 @@ class PerformanceRepository(
         profileStorage.deleteAppProfileAssignment(packageName)
     }
 
-    suspend fun applyProfileTemporarily(profileId: String): Result<ApplyOutcome> {
+    /** Applies the least restrictive envelope requested by every assigned app currently visible. */
+    suspend fun applyVisibleAppProfilesTemporarily(
+        assignments: List<AppProfileAssignment>,
+    ): Result<AppProfileApplyOutcome> {
         return processApplyMutex.withLock {
-            val state = observeState().first()
-            if (!state.isPrivilegedHostAvailable || state.policies.isEmpty()) return@withLock Result.failure(IllegalStateException("Profile automation is unavailable"))
-            ensureNormalBaselineLocked(state)
-            val profile = state.displayProfiles.firstOrNull { it.id == profileId }
-                ?: return@withLock Result.failure(IllegalStateException("App profile is unavailable"))
-            // Legacy CPU-only profiles resolve an unspecified GPU domain to Stock
-            // so a prior temporary GPU cap cannot leak across assignments.
-            val profileGpu = resolveAppProfileGpuTarget(false, profile.gpuMaxFrequencyHz, state.gpuPolicy?.observedMaxFrequencyHz, null)
-            applyValuesLocked(
-                state.policies,
-                profile.maxFrequencies,
-                profile.id == ProfileStateResolver.STOCK_PROFILE_ID,
-                profile.id,
-                false,
-                gpuPolicy = state.gpuPolicy,
-                selectedGpuMaxFrequencyHz = profileGpu,
-            )
-        }
-    }
-
-    suspend fun applyAppProfileTemporarily(assignment: AppProfileAssignment): Result<ApplyOutcome> {
-        return processApplyMutex.withLock {
-            val state = observeState().first()
-            if (!state.isPrivilegedHostAvailable || state.policies.isEmpty()) return@withLock Result.failure(IllegalStateException("Profile automation is unavailable"))
-            ensureNormalBaselineLocked(state)
-            val values = if (assignment.isCustom) assignment.customMaxFrequencies else {
-                val profile = state.displayProfiles.firstOrNull { it.id == assignment.profileId }
-                    ?: return@withLock Result.failure(IllegalStateException("App profile is unavailable"))
-                profile.maxFrequencies
+            val uniqueAssignments = assignments
+                .filter { it.hasValidTarget && it.packageName.isNotBlank() }
+                .distinctBy { it.packageName }
+                .sortedBy { it.packageName }
+            if (uniqueAssignments.isEmpty()) {
+                return@withLock Result.failure(IllegalArgumentException("No visible app profiles"))
             }
-            val filteredValues = values.filterKeys { policyId -> state.policies.any { it.id == policyId } }
-            if (filteredValues.isEmpty() && assignment.customGpuMaxFrequencyHz == null) return@withLock Result.failure(IllegalStateException("App profile has no matching CPU policies"))
-            val completeValues = if (assignment.isCustom) {
-                mergeCustomValues(state.policies, filteredValues, profileStorage.lastValues.first())
-                    ?: return@withLock Result.failure(IllegalStateException("App profile has invalid CPU policies"))
-            } else filteredValues
-            val profileGpu = state.gpuPolicy?.let {
-                resolveAppProfileGpuTarget(
-                    assignment.isCustom,
-                    if (assignment.isCustom) assignment.customGpuMaxFrequencyHz
-                    else state.displayProfiles.firstOrNull { it.id == assignment.profileId }?.gpuMaxFrequencyHz,
-                    it.observedMaxFrequencyHz,
-                    profileStorage.lastGpuValue.first(),
+
+            val state = observeState().first()
+            if (!state.isPrivilegedHostAvailable || state.policies.isEmpty()) {
+                return@withLock Result.failure(IllegalStateException("Profile automation is unavailable"))
+            }
+            ensureNormalBaselineLocked(state)
+            val normalCpu = profileStorage.lastValues.first()
+            val normalGpu = profileStorage.lastGpuValue.first()
+            val targets = uniqueAssignments.map { assignment ->
+                if (assignment.isCustom) {
+                    val cpu = assignment.customMaxFrequencies.filterKeys { policyId ->
+                        state.policies.any { it.id == policyId }
+                    }
+                    VisibleAppProfileTarget(
+                        packageName = assignment.packageName,
+                        appLabel = assignment.appLabel,
+                        profileId = null,
+                        profileName = "Custom",
+                        cpuMaxFrequencies = cpu,
+                        gpuMaxFrequencyHz = assignment.customGpuMaxFrequencyHz,
+                    )
+                } else {
+                    val profile = state.displayProfiles.firstOrNull { it.id == assignment.profileId }
+                        ?: return@withLock Result.failure(IllegalStateException("App profile is unavailable"))
+                    VisibleAppProfileTarget(
+                        packageName = assignment.packageName,
+                        appLabel = assignment.appLabel,
+                        profileId = profile.id,
+                        profileName = profile.name,
+                        cpuMaxFrequencies = profile.maxFrequencies,
+                        gpuMaxFrequencyHz = resolveAppProfileGpuTarget(
+                            isCustom = false,
+                            explicitGpu = profile.gpuMaxFrequencyHz,
+                            observedGpu = state.gpuPolicy?.observedMaxFrequencyHz,
+                            normalBaselineGpu = normalGpu,
+                        ),
+                    )
+                }
+            }
+            val combined = CombinedAppProfileResolver.resolve(targets, state.displayProfiles)
+            val completeCpu = state.policies.associate { policy ->
+                val value = combined.cpuMaxFrequencies[policy.id] ?: normalCpu[policy.id]
+                    ?: return@withLock Result.failure(IllegalStateException("Normal CPU baseline is unavailable"))
+                policy.id to value
+            }
+            val gpuTarget = state.gpuPolicy?.let {
+                combined.gpuMaxFrequencyHz ?: normalGpu ?: it.observedMaxFrequencyHz
+            }
+            val isStock = state.policies.all { policy ->
+                completeCpu[policy.id] == policy.observedMaxFreq
+            } && (state.gpuPolicy == null || gpuTarget == state.gpuPolicy.observedMaxFrequencyHz)
+            val presentation = combined.presentation
+                ?: return@withLock Result.failure(IllegalStateException("Unable to resolve visible app profiles"))
+            val isCombined = presentation.isCombined
+            val profileId = presentation.id ?: if (isCombined) {
+                CombinedAppProfileResolver.COMBINED_PROFILE_ID
+            } else {
+                "app:${combined.contributors.single().packageName}"
+            }
+            val result = applyValuesLocked(
+                policies = state.policies,
+                selectedValues = completeCpu,
+                isReset = isStock,
+                appliedDisplayProfileId = profileId,
+                persistNormalState = false,
+                allowObservedMaxValues = completeCpu.any { (policyId, value) ->
+                    state.policies.firstOrNull { it.id == policyId }?.observedMaxFreq == value
+                },
+                gpuPolicy = state.gpuPolicy,
+                selectedGpuMaxFrequencyHz = gpuTarget,
+            )
+            result.map { hardware ->
+                AppProfileApplyOutcome(
+                    hardware = hardware,
+                    profileId = profileId,
+                    profileName = presentation.name,
+                    contributingPackages = combined.contributors.map { it.packageName },
+                    isCombined = isCombined,
                 )
             }
-            applyValuesLocked(
-                policies = state.policies,
-                selectedValues = completeValues,
-                isReset = !assignment.isCustom && assignment.profileId == ProfileStateResolver.STOCK_PROFILE_ID,
-                appliedDisplayProfileId = assignment.profileId,
-                persistNormalState = false,
-                allowObservedMaxValues = assignment.isCustom,
-                gpuPolicy = state.gpuPolicy,
-                selectedGpuMaxFrequencyHz = profileGpu,
-            )
         }
     }
 
     suspend fun restoreNormalProfileTemporarily(): Result<ApplyOutcome> {
+        return restoreNormalProfileTemporarilyWithIdentity().map { it.hardware }
+    }
+
+    suspend fun restoreNormalProfileTemporarilyWithIdentity(): Result<TemporaryRestoreOutcome> {
         return processApplyMutex.withLock {
             val state = observeState().first()
             if (!state.isPrivilegedHostAvailable || state.policies.isEmpty()) return@withLock Result.failure(IllegalStateException("Profile automation is unavailable"))
@@ -864,7 +973,7 @@ class PerformanceRepository(
             val values = profileStorage.lastValues.first()
             val target = resolvePersistedTarget(state.policies, state.displayProfiles, id, values, profileStorage.lastGpuValue.first(), gpuStockFallback = state.gpuPolicy?.observedMaxFrequencyHz)
                 ?: return@withLock Result.failure(IllegalStateException("No previous profile to restore"))
-            applyValuesLocked(
+            val result = applyValuesLocked(
                 state.policies,
                 target.values,
                 target.isReset,
@@ -874,6 +983,15 @@ class PerformanceRepository(
                 gpuPolicy = state.gpuPolicy,
                 selectedGpuMaxFrequencyHz = target.gpuValue,
             )
+            result.map { hardware ->
+                val profileId = target.profileId ?: ProfileStateResolver.MANUAL_PROFILE_ID
+                val profileName = when (profileId) {
+                    ProfileStateResolver.STOCK_PROFILE_ID -> "Stock"
+                    ProfileStateResolver.MANUAL_PROFILE_ID -> "Manual"
+                    else -> state.displayProfiles.firstOrNull { it.id == profileId }?.name ?: "Previous profile"
+                }
+                TemporaryRestoreOutcome(hardware, profileId, profileName)
+            }
         }
     }
 
@@ -909,7 +1027,35 @@ class PerformanceRepository(
         profileStorage.persistNormalProfileState(fallback.values, fallback.profileId, state.gpuPolicy?.observedMaxFrequencyHz)
     }
 
-    suspend fun logProfileSwitch(profileId: String?, profileName: String, trigger: String) {
+    /**
+     * Records a successful transition.  Persist the lightweight effective
+     * identity before writing history so event-driven consumers (notably the
+     * Quick Settings tile) always observe the new state first.
+     *
+     * Callers which represent a non-standard source (app/composite/sleep)
+     * should pass it explicitly.  The default keeps legacy/manual call sites
+     * deterministic while they migrate.
+     */
+    suspend fun logProfileSwitch(
+        profileId: String?,
+        profileName: String,
+        trigger: String,
+        effectiveSource: EffectiveProfileSource? = null,
+        contributingPackageNames: List<String> = emptyList(),
+    ) {
+        val source = effectiveSource ?: when (profileId) {
+            ProfileStateResolver.STOCK_PROFILE_ID -> EffectiveProfileSource.STOCK
+            ProfileStateResolver.MANUAL_PROFILE_ID, null -> EffectiveProfileSource.MANUAL
+            else -> EffectiveProfileSource.NORMAL
+        }
+        profileStorage.persistEffectiveProfileState(
+            EffectiveProfileState(
+                id = profileId ?: ProfileStateResolver.MANUAL_PROFILE_ID,
+                name = profileName,
+                source = source,
+                contributingPackageNames = contributingPackageNames,
+            ),
+        )
         val limit = settingsStorage.settings.first().profileSwitchHistoryLimit
             .coerceIn(MIN_PROFILE_SWITCH_HISTORY_LIMIT, MAX_PROFILE_SWITCH_HISTORY_LIMIT)
         profileStorage.appendProfileSwitchHistory(

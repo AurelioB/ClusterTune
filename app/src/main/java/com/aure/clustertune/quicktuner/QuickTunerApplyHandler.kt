@@ -71,7 +71,6 @@ class QuickTunerApplyHandler(
             appliedDisplayProfileId = profileId,
             onHardwareApplied = {
                 showToast(displayName, Toast.LENGTH_SHORT)
-                refreshTile()
             },
         )
 
@@ -82,6 +81,7 @@ class QuickTunerApplyHandler(
                     profileName = profileName,
                     trigger = trigger,
                 )
+                refreshTile()
                 Result.success(Unit)
             },
             onFailure = { throwable ->
@@ -101,7 +101,6 @@ class QuickTunerApplyHandler(
             appliedDisplayProfileId = profile.id,
             onHardwareApplied = {
                 showToast(profile.name, Toast.LENGTH_SHORT)
-                refreshTile()
             },
         )
 
@@ -112,6 +111,7 @@ class QuickTunerApplyHandler(
                     profileName = profile.name,
                     trigger = "Quick Settings picker",
                 )
+                refreshTile()
                 Result.success(Unit)
             },
             onFailure = { throwable ->

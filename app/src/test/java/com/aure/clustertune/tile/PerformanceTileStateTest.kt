@@ -1,38 +1,49 @@
 package com.aure.clustertune.tile
 
+import com.aure.clustertune.model.EffectiveProfileSource
+import com.aure.clustertune.model.EffectiveProfileState
 import com.aure.clustertune.model.PerformanceProfile
+import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.model.ProfileSource
 import com.aure.clustertune.model.TileInteractionBehavior
-import com.aure.clustertune.model.TunerState
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class PerformanceTileStateTest {
 
     @Test
-    fun `temporary active profile wins over persisted normal profile`() {
+    fun `persisted effective app profile wins over the normal fallback`() {
         val normal = profile("normal")
-        val temporary = profile("temporary")
-
-        val state = TunerState(
-            displayProfiles = listOf(normal, temporary),
-            activeDisplayProfileId = temporary.id,
-            lastAppliedDisplayProfileId = normal.id,
+        val effective = EffectiveProfileState(
+            id = "app:game",
+            name = "Custom",
+            source = EffectiveProfileSource.APP,
+            contributingPackageNames = listOf("game"),
         )
 
-        assertEquals(temporary.id, resolveTileProfileId(state))
+        assertEquals(effective, resolveEffectiveTileState(effective, listOf(normal), normal.id))
     }
 
     @Test
-    fun `persisted profile is used when active profile is unavailable`() {
+    fun `stored profile is used to migrate a missing effective state`() {
         val normal = profile("normal")
-        val state = TunerState(
-            displayProfiles = listOf(normal),
-            activeDisplayProfileId = "missing",
-            lastAppliedDisplayProfileId = normal.id,
-        )
 
-        assertEquals(normal.id, resolveTileProfileId(state))
+        assertEquals(
+            EffectiveProfileState(normal.id, normal.name, EffectiveProfileSource.NORMAL),
+            resolveEffectiveTileState(null, listOf(normal), normal.id),
+        )
+    }
+
+    @Test
+    fun `stock and manual fallbacks do not require stored profile rows`() {
+        assertEquals(
+            EffectiveProfileSource.STOCK,
+            resolveEffectiveTileState(null, emptyList(), ProfileStateResolver.STOCK_PROFILE_ID)?.source,
+        )
+        assertEquals(
+            EffectiveProfileSource.MANUAL,
+            resolveEffectiveTileState(null, emptyList(), ProfileStateResolver.MANUAL_PROFILE_ID)?.source,
+        )
     }
 
     @Test

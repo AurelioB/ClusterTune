@@ -32,11 +32,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import com.aure.clustertune.apps.AppProfileMonitorService
 import com.aure.clustertune.overlay.OverlayHostService
 import com.aure.clustertune.overlay.OverlayPermission
 import com.aure.clustertune.permissions.AppAccess
 import com.aure.clustertune.permissions.AppAccessStatus
+import com.aure.clustertune.permissions.AppProfileAccessibilityAccess
+import com.aure.clustertune.permissions.UsageStatsAccess
 import com.aure.clustertune.permissions.missingAppAccess
 import com.aure.clustertune.sleep.SleepProfileMonitorService
 import com.aure.clustertune.tile.QuickSettingsTileAddResult
@@ -90,7 +91,6 @@ class MainActivity : ComponentActivity() {
                 if (settings.sleepProfileEnabled) {
                     SleepProfileMonitorService.start(this@MainActivity)
                 }
-                maybeStartAppProfileMonitor()
             }
         }
     }
@@ -101,7 +101,6 @@ class MainActivity : ComponentActivity() {
         maybeAutoDetectPrivilegedExecutionOnFirstRun()
         maybeCheckForUpdatesOnLaunch()
         maybeStartSleepProfileMonitor()
-        maybeStartAppProfileMonitor()
 
         setContent {
             val settings = viewModel.settings.collectAsStateWithLifecycle().value
@@ -132,7 +131,10 @@ class MainActivity : ComponentActivity() {
                         OverlayPermission.canDrawOverlays(this@MainActivity)
                     }
                     val hasUsageAccess = remember(permissionRefresh) {
-                        AppProfileMonitorService.hasUsageStatsPermission(this@MainActivity)
+                        UsageStatsAccess.isEnabled(this@MainActivity)
+                    }
+                    val hasAppProfileAccessibilityAccess = remember(permissionRefresh) {
+                        AppProfileAccessibilityAccess.isEnabled(this@MainActivity)
                     }
                     val hasNotificationAccess = remember(permissionRefresh) {
                         NotificationManagerCompat.from(this@MainActivity)
@@ -144,6 +146,7 @@ class MainActivity : ComponentActivity() {
                     val missingAccess = missingAppAccess(
                         AppAccessStatus(
                             overlayGranted = canDrawOverlays,
+                            accessibilityGranted = hasAppProfileAccessibilityAccess,
                             usageGranted = hasUsageAccess,
                             notificationsGranted = hasNotificationAccess,
                         ),
@@ -202,6 +205,10 @@ class MainActivity : ComponentActivity() {
                             onOpenUsageAccessSettings = {
                                 startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
                             },
+                            hasAppProfileAccessibilityAccess = hasAppProfileAccessibilityAccess,
+                            onOpenAppProfileAccessibilitySettings = {
+                                startActivity(AppProfileAccessibilityAccess.settingsIntent())
+                            },
                             hasNotificationAccess = hasNotificationAccess,
                             onOpenNotificationSettings = {
                                 startActivity(
@@ -232,13 +239,13 @@ class MainActivity : ComponentActivity() {
                                                 OverlayPermission.createSettingsIntent(this@MainActivity),
                                             )
                                         }
-                                        !hasUsageAccess -> {
+                                        !hasAppProfileAccessibilityAccess -> {
                                             SingleToast.show(
                                                 this@MainActivity,
-                                                "Grant Usage Access to identify the current app",
+                                                "Enable accessibility access for app profiles",
                                                 Toast.LENGTH_LONG,
                                             )
-                                            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                                            startActivity(AppProfileAccessibilityAccess.settingsIntent())
                                         }
                                         else -> OverlayHostService.showEdgeHandle(this@MainActivity)
                                     }
@@ -298,7 +305,6 @@ class MainActivity : ComponentActivity() {
                                     customMaxFrequencies = customMaxFrequencies,
                                     customGpuMaxFrequencyHz = customGpuMaxFrequencyHz,
                                 )
-                                startAppProfileMonitor()
                             },
                             onDeleteAppProfileAssignment = viewModel::deleteAppProfileAssignment,
                             onRefreshInstalledApps = viewModel::refreshInstalledApps,
@@ -316,6 +322,10 @@ class MainActivity : ComponentActivity() {
                                 when (access) {
                                     AppAccess.OVERLAY -> {
                                         startActivity(OverlayPermission.createSettingsIntent(this@MainActivity))
+                                    }
+
+                                    AppAccess.ACCESSIBILITY -> {
+                                        startActivity(AppProfileAccessibilityAccess.settingsIntent())
                                     }
 
                                     AppAccess.USAGE -> {
@@ -353,7 +363,6 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         maybeStartSleepProfileMonitor()
-        maybeStartAppProfileMonitor()
         maybeStartLeftEdgeProfilePicker()
     }
 
@@ -366,22 +375,6 @@ class MainActivity : ComponentActivity() {
             return
         }
         SleepProfileMonitorService.start(this)
-    }
-
-    private fun startAppProfileMonitor() {
-        if (!AppProfileMonitorService.hasUsageStatsPermission(this)) {
-            SingleToast.show(this, "Grant Usage Access to enable per-app profiles", Toast.LENGTH_LONG)
-            startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-            return
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-            return
-        }
-        AppProfileMonitorService.start(this)
     }
 
     private fun maybeRequestQuickSettingsTileOnFirstRun() {
@@ -415,17 +408,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun maybeStartAppProfileMonitor() {
-        lifecycleScope.launch {
-            if (container.repository.observeState().first().appProfileAssignments.isNotEmpty() &&
-                AppProfileMonitorService.hasUsageStatsPermission(this@MainActivity) &&
-                hasNotificationAccess()
-            ) {
-                startAppProfileMonitor()
-            }
-        }
-    }
-
     private fun hasNotificationAccess(): Boolean =
         NotificationManagerCompat.from(this).areNotificationsEnabled()
 
@@ -435,7 +417,7 @@ class MainActivity : ComponentActivity() {
             if (
                 settings.leftEdgeProfilePickerEnabled &&
                 OverlayPermission.canDrawOverlays(this@MainActivity) &&
-                AppProfileMonitorService.hasUsageStatsPermission(this@MainActivity)
+                AppProfileAccessibilityAccess.isEnabled(this@MainActivity)
             ) {
                 OverlayHostService.showEdgeHandle(this@MainActivity)
             } else if (settings.leftEdgeProfilePickerEnabled) {

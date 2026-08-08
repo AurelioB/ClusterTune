@@ -13,19 +13,8 @@ class CompactProfilePickerForegroundTest {
         ForegroundAppInfo(packageName = packageName, label = label)
 
     @Test
-    fun firstNullDetectionKeepsContextDuringGracePeriod() {
+    fun nullDetectionClearsTrackedContextAndRequestsDismissal() {
         val state = CompactProfilePickerForegroundState("com.example.app", app("com.example.app"))
-
-        val update = updateCompactProfilePickerForeground(state, null)
-
-        assertEquals(state.foregroundApp, update.state.foregroundApp)
-        assertEquals(1, update.state.consecutiveNullDetections)
-        assertFalse(update.dismissRequested)
-    }
-
-    @Test
-    fun secondConsecutiveNullClearsContextAndRequestsDismissal() {
-        val state = CompactProfilePickerForegroundState("com.example.app", app("com.example.app"), 1)
 
         val update = updateCompactProfilePickerForeground(state, null)
 
@@ -59,12 +48,11 @@ class CompactProfilePickerForegroundTest {
     }
 
     @Test
-    fun nonNullDetectionResetsTransientNullGrace() {
-        val state = CompactProfilePickerForegroundState("com.example.app", app("com.example.app"), 1)
+    fun nonNullDetectionKeepsTrackedContext() {
+        val state = CompactProfilePickerForegroundState("com.example.app", app("com.example.app"))
 
         val update = updateCompactProfilePickerForeground(state, app("com.example.app", "Ignored"))
 
-        assertEquals(0, update.state.consecutiveNullDetections)
         assertFalse(update.dismissRequested)
     }
 

@@ -3,10 +3,31 @@ package com.aure.clustertune.data
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.ProfileSource
+import com.aure.clustertune.model.EffectiveProfileSource
+import com.aure.clustertune.model.EffectiveProfileState
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ProfileStorageCodecTest {
+
+    @Test
+    fun `effective profile state round trips and normalizes contributors`() {
+        val state = EffectiveProfileState(
+            id = "combined",
+            name = "Combined",
+            source = EffectiveProfileSource.COMBINED,
+            contributingPackageNames = listOf("z.app", "a.app", "z.app"),
+            timestampMillis = 42L,
+            generation = 7L,
+        )
+        assertEquals(state.copy(contributingPackageNames = listOf("a.app", "z.app")),
+            ProfileStorageCodec.parseEffectiveProfileState(ProfileStorageCodec.encodeEffectiveProfileState(state)))
+    }
+
+    @Test
+    fun `effective profile state rejects malformed data`() {
+        assertEquals(null, ProfileStorageCodec.parseEffectiveProfileState("{}"))
+    }
 
     @Test
     fun `app assignments preserve named and custom targets`() {

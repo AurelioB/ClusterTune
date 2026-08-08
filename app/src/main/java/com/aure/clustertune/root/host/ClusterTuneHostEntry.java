@@ -53,11 +53,7 @@ public final class ClusterTuneHostEntry {
         synchronized (host) {
             log("wait entered");
             while (!host.stopping) {
-                if (service(name) != host) {
-                    host.stopping = true;
-                    break;
-                }
-                host.wait(200L);
+                host.wait();
             }
         }
         log("wait exited");
