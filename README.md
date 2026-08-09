@@ -8,7 +8,7 @@
 
 <a href="https://ko-fi.com/J3J518XVKR" target="_blank"><img height="36" style="border:0px;height:36px;" src="https://storage.ko-fi.com/cdn/kofi6.png?v=6" border="0" alt="Buy Me a Coffee at ko-fi.com" /></a>
 
-ClusterTune sets maximum CPU frequencies for each cluster on Android handhelds.
+ClusterTune sets maximum CPU and GPU frequencies on Android handhelds.
 
 > [!WARNING]
 > Changing CPU limits can affect stability, performance, temperature, and battery life. Start with tested values and use **Stock** to restore normal limits.
@@ -20,10 +20,10 @@ Lower CPU limits can reduce power use, heat, fan noise, and battery drain. Games
 ## Features
 
 * Support for rooted Android 12+ devices through `su`
-* Independent maximum frequency controls for each CPU cluster
+* Independent maximum frequency controls for each CPU cluster and supported GPUs
 * Profiles that can be created, reordered, imported, and exported
 * Bundled presets and a Stock profile for supported processors
-* Automatic app profiles using saved profiles or custom frequency values, with the previous profile restored when you leave
+* Automatic app profiles using saved profiles or custom frequency values across one or more displays
 * Quick Settings access to pick, tune, or cycle profiles
 * A left edge gesture that opens profile controls over the current app
 * Optional profile automation after boot and while asleep
@@ -42,7 +42,7 @@ Detection tries PServer first, then Root. The Odin 2 Mini must use Root. If neit
 
 ## Install
 
-Download [v1.0.2](https://github.com/AurelioB/ClusterTune/releases/tag/v1.0.2) and install `ClusterTune-v1.0.2.apk`.
+Download [v1.2.0](https://github.com/AurelioB/ClusterTune/releases/tag/v1.2.0) and install `ClusterTune-v1.2.0.apk`.
 
 Android may ask the browser or file manager for permission to install the APK. **Install downloaded updates** is separate and optional. It is only needed for updates installed from inside the app.
 
@@ -53,8 +53,9 @@ Execution method detection runs on first launch. Approve the `su` request if Roo
 | Access | Purpose |
 | --- | --- |
 | **Display over other apps** | Opens profile controls over the current app. |
-| **Usage access** | Detects the foreground app for automatic profiles. |
+| **Accessibility** | Detects visible apps immediately for automatic profiles. |
 | **Notifications** | Keeps app profile and sleep automation active. |
+| **Usage access** (optional) | Improves recent app sorting when choosing an app. |
 
 Choose a bundled profile or create one. **Stock** restores the device's normal maximum frequencies.
 
@@ -72,7 +73,7 @@ Choose a bundled profile or create one. **Stock** restores the device's normal m
 
 * No execution method found: confirm that PServer is available or that the root manager provides `su`, then run detection again from Settings.
 * Profile controls missing: check Display over other apps.
-* Assigned app not switching profiles: confirm its assignment, Usage access, and Notifications.
+* Assigned app not switching profiles: confirm its assignment, Accessibility, and Notifications.
 
 For help, open a [GitHub issue](https://github.com/AurelioB/ClusterTune/issues) with your device model, Android version, execution method, and the relevant log details. Please do not include private data.
 
