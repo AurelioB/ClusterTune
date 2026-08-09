@@ -176,6 +176,27 @@ class ProfileStateResolverTest {
         assertEquals(800, state.currentGpuMaxFrequencyHz)
     }
 
+    @Test
+    fun `sleep default chooses large underclock regardless of display order`() {
+        val profiles = listOf(
+            PerformanceProfile("small", "Small Underclock", mapOf(0 to 2_000), ProfileSource.BUNDLED, order = 0),
+            PerformanceProfile("stock", "Stock", mapOf(0 to 3_000), ProfileSource.VIRTUAL, order = 1),
+            PerformanceProfile("large", "Large Underclock", mapOf(0 to 1_000), ProfileSource.BUNDLED, order = 2),
+        )
+
+        assertEquals("large", ProfileStateResolver.defaultSleepProfileId(profiles))
+    }
+
+    @Test
+    fun `sleep default falls back to most restrictive bundled profile`() {
+        val profiles = listOf(
+            PerformanceProfile("m", "Balanced", mapOf(0 to 2_000, 1 to 2_500), ProfileSource.BUNDLED),
+            PerformanceProfile("s", "Quiet", mapOf(0 to 1_000, 1 to 1_500), ProfileSource.BUNDLED),
+        )
+
+        assertEquals("s", ProfileStateResolver.defaultSleepProfileId(profiles))
+    }
+
     private fun policy(
         id: Int,
         current: Int,

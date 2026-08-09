@@ -32,6 +32,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.overlay.OverlayHostService
 import com.aure.clustertune.overlay.OverlayPermission
 import com.aure.clustertune.permissions.AppAccess
@@ -176,7 +177,8 @@ class MainActivity : ComponentActivity() {
                             sleepProfileOptions = state.displayProfiles,
                             onSleepProfileEnabledChange = { enabled ->
                                 val profileId = settings.sleepProfileId
-                                    ?: state.displayProfiles.firstOrNull()?.id
+                                    ?.takeIf { savedId -> state.displayProfiles.any { it.id == savedId } }
+                                    ?: ProfileStateResolver.defaultSleepProfileId(state.displayProfiles)
                                 viewModel.configureSleepProfile(enabled, profileId) {
                                     if (enabled) {
                                         startSleepProfileMonitor()

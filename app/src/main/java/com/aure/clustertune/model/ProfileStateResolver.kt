@@ -5,6 +5,36 @@ object ProfileStateResolver {
     const val MANUAL_PROFILE_ID = "virtual_manual"
     const val STOCK_PROFILE_ID = "virtual_stock"
 
+    /**
+     * Chooses the most aggressive bundled profile for first-time sleep setup.
+     * Prefer the explicit display name, but keep selection stable if profiles
+     * are reordered or a bundle uses a slightly different label.
+     */
+    fun defaultSleepProfileId(profiles: List<PerformanceProfile>): String? {
+        val bundled = profiles.filter { it.source == ProfileSource.BUNDLED }
+        val candidates = bundled.ifEmpty {
+            profiles.filter { it.source != ProfileSource.VIRTUAL && it.id != STOCK_PROFILE_ID }
+        }
+        if (candidates.isEmpty()) return null
+
+        val normalized = { value: String -> value.lowercase().filter(Char::isLetterOrDigit) }
+        candidates.firstOrNull { normalized(it.name) == "largeunderclock" }?.let { return it.id }
+        candidates.firstOrNull {
+            val label = normalized(it.name)
+            val id = normalized(it.id)
+            label.contains("large") || label.contains("aggressive") ||
+                id.contains("large") || id.contains("aggressive")
+        }?.let { return it.id }
+
+        // Bundled profiles use the same policy set per SoC. The smallest
+        // aggregate ceiling is therefore the least permissive fallback.
+        return candidates.minWithOrNull(
+            compareBy<PerformanceProfile> {
+                it.maxFrequencies.values.fold(0L) { total, frequency -> total + frequency }
+            }.thenBy { it.gpuMaxFrequencyHz?.toLong() ?: Long.MAX_VALUE },
+        )?.id
+    }
+
     fun resolve(state: TunerState, currentValues: Map<Int, Int> = state.currentValues): TunerState {
         val stockProfile = buildStockProfile(state.policies, state.gpuPolicy)
         val realProfiles = (state.bundledProfiles + state.userProfiles).sortedBy { it.order }
