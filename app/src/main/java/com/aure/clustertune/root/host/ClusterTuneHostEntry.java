@@ -1,8 +1,11 @@
 package com.aure.clustertune.root.host;
 
+import android.annotation.SuppressLint;
 import android.os.Binder;
 import android.os.IBinder;
 import android.os.Parcel;
+import android.content.Intent;
+import android.os.UserHandle;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -15,18 +18,19 @@ public final class ClusterTuneHostEntry {
     private ClusterTuneHostEntry() {
     }
 
+    // The privileged UID owns cross-user authority; FLAG_RECEIVER_FROM_SHELL is hidden from SDK.
+    @SuppressLint({"MissingPermission", "WrongConstant"})
     public static void main(String[] args) throws Exception {
         log("entered args=" + args.length);
-        if (args.length != 4) {
-            throw new IllegalArgumentException("service, owner uid, generation and method required");
+        if (args.length != 6) {
+            throw new IllegalArgumentException("service, owner uid, generation, method, package and nonce required");
         }
         if (!isPrivilegedHostUid(android.os.Process.myUid())) {
             throw new SecurityException("root/system host required");
         }
 
-        // app_process does not initialize the framework main thread by itself. PServer hosts
-        // need the system context initialized before ServiceManager.addService, otherwise the
-        // registration can return successfully but never become visible to clients.
+        // app_process does not initialize the framework main thread by itself. Initialize a
+        // system context so the privileged process can hand its Binder to the app receiver.
         android.os.Looper.prepare();
         log("looper prepared");
         Class<?> activityThread = Class.forName("android.app.ActivityThread");
@@ -35,7 +39,7 @@ public final class ClusterTuneHostEntry {
         Object activity = systemMain.invoke(null);
         java.lang.reflect.Method systemContext = activityThread.getDeclaredMethod("getSystemContext");
         systemContext.setAccessible(true);
-        systemContext.invoke(activity);
+        android.content.Context context = (android.content.Context) systemContext.invoke(activity);
         log("runtime initialized");
 
         String name = args[0];
@@ -43,17 +47,30 @@ public final class ClusterTuneHostEntry {
         long generation = Long.parseLong(args[2]);
         HostBinder host = new HostBinder(name, owner, generation, args[3]);
         log("binder constructed name=" + name);
-
-        java.lang.reflect.Method add = Class.forName("android.os.ServiceManager")
-                .getDeclaredMethod("addService", String.class, IBinder.class);
-        add.setAccessible(true);
-        add.invoke(null, name, host);
-        log("addService returned");
+        android.os.Bundle payload = new android.os.Bundle();
+        payload.putBinder("host", host);
+        Intent handoff = new Intent("com.aure.clustertune.HOST_HANDOFF")
+                .setPackage(args[4])
+                .addFlags(0x00400000)
+                .putExtra("nonce", args[5])
+                .putExtra("name", name)
+                .putExtra("generation", generation)
+                .putExtra("method", args[3])
+                .putExtra("payload", payload);
+        context.sendBroadcastAsUser(handoff, UserHandle.getUserHandleForUid(owner));
+        log("broadcast handoff returned");
 
         synchronized (host) {
             log("wait entered");
+            long leaseDeadline = System.currentTimeMillis() + 5000L;
             while (!host.stopping) {
-                host.wait();
+                if (host.lease == null && System.currentTimeMillis() >= leaseDeadline) {
+                    host.stopping = true;
+                    break;
+                }
+                long remaining = leaseDeadline - System.currentTimeMillis();
+                if (host.lease == null && remaining <= 0L) continue;
+                host.wait(host.lease == null ? remaining : 0L);
             }
         }
         log("wait exited");
@@ -117,6 +134,7 @@ public final class ClusterTuneHostEntry {
         final String method;
         final long epoch = System.nanoTime();
         boolean stopping;
+        IBinder lease;
         final HostApplyEngine engine;
         HostCapabilities capabilities;
 
@@ -204,6 +222,18 @@ public final class ClusterTuneHostEntry {
                             remove(name, this);
                             header(reply, true);
                             notifyAll();
+                            return true;
+                        case HostProtocol.LEASE:
+                            IBinder candidate = data.readStrongBinder();
+                            if (candidate == null) throw new IllegalArgumentException("host lease missing");
+                            lease = candidate;
+                            candidate.linkToDeath(() -> {
+                                synchronized (this) {
+                                    stopping = true;
+                                    notifyAll();
+                                }
+                            }, 0);
+                            header(reply, true);
                             return true;
                         default:
                             throw new IllegalArgumentException("unknown request");

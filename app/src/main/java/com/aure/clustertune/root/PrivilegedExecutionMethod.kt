@@ -126,8 +126,8 @@ internal class RootShellExecutionMethod(
 
     override fun probe(): ExecutionProbeResult = runner.probe().fold(
         onSuccess = { output ->
-            if (output.trim() == PROBE_MARKER) ExecutionProbeResult(true)
-            else ExecutionProbeResult(false, "su did not return expected probe output")
+            if (output.trim() == "0") ExecutionProbeResult(true)
+            else ExecutionProbeResult(false, "su did not run as root")
         },
         onFailure = { ExecutionProbeResult(false, it.message ?: "su probe failed") },
     )
@@ -137,7 +137,7 @@ internal class RootShellExecutionMethod(
 }
 
 internal class RootHostLauncher {
-    fun probe(): Result<String> = run("echo $PROBE_MARKER")
+    fun probe(): Result<String> = run("id -u")
         .map { it.stdout }
 
     fun launchHost(command: String): Result<Unit> = run(command).map { Unit }
@@ -154,7 +154,7 @@ internal class RootHostLauncher {
         }
         var stdout = process.inputStream.bufferedReader().use { it.readText() }
         var stderr = process.errorStream.bufferedReader().use { it.readText() }
-        if (process.exitValue() != 0 && stderr.contains("invalid uid/gid '-c'")) {
+        if (process.exitValue() != 0) {
             process = ProcessBuilder("su", "0", "sh", "-c", command).start()
             if (!process.waitFor(30, TimeUnit.SECONDS)) {
                 process.destroyForcibly()
@@ -169,8 +169,6 @@ internal class RootHostLauncher {
 }
 
 private data class ShellCommandResult(val stdout: String)
-
-private const val PROBE_MARKER = "clustertune-exec-probe-ok"
 
 private fun hostLauncher(request: HostLaunchRequest): String = buildString {
     append("cd ${shellQuote(request.workingDirectory)} && sh ${shellQuote(request.launcherScript)}")

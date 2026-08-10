@@ -3,7 +3,7 @@ package com.aure.clustertune.root.host
 /** Private wire contract between ClusterTune and its persistent privileged host. */
 object HostProtocol {
     const val DESCRIPTOR = "com.aure.clustertune.root.host.IClusterTuneHost"
-    const val VERSION = 5
+    const val VERSION = 6
     const val SERVICE_PREFIX = "clustertune.host."
     const val PING = 1
     const val HOST_IDENTITY = 2
@@ -12,6 +12,7 @@ object HostProtocol {
     const val APPLY_PROFILE = 5
     const val STOP = 7
     const val READ_SNAPSHOT = 9
+    const val LEASE = 10
 }
 
 data class CpuDomain(

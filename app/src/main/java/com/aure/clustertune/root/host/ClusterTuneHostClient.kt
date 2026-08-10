@@ -83,16 +83,18 @@ class ClusterTuneHostClient(
                 return@runCatching
             }
             detach()
-            service()?.let { existing ->
+            (HostRendezvous.lookup(serviceName) ?: service())?.let { existing ->
+                val legacyService = HostRendezvous.lookup(serviceName) == null
                 val pingAttempt = runCatching { ping(existing, configuredMethod) }
                 val pingFailure = pingAttempt.exceptionOrNull()
                 if (pingAttempt.isSuccess) {
-                    attach(existing, pingAttempt.getOrThrow().method)
+                    if (!legacyService) sendLease(existing)
+                    attach(existing, pingAttempt.getOrThrow().method, requireLegacyService = legacyService)
                     return@runCatching
                 }
                 val remoteVersion = (pingFailure as? HostProtocolMismatch)?.remoteVersion
                 if (remoteVersion != null || pingFailure is HostIdentityMismatch) {
-                    runCatching { transact(existing, HostProtocol.STOP, wireVersion = remoteVersion ?: HostProtocol.VERSION) { } }
+                    runCatching { transact(existing, HostProtocol.STOP, wireVersion = remoteVersion ?: HostProtocol.VERSION, expectedVersion = remoteVersion ?: HostProtocol.VERSION) { } }
                     detach(existing)
                     check(waitForServiceReplacement(existing, timeoutMs)) { "previous privileged host is still registered" }
                 } else if (existing.isBinderAlive) {
@@ -109,34 +111,42 @@ class ClusterTuneHostClient(
             // characters in CLASSPATH and prevent app_process from loading the host.
             val classpath = dex.joinToString(":") { it.absolutePath }
             val dexDirectory = dex.first().parentFile!!.absolutePath
+            val handoffNonce = HostRendezvous.prepare(context, serviceName, generation, method)
             File(dexDirectory, "host-startup.log").apply { writeText("") }
             val launcher = File(dexDirectory, "launch-host-${System.nanoTime().toString(16)}.sh")
-            launcher.writeText("#!/system/bin/sh\nCT_HOST_LOG='./host-startup.log' CLASSPATH='${classpath.replace("'", "'\\''")}' app_process /system/bin ${ClusterTuneHostEntry::class.java.name} '${serviceName.replace("'", "'\\''")}' ${Process.myUid()} $generation '${method.replace("'", "'\\''")}' >'./host-startup.log' 2>&1 &\n")
+            launcher.writeText("#!/system/bin/sh\nCT_HOST_LOG='./host-startup.log' CLASSPATH='${classpath.replace("'", "'\\''")}' /system/bin/app_process /system/bin ${ClusterTuneHostEntry::class.java.name} '${serviceName.replace("'", "'\\''")}' ${Process.myUid()} $generation '${method.replace("'", "'\\''")}' '${context.packageName.replace("'", "'\\''")}' '${handoffNonce.replace("'", "'\\''")}' >'./host-startup.log' 2>&1 </dev/null &\n")
             launcher.setExecutable(true, false)
             launcher.setWritable(false, false)
             try {
                 resolver.launchHost(
                     selection,
-                    HostLaunchRequest(workingDirectory = dexDirectory, launcherScript = launcher.name),
+                    HostLaunchRequest(
+                        workingDirectory = dexDirectory,
+                        launcherScript = launcher.name,
+                    ),
                 ).getOrThrow()
                 val deadline = System.currentTimeMillis() + timeoutMs
                 while (System.currentTimeMillis() < deadline) {
-                service()?.let { found ->
-                    val pingAttempt = runCatching { ping(found, method) }
-                    val pingFailure = pingAttempt.exceptionOrNull()
-                    if (pingAttempt.isSuccess) {
-                        attach(found, pingAttempt.getOrThrow().method)
-                        return@runCatching
-                    } else if (pingFailure is HostProtocolMismatch || pingFailure is HostIdentityMismatch) {
-                        runCatching {
-                            transact(
-                                found,
-                                HostProtocol.STOP,
+                    val local = HostRendezvous.lookup(serviceName)
+                    local?.let { found ->
+                        val legacyService = false
+                        val pingAttempt = runCatching { ping(found, method) }
+                        val pingFailure = pingAttempt.exceptionOrNull()
+                        if (pingAttempt.isSuccess) {
+                            sendLease(found)
+                            attach(found, pingAttempt.getOrThrow().method, requireLegacyService = legacyService)
+                            return@runCatching
+                        } else if (pingFailure is HostProtocolMismatch || pingFailure is HostIdentityMismatch) {
+                            runCatching {
+                                transact(
+                                    found,
+                                    HostProtocol.STOP,
                                 wireVersion = (pingFailure as? HostProtocolMismatch)?.remoteVersion ?: HostProtocol.VERSION,
-                            ) { }
+                                expectedVersion = (pingFailure as? HostProtocolMismatch)?.remoteVersion ?: HostProtocol.VERSION,
+                                ) { }
+                            }
                         }
                     }
-                }
                     Thread.sleep(40)
                 }
                 val startup = File(dexDirectory, "host-startup.log").takeIf { it.isFile }
@@ -144,6 +154,7 @@ class ClusterTuneHostClient(
                 error("privileged host registration failed${startup.takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""}")
             } finally {
                 launcher.delete()
+                HostRendezvous.clearPending(serviceName, handoffNonce)
             }
         }
     }
@@ -249,6 +260,7 @@ class ClusterTuneHostClient(
         target: IBinder,
         code: Int,
         wireVersion: Int = HostProtocol.VERSION,
+        expectedVersion: Int = HostProtocol.VERSION,
         writer: (Parcel) -> Unit = {},
         reader: (Parcel) -> T,
     ): T {
@@ -260,7 +272,7 @@ class ClusterTuneHostClient(
             writer(data)
             check(target.transact(code, data, reply, 0))
             val remoteVersion = reply.readInt()
-            if (remoteVersion != HostProtocol.VERSION) {
+            if (remoteVersion != expectedVersion) {
                 throw HostProtocolMismatch(remoteVersion)
             }
             if (reply.readInt() == 0) {
@@ -301,7 +313,7 @@ class ClusterTuneHostClient(
             PingInfo(remoteMethod)
             })
     }
-    private fun attach(found: IBinder, method: String) {
+    private fun attach(found: IBinder, method: String, requireLegacyService: Boolean = false) {
         synchronized(lock) {
             if (binder === found && attachedMethod == method) return
             detachLocked()
@@ -324,7 +336,7 @@ class ClusterTuneHostClient(
             }
             // A binder can die or be replaced between lookup and linkToDeath. Do not cache a
             // handle unless both the binder and the ServiceManager registration still match.
-            if (binder === found && (!found.isBinderAlive || service() !== found)) {
+            if (binder === found && (!found.isBinderAlive || (requireLegacyService && service() !== found))) {
                 runCatching { found.unlinkToDeath(recipient, 0) }
                 binder = null
                 attachedMethod = null
@@ -337,6 +349,10 @@ class ClusterTuneHostClient(
         synchronized(lock) {
             if (target == null || binder === target) detachLocked()
         }
+    }
+    private fun sendLease(target: IBinder) {
+        val lease = HostRendezvous.lease(serviceName) ?: error("host lease unavailable")
+        transact(target, HostProtocol.LEASE, writer = { it.writeStrongBinder(lease) }) { Unit }
     }
 
     private fun detachLocked() {
