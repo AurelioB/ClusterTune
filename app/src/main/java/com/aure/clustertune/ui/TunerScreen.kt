@@ -92,6 +92,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -465,7 +466,11 @@ fun CompactOverlayScreen(
             .firstOrNull { id -> profiles.any { it.id == id } }
 
     ScreenContainer(compactMode = true, showCompactScrim = false, compactFillHeight = false) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = LocalConfiguration.current.screenHeightDp.dp * 0.92f),
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth().background(colorScheme.surfaceContainer)
                     .padding(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp),
@@ -549,7 +554,12 @@ fun CompactOverlayScreen(
             CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
             if (mode == CompactOverlayMode.PROFILES) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 340.dp).verticalScroll(rememberScrollState()).padding(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .heightIn(min = 0.dp, max = 340.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     if (customDraft) {
@@ -578,7 +588,12 @@ fun CompactOverlayScreen(
                 }
             } else {
                 Column(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 390.dp).verticalScroll(rememberScrollState()).padding(12.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .heightIn(min = 0.dp, max = 390.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(start = 12.dp, top = 4.dp, end = 12.dp, bottom = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     ProfileChipSelector(
@@ -604,6 +619,7 @@ fun CompactOverlayScreen(
                         onOpenFullApp = null,
                         stripUnderclockSuffix = true,
                         applyingProfileId = applyingProfileId,
+                        compact = true,
                     )
                     PolicyEditorSection(
                         state = state.copy(currentValues = stagedCustomValues, currentGpuMaxFrequencyHz = stagedGpuValue),
@@ -619,11 +635,13 @@ fun CompactOverlayScreen(
             if (mode == CompactOverlayMode.TUNER) {
                 CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
                 Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(onClick = onDismissRequest) { Text("Cancel") }
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = onDismissRequest) { Text("Cancel") }
                     Button(
                         onClick = {
                             onApplyCurrent(
@@ -2187,6 +2205,7 @@ private fun ProfileChipSelector(
     onOpenFullApp: (() -> Unit)?,
     stripUnderclockSuffix: Boolean = false,
     applyingProfileId: String? = null,
+    compact: Boolean = false,
 ) {
     val listState = rememberLazyListState()
     LaunchedEffect(state.selectedDisplayProfileId, state.isManualSelection, state.displayProfiles) {
@@ -2220,6 +2239,7 @@ private fun ProfileChipSelector(
                     isSelected = profile.id == state.selectedDisplayProfileId,
                     applying = applyingProfileId == profile.id,
                     onClick = { onApplyProfile(profile) },
+                    compact = compact,
                 )
             }
             if (state.isManualSelection) {
@@ -2229,6 +2249,7 @@ private fun ProfileChipSelector(
                         isApplied = false,
                         isSelected = true,
                         onClick = onClearSelection,
+                        compact = compact,
                     )
                 }
             }
@@ -2262,9 +2283,11 @@ private fun ProfileSelectorChip(
     isSelected: Boolean,
     applying: Boolean = false,
     onClick: () -> Unit,
+    compact: Boolean = false,
 ) {
     AssistChip(
         onClick = onClick,
+        modifier = if (compact) Modifier.height(28.dp) else Modifier,
         colors = when {
             isApplied -> AssistChipDefaults.assistChipColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -2283,7 +2306,11 @@ private fun ProfileSelectorChip(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text(label)
+                if (compact) {
+                    Text(label, style = MaterialTheme.typography.labelMedium)
+                } else {
+                    Text(label)
+                }
                 if (applying) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(14.dp),

@@ -12,6 +12,7 @@ import android.graphics.Rect
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import android.view.Display
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -68,17 +69,16 @@ import com.aure.clustertune.ui.TunerViewModel
 import com.aure.clustertune.ui.theme.ClusterTuneTheme
 import com.aure.clustertune.ui.designsystem.component.CtCompactOverlayFrame
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-
-internal data class CompactProfilePickerForegroundState(
-    val trackedPackageName: String? = null,
-    val foregroundApp: ForegroundAppInfo? = null,
-)
+import kotlinx.coroutines.withContext
 
 private data class EdgeHandleAppearance(
     val heightDp: Int,
@@ -87,40 +87,17 @@ private data class EdgeHandleAppearance(
     val opacityPercent: Int,
 )
 
-internal data class CompactProfilePickerForegroundUpdate(
-    val state: CompactProfilePickerForegroundState,
-    val dismissRequested: Boolean,
-)
-
 internal const val SYSTEM_UI_PACKAGE = "com.android.systemui"
 
 internal fun updateCompactProfilePickerForeground(
-    state: CompactProfilePickerForegroundState,
+    current: ForegroundAppInfo?,
     detected: ForegroundAppInfo?,
     ignoredPackages: Set<String> = emptySet(),
-): CompactProfilePickerForegroundUpdate {
+): ForegroundAppInfo? {
     if (detected != null && detected.packageName in ignoredPackages) {
-        return CompactProfilePickerForegroundUpdate(state, false)
+        return current
     }
-    if (detected == null) {
-        if (state.trackedPackageName == null) {
-            return CompactProfilePickerForegroundUpdate(state, dismissRequested = false)
-        }
-        return CompactProfilePickerForegroundUpdate(
-            state = state.copy(foregroundApp = null),
-            dismissRequested = true,
-        )
-    }
-    val packageChanged = state.trackedPackageName != null &&
-        state.trackedPackageName != detected.packageName
-    val samePackage = state.trackedPackageName == detected.packageName
-    return CompactProfilePickerForegroundUpdate(
-        state = state.copy(
-            trackedPackageName = state.trackedPackageName ?: detected.packageName,
-            foregroundApp = if (samePackage) state.foregroundApp else detected,
-        ),
-        dismissRequested = packageChanged,
-    )
+    return detected
 }
 
 class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRegistryOwner {
@@ -150,9 +127,13 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
     private var compactProfilePickerSessionJob: Job? = null
     private var compactAssignmentMutationJob: Job? = null
     private val compactOverlayMode = MutableStateFlow(CompactOverlayMode.PROFILES)
-    private var compactProfilePickerForegroundState = CompactProfilePickerForegroundState()
     private val compactProfilePickerForeground = MutableStateFlow<ForegroundAppInfo?>(null)
     private val edgeHandleAppearance = MutableStateFlow<EdgeHandleAppearance?>(null)
+
+    // OverlayWindowController uses applicationContext's WindowManager, which
+    // renders on the default display. Service contexts may be non-visual and
+    // throw from getDisplay(), so keep this explicit.
+    private val overlayDisplayId = Display.DEFAULT_DISPLAY
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent?) {
@@ -253,10 +234,6 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         initialSettings: AppSettings,
     ): ComposeView {
         val initialExternal = foregroundApp?.takeUnless { it.packageName in foregroundIgnoredPackages }
-        compactProfilePickerForegroundState = CompactProfilePickerForegroundState(
-            trackedPackageName = initialExternal?.packageName,
-            foregroundApp = initialExternal,
-        )
         compactProfilePickerForeground.value = initialExternal
         return OverlayComposeViewFactory.create(this, this, this, this) {
                 val settings by container.settingsStorage.settings.collectAsStateWithLifecycle(
@@ -452,46 +429,44 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         cancelCompactProfilePickerSession()
         compactOverlayMode.value = mode
         compactProfilePickerSessionJob = lifecycleScope.launch {
-            val initialSettings = try {
-                container.settingsStorage.settings.first()
+            val (initialSettings, initial) = try {
+                coroutineScope {
+                    val settings = async { container.settingsStorage.settings.first() }
+                    val foreground = async(Dispatchers.Default) {
+                        foregroundAppResolver.resolve(
+                            targetDisplayId = overlayDisplayId,
+                        )
+                    }
+                    settings.await() to foreground.await()
+                }
             } catch (error: Throwable) {
                 if (error is CancellationException) throw error
                 Log.e(TAG, "Failed to prepare compact profile picker", error)
                 dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
                 return@launch
             }
-            val initial = foregroundAppResolver.resolve(ignoredPackages = foregroundIgnoredPackages)
             if (!showCompactProfilePickerOverlay(initial, initialSettings)) {
                 dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
                 return@launch
             }
             VisibleAppWindowEvents.snapshots
                 .distinctUntilChangedBy { snapshot ->
-                    snapshot.windowsByDisplay.values
-                        .asSequence()
-                        .flatten()
-                        .filterNot { it.packageName in foregroundIgnoredPackages }
-                        .sortedWith(
-                            compareByDescending<com.aure.clustertune.apps.VisibleAppWindow> { it.isFocused }
-                                .thenByDescending { it.isActive }
-                                .thenBy { it.displayId }
-                                .thenBy { it.packageName },
-                        )
-                        .firstOrNull()?.packageName
+                    foregroundAppResolver.selectPackageName(snapshot, overlayDisplayId)
                 }
                 .collect { snapshot ->
                     if (!windowController.isShowing(OverlayType.COMPACT_PROFILE_PICKER)) return@collect
-                    val detected = foregroundAppResolver.resolve(snapshot, foregroundIgnoredPackages)
-                    val update = updateCompactProfilePickerForeground(
-                        compactProfilePickerForegroundState,
+                    val detected = withContext(Dispatchers.Default) {
+                        foregroundAppResolver.resolve(
+                            snapshot,
+                            overlayDisplayId,
+                        )
+                    }
+                    val updated = updateCompactProfilePickerForeground(
+                        compactProfilePickerForeground.value,
                         detected,
                         foregroundIgnoredPackages,
                     )
-                    compactProfilePickerForegroundState = update.state
-                    compactProfilePickerForeground.value = update.state.foregroundApp
-                    if (update.dismissRequested) {
-                        dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
-                    }
+                    compactProfilePickerForeground.value = updated
                 }
         }
     }

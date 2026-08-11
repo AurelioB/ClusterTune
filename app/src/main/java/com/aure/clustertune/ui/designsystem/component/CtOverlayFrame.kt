@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -109,6 +110,7 @@ internal fun CtCompactOverlayFrame(
         modifier = modifier,
         scrimColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.46f),
         maxWidth = 520.dp,
+        maxHeight = LocalConfiguration.current.screenHeightDp.dp * 0.92f,
         widthFraction = 1f,
         heightFraction = null,
         panelShape = RoundedCornerShape(20.dp),

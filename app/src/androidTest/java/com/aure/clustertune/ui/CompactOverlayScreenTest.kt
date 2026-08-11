@@ -1,6 +1,7 @@
 package com.aure.clustertune.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
@@ -18,6 +19,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aure.clustertune.model.AppProfileAssignment
@@ -83,6 +85,34 @@ class CompactOverlayScreenTest {
         composeRule.runOnIdle { assertEquals(CompactOverlayMode.TUNER, mode) }
         assertSharedHeader()
         composeRule.onNodeWithText("Apply").assertExists()
+    }
+
+    @Test
+    fun constrainedTuner_keepsHeaderAndActionsVisible_whileControlsScroll() {
+        composeRule.setContent {
+            MaterialTheme {
+                Box(Modifier.width(300.dp).height(260.dp)) {
+                    CompactOverlayScreen(
+                        state = state(),
+                        displayFrequenciesAsPercent = false,
+                        mode = CompactOverlayMode.TUNER,
+                        onModeChange = {},
+                        onApplyProfile = { _, _ -> },
+                        onApplyCurrent = { _, _, _, _ -> },
+                        onDismissRequest = {},
+                        onRefreshLiveValues = {},
+                        contextPackageName = "com.example.game",
+                        contextLabel = "Example game",
+                        onAppProfileAssignmentChange = { _, _, _ -> },
+                    )
+                }
+            }
+        }
+
+        assertSharedHeader()
+        composeRule.onNodeWithText("Apply").assertIsDisplayed()
+        composeRule.onNodeWithText("Cancel").assertIsDisplayed()
+        composeRule.onNodeWithText("Cluster 0").performScrollTo().assertIsDisplayed()
     }
 
     @Test

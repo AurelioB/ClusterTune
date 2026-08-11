@@ -17,19 +17,12 @@ class ForegroundAppResolver(context: Context) {
 
     fun resolve(
         snapshot: VisibleAppSnapshot = VisibleAppWindowEvents.snapshots.value,
-        ignoredPackages: Set<String> = emptySet(),
+        targetDisplayId: Int? = null,
     ): ForegroundAppInfo? {
-        val window = snapshot.windowsByDisplay.values
-            .asSequence()
-            .flatten()
-            .filterNot { it.packageName in ignoredPackages }
-            .sortedWith(
-                compareByDescending<VisibleAppWindow> { it.isFocused }
-                    .thenByDescending { it.isActive }
-                    .thenBy { it.displayId }
-                    .thenBy { it.packageName },
-            )
-            .firstOrNull() ?: return null
+        // Keep ignored packages as explicit candidates. The overlay uses these
+        // transient samples to distinguish a shade transition from a real app
+        // change, rather than treating the transition as an unknown/null app.
+        val window = selectVisibleAppWindow(snapshot, targetDisplayId) ?: return null
         val packageName = window.packageName
         val applicationInfo = applicationInfo(packageName)
         return ForegroundAppInfo(
@@ -45,6 +38,10 @@ class ForegroundAppResolver(context: Context) {
         )
     }
 
+    /** Select the same deterministic candidate used by [resolve]. */
+    fun selectPackageName(snapshot: VisibleAppSnapshot, targetDisplayId: Int? = null): String? =
+        selectVisibleAppWindow(snapshot, targetDisplayId)?.packageName
+
     private fun applicationInfo(packageName: String) = runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             packageManager.getApplicationInfo(
@@ -56,5 +53,21 @@ class ForegroundAppResolver(context: Context) {
             packageManager.getApplicationInfo(packageName, 0)
         }
     }.getOrNull()
+}
 
+internal fun selectVisibleAppWindow(
+    snapshot: VisibleAppSnapshot,
+    targetDisplayId: Int? = null,
+): VisibleAppWindow? {
+    val windows = if (targetDisplayId != null) {
+        snapshot.windowsByDisplay[targetDisplayId].orEmpty()
+    } else {
+        snapshot.windowsByDisplay.values.asSequence().flatten().toList()
+    }
+    return windows.sortedWith(
+        compareByDescending<VisibleAppWindow> { it.isFocused }
+            .thenByDescending { it.isActive }
+            .thenBy { it.displayId }
+            .thenBy { it.packageName },
+    ).firstOrNull()
 }
