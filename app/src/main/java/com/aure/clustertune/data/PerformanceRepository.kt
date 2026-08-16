@@ -343,7 +343,7 @@ class PerformanceRepository(
             }
             if (!verified) {
                 throw IllegalStateException(
-                    "CPU policy verification failed: max=$actualValues min=$actualMinValues",
+                    buildVerificationFailureDetail(policies, filtered, actualValues, actualMinValues),
                 )
             }
             if (persistNormalState) {
@@ -747,6 +747,49 @@ class PerformanceRepository(
 
     suspend fun selectProfile(profileId: String?) {
         profileStorage.persistSelectedProfile(profileId)
+    }
+
+    /**
+     * Builds an actionable verification-failure message.
+     *
+     * The old message printed the whole read-back map and got truncated by the
+     * toast, so user reports arrived as e.g. "max={3=..., 7=...}" with no way to
+     * tell whether policy0 was mismatched, unreadable, or simply cut off. Name
+     * the offending policies explicitly and say WHY each one failed.
+     */
+    private fun buildVerificationFailureDetail(
+        policies: List<CpuPolicyInfo>,
+        requested: Map<Int, Int>,
+        actualMax: Map<Int, Int>,
+        actualMin: Map<Int, Int>,
+    ): String {
+        val problems = policies.mapNotNull { policy ->
+            val want = requested[policy.id]
+            val got = actualMax[policy.id]
+            when {
+                want == null -> null
+                got == null -> "C${policy.id}: could not read back (wanted $want)"
+                got != want -> "C${policy.id}: wanted $want but is $got"
+                else -> null
+            }
+        }
+        com.wuyr.jdwp_injector.debug.JdwpDebugLog.w(
+            "APPLY/verify FAILED: requested=$requested actualMax=$actualMax " +
+                "actualMin=$actualMin problems=$problems",
+        )
+        policies.forEach { policy ->
+            com.wuyr.jdwp_injector.debug.JdwpDebugLog.d(
+                "APPLY/policy C${policy.id}: maxPath=${policy.scalingMaxPath} " +
+                    "minPath=${policy.scalingMinPath} hwMin=${policy.hardwareMinFreq} " +
+                    "observedMax=${policy.observedMaxFreq} selectableMax=${policy.selectableMaxFreq} " +
+                    "wanted=${requested[policy.id]} actual=${actualMax[policy.id]}",
+            )
+        }
+        return if (problems.isEmpty()) {
+            "CPU policy verification failed: max=$actualMax min=$actualMin"
+        } else {
+            "Couldn't apply " + problems.joinToString("; ")
+        }
     }
 
     fun refreshLiveValues() {

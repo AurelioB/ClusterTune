@@ -129,10 +129,19 @@ fun WirelessDebugSetupScreen(
         // Start connect discovery immediately and leave it running (wuyr does
         // this) so _adb-tls-connect._tcp is caught whenever it appears after
         // wireless debugging becomes active.
+        // Snapshot what we were connected to when this screen opened. Discovery's
+        // onConnected fires immediately for an ALREADY-existing connection, which
+        // set connectedThisVisit=true and triggered the 900ms auto-return — so
+        // entering setup from Settings with a live connection bounced the user
+        // straight back out, leaving no way to reach the diagnostic log or redo
+        // the pairing. Only treat it as "new" if the endpoint actually changed.
+        val endpointOnEntry = connectionManager.connectionInfo
         connectionManager.startConnectDiscovery(
             onConnected = { info ->
                 connected = true
-                connectedThisVisit = true
+                if (info != endpointOnEntry) {
+                    connectedThisVisit = true
+                }
                 status = "Connected (${info.host}:${info.port}). You're ready."
             },
         )

@@ -248,14 +248,26 @@ class WirelessDebugConnectionManager private constructor(
                         )
                     )
                 }.getOrElse { error ->
-                    // This used to be .getOrNull(), which swallowed the reason
-                    // entirely — the apply just reported "Injection failed" with
-                    // no clue why. Surface it.
                     JdwpDebugLog.w(
                         "jdwp: connect2jdwp FAILED for pid=$currentPid " +
                             "(${error.javaClass.simpleName}: ${error.message})",
                         error,
                     )
+                    // A JDWP forward failure means this endpoint is wrong, not
+                    // merely busy. A STALE adb port still completes the TLS
+                    // handshake (so the port scan happily adopts it) but cannot
+                    // carry a jdwp: forward. Observed: scan adopted 45149 and
+                    // every forward failed, while mDNS's 41505 worked instantly.
+                    //
+                    // Previously we kept the bad endpoint forever and the user had
+                    // to redo setup by hand. Drop it so the still-running
+                    // discovery can pick up the real port.
+                    JdwpDebugLog.w(
+                        "jdwp: dropping endpoint ${conn.host}:${conn.port} — " +
+                            "handshake works but JDWP forward does not (stale port)",
+                    )
+                    connectionInfo = null
+                    invalidateShell()
                     return false
                 }
                 persistentDebugger = debugger

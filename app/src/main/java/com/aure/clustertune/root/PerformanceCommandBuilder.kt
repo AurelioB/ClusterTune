@@ -45,7 +45,15 @@ class PerformanceCommandBuilder {
             } else {
                 value
             }
-            lines += writeNodeCommand(policy.scalingMaxPath, writableValue, preserveOwnerWrite = isReset)
+            // Isolate each policy. With a blanket `set -e`, ONE failing policy
+            // aborted the whole script — later policies were never written and,
+            // on the no-root path (no stdout), nothing reported which one failed.
+            // Wrapping in a subshell lets the remaining policies still apply; the
+            // read-back verification is what decides overall success, and it now
+            // names the specific policy that did not take.
+            lines += "( " +
+                writeNodeCommand(policy.scalingMaxPath, writableValue, preserveOwnerWrite = isReset) +
+                " ) || printf '%s\\n' 'ct-policy-failed:${policy.id}' >&2"
         }
         lines += "printf '%s\\n' '$COMPLETION_MARKER'"
 
