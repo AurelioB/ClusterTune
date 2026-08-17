@@ -183,10 +183,29 @@ class JdwpInjectionExecutionMethod(
             if (begin < 0) return@runCatching null
             val end = lines.drop(begin + 1).indexOfFirst { it.trim() == READ_END }
             if (end < 0) return@runCatching null
-            lines.subList(begin + 1, begin + 1 + end)
+            val value = lines.subList(begin + 1, begin + 1 + end)
                 .joinToString("\n")
                 .trim()
                 .takeIf { it.isNotEmpty() }
+            if (value == null) {
+                // The read produced nothing. stderr was being discarded, so the
+                // real reason (permission denied, I/O error, missing node) was
+                // invisible. Re-run capturing stderr plus the file mode/owner so
+                // the cause is in the log. Reported case: policy0's
+                // scaling_max_freq is unreadable AND unwritable on some Odin 2
+                // Mini units while policy3/7 work fine on the same device.
+                runCatching {
+                    val diag = shell.sendShellCommand(
+                        "echo $READ_BEGIN; ls -lZ '${path}' 2>&1; " +
+                            "cat '${path}' 2>&1; echo $READ_END",
+                    )
+                    com.wuyr.jdwp_injector.debug.JdwpDebugLog.w(
+                        "readText('${path}') EMPTY — diag: " +
+                            diag.replace("\n", " | ").take(400),
+                    )
+                }
+            }
+            value
         }.getOrElse { error ->
             com.wuyr.jdwp_injector.debug.JdwpDebugLog.w(
                 "readText('${path}') failed: ${error.javaClass.simpleName}: ${error.message}",
