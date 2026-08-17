@@ -12,7 +12,12 @@ import android.util.Log
  */
 object JdwpDebugLog {
     private const val TAG = "ClusterTuneJdwpConn"
-    private const val MAX = 200
+    // Sized so that a full apply — including the injected script's own trace and
+    // the before/after sysfs listings — fits alongside the connection history.
+    // The users who can reproduce the policy0 failure have no PC, so the in-app
+    // log is the ONLY channel; losing the head of it to a 200-line cap means
+    // losing the evidence.
+    private const val MAX = 800
 
     private val buffer = ArrayDeque<String>()
     private var listener: (() -> Unit)? = null
