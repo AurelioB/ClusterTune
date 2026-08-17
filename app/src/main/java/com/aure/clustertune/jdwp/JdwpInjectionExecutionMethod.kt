@@ -175,16 +175,24 @@ class JdwpInjectionExecutionMethod(
         runCatching {
             // Markers make parsing robust against the shell echoing the command
             // back (which is what corrupted the old line-index parsing).
+            // The markers are SPLIT in the command text ("" is removed by the
+            // shell). So the echoed command contains __CT_READ""_BEGIN__ while
+            // only the real output contains __CT_READ_BEGIN__. Searching for the
+            // joined form therefore can never match the echo — which matters
+            // because the adb "shell:" service allocates a PTY that echoes input
+            // and hard-wraps it with backspace control characters.
             val raw = shell.sendShellCommand(
-                "echo $READ_BEGIN; cat '${path}' 2>/dev/null; echo $READ_END",
+                "echo __CT_READ\"\"_BEGIN__; cat '${path}' 2>/dev/null; " +
+                    "echo __CT_READ\"\"_END__",
             )
-            val lines = raw.lines()
-            val begin = lines.indexOfLast { it.trim() == READ_BEGIN }
-            if (begin < 0) return@runCatching null
-            val end = lines.drop(begin + 1).indexOfFirst { it.trim() == READ_END }
-            if (end < 0) return@runCatching null
-            val value = lines.subList(begin + 1, begin + 1 + end)
-                .joinToString("\n")
+            // Strip terminal control noise (backspaces / CR) before parsing.
+            val clean = raw.replace("\b", "").replace("\r", "")
+            val beginIdx = clean.lastIndexOf(READ_BEGIN)
+            if (beginIdx < 0) return@runCatching null
+            val afterBegin = beginIdx + READ_BEGIN.length
+            val endIdx = clean.indexOf(READ_END, afterBegin)
+            if (endIdx < 0) return@runCatching null
+            val value = clean.substring(afterBegin, endIdx)
                 .trim()
                 .takeIf { it.isNotEmpty() }
             if (value == null) {
@@ -196,9 +204,9 @@ class JdwpInjectionExecutionMethod(
                 // Mini units while policy3/7 work fine on the same device.
                 runCatching {
                     val diag = shell.sendShellCommand(
-                        "echo $READ_BEGIN; ls -lZ '${path}' 2>&1; " +
-                            "cat '${path}' 2>&1; echo $READ_END",
-                    )
+                        "echo __CT_READ\"\"_BEGIN__; ls -lZ '${path}' 2>&1; " +
+                            "cat '${path}' 2>&1; echo __CT_READ\"\"_END__",
+                    ).replace("\b", "").replace("\r", "")
                     com.wuyr.jdwp_injector.debug.JdwpDebugLog.w(
                         "readText('${path}') EMPTY — diag: " +
                             diag.replace("\n", " | ").take(400),
@@ -237,18 +245,27 @@ class JdwpInjectionExecutionMethod(
     // ---- internals ----
 
     private fun findTargetPid(adb: AdbClient): Int = runCatching {
-        val raw = adb.sendShellCommand(
-            "ps -A -o PID,NAME | grep -w ${targetPackage} | awk 'NR==1{print \$1}'"
-        )
+        // Marker-delimited so the PTY's echo of this very command can't be
+        // mistaken for output (the shell echoes input and wraps it with
+        // backspaces — that is what produced the garbled `raw=` in logs).
+        val rawOut = adb.sendShellCommand(
+            "echo __CT_READ\"\"_BEGIN__; pidof ${targetPackage}; echo __CT_READ\"\"_END__",
+        ).replace("\b", "").replace("\r", "")
+        val b = rawOut.lastIndexOf(READ_BEGIN)
+        val e = if (b >= 0) rawOut.indexOf(READ_END, b + READ_BEGIN.length) else -1
+        val raw = if (b >= 0 && e > b) {
+            rawOut.substring(b + READ_BEGIN.length, e)
+        } else {
+            rawOut
+        }
         // Do NOT assume the pid is on a fixed line. This used to read line index
         // 1 unconditionally, which only holds when the shell echoes something
         // first — on a freshly opened shell it doesn't, so the pid landed on
         // line 0 and we reported "GameAssistant is not running" while it was
         // demonstrably running. Scan every line for the first plausible pid.
-        val pid = raw.lineSequence()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .mapNotNull { it.toIntOrNull() }
+        // pidof returns space-separated pids; take the first valid one.
+        val pid = raw.split(Regex("\\s+"))
+            .mapNotNull { it.trim().toIntOrNull() }
             .firstOrNull { it > 0 }
             ?: 0
         com.wuyr.jdwp_injector.debug.JdwpDebugLog.d(

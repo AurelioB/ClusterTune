@@ -79,7 +79,19 @@ class WirelessDebugConnectionManager private constructor(
                 JdwpDebugLog.d("sharedShell: no persistent shell yet, opening one")
             }
             return runCatching {
-                AdbClient.openShell(conn.host, conn.port).also { persistentShell = it }
+                AdbClient.openShell(conn.host, conn.port).also { shell ->
+                    // The adb "shell:" service with no command allocates a PTY:
+                    // it ECHOES everything we send and hard-wraps at the terminal
+                    // width with backspace control characters. Logcat showed our
+                    // own command spliced into the output, which is what garbled
+                    // findTargetPid's `raw=` and made marker-based reads return
+                    // empty. Turn echo off and make the line width effectively
+                    // unlimited so command output comes back clean.
+                    runCatching {
+                        shell.sendShellCommand("stty -echo 2>/dev/null; stty cols 4096 2>/dev/null")
+                    }
+                    persistentShell = shell
+                }
             }.getOrNull()
         }
     }
