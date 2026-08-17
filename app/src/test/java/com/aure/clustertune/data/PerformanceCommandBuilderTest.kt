@@ -46,7 +46,8 @@ class PerformanceCommandBuilderTest {
         assertTrue(script.contains("for candidate in 998400"))
         assertTrue(script.contains("echo \"\$candidate\" > '/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq'"))
         assertTrue(script.contains("chmod u+w '/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq'"))
-        assertTrue(script.contains("chmod a-w '/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq'"))
+        assertTrue(script.contains("chmod 444 '/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq'"))
+        assertTrue(script.contains("chmod o+r '/sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq'"))
         assertFalse(script.contains("chmod 666"))
         assertTrue(
             script.indexOf("scaling_min_freq") <
@@ -81,7 +82,8 @@ class PerformanceCommandBuilderTest {
         val maxCommand = script.substringAfter("mode=\$(stat -c %a '/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq')")
         assertTrue(maxCommand.contains("chmod \"\$mode\" '/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq'"))
         assertTrue(maxCommand.contains("Failed to write 2745600 to /sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq"))
-        assertTrue(maxCommand.contains("chmod a-w '/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq'"))
+        assertTrue(maxCommand.contains("chmod 444 '/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq'"))
+        assertFalse(maxCommand.contains("chmod a-w '/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq'"))
     }
 
     @Test
@@ -104,7 +106,8 @@ class PerformanceCommandBuilderTest {
             isReset = true,
         )
 
-        assertTrue(script.contains("chmod u+w '/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq'"))
+        assertTrue(script.contains("chmod 644 '/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq'"))
+        assertFalse(script.contains("chmod 444 '/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq'"))
         assertFalse(script.contains("chmod a-w '/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq'"))
         assertFalse(script.contains("start "))
         assertFalse(script.contains("stop "))
@@ -143,6 +146,35 @@ class PerformanceCommandBuilderTest {
     fun `script emits completion marker after all writes`() {
         val script = builder.buildApplyScript(policies, mapOf(0 to 2_745_600, 6 to 3_072_000), false)
         assertTrue(script.trimEnd().endsWith("printf '%s\\n' 'clustertune-script-complete'"))
+    }
+
+    @Test
+    fun `minimum repair cannot abort the apply script`() {
+        val script = builder.buildApplyScript(
+            policies = policies,
+            selectedValues = mapOf(0 to 2_745_600, 6 to 3_072_000),
+            isReset = false,
+        )
+        val minCommand = script.lineSequence()
+            .first { it.contains("policy0/scaling_min_freq") }
+
+        assertFalse(minCommand.contains("|| exit 1"))
+    }
+
+    @Test
+    fun `maximum write is attempted before any chmod`() {
+        val script = builder.buildApplyScript(
+            policies = policies,
+            selectedValues = mapOf(0 to 2_745_600, 6 to 3_072_000),
+            isReset = false,
+        )
+        val maxCommand = script.lineSequence()
+            .first { it.contains("policy0/scaling_max_freq") }
+
+        assertTrue(
+            maxCommand.indexOf("echo '2745600' > '/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq'") <
+                maxCommand.indexOf("chmod u+w '/sys/devices/system/cpu/cpufreq/policy0/scaling_max_freq'"),
+        )
     }
 
     @Test

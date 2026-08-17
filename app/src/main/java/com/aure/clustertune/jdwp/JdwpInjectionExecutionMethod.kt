@@ -48,6 +48,35 @@ class JdwpInjectionExecutionMethod(
     @Volatile
     private var cachedProbe: Pair<Long, ExecutionProbeResult>? = null
 
+    /**
+     * Paths whose last read came back empty, with the time it happened.
+     *
+     * Some sysfs nodes are simply not readable by us: scaling_min_freq ships as
+     * 0660 system:system on the Odin 2 Mini, and neither the app's uid nor the
+     * adb shell user is system. The live-state flow reads those three nodes
+     * once a second, and each failure fired a SECOND shell command to log the
+     * diagnostic — six adb round-trips per second, indefinitely, for values
+     * that were never going to arrive.
+     *
+     * Retrying is still worth doing occasionally, because an apply can change
+     * the mode (the apply script now adds other-read to the floor), so the
+     * entry expires after [UNREADABLE_TTL_MS] and every entry is dropped
+     * outright after a successful injection.
+     */
+    private val unreadablePaths = java.util.concurrent.ConcurrentHashMap<String, Long>()
+
+    /** Paths whose `ls -lZ` diagnostic has already been logged in this process. */
+    private val diagnosedPaths = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    private fun isKnownUnreadable(path: String): Boolean {
+        val seenAt = unreadablePaths[path] ?: return false
+        if (System.currentTimeMillis() - seenAt > UNREADABLE_TTL_MS) {
+            unreadablePaths.remove(path)
+            return false
+        }
+        return true
+    }
+
     override fun probe(): ExecutionProbeResult {
         // Cheap probe: this is called frequently (state refreshes, app-monitor),
         // so it must NOT open a wireless adb connection every time — doing so
@@ -127,6 +156,10 @@ class JdwpInjectionExecutionMethod(
             }
             Log.d(TAG, "executeScript: injection dispatched OK")
             com.wuyr.jdwp_injector.debug.JdwpDebugLog.d("APPLY/jdwp: injection dispatched OK")
+            // An apply script chmods the nodes it touches, so a path that was
+            // unreadable a moment ago may be readable now. Forget every
+            // suppression and let the next read find out.
+            unreadablePaths.clear()
             null
         }.onFailure {
             Log.w(TAG, "executeScript: FAILED", it)
@@ -143,6 +176,10 @@ class JdwpInjectionExecutionMethod(
      */
     override fun readText(path: String): String? {
         connectionProvider() ?: return null
+        // Do not spend an adb round-trip (plus a diagnostic round-trip) on a
+        // node we already know we cannot read. Callers treat null exactly as
+        // they treated the empty read, so behaviour is unchanged.
+        if (isKnownUnreadable(path)) return null
         // Reads do NOT need system privileges — the adb shell user can read these
         // sysfs nodes directly. The previous implementation performed a FULL JDWP
         // injection per read (findTargetPid, connect2jdwp, attach, Runtime.exec,
@@ -199,19 +236,35 @@ class JdwpInjectionExecutionMethod(
                 // The read produced nothing. stderr was being discarded, so the
                 // real reason (permission denied, I/O error, missing node) was
                 // invisible. Re-run capturing stderr plus the file mode/owner so
-                // the cause is in the log. Reported case: policy0's
-                // scaling_max_freq is unreadable AND unwritable on some Odin 2
-                // Mini units while policy3/7 work fine on the same device.
-                runCatching {
-                    val diag = shell.sendShellCommand(
-                        "echo __CT_READ\"\"_BEGIN__; ls -lZ '${path}' 2>&1; " +
-                            "cat '${path}' 2>&1; echo __CT_READ\"\"_END__",
-                    ).replace("\b", "").replace("\r", "")
-                    com.wuyr.jdwp_injector.debug.JdwpDebugLog.w(
-                        "readText('${path}') EMPTY — diag: " +
-                            diag.replace("\n", " | ").take(400),
-                    )
+                // the cause is in the log. This is what identified the cause:
+                // `-rw-rw---- system system` plus `cat: Permission denied`, i.e.
+                // a DAC problem, not a transport one.
+                //
+                // Log it ONCE per path per process. The mode does not change
+                // between reads, so repeating the diagnostic at 1 Hz only
+                // doubled the traffic and buried the rest of the log.
+                unreadablePaths[path] = System.currentTimeMillis()
+                if (diagnosedPaths.add(path)) {
+                    runCatching {
+                        val diag = shell.sendShellCommand(
+                            "echo __CT_READ\"\"_BEGIN__; ls -lZ '${path}' 2>&1; " +
+                                "cat '${path}' 2>&1; echo __CT_READ\"\"_END__",
+                        ).replace("\b", "").replace("\r", "")
+                        // Keep the tail, not the head: the command itself is
+                        // echoed back first on some shells and would otherwise
+                        // consume the whole budget before `ls -lZ` output.
+                        val trimmed = diag.replace("\n", " | ").let { line ->
+                            if (line.length > 400) line.takeLast(400) else line
+                        }
+                        com.wuyr.jdwp_injector.debug.JdwpDebugLog.w(
+                            "readText('${path}') EMPTY — diag: $trimmed " +
+                                "(further reads of this path are suppressed for " +
+                                "${UNREADABLE_TTL_MS / 1000}s)",
+                        )
+                    }
                 }
+            } else {
+                unreadablePaths.remove(path)
             }
             value
         }.getOrElse { error ->
@@ -337,6 +390,9 @@ class JdwpInjectionExecutionMethod(
     companion object {
         const val TAG = "ClusterTuneJdwp"
         private const val PROBE_CACHE_MS = 5000L
+
+        /** How long an empty read suppresses further reads of the same path. */
+        private const val UNREADABLE_TTL_MS = 60_000L
         private const val READ_BEGIN = "__CT_READ_BEGIN__"
         private const val READ_END = "__CT_READ_END__"
         const val GAME_ASSISTANT_PKG = "com.odin2.gameassistant"

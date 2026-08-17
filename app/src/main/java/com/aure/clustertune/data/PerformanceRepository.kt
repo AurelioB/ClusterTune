@@ -343,7 +343,13 @@ class PerformanceRepository(
             }
             if (!verified) {
                 throw IllegalStateException(
-                    buildVerificationFailureDetail(policies, filtered, actualValues, actualMinValues),
+                    buildVerificationFailureDetail(
+                        policies,
+                        filtered,
+                        actualValues,
+                        actualMinValues,
+                        tolerateObservedMax = isReset || allowObservedMaxValues,
+                    ),
                 )
             }
             if (persistNormalState) {
@@ -762,6 +768,7 @@ class PerformanceRepository(
         requested: Map<Int, Int>,
         actualMax: Map<Int, Int>,
         actualMin: Map<Int, Int>,
+        tolerateObservedMax: Boolean,
     ): String {
         val problems = policies.mapNotNull { policy ->
             val want = requested[policy.id]
@@ -769,8 +776,16 @@ class PerformanceRepository(
             when {
                 want == null -> null
                 got == null -> "C${policy.id}: could not read back (wanted $want)"
-                got != want -> "C${policy.id}: wanted $want but is $got"
-                else -> null
+                got == want -> null
+                // Use the SAME rule the verification loop used. On a Stock reset
+                // the kernel legitimately lands on the top selectable bin rather
+                // than the observed ceiling (e.g. 2707200 for a 2803200 request),
+                // and the loop accepts that — but this builder compared with
+                // strict equality, so a failure caused by ONE policy was reported
+                // as three, and user-submitted logs pointed at the wrong cluster.
+                tolerateObservedMax &&
+                    ProfileStateResolver.isPolicyValueSatisfied(policy, want, got) -> null
+                else -> "C${policy.id}: wanted $want but is $got"
             }
         }
         com.wuyr.jdwp_injector.debug.JdwpDebugLog.w(
