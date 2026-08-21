@@ -7,23 +7,6 @@ import android.os.Parcel
 internal interface PServerHostExecutor {
     val pServerAvailable: Boolean
     fun launchHost(command: String): Result<Unit>
-
-    /**
-     * Verifies that a transaction to PServer actually completes.
-     *
-     * Holding a live binder reference is NOT the same as being allowed to use
-     * it. On the Odin 2 Mini the PServerBinder service is registered and
-     * `isBinderAlive` is true, but every call is refused by SELinux:
-     *
-     *   avc: denied { call } scontext=u:r:untrusted_app tcontext=u:r:pservice
-     *        tclass=binder permissive=0
-     *   E/JavaBinder: !!! FAILED BINDER TRANSACTION !!!
-     *
-     * A presence-only probe therefore reports PServer as available on a device
-     * where it can never work, auto-detection selects it over the working
-     * method, and the privileged host is never reachable.
-     */
-    fun verify(): Result<Unit>
 }
 
 @SuppressLint("DiscouragedPrivateApi", "PrivateApi")
@@ -37,24 +20,6 @@ internal class RootExec : PServerHostExecutor {
 
     override fun launchHost(command: String): Result<Unit> {
         return transact(command).map { Unit }
-    }
-
-    /**
-     * Cached because probing runs on state refreshes: an uncached verify
-     * produced a failed binder transaction roughly once a second in logcat.
-     * Successes are re-checked more often than failures, since a device that
-     * has never been able to call PServer is unlikely to start.
-     */
-    override fun verify(): Result<Unit> {
-        val now = System.currentTimeMillis()
-        cachedVerify?.let { (checkedAt, result) ->
-            val ttl = if (result.isSuccess) VERIFY_OK_TTL_MS else VERIFY_FAIL_TTL_MS
-            if (now - checkedAt < ttl) return result
-        }
-        // `true` is a no-op on every shell, so a working PServer is unaffected.
-        val result = transact(VERIFY_COMMAND)
-        cachedVerify = now to result
-        return result
     }
 
     private fun transact(cmd: String): Result<Unit> {
@@ -90,9 +55,6 @@ internal class RootExec : PServerHostExecutor {
         }
     }
 
-    @Volatile
-    private var cachedVerify: Pair<Long, Result<Unit>>? = null
-
     private fun findBinder(): IBinder? {
         return runCatching {
             val serviceManager = Class.forName("android.os.ServiceManager")
@@ -101,9 +63,4 @@ internal class RootExec : PServerHostExecutor {
         }.getOrNull()
     }
 
-    private companion object {
-        const val VERIFY_COMMAND = "true"
-        const val VERIFY_OK_TTL_MS = 10_000L
-        const val VERIFY_FAIL_TTL_MS = 60_000L
-    }
 }

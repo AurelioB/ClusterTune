@@ -261,12 +261,6 @@ class PerformanceTileService : TileService() {
     }
 
     private fun dispatchTap(behavior: TileInteractionBehavior) {
-        // Timestamped so the tap -> overlay-visible gap can be attributed. The
-        // v25 logcat showed ART JIT-compiling CompactOverlayScreen on first show
-        // ("Compiler allocated 7291KB"), which is a one-off cost paid at exactly
-        // the wrong moment, but nothing measured the rest of the path.
-        tapDispatchedAt = android.os.SystemClock.elapsedRealtime()
-        com.wuyr.jdwp_injector.debug.JdwpDebugLog.d("tile: tap dispatched behavior=$behavior")
         runCatching {
             when (resolveTileTapAction(behavior, OverlayPermission.canDrawOverlays(applicationContext))) {
                 TileTapAction.SHOW_DIALOG -> showOverlayWithBridge(
@@ -302,9 +296,6 @@ class PerformanceTileService : TileService() {
             showToast(throwable.message ?: "Failed to handle tile tap")
         }
     }
-
-    @Volatile
-    private var tapDispatchedAt = 0L
 
     private fun showToast(message: String) {
         SingleToast.show(applicationContext, message, Toast.LENGTH_SHORT)

@@ -132,13 +132,6 @@ fun SettingsScreen(
     onOpenUsageAccessSettings: () -> Unit,
     hasAppProfileAccessibilityAccess: Boolean,
     onOpenAppProfileAccessibilitySettings: () -> Unit,
-    /** Opens the wireless-debugging pairing screen; null hides the entry point. */
-    onOpenWirelessDebugSetup: (() -> Unit)? = null,
-    /** True while the privileged host is running and serving requests. */
-    isHostRunning: () -> Boolean = { false },
-    onWirelessDebugLoggingChange: (Boolean) -> Unit = {},
-    onViewDiagnosticLog: () -> Unit = {},
-    onDownloadDiagnosticLog: () -> Unit = {},
     hasNotificationAccess: Boolean,
     onOpenNotificationSettings: () -> Unit,
     canInstallUpdates: Boolean,
@@ -414,12 +407,6 @@ fun SettingsScreen(
             onAutoDetect = onAutoDetectPrivilegedExecutionMethod,
             onMethodChange = onPrivilegedExecutionMethodChange,
             density = density,
-            onOpenWirelessDebugSetup = onOpenWirelessDebugSetup,
-            isHostRunning = isHostRunning,
-            wirelessDebugLoggingEnabled = settings.wirelessDebugLoggingEnabled,
-            onWirelessDebugLoggingChange = onWirelessDebugLoggingChange,
-            onViewDiagnosticLog = onViewDiagnosticLog,
-            onDownloadDiagnosticLog = onDownloadDiagnosticLog,
         )
 
         SectionCard(title = stringResource(R.string.settings_profiles), symbol = "swap_vert", density = density) {
@@ -788,7 +775,6 @@ private fun EdgeHandleSlider(
             )
         }
         CtSlider(
-            active = adjustable.adjusting,
             value = pendingValue,
             onValueChange = {
                 pendingValue = it

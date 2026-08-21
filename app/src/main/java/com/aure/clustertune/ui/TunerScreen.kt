@@ -171,24 +171,12 @@ fun MainTunerScreen(
     onDeleteAppProfileAssignment: (String) -> Unit,
     onRefreshInstalledApps: () -> Unit,
     onOpenSettings: () -> Unit,
-    /**
-     * No-root setup entry points shown when nothing privileged is available.
-     * Defaulted so previews and any other caller compile unchanged.
-     */
-    onOpenWirelessDebugSetup: (() -> Unit)? = null,
-    onConnectWirelessDebug: (() -> Unit)? = null,
-    wirelessConnectStatus: String = "",
-    isWirelessDebugConnected: Boolean = false,
     onOpenSupport: () -> Unit,
     onRefreshLiveValues: () -> Unit,
     onStatusMessageShown: () -> Unit,
     onErrorMessageShown: () -> Unit,
 ) {
     var dialogProfileId by remember { mutableStateOf<String?>(null) }
-    // Focus targets for the no-root setup panel so D-pad up/down chains between
-    // the two buttons instead of escaping into the nav rail.
-    val setupButtonFocus = remember { FocusRequester() }
-    val connectButtonFocus = remember { FocusRequester() }
     var selectedTab by remember { mutableStateOf(MainTab.PROFILES) }
     var appToConfigure by remember { mutableStateOf<InstalledAppInfo?>(null) }
     var showAppAssignmentDialog by remember { mutableStateOf(false) }
@@ -254,51 +242,6 @@ fun MainTunerScreen(
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold,
                         )
-                        if (onOpenWirelessDebugSetup != null) {
-                            Text(
-                                text = "You can apply profiles over Android's built-in " +
-                                    "Wireless debugging. Set it up once per boot below.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(
-                                text = "Status: $wirelessConnectStatus",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (isWirelessDebugConnected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                },
-                            )
-                            Button(
-                                onClick = onOpenWirelessDebugSetup,
-                                modifier = Modifier
-                                    .focusRequester(setupButtonFocus)
-                                    .focusProperties { down = connectButtonFocus },
-                            ) {
-                                Text("Set up wireless debugging")
-                            }
-                            if (onConnectWirelessDebug != null) {
-                                Text(
-                                    text = "Already paired this boot? Just tap Connect:",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Button(
-                                    onClick = onConnectWirelessDebug,
-                                    modifier = Modifier
-                                        .focusRequester(connectButtonFocus)
-                                        // Without an explicit target, the 2-D focus
-                                        // search from Connect goes up-and-left into
-                                        // the nav rail (geometrically closer) rather
-                                        // than back to Set up directly above it.
-                                        .focusProperties { up = setupButtonFocus },
-                                ) {
-                                    Text("Connect")
-                                }
-                            }
-                        }
                     } else {
                         Box(
                             modifier = Modifier
@@ -1732,7 +1675,7 @@ private fun CenteredModalSurface(
                         }
                     }
                     // Trap focus inside the modal. focusGroup alone only *bounds*
-                    // the 2-D search — focus could still escape sideways to the
+                    // the 2-D search - focus could still escape sideways to the
                     // nav rail / profile list behind the overlay, and once out
                     // there was no way back in. Cancelling the group's exit keeps
                     // focus contained without consuming any key: left/right are
@@ -1888,7 +1831,7 @@ private fun ProfileChoiceRow(
         Brush.horizontalGradient(listOf(containerColor, containerColor))
     }
     // Controller focus. `clickable` alone makes the row focusable but draws
-    // nothing, so on a controller the focus moved invisibly — the border only
+    // nothing, so on a controller the focus moved invisibly - the border only
     // ever reflected *selection*. Quick tuner mode felt responsive because its
     // cards carry their own focus treatment; the profile picker and the
     // left-edge picker, which both render these rows, did not.
@@ -1905,7 +1848,7 @@ private fun ProfileChoiceRow(
     // Modifier order copied from the quick-tuner card, which works.
     //
     // v24 added `onFocusChanged` and focus colours here, but that only *observes*
-    // focus — it never creates a focus target, and neither does `focusRequester`
+    // focus - it never creates a focus target, and neither does `focusRequester`
     // on its own. The row was relying on `clickable` for focusability, which is
     // the one thing the working card does NOT rely on. So `requestFocus()` on the
     // first row had nothing to attach to and the D-pad never entered the list:

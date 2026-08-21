@@ -264,10 +264,10 @@ class HostProtocolTest {
         fs.modes["max"] = 432 // 0660
         val cpu = CpuDomain("p0", "min", "max", null, listOf(100), listOf(400, 800), 1000, 1000, 100)
         assertTrue(HostApplyEngine(fs).apply(HostCapabilities(listOf(cpu), null), ApplyRequest(listOf(800), null, false)).isSuccess)
-        assertEquals(292, fs.modes["max"]) // 0444
+        assertEquals(288, fs.modes["max"]) // 0440
         assertEquals(416, fs.modes["min"]) // 0640 remains writable
         assertTrue(fs.chmodModes.contains("max=432"))
-        assertTrue(fs.chmodModes.contains("max=292"))
+        assertTrue(fs.chmodModes.contains("max=288"))
     }
 
     @Test fun `mixed stock and capped domains finalize before next domain`() {
@@ -278,8 +278,8 @@ class HostProtocolTest {
         val gpu = GpuDomain("g", "gmin", "gmax", null, listOf(400, 600, 700, 900), stockMax = 900, selectableMax = 900, observedMin = 100)
         assertTrue(HostApplyEngine(fs).apply(HostCapabilities(listOf(cpu0, cpu1), gpu), ApplyRequest(listOf(1000, 600), 600, false)).isSuccess)
         assertEquals(432, fs.modes["max0"])
-        assertEquals(292, fs.modes["max1"])
-        assertEquals(292, fs.modes["gmax"])
+        assertEquals(288, fs.modes["max1"])
+        assertEquals(288, fs.modes["gmax"])
         val firstMax = fs.orderedOperations.indexOfFirst { it.startsWith("chmod:max0=") }
         val minWrites = fs.orderedOperations.withIndex().filter { it.value.startsWith("write:min") }.map { it.index }
         // Each domain's minimum repair is immediately followed by its own max write;
@@ -291,7 +291,7 @@ class HostProtocolTest {
         assertTrue(min0 < 0 || max0 > min0)
         assertTrue(min1 < 0 || max1 > min1)
         val maxWrites = fs.orderedOperations.withIndex().filter { it.value.startsWith("write:max") }.map { it.index }
-        val firstFinalProtection = fs.orderedOperations.indexOfLast { it == "chmod:max1=292" }
+        val firstFinalProtection = fs.orderedOperations.indexOfLast { it == "chmod:max1=288" }
         assertTrue(maxWrites.all { it < firstFinalProtection })
         val firstVerificationRead = firstFinalProtection + 1 + fs.orderedOperations.drop(firstFinalProtection + 1).indexOf("read:max0")
         assertTrue(maxWrites.all { it < firstVerificationRead })
