@@ -4,6 +4,7 @@ import java.io.File
 
 interface SysfsFileSystem {
     fun listPolicyDirectories(root: String): List<String>
+    fun listDirectories(root: String): List<String> = listPolicyDirectories(root)
     fun readText(path: String): String?
 }
 
@@ -15,6 +16,10 @@ class RealSysfsFileSystem : SysfsFileSystem {
             ?.map { it.absolutePath }
             .orEmpty()
     }
+    override fun listDirectories(root: String): List<String> = File(root).listFiles()
+        ?.filter { it.isDirectory }
+        ?.map { it.absolutePath }
+        .orEmpty()
 
     override fun readText(path: String): String? {
         return runCatching {

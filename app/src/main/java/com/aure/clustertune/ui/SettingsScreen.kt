@@ -94,6 +94,19 @@ import com.aure.clustertune.ui.designsystem.token.ClusterTuneBreakpoints
 import com.aure.clustertune.ui.designsystem.token.ClusterTuneDensity
 import com.aure.clustertune.ui.settings.ThemeModeSelector
 import com.aure.clustertune.ui.settings.DeviceExecutionMethodCard
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.draw.scale
+import com.aure.clustertune.ui.designsystem.component.rememberCtAdjustable
+import com.aure.clustertune.ui.designsystem.component.animatedScale
+import com.aure.clustertune.ui.designsystem.component.ctAdjustable
 
 @Composable
 fun SettingsScreen(
@@ -117,6 +130,15 @@ fun SettingsScreen(
     onOpenOverlayPermissionSettings: () -> Unit,
     hasUsageAccess: Boolean,
     onOpenUsageAccessSettings: () -> Unit,
+    hasAppProfileAccessibilityAccess: Boolean,
+    onOpenAppProfileAccessibilitySettings: () -> Unit,
+    /** Opens the wireless-debugging pairing screen; null hides the entry point. */
+    onOpenWirelessDebugSetup: (() -> Unit)? = null,
+    /** True while the privileged host is running and serving requests. */
+    isHostRunning: () -> Boolean = { false },
+    onWirelessDebugLoggingChange: (Boolean) -> Unit = {},
+    onViewDiagnosticLog: () -> Unit = {},
+    onDownloadDiagnosticLog: () -> Unit = {},
     hasNotificationAccess: Boolean,
     onOpenNotificationSettings: () -> Unit,
     canInstallUpdates: Boolean,
@@ -135,7 +157,6 @@ fun SettingsScreen(
     onProfileSwitchHistoryLimitChange: (Int) -> Unit,
     onPrivilegedExecutionMethodChange: (String?) -> Unit,
     onAutoDetectPrivilegedExecutionMethod: () -> Unit,
-    onOpenWirelessDebugSetup: (() -> Unit)? = null,
 ) {
     var showResetConfirmation by remember { mutableStateOf(false) }
 
@@ -250,6 +271,13 @@ fun SettingsScreen(
                 description = stringResource(R.string.settings_overlay_access_description),
                 granted = canDrawOverlays,
                 onClick = onOpenOverlayPermissionSettings,
+                missingActionLabel = stringResource(R.string.settings_grant),
+            )
+            SettingsAccessRow(
+                title = stringResource(R.string.settings_app_profile_accessibility),
+                description = stringResource(R.string.settings_app_profile_accessibility_description),
+                granted = hasAppProfileAccessibilityAccess,
+                onClick = onOpenAppProfileAccessibilitySettings,
                 missingActionLabel = stringResource(R.string.settings_grant),
             )
             SettingsAccessRow(
@@ -387,6 +415,11 @@ fun SettingsScreen(
             onMethodChange = onPrivilegedExecutionMethodChange,
             density = density,
             onOpenWirelessDebugSetup = onOpenWirelessDebugSetup,
+            isHostRunning = isHostRunning,
+            wirelessDebugLoggingEnabled = settings.wirelessDebugLoggingEnabled,
+            onWirelessDebugLoggingChange = onWirelessDebugLoggingChange,
+            onViewDiagnosticLog = onViewDiagnosticLog,
+            onDownloadDiagnosticLog = onDownloadDiagnosticLog,
         )
 
         SectionCard(title = stringResource(R.string.settings_profiles), symbol = "swap_vert", density = density) {
@@ -704,8 +737,39 @@ private fun EdgeHandleSlider(
     var lastEmittedValue by remember(value) { mutableIntStateOf(value) }
     val roundedValue = pendingValue.roundToInt()
 
+    // Shared hover-then-adjust contract (see CtAdjustable), so this control and
+    // the tuner cards cannot drift apart again. A/Center enters adjust mode and
+    // grows the control, left/right step, up/down are swallowed while adjusting
+    // so focus cannot escape mid-edit, and B leaves adjust mode instead of
+    // falling through to the screen's back handling and exiting Settings.
+    val interactionSource = remember { MutableInteractionSource() }
+    val adjustable = rememberCtAdjustable()
+
+    fun stepBy(delta: Int) {
+        val next = (roundedValue + delta).coerceIn(valueRange.first, valueRange.last)
+        if (next == roundedValue) return
+        pendingValue = next.toFloat()
+        lastEmittedValue = next
+        onValuePreview(next)
+        onValueChangeFinished(next)
+    }
+
+    val outline = when {
+        adjustable.adjusting -> MaterialTheme.colorScheme.primary
+        adjustable.focused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+        else -> Color.Transparent
+    }
+    val sliderScale = adjustable.animatedScale()
+
     Column(
-        modifier = modifier,
+        modifier = modifier
+            .scale(sliderScale)
+            .border(
+                BorderStroke(if (adjustable.focused || adjustable.adjusting) 2.dp else 0.dp, outline),
+                RoundedCornerShape(10.dp),
+            )
+            .padding(4.dp)
+            .ctAdjustable(adjustable, interactionSource, onStep = ::stepBy),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -724,6 +788,7 @@ private fun EdgeHandleSlider(
             )
         }
         CtSlider(
+            active = adjustable.adjusting,
             value = pendingValue,
             onValueChange = {
                 pendingValue = it

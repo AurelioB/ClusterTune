@@ -12,6 +12,25 @@ import android.util.Log
  */
 object JdwpDebugLog {
     private const val TAG = "ClusterTuneJdwpConn"
+
+    /**
+     * Master switch for every diagnostic this project emits.
+     *
+     * Off by default, so a release build is silent: nothing reaches the in-app
+     * buffer and nothing reaches logcat. The app turns it on from the "Wireless
+     * debugging execution method logging" setting.
+     *
+     * This is deliberately the single choke point. Diagnostics were added over
+     * many debugging rounds across a dozen files, and gating them one by one
+     * would guarantee some were missed — every caller already routes through
+     * here, so one flag covers all of them, including any added later.
+     */
+    @Volatile
+    var enabled: Boolean = false
+        set(value) {
+            field = value
+            if (!value) clear()
+        }
     // Sized so that a full apply — including the injected script's own trace and
     // the before/after sysfs listings — fits alongside the connection history.
     // The users who can reproduce the policy0 failure have no PC, so the in-app
@@ -29,13 +48,23 @@ object JdwpDebugLog {
     fun snapshot(): List<String> = synchronized(buffer) { buffer.toList() }
 
     fun d(message: String) {
+        if (!enabled) return
         runCatching { Log.d(TAG, message) }
         add(message)
     }
 
     fun w(message: String, t: Throwable? = null) {
+        if (!enabled) return
         runCatching { Log.w(TAG, message, t) }
         add("! " + message + (t?.message?.let { ": $it" } ?: ""))
+    }
+
+    /**
+     * Whole buffer as text, for export. Returns null when there is nothing to
+     * export, so callers can tell "empty" from "disabled".
+     */
+    fun exportText(): String? = synchronized(buffer) {
+        if (buffer.isEmpty()) null else buffer.joinToString("\n")
     }
 
     private fun add(message: String) {

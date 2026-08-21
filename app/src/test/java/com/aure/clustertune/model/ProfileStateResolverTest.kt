@@ -112,6 +112,91 @@ class ProfileStateResolverTest {
         assertEquals("Policy 3 Max", state.activeDisplayProfileName)
     }
 
+    @Test
+    fun `legacy cpu-only profile leaves gpu unspecified while gpu profile requires matching cap`() {
+        val cpu = policy(0, 2_000_000, 2_500_000, listOf(1_000_000, 2_000_000, 2_500_000))
+        val gpu = GpuPolicyInfo("/gpu", "/gpu/max", currentMaxFrequencyHz = 600, selectableMaxFrequencyHz = 600, observedMaxFrequencyHz = 800, supportedFrequenciesHz = listOf(400, 600, 800))
+        val cpuOnly = PerformanceProfile("cpu", "CPU", mapOf(0 to 2_000_000), ProfileSource.USER)
+        val gpuAware = cpuOnly.copy(id = "gpu", name = "GPU", gpuMaxFrequencyHz = 600)
+        assertTrue(ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), cpuOnly, listOf(cpu), gpu, 400))
+        assertTrue(ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), cpuOnly, listOf(cpu), gpu, 600))
+        assertTrue(ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), cpuOnly, listOf(cpu), gpu, 800))
+        assertTrue(ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), gpuAware, listOf(cpu), gpu, 600))
+        assertTrue(!ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), gpuAware, listOf(cpu), gpu, 400))
+    }
+
+    @Test
+    fun `stock profile includes observed gpu ceiling`() {
+        val cpu = policy(0, 2_500_000, 2_500_000, listOf(1_000_000, 2_500_000))
+        val gpu = GpuPolicyInfo("/gpu", "/gpu/max", currentMaxFrequencyHz = 600, selectableMaxFrequencyHz = 600, observedMaxFrequencyHz = 800, supportedFrequenciesHz = listOf(400, 600, 800))
+        assertEquals(800, ProfileStateResolver.buildStockProfile(listOf(cpu), gpu)?.gpuMaxFrequencyHz)
+    }
+
+    @Test
+    fun `legacy null gpu profile leaves gpu domain unspecified`() {
+        val cpu = policy(0, 2_000_000, 2_000_000, listOf(1_000_000, 2_000_000))
+        val gpu = GpuPolicyInfo(
+            "/gpu", "/gpu/max", currentMaxFrequencyHz = 600,
+            selectableMaxFrequencyHz = 600, observedMaxFrequencyHz = 800,
+            supportedFrequenciesHz = listOf(400, 600, 800),
+        )
+        val legacy = PerformanceProfile("legacy", "Legacy", mapOf(0 to 2_000_000), ProfileSource.USER)
+
+        assertTrue(ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), legacy, listOf(cpu), gpu, 800))
+        assertTrue(ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), legacy, listOf(cpu), gpu, 600))
+        assertTrue(ProfileStateResolver.matchesProfile(mapOf(0 to 2_000_000), legacy, listOf(cpu), gpu, 400))
+    }
+
+    @Test
+    fun `switching from capped gpu profile to legacy profile leaves gpu unchanged`() {
+        val cpu = policy(0, 2_000_000, 2_000_000, listOf(1_000_000, 2_000_000))
+        val gpu = GpuPolicyInfo(
+            "/gpu", "/gpu/max", currentMaxFrequencyHz = 600,
+            selectableMaxFrequencyHz = 600, observedMaxFrequencyHz = 800,
+            supportedFrequenciesHz = listOf(400, 600, 800),
+        )
+        val capped = PerformanceProfile("capped", "Capped", mapOf(0 to 2_000_000), ProfileSource.USER, gpuMaxFrequencyHz = 600)
+        val legacy = PerformanceProfile("legacy", "Legacy", mapOf(0 to 2_000_000), ProfileSource.USER)
+        val state = ProfileStateResolver.resolve(
+            TunerState(
+                isLoading = false,
+                policies = listOf(cpu),
+                gpuPolicy = gpu,
+                actualValues = mapOf(0 to 2_000_000),
+                currentValues = mapOf(0 to 2_000_000),
+                actualGpuMaxFrequencyHz = 800,
+                currentGpuMaxFrequencyHz = 800,
+                userProfiles = listOf(capped, legacy),
+                selectedProfileId = legacy.id,
+            ),
+        )
+
+        assertEquals(legacy.id, state.activeDisplayProfileId)
+        assertEquals(legacy.id, state.selectedDisplayProfileId)
+        assertEquals(800, state.currentGpuMaxFrequencyHz)
+    }
+
+    @Test
+    fun `sleep default chooses large underclock regardless of display order`() {
+        val profiles = listOf(
+            PerformanceProfile("small", "Small Underclock", mapOf(0 to 2_000), ProfileSource.BUNDLED, order = 0),
+            PerformanceProfile("stock", "Stock", mapOf(0 to 3_000), ProfileSource.VIRTUAL, order = 1),
+            PerformanceProfile("large", "Large Underclock", mapOf(0 to 1_000), ProfileSource.BUNDLED, order = 2),
+        )
+
+        assertEquals("large", ProfileStateResolver.defaultSleepProfileId(profiles))
+    }
+
+    @Test
+    fun `sleep default falls back to most restrictive bundled profile`() {
+        val profiles = listOf(
+            PerformanceProfile("m", "Balanced", mapOf(0 to 2_000, 1 to 2_500), ProfileSource.BUNDLED),
+            PerformanceProfile("s", "Quiet", mapOf(0 to 1_000, 1 to 1_500), ProfileSource.BUNDLED),
+        )
+
+        assertEquals("s", ProfileStateResolver.defaultSleepProfileId(profiles))
+    }
+
     private fun policy(
         id: Int,
         current: Int,

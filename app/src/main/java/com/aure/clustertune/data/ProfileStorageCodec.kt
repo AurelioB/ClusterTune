@@ -4,6 +4,8 @@ import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileSwitchHistoryEntry
 import com.aure.clustertune.model.ProfileSource
+import com.aure.clustertune.model.EffectiveProfileSource
+import com.aure.clustertune.model.EffectiveProfileState
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -27,6 +29,7 @@ object ProfileStorageCodec {
                     isEditable = profile.isEditable,
                     isDeletable = profile.isDeletable,
                     maxFrequencies = profile.maxFrequencies.mapKeys { (policyId, _) -> policyId.toString() },
+                    gpuMaxFrequencyHz = profile.gpuMaxFrequencyHz?.takeIf { it > 0 },
                 )
             },
         )
@@ -47,6 +50,7 @@ object ProfileStorageCodec {
                     order = profile.order,
                     isEditable = profile.isEditable,
                     isDeletable = profile.isDeletable,
+                    gpuMaxFrequencyHz = profile.gpuMaxFrequencyHz?.takeIf { it > 0 },
                 )
             }
         }.getOrDefault(emptyList()).sortedBy { it.order }
@@ -77,6 +81,38 @@ object ProfileStorageCodec {
         return runCatching { json.decodeFromString<List<String>>(raw) }.getOrDefault(emptyList())
     }
 
+    fun encodeEffectiveProfileState(state: EffectiveProfileState): String = json.encodeToString(
+        StoredEffectiveProfileState(
+            id = state.id,
+            name = state.name,
+            source = state.source.name,
+            contributingPackageNames = state.contributingPackageNames.distinct().sorted(),
+            timestampMillis = state.timestampMillis,
+            generation = state.generation,
+        ),
+    )
+
+    fun parseEffectiveProfileState(raw: String?): EffectiveProfileState? {
+        if (raw.isNullOrBlank()) return null
+        return runCatching {
+            json.decodeFromString<StoredEffectiveProfileState>(raw).let { value ->
+                val id = value.id.trim()
+                val name = value.name.trim()
+                if (id.isBlank() || name.isBlank()) return@runCatching null
+                EffectiveProfileState(
+                    id = id,
+                    name = name,
+                    source = runCatching { EffectiveProfileSource.valueOf(value.source) }
+                        .getOrDefault(EffectiveProfileSource.NORMAL),
+                    contributingPackageNames = value.contributingPackageNames.map(String::trim)
+                        .filter(String::isNotBlank).distinct(),
+                    timestampMillis = value.timestampMillis.coerceAtLeast(0L),
+                    generation = value.generation.coerceAtLeast(0L),
+                )
+            }
+        }.getOrNull()
+    }
+
     fun encodeAppProfileAssignments(assignments: List<AppProfileAssignment>): String {
         return json.encodeToString<List<StoredAppProfileAssignment>>(
             assignments.sortedBy { it.appLabel.lowercase() }.map { assignment ->
@@ -86,6 +122,7 @@ object ProfileStorageCodec {
                     profileId = assignment.profileId,
                     customMaxFrequencies = assignment.customMaxFrequencies
                         .mapKeys { (policyId, _) -> policyId.toString() },
+                    customGpuMaxFrequencyHz = assignment.customGpuMaxFrequencyHz,
                 )
             },
         )
@@ -98,15 +135,21 @@ object ProfileStorageCodec {
                 .mapNotNull { assignment ->
                     val packageName = assignment.packageName.trim()
                     val profileId = assignment.profileId?.trim()?.takeIf { it.isNotBlank() }
-                    val customValues = assignment.customMaxFrequencies.mapNotNull { (policyId, frequency) ->
+                    val parsedCustomValues = assignment.customMaxFrequencies.mapNotNull { (policyId, frequency) ->
                         policyId.toIntOrNull()?.takeIf { frequency > 0 }?.let { it to frequency }
                     }.toMap()
-                    if (packageName.isBlank() || (profileId == null && customValues.isEmpty())) return@mapNotNull null
+                    val customValues = if (profileId == null) parsedCustomValues else emptyMap()
+                    // Older builds could persist the profile's GPU value next
+                    // to its profileId. Treat that as redundant metadata and
+                    // keep the named assignment rather than dropping it.
+                    val customGpu = if (profileId == null) assignment.customGpuMaxFrequencyHz?.takeIf { it > 0 } else null
+                    if (packageName.isBlank() || (profileId == null && customValues.isEmpty() && customGpu == null)) return@mapNotNull null
                     AppProfileAssignment(
                         packageName = packageName,
                         appLabel = assignment.appLabel.ifBlank { packageName },
                         profileId = profileId,
                         customMaxFrequencies = customValues,
+                        customGpuMaxFrequencyHz = customGpu,
                     )
                 }
                 .sortedBy { it.appLabel.lowercase() }
@@ -159,6 +202,7 @@ object ProfileStorageCodec {
         val isDeletable: Boolean = true,
         @SerialName("maxFrequencies")
         val maxFrequencies: Map<String, Int> = emptyMap(),
+        val gpuMaxFrequencyHz: Int? = null,
     )
 
     @Serializable
@@ -167,6 +211,7 @@ object ProfileStorageCodec {
         val appLabel: String,
         val profileId: String? = null,
         val customMaxFrequencies: Map<String, Int> = emptyMap(),
+        val customGpuMaxFrequencyHz: Int? = null,
     )
 
     @Serializable
@@ -175,5 +220,15 @@ object ProfileStorageCodec {
         val profileId: String? = null,
         val profileName: String,
         val trigger: String,
+    )
+
+    @Serializable
+    private data class StoredEffectiveProfileState(
+        val id: String,
+        val name: String,
+        val source: String = EffectiveProfileSource.NORMAL.name,
+        val contributingPackageNames: List<String> = emptyList(),
+        val timestampMillis: Long = 0L,
+        val generation: Long = 0L,
     )
 }

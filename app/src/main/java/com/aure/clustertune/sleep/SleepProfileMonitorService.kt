@@ -10,6 +10,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -17,6 +18,7 @@ import androidx.core.content.getSystemService
 import com.aure.clustertune.AppContainer
 import com.aure.clustertune.MainActivity
 import com.aure.clustertune.R
+import com.aure.clustertune.tile.QuickSettingsTileRefresher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -64,6 +66,16 @@ class SleepProfileMonitorService : Service() {
             val settings = container.settingsStorage.settings.first()
             if (!settings.sleepProfileEnabled) {
                 stopSelf()
+                return@launch
+            }
+            // START_STICKY recreation and package replacement may not deliver
+            // a matching screen broadcast. Reconcile persisted state here so
+            // a sleep cap cannot remain stranded across process death.
+            val powerManager = getSystemService<PowerManager>()
+            if (powerManager?.isInteractive == true) {
+                restorePreSleepState()
+            } else if (settings.sleepProfileId != null) {
+                applySleepProfile()
             }
         }
         return START_STICKY
@@ -101,7 +113,8 @@ class SleepProfileMonitorService : Service() {
                 val settings = container.settingsStorage.settings.first()
                 val profileId = settings.sleepProfileId
                 if (!settings.sleepProfileEnabled || profileId == null) return@withLock
-                container.repository.applySleepProfile(profileId)
+                val result = container.repository.applySleepProfile(profileId)
+                if (result.isSuccess) QuickSettingsTileRefresher.requestUpdate(applicationContext)
             }
         }
     }
@@ -111,7 +124,8 @@ class SleepProfileMonitorService : Service() {
             transitionMutex.withLock {
                 val settings = container.settingsStorage.settings.first()
                 if (!settings.sleepProfileEnabled) return@withLock
-                container.repository.restorePreSleepState()
+                val result = container.repository.restorePreSleepState()
+                if (result.isSuccess) QuickSettingsTileRefresher.requestUpdate(applicationContext)
             }
         }
     }

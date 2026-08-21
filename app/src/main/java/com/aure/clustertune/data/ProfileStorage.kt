@@ -4,13 +4,15 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileSwitchHistoryEntry
 import com.aure.clustertune.model.ProfileSource
+import com.aure.clustertune.model.EffectiveProfileState
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 private val Context.dataStore by preferencesDataStore(name = "android_tuner")
@@ -19,63 +21,91 @@ class ProfileStorage(private val context: Context) {
 
     private val profilesKey = stringPreferencesKey("user_profiles")
     private val lastValuesKey = stringPreferencesKey("last_values")
+    private val lastGpuValueKey = stringPreferencesKey("last_gpu_value")
     private val selectedProfileKey = stringPreferencesKey("selected_profile")
     private val lastAppliedDisplayProfileKey = stringPreferencesKey("last_applied_display_profile")
     private val sleepRestoreValuesKey = stringPreferencesKey("sleep_restore_values")
+    private val sleepRestoreGpuValueKey = stringPreferencesKey("sleep_restore_gpu_value")
+    private val sleepRestoreGpuKnownKey = booleanPreferencesKey("sleep_restore_gpu_known")
     private val sleepRestoreDisplayProfileKey = stringPreferencesKey("sleep_restore_display_profile")
+    private val sleepRestoreEffectiveProfileKey = stringPreferencesKey("sleep_restore_effective_profile")
     private val deletedBundledProfileIdsKey = stringSetPreferencesKey("deleted_bundled_profile_ids")
     private val displayOrderKey = stringPreferencesKey("display_order")
     private val appProfileAssignmentsKey = stringPreferencesKey("app_profile_assignments")
     private val profileSwitchHistoryKey = stringPreferencesKey("profile_switch_history")
-    private val sysfsRepairVersionKey = intPreferencesKey("sysfs_repair_version")
+    private val effectiveProfileStateKey = stringPreferencesKey("effective_profile_state")
 
     val profiles: Flow<List<PerformanceProfile>> = context.dataStore.data.map { preferences ->
         ProfileStorageCodec.parseProfiles(preferences[profilesKey])
-    }
+    }.distinctUntilChanged()
 
     val deletedBundledProfileIds: Flow<Set<String>> = context.dataStore.data.map { preferences ->
         preferences[deletedBundledProfileIdsKey] ?: emptySet()
-    }
+    }.distinctUntilChanged()
 
     val displayOrder: Flow<List<String>> = context.dataStore.data.map { preferences ->
         ProfileStorageCodec.parseStringList(preferences[displayOrderKey])
-    }
+    }.distinctUntilChanged()
 
     val appProfileAssignments: Flow<List<AppProfileAssignment>> = context.dataStore.data.map { preferences ->
         ProfileStorageCodec.parseAppProfileAssignments(preferences[appProfileAssignmentsKey])
-    }
+    }.distinctUntilChanged()
 
     val profileSwitchHistory: Flow<List<ProfileSwitchHistoryEntry>> = context.dataStore.data.map { preferences ->
         ProfileStorageCodec.parseProfileSwitchHistory(preferences[profileSwitchHistoryKey])
+    }.distinctUntilChanged()
+
+    val effectiveProfileState: Flow<EffectiveProfileState?> = context.dataStore.data.map { preferences ->
+        ProfileStorageCodec.parseEffectiveProfileState(preferences[effectiveProfileStateKey])
+    }.distinctUntilChanged()
+
+    suspend fun persistEffectiveProfileState(state: EffectiveProfileState) {
+        context.dataStore.edit { preferences ->
+            val previous = ProfileStorageCodec.parseEffectiveProfileState(preferences[effectiveProfileStateKey])
+            val now = System.currentTimeMillis()
+            val normalized = state.copy(
+                timestampMillis = maxOf(state.timestampMillis, now, previous?.timestampMillis ?: 0L),
+                generation = maxOf(state.generation, (previous?.generation ?: 0L) + 1L),
+            )
+            preferences[effectiveProfileStateKey] = ProfileStorageCodec.encodeEffectiveProfileState(normalized)
+        }
+    }
+
+    suspend fun clearEffectiveProfileState() {
+        context.dataStore.edit { preferences -> preferences.remove(effectiveProfileStateKey) }
     }
 
     val lastValues: Flow<Map<Int, Int>> = context.dataStore.data.map { preferences ->
         ProfileStorageCodec.parseIntMap(preferences[lastValuesKey])
-    }
+    }.distinctUntilChanged()
 
     val selectedProfileId: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[selectedProfileKey]
-    }
+    }.distinctUntilChanged()
 
     val lastAppliedDisplayProfileId: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[lastAppliedDisplayProfileKey]
-    }
+    }.distinctUntilChanged()
 
     val sleepRestoreValues: Flow<Map<Int, Int>> = context.dataStore.data.map { preferences ->
         ProfileStorageCodec.parseIntMap(preferences[sleepRestoreValuesKey])
-    }
+    }.distinctUntilChanged()
+    val lastGpuValue: Flow<Int?> = context.dataStore.data.map { it[lastGpuValueKey] }
+        .map { it?.toIntOrNull()?.takeIf { value -> value > 0 } }
+        .distinctUntilChanged()
+    val sleepRestoreGpuValue: Flow<Int?> = context.dataStore.data.map { it[sleepRestoreGpuValueKey] }
+        .map { it?.toIntOrNull()?.takeIf { value -> value > 0 } }
+        .distinctUntilChanged()
+    val sleepRestoreGpuKnown: Flow<Boolean> = context.dataStore.data.map { it[sleepRestoreGpuKnownKey] ?: false }
+        .distinctUntilChanged()
 
     val sleepRestoreDisplayProfileId: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[sleepRestoreDisplayProfileKey]
-    }
+    }.distinctUntilChanged()
 
-    val sysfsRepairVersion: Flow<Int> = context.dataStore.data.map { preferences ->
-        preferences[sysfsRepairVersionKey] ?: 0
-    }
-
-    suspend fun markSysfsRepairComplete(version: Int) {
-        context.dataStore.edit { preferences -> preferences[sysfsRepairVersionKey] = version }
-    }
+    val sleepRestoreEffectiveProfileState: Flow<EffectiveProfileState?> = context.dataStore.data.map { preferences ->
+        ProfileStorageCodec.parseEffectiveProfileState(preferences[sleepRestoreEffectiveProfileKey])
+    }.distinctUntilChanged()
 
     suspend fun saveProfile(profile: PerformanceProfile) {
         context.dataStore.edit { preferences ->
@@ -129,6 +159,19 @@ class ProfileStorage(private val context: Context) {
             val updated = ProfileStorageCodec
                 .parseAppProfileAssignments(preferences[appProfileAssignmentsKey])
                 .filterNot { it.packageName == packageName }
+            if (updated.isEmpty()) {
+                preferences.remove(appProfileAssignmentsKey)
+            } else {
+                preferences[appProfileAssignmentsKey] = ProfileStorageCodec.encodeAppProfileAssignments(updated)
+            }
+        }
+    }
+
+    suspend fun deleteAppProfileAssignmentsForProfile(profileId: String) {
+        context.dataStore.edit { preferences ->
+            val updated = ProfileStorageCodec
+                .parseAppProfileAssignments(preferences[appProfileAssignmentsKey])
+                .filterNot { assignment -> assignment.profileId == profileId }
             if (updated.isEmpty()) {
                 preferences.remove(appProfileAssignmentsKey)
             } else {
@@ -197,6 +240,13 @@ class ProfileStorage(private val context: Context) {
         }
     }
 
+    suspend fun persistLastValues(values: Map<Int, Int>, gpuValue: Int?) {
+        context.dataStore.edit { preferences ->
+            preferences[lastValuesKey] = ProfileStorageCodec.encodeIntMap(values)
+            if (gpuValue == null) preferences.remove(lastGpuValueKey) else preferences[lastGpuValueKey] = gpuValue.toString()
+        }
+    }
+
     suspend fun persistSelectedProfile(profileId: String?) {
         context.dataStore.edit { preferences ->
             if (profileId == null) {
@@ -228,14 +278,45 @@ class ProfileStorage(private val context: Context) {
         }
     }
 
-    suspend fun persistSleepRestoreState(values: Map<Int, Int>, profileId: String?) {
+    suspend fun persistNormalProfileState(values: Map<Int, Int>, profileId: String?, gpuValue: Int?) {
+        context.dataStore.edit { preferences ->
+            preferences[lastValuesKey] = ProfileStorageCodec.encodeIntMap(values)
+            if (gpuValue == null) preferences.remove(lastGpuValueKey) else preferences[lastGpuValueKey] = gpuValue.toString()
+            if (profileId == null) preferences.remove(lastAppliedDisplayProfileKey) else preferences[lastAppliedDisplayProfileKey] = profileId
+        }
+    }
+
+    /** Persists normal-state values and selection projections in one DataStore transaction. */
+    suspend fun persistNormalProfileState(
+        values: Map<Int, Int>,
+        lastAppliedProfileId: String?,
+        gpuValue: Int?,
+        selectedProfileId: String?,
+    ) {
+        context.dataStore.edit { preferences ->
+            preferences[lastValuesKey] = ProfileStorageCodec.encodeIntMap(values)
+            if (gpuValue == null) preferences.remove(lastGpuValueKey) else preferences[lastGpuValueKey] = gpuValue.toString()
+            if (lastAppliedProfileId == null) preferences.remove(lastAppliedDisplayProfileKey)
+            else preferences[lastAppliedDisplayProfileKey] = lastAppliedProfileId
+            if (selectedProfileId == null) preferences.remove(selectedProfileKey)
+            else preferences[selectedProfileKey] = selectedProfileId
+        }
+    }
+
+    suspend fun persistSleepRestoreState(
+        values: Map<Int, Int>,
+        profileId: String?,
+        gpuValue: Int?,
+        gpuKnown: Boolean = gpuValue != null,
+        effectiveProfileState: EffectiveProfileState? = null,
+    ) {
         context.dataStore.edit { preferences ->
             preferences[sleepRestoreValuesKey] = ProfileStorageCodec.encodeIntMap(values)
-            if (profileId == null) {
-                preferences.remove(sleepRestoreDisplayProfileKey)
-            } else {
-                preferences[sleepRestoreDisplayProfileKey] = profileId
-            }
+            if (gpuValue == null) preferences.remove(sleepRestoreGpuValueKey) else preferences[sleepRestoreGpuValueKey] = gpuValue.toString()
+            preferences[sleepRestoreGpuKnownKey] = gpuKnown
+            if (profileId == null) preferences.remove(sleepRestoreDisplayProfileKey) else preferences[sleepRestoreDisplayProfileKey] = profileId
+            if (effectiveProfileState == null) preferences.remove(sleepRestoreEffectiveProfileKey)
+            else preferences[sleepRestoreEffectiveProfileKey] = ProfileStorageCodec.encodeEffectiveProfileState(effectiveProfileState)
         }
     }
 
@@ -243,6 +324,9 @@ class ProfileStorage(private val context: Context) {
         context.dataStore.edit { preferences ->
             preferences.remove(sleepRestoreValuesKey)
             preferences.remove(sleepRestoreDisplayProfileKey)
+            preferences.remove(sleepRestoreGpuValueKey)
+            preferences.remove(sleepRestoreGpuKnownKey)
+            preferences.remove(sleepRestoreEffectiveProfileKey)
         }
     }
 

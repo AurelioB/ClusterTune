@@ -14,4 +14,5 @@ data class PerformanceProfile(
     val order: Int = 0,
     val isEditable: Boolean = source == ProfileSource.USER,
     val isDeletable: Boolean = source == ProfileSource.USER,
+    val gpuMaxFrequencyHz: Int? = null,
 )

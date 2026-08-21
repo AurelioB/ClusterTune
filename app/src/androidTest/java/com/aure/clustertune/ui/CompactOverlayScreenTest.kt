@@ -1,6 +1,7 @@
 package com.aure.clustertune.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
@@ -14,7 +15,11 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aure.clustertune.model.AppProfileAssignment
@@ -69,7 +74,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
-                    onAppProfileAssignmentChange = { _, _ -> },
+                    onAppProfileAssignmentChange = { _, _, _ -> },
                 )
             }
         }
@@ -80,6 +85,34 @@ class CompactOverlayScreenTest {
         composeRule.runOnIdle { assertEquals(CompactOverlayMode.TUNER, mode) }
         assertSharedHeader()
         composeRule.onNodeWithText("Apply").assertExists()
+    }
+
+    @Test
+    fun constrainedTuner_keepsHeaderAndActionsVisible_whileControlsScroll() {
+        composeRule.setContent {
+            MaterialTheme {
+                Box(Modifier.width(300.dp).height(260.dp)) {
+                    CompactOverlayScreen(
+                        state = state(),
+                        displayFrequenciesAsPercent = false,
+                        mode = CompactOverlayMode.TUNER,
+                        onModeChange = {},
+                        onApplyProfile = { _, _ -> },
+                        onApplyCurrent = { _, _, _, _ -> },
+                        onDismissRequest = {},
+                        onRefreshLiveValues = {},
+                        contextPackageName = "com.example.game",
+                        contextLabel = "Example game",
+                        onAppProfileAssignmentChange = { _, _, _ -> },
+                    )
+                }
+            }
+        }
+
+        assertSharedHeader()
+        composeRule.onNodeWithText("Apply").assertIsDisplayed()
+        composeRule.onNodeWithText("Cancel").assertIsDisplayed()
+        composeRule.onNodeWithText("Cluster 0").performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -100,7 +133,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
-                    onAppProfileAssignmentChange = { _, _ -> assignmentCount++ },
+                    onAppProfileAssignmentChange = { _, _, _ -> assignmentCount++ },
                 )
             }
         }
@@ -118,6 +151,50 @@ class CompactOverlayScreenTest {
             assertEquals(1, dismissCount)
             assertEquals(0, assignmentCount)
         }
+    }
+
+    @Test
+    fun profilesMode_marksMatchingProfileAsApplying() {
+        composeRule.setContent {
+            MaterialTheme {
+                CompactOverlayScreen(
+                    state = state(),
+                    applyingProfileId = "small",
+                    displayFrequenciesAsPercent = false,
+                    mode = CompactOverlayMode.PROFILES,
+                    onModeChange = {},
+                    onApplyProfile = { _, _ -> },
+                    onApplyCurrent = { _, _, _, _ -> },
+                    onDismissRequest = {},
+                    onRefreshLiveValues = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Applying Small").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Applying Large").assertDoesNotExist()
+    }
+
+    @Test
+    fun tunerMode_marksOnlyNamedApplyingChip() {
+        composeRule.setContent {
+            MaterialTheme {
+                CompactOverlayScreen(
+                    state = state(),
+                    applyingProfileId = "large",
+                    displayFrequenciesAsPercent = false,
+                    mode = CompactOverlayMode.TUNER,
+                    onModeChange = {},
+                    onApplyProfile = { _, _ -> },
+                    onApplyCurrent = { _, _, _, _ -> },
+                    onDismissRequest = {},
+                    onRefreshLiveValues = {},
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Applying Large").assertIsDisplayed()
+        composeRule.onNodeWithContentDescription("Applying Small").assertDoesNotExist()
     }
 
     @Test
@@ -139,7 +216,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
-                    onAppProfileAssignmentChange = { _, _ -> },
+                    onAppProfileAssignmentChange = { _, _, _ -> },
                 )
             }
         }
@@ -171,7 +248,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
-                    onAppProfileAssignmentChange = { _, _ -> },
+                    onAppProfileAssignmentChange = { _, _, _ -> },
                 )
             }
         }
@@ -220,7 +297,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
-                    onAppProfileAssignmentChange = { _, _ -> },
+                    onAppProfileAssignmentChange = { _, _, _ -> },
                     showAppProfileToggle = false,
                 )
             }
@@ -264,7 +341,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
-                    onAppProfileAssignmentChange = { _, _ -> },
+                    onAppProfileAssignmentChange = { _, _, _ -> },
                 )
             }
         }
@@ -275,6 +352,39 @@ class CompactOverlayScreenTest {
             assertEquals(snapshot, appliedCustomValues)
             assertTrue(appProfileEnabled)
         }
+    }
+
+    @Test
+    fun disablingAppProfile_inTunerModeRemovesAssignmentImmediately() {
+        var removeCount = 0
+        composeRule.setContent {
+            MaterialTheme {
+                CompactOverlayScreen(
+                    state = state(
+                        assignment = AppProfileAssignment(
+                            packageName = "com.example.game",
+                            appLabel = "Example game",
+                            profileId = "large",
+                        ),
+                    ),
+                    displayFrequenciesAsPercent = false,
+                    mode = CompactOverlayMode.TUNER,
+                    onModeChange = {},
+                    onApplyProfile = { _, _ -> },
+                    onApplyCurrent = { _, _, _, _ -> },
+                    onDismissRequest = {},
+                    onRefreshLiveValues = {},
+                    contextPackageName = "com.example.game",
+                    contextLabel = "Example game",
+                    onAppProfileAssignmentChange = { profile, values, gpu ->
+                        if (profile == null && values == null && gpu == null) removeCount++
+                    },
+                )
+            }
+        }
+
+        composeRule.onNode(hasSwitchRole).performClick()
+        composeRule.runOnIdle { assertEquals(1, removeCount) }
     }
 
     @Test
@@ -357,6 +467,13 @@ class CompactOverlayScreenTest {
         composeRule.onNodeWithContentDescription("Close").assertExists()
     }
 
+    private companion object {
+        val hasSwitchRole = SemanticsMatcher("has switch role") { node ->
+            node.config.contains(SemanticsProperties.Role) &&
+                node.config[SemanticsProperties.Role] == Role.Switch
+        }
+    }
+
     private fun state(assignment: AppProfileAssignment? = null): TunerState {
         val policies = listOf(
             CpuPolicyInfo(
@@ -374,7 +491,7 @@ class CompactOverlayScreenTest {
         val large = PerformanceProfile("large", "Large", mapOf(0 to 1_500_000), ProfileSource.BUNDLED)
         return TunerState(
             isLoading = false,
-            isPServerAvailable = true,
+            isPrivilegedHostAvailable = true,
             policies = policies,
             actualValues = mapOf(0 to 1_000_000),
             currentValues = mapOf(0 to 1_000_000),

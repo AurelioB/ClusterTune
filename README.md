@@ -3,140 +3,100 @@
   ClusterTune
 </h1>
 
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/AurelioB/cluster-tune/total)
-![GitHub Release](https://img.shields.io/github/v/release/AurelioB/cluster-tune)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/AurelioB/ClusterTune/total)
+![GitHub Release](https://img.shields.io/github/v/release/AurelioB/ClusterTune)
 
-<a href='https://ko-fi.com/J3J518XVKR' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+<a href="https://ko-fi.com/J3J518XVKR" target="_blank"><img height="36" style="border:0px;height:36px;" src="https://storage.ko-fi.com/cdn/kofi6.png?v=6" border="0" alt="Buy Me a Coffee at ko-fi.com" /></a>
 
-ClusterTune is an Android utility for tuning CPU frequency limits on supported handheld devices. It lets you adjust CPU clusters, save performance profiles, and access quick controls from an Android Quick Settings tile.
-
-The app has been tested with the AYN Odin 3, but should be compatible with other AYN and Retroid devices.
-
-ClusterTune does not require Magisk or user-granted root access. It relies on the device's built-in PServer service, where available.
+ClusterTune sets maximum CPU and GPU frequencies on Android handhelds.
 
 > [!WARNING]
-> ClusterTune changes CPU frequency limits. This may affect device stability, thermals, battery life, and performance, and I cannot guarantee that it is safe for your hardware or beneficial for your use case. Use it only if you understand what CPU frequency limits do and are comfortable accepting the risk.
+> Changing CPU limits can affect stability, performance, temperature, and battery life. Start with tested values and use **Stock** to restore normal limits.
 
-## Why use this?
+## Why underclock?
 
-ClusterTune underclocks by setting lower maximum CPU frequencies. It does not undervolt the CPU, and it is not an adaptive governor; it simply caps how fast each CPU cluster is allowed to run.
+Lower CPU limits can reduce power use, heat, fan noise, and battery drain. Games limited by the GPU may also gain thermal or power headroom. This only caps clock speed and does not undervolt the CPU or replace its governor.
 
-Lower CPU frequency caps can reduce power draw, which may help lower temperatures, quiet the fan, and extend battery life. In some games, reducing CPU power and heat may also leave more thermal or power headroom for the GPU, especially when the game is GPU-bound.
+## Features
+
+* Support for rooted Android 12+ devices through `su`
+* Independent maximum frequency controls for each CPU cluster and supported GPUs
+* Profiles that can be created, reordered, imported, and exported
+* Bundled presets and a Stock profile for supported processors
+* Automatic app profiles using saved profiles or custom frequency values across one or more displays
+* Quick Settings access to pick, tune, or cycle profiles
+* A left edge gesture that opens profile controls over the current app
+* Optional profile automation after boot and while asleep
+* A history of automatic profile switches
+
+## Compatibility
+
+Version 1.0 adds support for rooted devices, expanding compatibility beyond AYN and Retroid hardware.
+
+| Method | Devices |
+| --- | --- |
+| **PServer** | AYN and Retroid devices with the built in PServer service, except Odin 2 Mini |
+| **Root** | Any Android 12+ device with a working `su` shell |
+
+Detection tries PServer first, then Root. The Odin 2 Mini must use Root. If neither method is available, tuning cannot be applied.
+
+## Install
+
+Download [v1.2.2](https://github.com/AurelioB/ClusterTune/releases/tag/v1.2.2) and install `ClusterTune-v1.2.2.apk`.
+
+Android may ask the browser or file manager for permission to install the APK. **Install downloaded updates** is separate and optional. It is only needed for updates installed from inside the app.
+
+## Setup
+
+Execution method detection runs on first launch. Approve the `su` request if Root is selected. Any missing access is listed with a shortcut to the correct Android settings page.
+
+| Access | Purpose |
+| --- | --- |
+| **Display over other apps** | Opens profile controls over the current app. |
+| **Accessibility** | Detects visible apps immediately for automatic profiles. |
+| **Notifications** | Keeps app profile and sleep automation active. |
+| **Usage access** (optional) | Improves recent app sorting when choosing an app. |
+
+Choose a bundled profile or create one. **Stock** restores the device's normal maximum frequencies.
 
 ## Screenshots
 
 | Main app | Profile editor |
 | --- | --- |
-| <img src="docs/screenshots/main-app.png" alt="ClusterTune main app view" width="420"> | <img src="docs/screenshots/profile-editor.png" alt="ClusterTune profile editor dialog" width="420"> |
+| <img src="docs/screenshots/main-app.png" alt="Main profiles view" width="420"> | <img src="docs/screenshots/profile-editor.png" alt="Profile editor" width="420"> |
 
-| Quick Settings tile dialog | Settings |
+| Quick tuner overlay | Settings |
 | --- | --- |
-| <img src="docs/screenshots/quick-settings-dialog.png" alt="ClusterTune Quick Settings tile dialog" width="420"> | <img src="docs/screenshots/settings.png" alt="ClusterTune settings view" width="420"> |
+| <img src="docs/screenshots/quick-tuner-overlay.png" alt="Quick tuner and profile picker" width="420"> | <img src="docs/screenshots/settings.png" alt="Settings view" width="420"> |
 
-## Features
+## Troubleshooting and support
 
-- Tune CPU clusters with per-cluster frequency sliders.
-- View the currently applied frequency cap for each cluster.
-- Save, edit, delete, reorder, import, and export profiles.
-- Use bundled profiles for supported devices.
-- Reapply the last profile on boot.
-- Quick Settings tile for fast access.
-- Customizable quick tile behavior
+* No execution method found: confirm that PServer is available or that the root manager provides `su`, then run detection again from Settings.
+* Profile controls missing: check Display over other apps.
+* Assigned app not switching profiles: confirm its assignment, Accessibility, and Notifications.
 
-## Requirements
+For help, open a [GitHub issue](https://github.com/AurelioB/ClusterTune/issues) with your device model, Android version, execution method, and the relevant log details. Please do not include private data.
 
-- Android 12+ (`minSdk 31`).
-- A compatible handheld with the PServer service, such as supported AYN and Retroid devices.
+## Build and test
 
-## Build
-
-```bash
-./gradlew assembleDebug
-```
-
-Run unit tests:
+Building requires JDK 17 and Android SDK 34:
 
 ```bash
 ./gradlew testDebugUnitTest
+./gradlew lintDebug
+./gradlew assembleDebug
 ```
 
-Run both:
+The debug APK is written to `app/build/outputs/apk/debug/`.
 
-```bash
-./gradlew testDebugUnitTest assembleDebug
-```
+## License and attribution
 
-The debug APK is produced under:
+Distributed under the GNU General Public License v2.0.
 
-```text
-app/build/outputs/apk/debug/
-```
+The RootExec/PServer command execution code is based on [O2P Tweaks](https://github.com/FeralAI/o2ptweaks.app) by FeralAI, also licensed under GPLv2.
 
-## Project Structure
+The project was inspired by the [Odin 3 CPU Underclock](https://github.com/TheOldTaylor/Odin3-CPU-Underclock) scripts and the original idea shared by Reddit users [u/twoohfive205](https://www.reddit.com/user/twoohfive205/) and [u/JoaozaoS](https://www.reddit.com/user/JoaozaoS/).
 
-```text
-app/src/main/java/com/aure/clustertune/
-  data/       detection, storage, bundled profiles, repository
-  model/      app state and profile models
-  root/       PServer access and command execution
-  tile/       Quick Settings tile and add-tile prompt
-  ui/         Compose screens, dialogs, settings, theme
-  boot/       boot completed receiver
+## AI assistance disclosure
 
-app/src/main/assets/bundled_profiles/
-  <SoC model>.json
-```
-
-## Bundled Profiles
-
-Bundled profiles are stored as SoC-specific JSON files:
-
-```text
-app/src/main/assets/bundled_profiles/CQ8725S.json
-```
-
-The filename should match the detected SoC model, such as `ro.soc.model`.
-
-Example:
-
-```json
-{
-  "schemaVersion": 1,
-  "socModel": "CQ8725S",
-  "profiles": [
-    {
-      "id": "bundled_cq8725s_small",
-      "name": "Small Underclock",
-      "maxFrequencies": {
-        "0": 2745600,
-        "6": 3072000
-      }
-    }
-  ]
-}
-```
-
-Exported profiles follow the same schema.
-
-## Notes For Contributors
-
-- UI refers to cpufreq policies as CPU clusters, but internal code keeps `policy` naming because it matches Linux/sysfs terminology.
-- ClusterTune uses the device's PServer service to read and write protected CPU frequency controls. It does not ask the user for root access.
-
-## License and Attribution
-
-ClusterTune is distributed under the terms of the GNU General Public License v2.0.
-
-The RootExec / PServer command execution code in this project is based on code from
-[O2P Tweaks](https://github.com/FeralAI/o2ptweaks.app) by FeralAI, which is also
-licensed under the GNU General Public License v2.0.
-
-ClusterTune was inspired by the Odin 3 underclocking scripts published in
-[TheOldTaylor/Odin3-CPU-Underclock](https://github.com/TheOldTaylor/Odin3-CPU-Underclock).
-The original underclocking idea was shared by Reddit users u/twoohfive205 and
-u/JoaozaoS in
-[this r/OdinHandheld comment](https://www.reddit.com/r/OdinHandheld/comments/1snp9xd/comment/ogphgmb/).
-
-## AI Assistance Disclosure
-
-I used AI assistance while building this project. Software development is my day job, and I reviewed the code throughout the process. I understand how the app works and what it does.
+AI assistance was used while building this project. I reviewed the code throughout development and understand how the app works and what it does.

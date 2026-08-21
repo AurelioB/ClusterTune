@@ -67,11 +67,34 @@ import kotlinx.coroutines.withContext
 fun WirelessDebugSetupScreen(
     connectionManager: WirelessDebugConnectionManager,
     onBack: () -> Unit,
+    /**
+     * Invoked whenever a live connection is established. This is the only
+     * moment the privileged host can be started, so it is where the launch is
+     * kicked off. Defaults to a no-op so previews/tests need no change.
+     */
+    onConnectionEstablished: () -> Unit = {},
+    /**
+     * Whether the privileged host is running and serving requests.
+     *
+     * Without this the screen was actively misleading: with Wi-Fi off there is
+     * no adb connection, so it said "Not connected" while profiles were in fact
+     * applying perfectly through the host. Reported as confusing, and it is.
+     */
+    isHostRunning: () -> Boolean = { false },
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     var devOptionsEnabled by remember { mutableStateOf(isDevOptionsEnabled(context)) }
+    // Cheap (a cached binder liveness check), so polling is fine and keeps the
+    // banner truthful if the host starts or dies while this screen is open.
+    var hostRunning by remember { mutableStateOf(isHostRunning()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            hostRunning = isHostRunning()
+            kotlinx.coroutines.delay(1_000)
+        }
+    }
     var status by remember { mutableStateOf("Not connected") }
     var pairingReady by remember { mutableStateOf(false) }
     var pairingCode by remember { mutableStateOf("") }
@@ -143,6 +166,7 @@ fun WirelessDebugSetupScreen(
                     connectedThisVisit = true
                 }
                 status = "Connected (${info.host}:${info.port}). You're ready."
+                onConnectionEstablished()
             },
         )
         onDispose {
@@ -167,6 +191,7 @@ fun WirelessDebugSetupScreen(
                 connected = true
                 connectedThisVisit = true
                 status = "Connected (${info.host}:${info.port}). You're ready."
+                onConnectionEstablished()
             },
             onUnavailable = {
                 status = "Wireless debugging not found yet. Make sure it's ON, then pair below."
@@ -190,6 +215,7 @@ fun WirelessDebugSetupScreen(
                         connected = true
                         connectedThisVisit = true
                         status = "Connected (${info.host}:${info.port}). You're ready."
+                        onConnectionEstablished()
                     } else {
                         status = "Couldn't connect. Make sure Wireless debugging is ON."
                     }
@@ -243,6 +269,17 @@ fun WirelessDebugSetupScreen(
                 "Status: $status",
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
             )
+
+            // The adb connection and the privileged host are independent. Once
+            // the host is up, applies travel over Binder and need no adb at all,
+            // so "Not connected" alone would misrepresent a working setup.
+            if (hostRunning) {
+                Text(
+                    "✓ Privileged host running — profiles apply without Wi-Fi. " +
+                        "An adb connection is only needed to start it again after a reboot.",
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                )
+            }
 
             if (connected) {
                 Text("✓ Ready. ClusterTune can now apply profiles. Return and select a profile.")
@@ -367,6 +404,7 @@ fun WirelessDebugSetupScreen(
                                                         connected = true
                                                         connectedThisVisit = true
                                                         status = "Connected (${info.host}:${info.port}). You're ready."
+                                                        onConnectionEstablished()
                                                     },
                                                 )
                                                 startConnect()

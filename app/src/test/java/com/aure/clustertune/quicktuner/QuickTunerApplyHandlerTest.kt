@@ -2,6 +2,7 @@ package com.aure.clustertune.quicktuner
 
 import com.aure.clustertune.data.PerformanceRepository
 import com.aure.clustertune.model.CpuPolicyInfo
+import com.aure.clustertune.model.GpuPolicyInfo
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileSource
 import com.aure.clustertune.model.ProfileStateResolver
@@ -60,6 +61,17 @@ class QuickTunerApplyHandlerTest {
     }
 
     @Test
+    fun forwardsGpuArgumentsToRepository() = runTest {
+        val repository = FakeQuickTunerRepository()
+        val gpu = GpuPolicyInfo("/gpu", "/gpu/max", currentMaxFrequencyHz = 500, selectableMaxFrequencyHz = 600, observedMaxFrequencyHz = 600)
+        QuickTunerApplyHandler(repository, { _, _ -> }, {}).applyCurrent(
+            TunerState(policies = listOf(policy), gpuPolicy = gpu, currentValues = mapOf(0 to 1_000_000), currentGpuMaxFrequencyHz = 600),
+        )
+        assertEquals(gpu, repository.gpuPolicy)
+        assertEquals(600, repository.selectedGpuMaxFrequencyHz)
+    }
+
+    @Test
     fun logsManualProfileWhenValuesDoNotMatchDisplayProfile() = runTest {
         val repository = FakeQuickTunerRepository()
         val handler = QuickTunerApplyHandler(
@@ -114,31 +126,63 @@ class QuickTunerApplyHandlerTest {
         assertEquals(1, tileRefreshCount)
     }
 
+    @Test
+    fun appliesPickedProfileGpuLimit() = runTest {
+        val gpu = GpuPolicyInfo(
+            policyPath = "/gpu",
+            maxFrequencyPath = "/gpu/max",
+            currentMaxFrequencyHz = 500,
+            selectableMaxFrequencyHz = 600,
+            observedMaxFrequencyHz = 600,
+        )
+        val profile = PerformanceProfile(
+            id = "gpu-quiet",
+            name = "GPU Quiet",
+            maxFrequencies = mapOf(0 to 1_000_000),
+            source = ProfileSource.USER,
+            gpuMaxFrequencyHz = 400,
+        )
+        val repository = FakeQuickTunerRepository()
+
+        val result = QuickTunerApplyHandler(repository, { _, _ -> }, {})
+            .applyProfile(TunerState(policies = listOf(policy), gpuPolicy = gpu), profile)
+
+        assertTrue(result.isSuccess)
+        assertEquals(gpu, repository.gpuPolicy)
+        assertEquals(400, repository.selectedGpuMaxFrequencyHz)
+    }
+
     private class FakeQuickTunerRepository : QuickTunerApplyRepository {
         var appliedDisplayProfileId: String? = null
         var selectedProfileId: String? = null
         var loggedProfileId: String? = null
         var loggedProfileName: String? = null
         var loggedTrigger: String? = null
+        var gpuPolicy: GpuPolicyInfo? = null
+        var selectedGpuMaxFrequencyHz: Int? = null
 
         override suspend fun applyValues(
             policies: List<CpuPolicyInfo>,
             selectedValues: Map<Int, Int>,
+            gpuPolicy: GpuPolicyInfo?,
+            selectedGpuMaxFrequencyHz: Int?,
             isReset: Boolean,
             appliedDisplayProfileId: String?,
+            onHardwareApplied: (suspend (PerformanceRepository.ApplyOutcome) -> Unit)?,
         ): Result<PerformanceRepository.ApplyOutcome> {
             this.appliedDisplayProfileId = appliedDisplayProfileId
-            return Result.success(
-                PerformanceRepository.ApplyOutcome(
+            this.selectedProfileId = appliedDisplayProfileId?.takeUnless {
+                it == ProfileStateResolver.STOCK_PROFILE_ID || it == ProfileStateResolver.MANUAL_PROFILE_ID
+            }
+            this.gpuPolicy = gpuPolicy
+            this.selectedGpuMaxFrequencyHz = selectedGpuMaxFrequencyHz
+            val outcome = PerformanceRepository.ApplyOutcome(
                     actualValues = selectedValues,
                     verificationPassed = true,
                     commandOutput = null,
-                ),
-            )
-        }
-
-        override suspend fun selectProfile(profileId: String?) {
-            selectedProfileId = profileId
+                )
+            onHardwareApplied?.invoke(outcome)
+            return Result.success(outcome)
         }
 
         override suspend fun logProfileSwitch(profileId: String?, profileName: String, trigger: String) {

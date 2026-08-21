@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">ClusterTune</string>
+    <string name="app_profile_accessibility_service_label">ClusterTune app profiles</string>
+    <string name="app_profile_accessibility_description">Watches app window changes to apply assigned performance profiles.</string>
     <string name="tile_label">ClusterTune</string>
     <string name="tile_title">ClusterTune</string>
     <string name="tile_state_manual">Manual</string>
@@ -20,8 +22,10 @@
     <string name="settings_permissions_access">Permissions &amp; access</string>
     <string name="settings_overlay_access">Overlay access</string>
     <string name="settings_overlay_access_description">Shows Quick Settings controls and the edge picker over games.</string>
+    <string name="settings_app_profile_accessibility">App profile automation</string>
+    <string name="settings_app_profile_accessibility_description">Watches app window changes so assigned profiles switch immediately.</string>
     <string name="settings_usage_access">Usage access</string>
-    <string name="settings_usage_access_description">Identifies the foreground game for app profiles and profile pickers.</string>
+    <string name="settings_usage_access_description">Sorts recently active apps first when choosing an app profile.</string>
     <string name="settings_notifications">Notifications</string>
     <string name="settings_notifications_description">Shows background status for overlays and automation while they run.</string>
     <string name="permission_dialog_title">Permissions needed</string>
@@ -30,9 +34,11 @@
     <string name="permission_dialog_not_now">Not now</string>
     <string name="permission_dialog_fix">Fix</string>
     <string name="permission_dialog_overlay_title">Overlay access</string>
+    <string name="permission_dialog_accessibility_title">App profile automation</string>
     <string name="permission_dialog_usage_title">Usage access</string>
     <string name="permission_dialog_notifications_title">Notifications</string>
     <string name="permission_dialog_overlay_instructions">Open settings, then allow ClusterTune to display over other apps.</string>
+    <string name="permission_dialog_accessibility_instructions">Open Accessibility settings, select ClusterTune, then enable its app profile service.</string>
     <string name="permission_dialog_usage_instructions">Open settings, select ClusterTune, then enable usage access.</string>
     <string name="permission_dialog_notifications_instructions">Open settings, then allow notifications for ClusterTune.</string>
     <string name="settings_quick_access">Quick access</string>
@@ -104,7 +110,12 @@
     <string name="settings_execution_pserver_description">Compatible with AYN and Retroid devices, except Odin 2 Mini.</string>
     <string name="settings_execution_root">Root</string>
     <string name="settings_execution_root_description">Compatible with all rooting methods that provide su.</string>
-    <string name="settings_execution_jdwp">Wireless debugging (no root)</string>
-    <string name="settings_execution_jdwp_description">No root and no PC required. Pair once per boot using Android\'s built-in Wireless debugging. Works on Odin 2 Mini.</string>
+    <string name="settings_execution_jdwp">Wireless debugging</string>
+    <string name="settings_execution_jdwp_description">Pair once per boot using Android\'s built-in Wireless debugging; profiles then keep applying with Wi\u2011Fi off until you reboot. Works on the Odin 2 Mini, no GPU underclocking.</string>
     <string name="settings_execution_jdwp_setup">Set up wireless debugging</string>
+    <string name="settings_execution_jdwp_host_running">Privileged host running — profiles apply without Wi-Fi.</string>
+    <string name="settings_execution_jdwp_logging">Wireless debugging execution method logging</string>
+    <string name="settings_execution_jdwp_logging_summary">Records connection and apply diagnostics on-device. Off by default; turn on only when reproducing a problem.</string>
+    <string name="settings_execution_jdwp_logging_view">View log</string>
+    <string name="settings_execution_jdwp_logging_download">Download log</string>
 </resources>

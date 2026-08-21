@@ -2,11 +2,14 @@ package com.aure.clustertune.model
 
 data class TunerState(
     val isLoading: Boolean = true,
-    val isPServerAvailable: Boolean = false,
+    val isPrivilegedHostAvailable: Boolean = false,
     val privilegedExecutionMethodId: String? = null,
     val policies: List<CpuPolicyInfo> = emptyList(),
+    val gpuPolicy: GpuPolicyInfo? = null,
     val actualValues: Map<Int, Int> = emptyMap(),
     val currentValues: Map<Int, Int> = emptyMap(),
+    val actualGpuMaxFrequencyHz: Int? = null,
+    val currentGpuMaxFrequencyHz: Int? = null,
     val bundledProfiles: List<PerformanceProfile> = emptyList(),
     val userProfiles: List<PerformanceProfile> = emptyList(),
     val displayProfiles: List<PerformanceProfile> = emptyList(),

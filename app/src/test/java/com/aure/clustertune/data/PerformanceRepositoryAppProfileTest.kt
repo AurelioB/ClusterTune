@@ -10,6 +10,18 @@ import org.junit.Test
 class PerformanceRepositoryAppProfileTest {
 
     @Test
+    fun `named profile GPU target falls back to observed Stock`() {
+        assertEquals(800, resolveAppProfileGpuTarget(false, null, 800, 400))
+        assertEquals(600, resolveAppProfileGpuTarget(false, 600, 800, 400))
+    }
+
+    @Test
+    fun `custom CPU-only target keeps normal GPU baseline`() {
+        assertEquals(400, resolveAppProfileGpuTarget(true, null, 800, 400))
+        assertEquals(500, resolveAppProfileGpuTarget(true, 500, 800, 400))
+    }
+
+    @Test
     fun `stock remains a supported app profile assignment`() {
         val bundled = profile(id = "small", source = ProfileSource.BUNDLED)
         val assignments = listOf(

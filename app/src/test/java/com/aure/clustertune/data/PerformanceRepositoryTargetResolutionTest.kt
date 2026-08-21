@@ -29,10 +29,46 @@ class PerformanceRepositoryTargetResolutionTest {
     }
 
     @Test
+    fun `legacy CPU-only profile keeps persisted GPU baseline`() {
+        val profile = profile("quiet", mapOf(0 to 800))
+        val result = resolvePersistedTarget(
+            listOf(policy),
+            listOf(profile),
+            "quiet",
+            mapOf(0 to 1_000),
+            gpuValue = 475_000_000,
+        )
+
+        assertEquals(475_000_000, result?.gpuValue)
+    }
+
+    @Test
+    fun `explicit profile GPU wins over stock fallback`() {
+        val profile = profile("quiet", mapOf(0 to 800), gpu = 475_000_000)
+        val result = resolvePersistedTarget(
+            listOf(policy), listOf(profile), "quiet", mapOf(0 to 1_000),
+            gpuValue = 600_000_000,
+            gpuStockFallback = 800_000_000,
+        )
+        assertEquals(475_000_000, result?.gpuValue)
+    }
+
+    @Test
     fun `hidden observed stock bin is accepted for stock reset`() {
         val stock = profile(ProfileStateResolver.STOCK_PROFILE_ID, mapOf(0 to 1_200), ProfileSource.VIRTUAL)
         val result = resolvePersistedTarget(listOf(policy), listOf(stock), stock.id, mapOf(0 to 800))
         assertEquals(ResolvedPerformanceTarget(mapOf(0 to 1_200), stock.id, true), result)
+    }
+
+    @Test
+    fun `stock target uses hidden fallback GPU ceiling when profile omits GPU`() {
+        val stock = profile(ProfileStateResolver.STOCK_PROFILE_ID, mapOf(0 to 1_200), ProfileSource.VIRTUAL)
+        val result = resolvePersistedTarget(
+            listOf(policy), listOf(stock), stock.id, mapOf(0 to 800),
+            gpuValue = 500,
+            gpuStockFallback = 800,
+        )
+        assertEquals(800, result?.gpuValue)
     }
 
     @Test
@@ -120,5 +156,6 @@ class PerformanceRepositoryTargetResolutionTest {
         id: String,
         values: Map<Int, Int>,
         source: ProfileSource = ProfileSource.USER,
-    ) = PerformanceProfile(id = id, name = id, maxFrequencies = values, source = source)
+        gpu: Int? = null,
+    ) = PerformanceProfile(id = id, name = id, maxFrequencies = values, source = source, gpuMaxFrequencyHz = gpu)
 }

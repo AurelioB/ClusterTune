@@ -7,9 +7,10 @@ data class AppProfileAssignment(
     val appLabel: String,
     val profileId: String? = null,
     val customMaxFrequencies: Map<Int, Int> = emptyMap(),
+    val customGpuMaxFrequencyHz: Int? = null,
 ) {
     val isCustom: Boolean
-        get() = customMaxFrequencies.isNotEmpty()
+        get() = customMaxFrequencies.isNotEmpty() || customGpuMaxFrequencyHz != null
 
     /** Exactly one of a reusable profile reference or a custom snapshot must be present. */
     val hasValidTarget: Boolean

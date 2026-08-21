@@ -7,6 +7,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -26,9 +27,11 @@ internal fun CtSelectionIndicator(
     enabled: Boolean = true,
     onClick: (() -> Unit)? = null,
     size: Dp = 26.dp,
+    applying: Boolean = false,
+    targetSize: Dp = 48.dp,
     contentDescription: String? = null,
 ) {
-    val target = Modifier.size(48.dp).then(modifier)
+    val target = Modifier.size(targetSize).then(modifier)
     Box(
         modifier = (if (onClick == null) {
             target
@@ -45,18 +48,27 @@ internal fun CtSelectionIndicator(
         ),
         contentAlignment = Alignment.Center,
     ) {
-        Surface(
-            modifier = Modifier.size(size),
-            shape = CircleShape,
-            color = if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            border = BorderStroke(
-                2.dp,
-                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-            ),
-        ) {
-            if (selected) {
-                CtIcon(Icons.Outlined.Check, contentDescription = null, modifier = Modifier.size(size * 0.65f))
+        if (applying) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(size),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
+                strokeWidth = 2.5.dp,
+            )
+        } else {
+            Surface(
+                modifier = Modifier.size(size),
+                shape = CircleShape,
+                color = if (selected) MaterialTheme.colorScheme.primary else androidx.compose.ui.graphics.Color.Transparent,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                border = BorderStroke(
+                    2.dp,
+                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                ),
+            ) {
+                if (selected) {
+                    CtIcon(Icons.Outlined.Check, contentDescription = null, modifier = Modifier.size(size * 0.65f))
+                }
             }
         }
     }

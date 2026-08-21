@@ -9,10 +9,12 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.aure.clustertune.model.AppColorSource
 import com.aure.clustertune.model.AppSettings
+import com.aure.clustertune.model.DEFAULT_AUTOMATIC_UPDATE_CHECKS_ENABLED
 import com.aure.clustertune.model.DEFAULT_EDGE_HANDLE_HEIGHT_DP
 import com.aure.clustertune.model.DEFAULT_EDGE_HANDLE_OPACITY_PERCENT
 import com.aure.clustertune.model.DEFAULT_EDGE_HANDLE_THICKNESS_DP
 import com.aure.clustertune.model.DEFAULT_EDGE_HANDLE_VERTICAL_POSITION_PERCENT
+import com.aure.clustertune.model.DEFAULT_INCLUDE_PRERELEASE_UPDATES
 import com.aure.clustertune.model.DEFAULT_PROFILE_SWITCH_HISTORY_LIMIT
 import com.aure.clustertune.model.MAX_EDGE_HANDLE_HEIGHT_DP
 import com.aure.clustertune.model.MAX_EDGE_HANDLE_OPACITY_PERCENT
@@ -55,6 +57,7 @@ class SettingsStorage(private val context: Context) {
     private val includePrereleaseUpdatesKey = booleanPreferencesKey("include_prerelease_updates")
     private val lastUpdateCheckMillisKey = longPreferencesKey("last_update_check_millis")
     private val displayFrequenciesAsPercentKey = booleanPreferencesKey("display_frequencies_as_percent")
+    private val wirelessDebugLoggingKey = booleanPreferencesKey("wireless_debug_logging_enabled")
     private val leftEdgeProfilePickerEnabledKey = booleanPreferencesKey("left_edge_profile_picker_enabled")
     private val edgeHandleHeightDpKey = intPreferencesKey("edge_handle_height_dp")
     private val edgeHandleThicknessDpKey = intPreferencesKey("edge_handle_thickness_dp")
@@ -82,11 +85,14 @@ class SettingsStorage(private val context: Context) {
             sleepProfileId = preferences[sleepProfileIdKey],
             hasPromptedQuickSettingsTile = preferences[quickSettingsTilePromptShownKey] ?: false,
             isQuickSettingsTileAdded = preferences[quickSettingsTileAddedKey] ?: false,
-            automaticUpdateChecksEnabled = preferences[automaticUpdateChecksEnabledKey] ?: true,
+            automaticUpdateChecksEnabled = preferences[automaticUpdateChecksEnabledKey]
+                ?: DEFAULT_AUTOMATIC_UPDATE_CHECKS_ENABLED,
             updateCheckIntervalDays = (preferences[updateCheckIntervalDaysKey] ?: 7).coerceIn(1, 365),
-            includePrereleaseUpdates = preferences[includePrereleaseUpdatesKey] ?: false,
+            includePrereleaseUpdates = preferences[includePrereleaseUpdatesKey]
+                ?: DEFAULT_INCLUDE_PRERELEASE_UPDATES,
             lastUpdateCheckMillis = preferences[lastUpdateCheckMillisKey] ?: 0L,
             displayFrequenciesAsPercent = preferences[displayFrequenciesAsPercentKey] ?: false,
+            wirelessDebugLoggingEnabled = preferences[wirelessDebugLoggingKey] ?: false,
             leftEdgeProfilePickerEnabled = preferences[leftEdgeProfilePickerEnabledKey] ?: false,
             edgeHandleHeightDp = (preferences[edgeHandleHeightDpKey] ?: DEFAULT_EDGE_HANDLE_HEIGHT_DP)
                 .coerceIn(MIN_EDGE_HANDLE_HEIGHT_DP, MAX_EDGE_HANDLE_HEIGHT_DP),
@@ -207,6 +213,12 @@ class SettingsStorage(private val context: Context) {
         }
     }
 
+    suspend fun persistWirelessDebugLoggingEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[wirelessDebugLoggingKey] = enabled
+        }
+    }
+
     suspend fun persistDisplayFrequenciesAsPercent(enabled: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[displayFrequenciesAsPercentKey] = enabled
@@ -283,9 +295,10 @@ class SettingsStorage(private val context: Context) {
 }
 
 internal fun supportedExecutionMethodId(methodId: String?): String? {
-    // NOTE: this whitelist silently drops unknown ids, so any new execution
-    // method MUST be listed here or the user's selection will never persist
-    // (it reads back as null / "Not selected").
+    // Any new execution method MUST be listed here. An id missing from this
+    // whitelist is silently dropped on read, so the picker appears to accept a
+    // selection and then reports "Not selected" - a trap this fork hit once
+    // already with the jdwp method.
     return methodId?.takeIf {
         it == "pserver-stdout" || it == "root-shell" || it == "jdwp-inject"
     }

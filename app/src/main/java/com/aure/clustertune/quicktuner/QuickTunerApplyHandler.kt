@@ -3,6 +3,7 @@ package com.aure.clustertune.quicktuner
 import android.widget.Toast
 import com.aure.clustertune.data.PerformanceRepository
 import com.aure.clustertune.model.CpuPolicyInfo
+import com.aure.clustertune.model.GpuPolicyInfo
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.model.TunerState
@@ -11,11 +12,12 @@ interface QuickTunerApplyRepository {
     suspend fun applyValues(
         policies: List<CpuPolicyInfo>,
         selectedValues: Map<Int, Int>,
+        gpuPolicy: GpuPolicyInfo?,
+        selectedGpuMaxFrequencyHz: Int?,
         isReset: Boolean,
         appliedDisplayProfileId: String?,
+        onHardwareApplied: (suspend (PerformanceRepository.ApplyOutcome) -> Unit)? = null,
     ): Result<PerformanceRepository.ApplyOutcome>
-
-    suspend fun selectProfile(profileId: String?)
 
     suspend fun logProfileSwitch(profileId: String?, profileName: String, trigger: String)
 }
@@ -26,19 +28,21 @@ class PerformanceQuickTunerApplyRepository(
     override suspend fun applyValues(
         policies: List<CpuPolicyInfo>,
         selectedValues: Map<Int, Int>,
+        gpuPolicy: GpuPolicyInfo?,
+        selectedGpuMaxFrequencyHz: Int?,
         isReset: Boolean,
         appliedDisplayProfileId: String?,
+        onHardwareApplied: (suspend (PerformanceRepository.ApplyOutcome) -> Unit)?,
     ): Result<PerformanceRepository.ApplyOutcome> {
         return repository.applyValues(
             policies = policies,
             selectedValues = selectedValues,
+            gpuPolicy = gpuPolicy,
+            selectedGpuMaxFrequencyHz = selectedGpuMaxFrequencyHz,
             isReset = isReset,
             appliedDisplayProfileId = appliedDisplayProfileId,
+            onHardwareApplied = onHardwareApplied,
         )
-    }
-
-    override suspend fun selectProfile(profileId: String?) {
-        repository.selectProfile(profileId)
     }
 
     override suspend fun logProfileSwitch(profileId: String?, profileName: String, trigger: String) {
@@ -61,21 +65,22 @@ class QuickTunerApplyHandler(
         val result = repository.applyValues(
             policies = state.policies,
             selectedValues = state.currentValues,
+            gpuPolicy = state.gpuPolicy,
+            selectedGpuMaxFrequencyHz = state.currentGpuMaxFrequencyHz,
             isReset = appliedProfile?.id == ProfileStateResolver.STOCK_PROFILE_ID,
             appliedDisplayProfileId = profileId,
+            onHardwareApplied = {
+                showToast(displayName, Toast.LENGTH_SHORT)
+            },
         )
 
         return result.fold(
             onSuccess = {
-                repository.selectProfile(
-                    appliedProfile?.id?.takeUnless { id -> id == ProfileStateResolver.STOCK_PROFILE_ID },
-                )
                 repository.logProfileSwitch(
                     profileId = profileId,
                     profileName = profileName,
                     trigger = trigger,
                 )
-                showToast(displayName, Toast.LENGTH_SHORT)
                 refreshTile()
                 Result.success(Unit)
             },
@@ -90,19 +95,22 @@ class QuickTunerApplyHandler(
         val result = repository.applyValues(
             policies = state.policies,
             selectedValues = profile.maxFrequencies,
+            gpuPolicy = state.gpuPolicy,
+            selectedGpuMaxFrequencyHz = profile.gpuMaxFrequencyHz,
             isReset = profile.id == ProfileStateResolver.STOCK_PROFILE_ID,
             appliedDisplayProfileId = profile.id,
+            onHardwareApplied = {
+                showToast(profile.name, Toast.LENGTH_SHORT)
+            },
         )
 
         return result.fold(
             onSuccess = {
-                repository.selectProfile(profile.id.takeUnless { id -> id == ProfileStateResolver.STOCK_PROFILE_ID })
                 repository.logProfileSwitch(
                     profileId = profile.id,
                     profileName = profile.name,
                     trigger = "Quick Settings picker",
                 )
-                showToast(profile.name, Toast.LENGTH_SHORT)
                 refreshTile()
                 Result.success(Unit)
             },

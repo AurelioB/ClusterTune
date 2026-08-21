@@ -18,7 +18,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,7 +28,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.res.stringResource
@@ -38,6 +36,10 @@ import com.aure.clustertune.ui.designsystem.component.CtIcon
 import com.aure.clustertune.ui.designsystem.component.CtSelectableRow
 import com.aure.clustertune.ui.designsystem.component.CtSectionCard
 import com.aure.clustertune.ui.designsystem.token.ClusterTuneDensity
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.text.style.TextOverflow
+import com.aure.clustertune.ui.designsystem.component.CtSwitchPreference
 
 private data class ExecutionMethodInfo(
     val id: String,
@@ -56,7 +58,6 @@ private val executionMethodInfo = listOf(
         labelRes = R.string.settings_execution_root,
         descriptionRes = R.string.settings_execution_root_description,
     ),
-    // No-root path via on-device wireless debugging (JDWP injection).
     ExecutionMethodInfo(
         id = "jdwp-inject",
         labelRes = R.string.settings_execution_jdwp,
@@ -70,7 +71,18 @@ internal fun DeviceExecutionMethodCard(
     onAutoDetect: () -> Unit,
     onMethodChange: (String?) -> Unit,
     density: ClusterTuneDensity,
+    /**
+     * Opens the wireless-debugging pairing screen. Null hides the button, so
+     * callers that have no navigation host (previews, tests) need no change.
+     */
     onOpenWirelessDebugSetup: (() -> Unit)? = null,
+    /** True while the privileged host is running and serving requests. */
+    isHostRunning: () -> Boolean = { false },
+    /** Opt-in diagnostics for this execution method. */
+    wirelessDebugLoggingEnabled: Boolean = false,
+    onWirelessDebugLoggingChange: (Boolean) -> Unit = {},
+    onViewDiagnosticLog: () -> Unit = {},
+    onDownloadDiagnosticLog: () -> Unit = {},
 ) {
     SectionCard(title = stringResource(R.string.settings_execution), symbol = "terminal", density = density) {
         Row(
@@ -98,15 +110,53 @@ internal fun DeviceExecutionMethodCard(
                 modifier = Modifier.weight(1f),
             )
         }
-        // When the no-root wireless-debugging method is in use, expose a way back
-        // into the pairing flow so it can be redone (the connect port changes on
-        // every boot / whenever wireless debugging is toggled).
         if (selectedMethodId == "jdwp-inject" && onOpenWirelessDebugSetup != null) {
+            Spacer(Modifier.height(10.dp))
             OutlinedButton(
                 onClick = onOpenWirelessDebugSetup,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(text = stringResource(R.string.settings_execution_jdwp_setup))
+                Text(stringResource(R.string.settings_execution_jdwp_setup))
+            }
+            // The adb connection and the privileged host are independent: once
+            // the host is up it serves over Binder and needs no network, so
+            // reporting only the connection state would call a fully working
+            // setup "not connected" the moment Wi-Fi goes off.
+            if (isHostRunning()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.settings_execution_jdwp_host_running),
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+
+            // Diagnostics are opt-in and live here rather than in a general
+            // section, because they only describe this execution method and are
+            // meaningless when another one is selected.
+            Spacer(Modifier.height(10.dp))
+            CtSwitchPreference(
+                title = { Text(stringResource(R.string.settings_execution_jdwp_logging)) },
+                description = {
+                    Text(stringResource(R.string.settings_execution_jdwp_logging_summary))
+                },
+                checked = wirelessDebugLoggingEnabled,
+                onCheckedChange = onWirelessDebugLoggingChange,
+            )
+            if (wirelessDebugLoggingEnabled) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedButton(
+                        onClick = onViewDiagnosticLog,
+                        modifier = Modifier.weight(1f),
+                    ) { Text(stringResource(R.string.settings_execution_jdwp_logging_view)) }
+                    OutlinedButton(
+                        onClick = onDownloadDiagnosticLog,
+                        modifier = Modifier.weight(1f),
+                    ) { Text(stringResource(R.string.settings_execution_jdwp_logging_download)) }
+                }
             }
         }
     }
@@ -212,8 +262,9 @@ private fun PrivilegedExecutionMethodSelector(
             ) {
                 Text(
                     // weight + ellipsis: long labels (e.g. "Wireless debugging
-                    // (no root)") previously overflowed and collided with the
-                    // trailing "Change" text instead of truncating.
+                    // (no root)") otherwise overflow and collide with the
+                    // trailing "Change" text instead of truncating, which reads
+                    // as garbled overlapping glyphs.
                     modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp),
                     text = selectedLabel,
                     style = MaterialTheme.typography.labelLarge,

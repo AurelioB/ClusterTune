@@ -85,6 +85,7 @@ fun PermissionCheckDialog(
 private fun AppAccess.title(): String = stringResource(
     when (this) {
         AppAccess.OVERLAY -> R.string.permission_dialog_overlay_title
+        AppAccess.ACCESSIBILITY -> R.string.permission_dialog_accessibility_title
         AppAccess.USAGE -> R.string.permission_dialog_usage_title
         AppAccess.NOTIFICATIONS -> R.string.permission_dialog_notifications_title
     },
@@ -94,6 +95,7 @@ private fun AppAccess.title(): String = stringResource(
 private fun AppAccess.purpose(): String = stringResource(
     when (this) {
         AppAccess.OVERLAY -> R.string.settings_overlay_access_description
+        AppAccess.ACCESSIBILITY -> R.string.settings_app_profile_accessibility_description
         AppAccess.USAGE -> R.string.settings_usage_access_description
         AppAccess.NOTIFICATIONS -> R.string.settings_notifications_description
     },
@@ -103,6 +105,7 @@ private fun AppAccess.purpose(): String = stringResource(
 private fun AppAccess.instructions(): String = stringResource(
     when (this) {
         AppAccess.OVERLAY -> R.string.permission_dialog_overlay_instructions
+        AppAccess.ACCESSIBILITY -> R.string.permission_dialog_accessibility_instructions
         AppAccess.USAGE -> R.string.permission_dialog_usage_instructions
         AppAccess.NOTIFICATIONS -> R.string.permission_dialog_notifications_instructions
     },

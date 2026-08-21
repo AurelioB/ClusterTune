@@ -32,9 +32,29 @@ class WirelessDebugConnectionManager private constructor(
 
     private val appContext = context.applicationContext
 
+    /**
+     * Persisted so the fast path survives an app restart — which is exactly when
+     * the full sweep used to run and flood logcat with 20,000 TrafficStats lines.
+     */
+    private val prefs: android.content.SharedPreferences? =
+        runCatching { appContext.getSharedPreferences("adb_connect_ports", Context.MODE_PRIVATE) }.getOrNull()
+
+    private val rememberedPortLock = Any()
+
+    private val rememberedPortList: MutableList<Int> = runCatching {
+        prefs?.getString(KEY_REMEMBERED_PORTS, null)
+            ?.split(',')
+            ?.mapNotNull { it.trim().toIntOrNull() }
+            ?.filter { it in 1..65535 }
+            ?.toMutableList()
+    }.getOrNull() ?: mutableListOf()
+
     companion object {
         @Volatile
         private var INSTANCE: WirelessDebugConnectionManager? = null
+
+        private const val KEY_REMEMBERED_PORTS = "remembered_ports"
+        private const val REMEMBERED_PORT_LIMIT = 4
 
         /** Process-wide singleton, shared across all AppContainer instances. */
         fun getInstance(context: Context): WirelessDebugConnectionManager {
@@ -404,6 +424,12 @@ class WirelessDebugConnectionManager private constructor(
             return
         }
         JdwpDebugLog.d("startConnectDiscovery: starting continuous discovery (tcp + tls-connect)")
+        // Ask immediately as well as listen. The NsdManager listener below only
+        // ever hears announcements on this device, so on its own it waits for the
+        // user to touch the Wireless debugging screen. An active query answers
+        // now if adbd is advertising at all, which is what stops the port scan
+        // from being the de-facto normal path.
+        queryConnectPortNow()
         val handle: (String, Int) -> Unit = { host, port -> validateAndConnect(host, port) }
         connectResolver = with(appContext) {
             resolveAdbTcpConnectPort { host, port -> handle(host, port) }
@@ -415,6 +441,39 @@ class WirelessDebugConnectionManager private constructor(
             }) { host, port -> handle(host, port) }
         }
     }
+
+    /**
+     * Sends a one-shot mDNS query for the adb connect service and, if it is
+     * answered, validates the endpoint the same way any other candidate is.
+     *
+     * Runs off the caller's thread; failures are silent because this is an
+     * optimisation over the listener, never the only route.
+     */
+    private fun queryConnectPortNow() {
+        if (activeQueryRunning) return
+        activeQueryRunning = true
+        Thread {
+            try {
+                val ip = wifiIpAddress()
+                if (ip == null) {
+                    JdwpDebugLog.d("mdns-query: no Wi-Fi address; skipping")
+                    return@Thread
+                }
+                val port = MdnsQuery.queryPort(appContext, "_adb-tls-connect._tcp")
+                if (port != null && connectionInfo == null) {
+                    JdwpDebugLog.d("mdns-query: validating $ip:$port")
+                    validateAndConnect(ip, port)
+                }
+            } catch (error: Throwable) {
+                JdwpDebugLog.w("mdns-query: ${error.message}")
+            } finally {
+                activeQueryRunning = false
+            }
+        }.apply { isDaemon = true }.start()
+    }
+
+    @Volatile
+    private var activeQueryRunning = false
 
     /**
      * mDNS resolution only tells us the device *advertises* an adb connect
@@ -466,6 +525,12 @@ class WirelessDebugConnectionManager private constructor(
                 JdwpDebugLog.d("connect: adb handshake OK -> CONNECTED $host:$port")
                 connectOnConnected?.invoke(info)
             } else {
+                // Drop it from the fast path. adbd picks a new connect port every
+                // time wireless debugging is toggled, so a remembered port
+                // outlives its usefulness; without this the "try what worked
+                // last time" shortcut would keep handing back a dead port and
+                // every retry paid a failed handshake before falling through.
+                forgetPort(port)
                 JdwpDebugLog.w(
                     "connect: resolved $host:$port but adb handshake FAILED " +
                         "(not paired yet) — staying disconnected",
@@ -609,6 +674,42 @@ class WirelessDebugConnectionManager private constructor(
             JdwpDebugLog.w("port-scan: could not determine Wi-Fi IP")
             return null
         }
+        // 0a) Ask mDNS directly. NsdManager only ever hears announcements on this
+        //     device, so a listener that started after adbd announced sits idle
+        //     while the scan does the work. An actual query is ~45 bytes and puts
+        //     the question on the wire now, which is what makes mDNS the normal
+        //     path again rather than a lucky one.
+        MdnsQuery.queryPort(appContext, "_adb-tls-connect._tcp")?.let { port ->
+            if (handshakeOk(ip, port)) {
+                JdwpDebugLog.d("mdns-query: connect port $port verified")
+                rememberPort(port)
+                return AdbConnectionInfo(ip, port)
+            }
+            JdwpDebugLog.d("mdns-query: port $port did not complete an adb handshake")
+        }
+
+        // 0b) Ports that worked before, newest first. adbd keeps the same connect
+        //    port until wireless debugging is toggled or the device reboots, so
+        //    this hits almost every time and skips the sweep entirely.
+        //
+        //    The sweep is not cheap: 20,000 connect attempts, each of which the
+        //    platform logs as `TrafficStats: tagSocket(...)`. In one 22-second
+        //    capture that was 20,003 of 20,064 logcat lines — 99.7% of the log,
+        //    which buried everything actually worth reading.
+        rememberedPorts().forEach { port ->
+            JdwpDebugLog.d("port-scan: trying remembered port $port")
+            val open = runCatching {
+                java.net.Socket().use { socket ->
+                    socket.connect(java.net.InetSocketAddress(ip, port), 250)
+                    true
+                }
+            }.getOrDefault(false)
+            if (open && handshakeOk(ip, port)) {
+                JdwpDebugLog.d("port-scan: remembered port $port still good")
+                return AdbConnectionInfo(ip, port)
+            }
+        }
+
         JdwpDebugLog.d("port-scan: scanning $ip for adb connect port…")
 
         // 1) Fast pass: find OPEN TCP ports in the adb ephemeral range.
@@ -644,6 +745,7 @@ class WirelessDebugConnectionManager private constructor(
                 AdbClient.openShell(ip, port, connectTimeout = 3000L, maxRetryCount = 1).use { _ ->
                     JdwpDebugLog.d("port-scan: adb handshake OK on $ip:$port")
                 }
+                rememberPort(port)
                 return AdbConnectionInfo(ip, port)
             } catch (_: Throwable) {
                 // not an adb port; keep looking
@@ -652,6 +754,39 @@ class WirelessDebugConnectionManager private constructor(
         JdwpDebugLog.w("port-scan: no adb connect port found in $start-$end")
         return null
     }
+
+    /**
+     * Ports that previously completed an adb handshake, most recent first.
+     *
+     * adbd keeps the same connect port until wireless debugging is toggled or
+     * the device reboots, so the previous port is usually still correct and the
+     * 20,000-port sweep can be skipped entirely.
+     */
+    private fun rememberedPorts(): List<Int> = synchronized(rememberedPortLock) {
+        rememberedPortList.toList()
+    }
+
+    /** Removes a port that no longer completes an adb handshake. */
+    private fun forgetPort(port: Int) = synchronized(rememberedPortLock) {
+        if (rememberedPortList.remove(port)) {
+            prefs?.edit()?.putString(KEY_REMEMBERED_PORTS, rememberedPortList.joinToString(","))?.apply()
+        }
+    }
+
+    private fun rememberPort(port: Int) = synchronized(rememberedPortLock) {
+        rememberedPortList.remove(port)
+        rememberedPortList.add(0, port)
+        while (rememberedPortList.size > REMEMBERED_PORT_LIMIT) {
+            rememberedPortList.removeAt(rememberedPortList.lastIndex)
+        }
+        prefs?.edit()?.putString(KEY_REMEMBERED_PORTS, rememberedPortList.joinToString(","))?.apply()
+    }
+
+    /** Full adb handshake, the only reliable proof that a port is the connect port. */
+    private fun handshakeOk(ip: String, port: Int): Boolean = runCatching {
+        AdbClient.openShell(ip, port, connectTimeout = 3000L, maxRetryCount = 1).use { }
+        true
+    }.getOrDefault(false)
 
     private fun wifiIpAddress(): String? {
         // Prefer a real (non-loopback) site-local IPv4 address (Wi-Fi).
