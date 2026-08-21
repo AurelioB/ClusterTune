@@ -2,9 +2,6 @@ package com.aure.clustertune.ui.designsystem.component
 
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.BasicTextField
-import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -12,22 +9,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
@@ -99,16 +84,7 @@ internal fun CtCompactOutlinedField(
     )
 }
 
-/**
- * A compact single-line numeric field; callers own validation and localized labels.
- *
- * Controller behaviour: when reached by D-pad the field starts in a non-editing
- * "hover" state — focusable and outlined, but it does not take text focus, so the
- * soft keyboard stays closed and you can continue past it with up/down. Pressing
- * A/Center (or tapping) enters edit mode, which takes text focus and opens the
- * keyboard; Back/B or Enter commits and returns to hover. Without this, simply
- * moving focus over a numeric field pops the keyboard and traps navigation.
- */
+/** A compact single-line numeric field; callers own validation and localized labels. */
 @Composable
 internal fun CtNumericField(
     value: String,
@@ -122,91 +98,18 @@ internal fun CtNumericField(
     containerHeight: Dp = 56.dp,
     maxDigits: Int = Int.MAX_VALUE,
 ) {
-    var editing by remember { mutableStateOf(false) }
-    var hoverFocused by remember { mutableStateOf(false) }
-    val editFocus = remember { FocusRequester() }
-
-    if (editing && enabled && !readOnly) {
-        var everFocused by remember { mutableStateOf(false) }
-        LaunchedEffect(Unit) { runCatching { editFocus.requestFocus() } }
-        // While editing, Back/B should only dismiss the keyboard and return to
-        // the hover state — not navigate away from the screen.
-        BackHandler(enabled = true) { editing = false }
-        CtCompactOutlinedField(
-            value = value,
-            onValueChange = { next -> onValueChange(numericDigits(next, maxDigits)) },
-            modifier = modifier
-                .focusRequester(editFocus)
-                .onFocusChanged {
-                    if (it.isFocused) {
-                        everFocused = true
-                    } else if (everFocused) {
-                        // Only exit once focus was genuinely acquired then lost,
-                        // not on the frame before requestFocus() resolves.
-                        editing = false
-                    }
-                }
-                .onPreviewKeyEvent { event ->
-                    if (event.type == KeyEventType.KeyDown &&
-                        (event.key == Key.Back || event.key == Key.ButtonB ||
-                            event.key == Key.Enter || event.key == Key.NumPadEnter)
-                    ) {
-                        editing = false
-                        true
-                    } else {
-                        false
-                    }
-                },
-            label = label,
-            supportingText = supportingText,
-            isError = isError,
-            enabled = enabled,
-            readOnly = readOnly,
-            containerHeight = containerHeight,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        )
-    } else {
-        // Hover state: same outlined container and still accepts value changes
-        // (so programmatic/accessibility text input and instrumented tests behave
-        // as before). The difference is purely that it does not request text
-        // focus, so moving D-pad focus here does not open the soft keyboard.
-        // A/Center or tap switches to the real editing field.
-        val scheme = MaterialTheme.colorScheme
-        val borderColor = if (hoverFocused) scheme.primary.copy(alpha = 0.82f) else scheme.outlineVariant
-        CtCompactOutlinedField(
-            value = value,
-            onValueChange = { next -> onValueChange(numericDigits(next, maxDigits)) },
-            modifier = modifier
-                .onFocusChanged { hoverFocused = it.isFocused }
-                .onPreviewKeyEvent { event ->
-                    if (!enabled || readOnly) return@onPreviewKeyEvent false
-                    if (event.type == KeyEventType.KeyDown &&
-                        (event.key == Key.DirectionCenter || event.key == Key.Enter ||
-                            event.key == Key.NumPadEnter || event.key == Key.Spacebar ||
-                            event.key == Key.ButtonA)
-                    ) {
-                        editing = true
-                        true
-                    } else {
-                        false
-                    }
-                }
-                .focusable(enabled = enabled)
-                .clickable(enabled = enabled && !readOnly) { editing = true },
-            label = label,
-            supportingText = supportingText,
-            isError = isError,
-            enabled = enabled,
-            readOnly = readOnly,
-            containerHeight = containerHeight,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedBorderColor = borderColor,
-                focusedBorderColor = borderColor,
-                disabledBorderColor = scheme.outlineVariant.copy(alpha = 0.38f),
-            ),
-        )
-    }
+    CtCompactOutlinedField(
+        value = value,
+        onValueChange = { next -> onValueChange(numericDigits(next, maxDigits)) },
+        modifier = modifier,
+        label = label,
+        supportingText = supportingText,
+        isError = isError,
+        enabled = enabled,
+        readOnly = readOnly,
+        containerHeight = containerHeight,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+    )
 }
 
 internal fun numericDigits(value: String, maxDigits: Int): String =

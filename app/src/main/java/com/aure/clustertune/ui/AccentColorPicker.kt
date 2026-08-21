@@ -51,11 +51,6 @@ import androidx.compose.ui.res.stringResource
 import com.aure.clustertune.R
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import androidx.compose.ui.draw.scale
-import com.aure.clustertune.ui.designsystem.component.rememberCtAdjustable
-import com.aure.clustertune.ui.designsystem.component.animatedScale
-import com.aure.clustertune.ui.designsystem.component.thumbRadiusDp
-import com.aure.clustertune.ui.designsystem.component.ctAdjustable
 
 internal data class HsvColor(val hue: Float, val saturation: Float, val value: Float)
 
@@ -237,34 +232,21 @@ fun AccentColorPickerDialog(initialColor: Int, onDismiss: () -> Unit, onColorSel
                             activeTrackColor = Color.Transparent,
                             inactiveTrackColor = Color.Transparent,
                         )
-                        // Same controller contract as every other slider: hover
-                        // outlines, A drives it, up/down are held, B steps back
-                        // out. Previously this one was reachable but inert on a
-                        // controller — the only way to change hue was by touch.
-                        val hueAdjustable = rememberCtAdjustable()
-                        val hueThumb = hueAdjustable.thumbRadiusDp(rest = 4.dp, active = 8.dp)
                         Slider(
                             value = hsv.hue,
                             onValueChange = { updateHsv(hsv.copy(hue = it)) },
                             valueRange = 0f..360f,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
-                                .scale(hueAdjustable.animatedScale())
-                                .ctAdjustable(hueAdjustable, interactionSource) { delta ->
-                                    updateHsv(hsv.copy(hue = (hsv.hue + delta * HUE_STEP).coerceIn(0f, 360f)))
-                                }
-                                .semantics {
-                                    contentDescription = hueDescription
-                                    stateDescription = hueState
-                                },
+                            modifier = Modifier.fillMaxWidth().height(48.dp).semantics {
+                                contentDescription = hueDescription
+                                stateDescription = hueState
+                            },
                             colors = sliderColors,
                             interactionSource = interactionSource,
                             thumb = {
                                 SliderDefaults.Thumb(
                                     interactionSource = interactionSource,
                                     colors = sliderColors,
-                                    thumbSize = DpSize(width = hueThumb, height = 24.dp),
+                                    thumbSize = DpSize(width = 4.dp, height = 24.dp),
                                 )
                             },
                         )
@@ -287,6 +269,3 @@ fun AccentColorPickerDialog(initialColor: Int, onDismiss: () -> Unit, onColorSel
         },
     )
 }
-
-/** Degrees per D-pad step on the hue slider. */
-private const val HUE_STEP = 5f
