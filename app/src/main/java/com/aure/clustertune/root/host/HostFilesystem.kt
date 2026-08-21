@@ -117,17 +117,22 @@ class RealHostFilesystem @JvmOverloads constructor(
             mutationError = "invalid operation count"
             return false
         }
-        // Per-node isolation.
+        // A refused node names itself, then fails the batch.
         //
-        // Every mutation used to share one `set -e` batch, so the first node that
-        // refused a write aborted everything after it — C3 and C7 were never
-        // written because C0 failed, which is the wrong trade: a policy that can
-        // be applied should be applied. The working 1.0.2-era build wrapped each
-        // policy for exactly this reason.
+        // Each write retries first (see WRITE_ATTEMPTS below) so a vendor service
+        // rewriting the node between our write and our read-back does not count
+        // as a refusal. Only after the retries are exhausted does the node print
+        // `ct-node-failed:<path>` to stderr and exit non-zero.
         //
-        // Failures are recorded on stderr as `ct-node-failed:<path>` instead of
-        // aborting, and the read-back verification that follows is what decides
-        // overall success — it already names the offending policy.
+        // Reporting the path before exiting is the point: stderr is merged into
+        // the captured output, so `lastMutationError()` names the offending node
+        // rather than just saying a write was refused. That, plus the
+        // mode/owner dump at the call site in HostApplyEngine, is what makes a
+        // single user log paste enough to diagnose the C0 report.
+        //
+        // Exiting rather than continuing costs nothing: HostApplyEngine verifies
+        // every ceiling after the batch and rolls the whole transaction back on
+        // any single mismatch, so the remaining writes would be undone anyway.
         val script = buildString {
             append("set -e; ")
             operations.forEach { operation ->
@@ -184,7 +189,7 @@ class RealHostFilesystem @JvmOverloads constructor(
                             .append(quotedValue)
                             .append(" ]; then printf '%s\\n' ")
                             .append(shellQuote("ct-node-failed:" + operation.path))
-                            .append(" >&2; fi; ")
+                            .append(" >&2; exit 1; fi; ")
                     }
 
                     is HostMutation.WriteCandidatesNoReadback -> {
@@ -199,9 +204,9 @@ class RealHostFilesystem @JvmOverloads constructor(
                         }
                         append("; do if echo \"\$candidate\" > ")
                             .append(quotedPath)
-                            .append(" 2>/dev/null; then ok=1; break; fi; done; [ \"\$ok\" -eq 1 ] || printf '%s\\n' ")
+                            .append(" 2>/dev/null; then ok=1; break; fi; done; if [ \"\$ok\" -ne 1 ]; then printf '%s\\n' ")
                             .append(shellQuote("ct-node-failed:" + operation.path))
-                            .append(" >&2; ")
+                            .append(" >&2; exit 1; fi; ")
                     }
 
                     is HostMutation.WritePreferred -> {
@@ -228,9 +233,9 @@ class RealHostFilesystem @JvmOverloads constructor(
                             .append(quotedPath)
                             .append(" 2>/dev/null)\" = ")
                             .append(shellQuote(operation.fallback))
-                            .append(" ] || printf '%s\\n' ")
+                            .append(" ] || { printf '%s\\n' ")
                             .append(shellQuote("ct-node-failed:" + operation.path))
-                            .append(" >&2; fi; ")
+                            .append(" >&2; exit 1; }; fi; ")
                     }
                 }
             }
@@ -456,11 +461,6 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                 if (cpuNeedsMinRepair[index]) {
                     journalBeforeMutation(cpu.minPath, originalMins[index], originalMinModes[index], false, cpu.maxPath)
                     journalBeforeMutation(cpu.maxPath, original[index], originalModes[index], true, null, if (original[index] > cpu.selectableMax) listOf(cpu.selectableMax) else emptyList())
-                    cpuMaxMutations += HostMutation.Chmod(cpu.minPath, writableMode(originalMinModes[index]))
-                    cpuMaxMutations += HostMutation.WriteCandidatesNoReadback(
-                        cpu.minPath,
-                        cpu.minimumCandidates.filter { it > 0 && it <= safetyCeilings[index] }.distinct().sorted().map { it.toString() }
-                    )
                     // Leave the floor readable to non-owners. These ship 0660
                     // system:system on the Odin 2 Mini, so the app could not read
                     // them at all and every floor read had to go back through the
@@ -469,6 +469,10 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                     cpuMaxMutations += HostMutation.Chmod(
                         cpu.minPath,
                         minimumProtectionMode(originalMinModes[index]),
+                    )
+                    cpuMaxMutations += HostMutation.WriteCandidatesNoReadback(
+                        cpu.minPath,
+                        cpu.minimumCandidates.filter { it > 0 && it <= safetyCeilings[index] }.distinct().sorted().map { it.toString() }
                     )
                 } else {
                     journalBeforeMutation(cpu.maxPath, original[index], originalModes[index], true, null, if (original[index] > cpu.selectableMax) listOf(cpu.selectableMax) else emptyList())
@@ -488,15 +492,14 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                         val minMode = originalGpuMinMode ?: error("cannot read mode for $minPath")
                         journalBeforeMutation(minPath, originalGpuMin ?: error("cannot read $minPath"), minMode, false, gpu.maxPath)
                         journalBeforeMutation(gpu.maxPath, originalGpu ?: error("cannot read ${gpu.maxPath}"), originalGpuMode ?: error("cannot read mode for ${gpu.maxPath}"), true, null, if ((originalGpu ?: 0L) > gpu.selectableMax) listOf(gpu.selectableMax) else emptyList())
-                        cpuMaxMutations += HostMutation.Chmod(minPath, writableMode(minMode))
-                        cpuMaxMutations += HostMutation.WriteCandidatesNoReadback(
-                            minPath,
-                        (listOf(gpu.observedMin) + gpu.supportedFrequencies).filter { it > 0 && it <= (if (gpuStock) listOfNotNull(stabilizedStockCeiling?.takeIf { it > 0 }, gpu.stockMax.takeIf { it > 0 }, gpu.selectableMax).minOrNull() ?: target else target) }.distinct().sorted().map { it.toString() }
-                        )
                         // Same final mode as CPU floors, and the same mode the
                         // verification below asserts. Only reachable with root or
                         // PServer, since the GPU domain is dropped at uid=system.
                         cpuMaxMutations += HostMutation.Chmod(minPath, minimumProtectionMode(minMode))
+                        cpuMaxMutations += HostMutation.WriteCandidatesNoReadback(
+                            minPath,
+                        (listOf(gpu.observedMin) + gpu.supportedFrequencies).filter { it > 0 && it <= (if (gpuStock) listOfNotNull(stabilizedStockCeiling?.takeIf { it > 0 }, gpu.stockMax.takeIf { it > 0 }, gpu.selectableMax).minOrNull() ?: target else target) }.distinct().sorted().map { it.toString() }
+                        )
                     } else {
                         journalBeforeMutation(gpu.maxPath, originalGpu ?: error("cannot read ${gpu.maxPath}"), originalGpuMode ?: error("cannot read mode for ${gpu.maxPath}"), true, null, if ((originalGpu ?: 0L) > gpu.selectableMax) listOf(gpu.selectableMax) else emptyList())
                     }
@@ -679,22 +682,26 @@ class HostApplyEngine(private val fs: HostFilesystem) {
     private fun writableMode(mode: Int): Int = mode or 0x080
 
     /**
-     * Final mode for a ceiling node. Always keeps **other-read** (0004).
+     * Final mode for a ceiling node.
      *
-     * Deriving purely from the current mode reproduces the original C0 bug: a
-     * node that ships 0660 — which some Odin 2 Mini units do for policy0 —
-     * becomes `0660 and 0555` = **0440**, readable by nobody but its owner. The
-     * write still succeeds, so it fails silently, and because sysfs modes
-     * survive until reboot every later apply re-applies the same broken mode.
-     * That is precisely the "C0 applies but reads back null" report.
+     * **Protected (capped).** Clearing the write bits with `mode and 0555`
+     * reproduces the original C0 bug: a node that ships 0660 — which some
+     * Odin 2 Mini units do for policy0 — becomes **0440**, readable by nobody
+     * but its owner. The write still succeeds, so it fails silently, and
+     * because sysfs modes survive until reboot every later apply re-applies
+     * the same broken mode. That is precisely the "C0 applies but reads back
+     * null" report. Forcing other-read afterwards reaches the same place the
+     * 1.0.2-era build did with an absolute 444 (0664 -> 0444, 0660 -> 0444).
      *
-     * The 1.0.2-era build fixed this by writing an absolute 444 / 644. Deriving
-     * and then forcing other-read reaches the same place (0664 -> 0444,
-     * 0660 -> 0444) while preserving any group-write the vendor shipped, so its
-     * own services can still manage the node.
+     * **Stock.** Only owner-write is added, and nothing is ever cleared, so the
+     * node cannot end up less readable than the kernel shipped it — the C0 bug
+     * is unreachable here. Other-read is deliberately *not* forced: "restore to
+     * stock" must not leave a node more permissive than stock. A vendor 0660
+     * stays 0660, which is what an untouched device looks like, and the host
+     * owns the node so it still reads back fine.
      */
     private fun protectionMode(mode: Int, stock: Boolean): Int =
-        (if (stock) mode or 0x080 else mode and 0x16d) or 0x004
+        if (stock) mode or 0x080 else (mode and 0x16d) or 0x004
 
     /** Floors are left writable *and* readable — see [protectionMode]. */
     private fun minimumProtectionMode(mode: Int): Int = writableMode(mode) or 0x004
