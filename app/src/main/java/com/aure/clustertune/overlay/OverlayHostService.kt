@@ -201,7 +201,12 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
     }
 
     private fun showCompactTunerOverlay() {
+        val startedAt = android.os.SystemClock.elapsedRealtime()
         startCompactProfilePickerSession(CompactOverlayMode.TUNER)
+        com.wuyr.jdwp_injector.debug.JdwpDebugLog.d(
+            "overlay: compact tuner session started in " +
+                "${android.os.SystemClock.elapsedRealtime() - startedAt}ms",
+        )
     }
 
     private fun showCompactProfilePickerOverlay(

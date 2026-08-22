@@ -470,12 +470,52 @@ class TunerViewModel(
 
     fun autoDetectPrivilegedExecutionMethod() {
         viewModelScope.launch {
-            val methodId = privilegedExecutionResolver.autoDetectBestMethod(forceReprobe = true)
-            settingsStorage.persistPrivilegedExecutionMethodId(methodId)
-            transientMessage.value = methodId
-                ?.let { "Using ${formatExecutionMethod(it)}" }
-                ?: "No privileged execution method is available"
-            transientError.value = null
+            val detected = privilegedExecutionResolver.autoDetectBestMethod(forceReprobe = true)
+            if (detected != null) {
+                settingsStorage.persistPrivilegedExecutionMethodId(detected)
+                transientMessage.value = "Using ${formatExecutionMethod(detected)}"
+                transientError.value = null
+                return@launch
+            }
+
+            // Nothing probes available. That is the normal state on an unrooted
+            // device with wireless debugging not currently connected — root and
+            // PServer genuinely are not usable, and jdwp-inject cannot report
+            // itself available until a connection exists. Reporting "Not
+            // selected" left the user with no route forward and no hint that the
+            // one method that *can* work on their device was one screen away.
+            //
+            // So suggest it: select jdwp-inject and point at setup. This only
+            // changes the no-method case; whenever anything actually probes
+            // available, including root on a rooted Odin, that still wins above.
+            val suggestion = privilegedExecutionResolver.methodById("jdwp-inject")?.id
+            if (suggestion != null) {
+                settingsStorage.persistPrivilegedExecutionMethodId(suggestion)
+                privilegedExecutionResolver.setConfiguredMethodId(suggestion)
+                transientMessage.value =
+                    "No method is active yet — selected ${formatExecutionMethod(suggestion)}. " +
+                        "Set it up to finish."
+                transientError.value = null
+            } else {
+                transientMessage.value = "No privileged execution method is available"
+                transientError.value = null
+            }
+        }
+    }
+
+    /**
+     * Silent re-probe used after the wireless-setup screen changes connection
+     * state. Unlike [autoDetectPrivilegedExecutionMethod] this neither persists
+     * the detected id nor posts a user-facing message — the user did not ask
+     * for a detection, we are just noticing that availability may have changed.
+     */
+    fun recheckExecutionAvailability() {
+        viewModelScope.launch {
+            val id = privilegedExecutionResolver.autoDetectBestMethod(forceReprobe = true)
+            com.wuyr.jdwp_injector.debug.JdwpDebugLog.d(
+                "recheckExecutionAvailability: detected=${id ?: "null"}",
+            )
+            repository.refreshLiveValues()
         }
     }
 
@@ -502,18 +542,46 @@ class TunerViewModel(
         return appliedProfile?.name ?: "Custom values"
     }
 
+    /**
+     * Names only the clusters that actually failed.
+     *
+     * This used to describe every policy, so a single mismatched cluster produced
+     * a message listing all of them — which then got truncated by the toast, and
+     * user-submitted reports pointed at the wrong cluster. It also has to use the
+     * SAME rule the verification loop uses ([ProfileStateResolver.isPolicyValueSatisfied]):
+     * on a Stock reset the kernel legitimately lands on the top selectable bin
+     * rather than the observed ceiling (e.g. 2707200 for a 2803200 request) and
+     * the loop accepts that, so strict equality here reported false failures.
+     */
     private fun buildVerificationFailureMessage(
         state: TunerState,
         actualValues: Map<Int, Int>,
         commandOutput: String?,
     ): String {
-        val summary = state.policies.joinToString(", ") { policy ->
+        val asPercent = settings.value.displayFrequenciesAsPercent
+        val problems = state.policies.mapNotNull { policy ->
             val requested = state.currentValues[policy.id] ?: policy.currentMaxFreq
-            val actual = actualValues[policy.id] ?: policy.currentMaxFreq
-            "C${policy.id} requested ${formatFrequency(requested, policy = policy, displayAsPercent = settings.value.displayFrequenciesAsPercent)}, " +
-                "actual ${formatFrequency(actual, boosted = actual > policy.selectableMaxFreq, policy = policy, displayAsPercent = settings.value.displayFrequenciesAsPercent)}"
+            val actual = actualValues[policy.id]
+            when {
+                actual == null -> "C${policy.id}: could not read back " +
+                    "(wanted ${formatFrequency(requested, policy = policy, displayAsPercent = asPercent)})"
+                ProfileStateResolver.isPolicyValueSatisfied(policy, requested, actual) -> null
+                else -> "C${policy.id}: wanted " +
+                    formatFrequency(requested, policy = policy, displayAsPercent = asPercent) +
+                    " but is " +
+                    formatFrequency(
+                        actual,
+                        boosted = actual > policy.selectableMaxFreq,
+                        policy = policy,
+                        displayAsPercent = asPercent,
+                    )
+            }
         }
-        val base = "Apply did not stick: $summary"
+        val base = if (problems.isEmpty()) {
+            "Apply did not stick (no cluster mismatch reported)"
+        } else {
+            "Couldn't apply " + problems.joinToString("; ")
+        }
         return commandOutput?.takeIf { it.isNotBlank() }?.let { "$base | log: ${it.take(120)}" } ?: base
     }
 

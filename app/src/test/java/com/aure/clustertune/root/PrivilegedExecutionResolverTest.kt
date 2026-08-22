@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.Assert.assertNull
 
 class PrivilegedExecutionResolverTest {
     @Test
@@ -71,13 +72,40 @@ class PrivilegedExecutionResolverTest {
         }
     }
 
-    private class RecordingPServer(override val pServerAvailable: Boolean) : PServerHostExecutor {
+    @Test
+    fun `pserver present but not callable is not selected`() {
+        // Odin 2 Mini: PServerBinder is registered, so pServerAvailable is true,
+        // but every transaction is denied by SELinux. Selecting it here would
+        // shadow the working method and leave the host unreachable.
+        val pserver = PServerExecutionMethod(RecordingPServer(pServerAvailable = true, callAllowed = false))
+        val resolver = PrivilegedExecutionResolver(
+            listOf(pserver),
+            autoDetectionOrder = listOf("pserver-stdout"),
+        )
+        assertNull(resolver.autoDetectBestMethod(forceReprobe = true))
+    }
+
+    private class RecordingPServer(
+        override val pServerAvailable: Boolean,
+        /**
+         * Whether a transaction is actually permitted. Defaults to true so
+         * existing cases are unchanged; the Odin 2 Mini is the false case,
+         * where the binder exists but SELinux refuses every call.
+         */
+        private val callAllowed: Boolean = true,
+    ) : PServerHostExecutor {
         var launches = 0
         var command: String? = null
         override fun launchHost(command: String): Result<Unit> {
             launches++
             this.command = command
             return Result.success(Unit)
+        }
+
+        override fun verify(): Result<Unit> = if (callAllowed) {
+            Result.success(Unit)
+        } else {
+            Result.failure(SecurityException("FAILED BINDER TRANSACTION"))
         }
     }
 }

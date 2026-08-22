@@ -35,7 +35,40 @@ class GpuPolicyDetector(
     // scoped with the repository and avoids leaking ceilings between devices.
     private val observedCeilings = mutableMapOf<String, Int>()
 
+    /**
+     * Remembers that unprivileged detection found nothing, so it is not retried
+     * on every state refresh.
+     *
+     * On the Odin 2 Mini `/sys/class/kgsl/kgsl-3d0/max_gpuclk` is unreadable to
+     * `untrusted_app`, and the repository falls back to this detector whenever
+     * the privileged host reports no GPU domain. That produced an SELinux denial
+     * every single second in logcat:
+     *
+     *   avc: denied { read } for name="max_gpuclk" scontext=u:r:untrusted_app
+     *        tcontext=u:object_r:vendor_sysfs_kgsl permissive=0
+     *
+     * The answer cannot change without a reboot or a policy change, so one
+     * attempt per process is enough.
+     */
+    // Process-wide, NOT per-instance.
+    //
+    // MainActivity, the overlay service, the tile service and the boot receiver
+    // each build their own AppContainer and therefore their own detector, so an
+    // instance-level flag cached nothing: every overlay open re-walked the GPU
+    // sysfs paths and produced three SELinux denials again. Visible in logcat as
+    // a fresh `avc: denied { read } max_gpuclk` burst on each open.
+
     fun detectPolicy(): GpuPolicyInfo? {
+        if (detectionMissed) return null
+        return detectPolicyUncached().also { if (it == null) detectionMissed = true }
+    }
+
+    private companion object {
+        @Volatile
+        var detectionMissed = false
+    }
+
+    private fun detectPolicyUncached(): GpuPolicyInfo? {
         detectKgsl()?.let { return it }
         val roots = listOf("/sys/class/devfreq", "/sys/devices/platform")
         val candidates = roots.flatMap { root -> fileSystem.listDirectories(root) }.distinct()

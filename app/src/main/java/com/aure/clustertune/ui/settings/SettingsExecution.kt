@@ -36,6 +36,10 @@ import com.aure.clustertune.ui.designsystem.component.CtIcon
 import com.aure.clustertune.ui.designsystem.component.CtSelectableRow
 import com.aure.clustertune.ui.designsystem.component.CtSectionCard
 import com.aure.clustertune.ui.designsystem.token.ClusterTuneDensity
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.text.style.TextOverflow
+import com.aure.clustertune.ui.designsystem.component.CtSwitchPreference
 
 private data class ExecutionMethodInfo(
     val id: String,
@@ -54,6 +58,11 @@ private val executionMethodInfo = listOf(
         labelRes = R.string.settings_execution_root,
         descriptionRes = R.string.settings_execution_root_description,
     ),
+    ExecutionMethodInfo(
+        id = "jdwp-inject",
+        labelRes = R.string.settings_execution_jdwp,
+        descriptionRes = R.string.settings_execution_jdwp_description,
+    ),
 )
 
 @Composable
@@ -62,6 +71,18 @@ internal fun DeviceExecutionMethodCard(
     onAutoDetect: () -> Unit,
     onMethodChange: (String?) -> Unit,
     density: ClusterTuneDensity,
+    /**
+     * Opens the wireless-debugging pairing screen. Null hides the button, so
+     * callers that have no navigation host (previews, tests) need no change.
+     */
+    onOpenWirelessDebugSetup: (() -> Unit)? = null,
+    /** True while the privileged host is running and serving requests. */
+    isHostRunning: () -> Boolean = { false },
+    /** Opt-in diagnostics for this execution method. */
+    wirelessDebugLoggingEnabled: Boolean = false,
+    onWirelessDebugLoggingChange: (Boolean) -> Unit = {},
+    onViewDiagnosticLog: () -> Unit = {},
+    onDownloadDiagnosticLog: () -> Unit = {},
 ) {
     SectionCard(title = stringResource(R.string.settings_execution), symbol = "terminal", density = density) {
         Row(
@@ -88,6 +109,55 @@ internal fun DeviceExecutionMethodCard(
                 onChange = onMethodChange,
                 modifier = Modifier.weight(1f),
             )
+        }
+        if (selectedMethodId == "jdwp-inject" && onOpenWirelessDebugSetup != null) {
+            Spacer(Modifier.height(10.dp))
+            OutlinedButton(
+                onClick = onOpenWirelessDebugSetup,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.settings_execution_jdwp_setup))
+            }
+            // The adb connection and the privileged host are independent: once
+            // the host is up it serves over Binder and needs no network, so
+            // reporting only the connection state would call a fully working
+            // setup "not connected" the moment Wi-Fi goes off.
+            if (isHostRunning()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.settings_execution_jdwp_host_running),
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+
+            // Diagnostics are opt-in and live here rather than in a general
+            // section, because they only describe this execution method and are
+            // meaningless when another one is selected.
+            Spacer(Modifier.height(10.dp))
+            CtSwitchPreference(
+                title = { Text(stringResource(R.string.settings_execution_jdwp_logging)) },
+                description = {
+                    Text(stringResource(R.string.settings_execution_jdwp_logging_summary))
+                },
+                checked = wirelessDebugLoggingEnabled,
+                onCheckedChange = onWirelessDebugLoggingChange,
+            )
+            if (wirelessDebugLoggingEnabled) {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    OutlinedButton(
+                        onClick = onViewDiagnosticLog,
+                        modifier = Modifier.weight(1f),
+                    ) { Text(stringResource(R.string.settings_execution_jdwp_logging_view)) }
+                    OutlinedButton(
+                        onClick = onDownloadDiagnosticLog,
+                        modifier = Modifier.weight(1f),
+                    ) { Text(stringResource(R.string.settings_execution_jdwp_logging_download)) }
+                }
+            }
         }
     }
 }
@@ -171,6 +241,7 @@ private fun PrivilegedExecutionMethodSelector(
     val selectedLabel = when (selectedMethodId) {
         "pserver-stdout" -> stringResource(R.string.settings_execution_pserver)
         "root-shell" -> stringResource(R.string.settings_execution_root)
+        "jdwp-inject" -> stringResource(R.string.settings_execution_jdwp)
         null -> stringResource(R.string.settings_execution_not_selected)
         else -> selectedMethodId
     }
@@ -185,14 +256,21 @@ private fun PrivilegedExecutionMethodSelector(
             color = MaterialTheme.colorScheme.surfaceContainerHighest,
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
+                    // weight + ellipsis: long labels (e.g. "Wireless debugging
+                    // (no root)") otherwise overflow and collide with the
+                    // trailing "Change" text instead of truncating, which reads
+                    // as garbled overlapping glyphs.
+                    modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp),
                     text = selectedLabel,
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = stringResource(R.string.settings_change),

@@ -28,6 +28,16 @@ class PrivilegedExecutionResolver(
     private val lock = Any()
     @Volatile private var generation = 0L
     private var cachedMethod: PrivilegedExecutionMethod? = null
+
+    /**
+     * Reports the method a live privileged host is attached through, if any.
+     *
+     * Set by AppContainer once the host client exists. Consulted before probing
+     * so an already-working host always wins; it never calls back into the
+     * resolver, so there is no cycle.
+     */
+    @Volatile
+    var runningHostMethodProvider: (() -> String?)? = null
     @Volatile private var configuredMethodId: String? = null
 
     val isAvailable: Boolean get() = selectedMethod() != null
@@ -35,6 +45,14 @@ class PrivilegedExecutionResolver(
     /** Persisted selection without probing or auto-detection. */
     val configuredMethodIdSnapshot: String? get() = configuredMethodId
     val availableMethodIds: List<String> get() = methods.map { it.id }
+
+    /**
+     * Direct lookup by id, bypassing probing. Used to offer a method that cannot
+     * report itself available yet — jdwp-inject before a connection exists.
+     */
+    fun methodById(methodId: String): PrivilegedExecutionMethod? = synchronized(lock) {
+        methods.firstOrNull { it.id == methodId }
+    }
 
     fun setConfiguredMethodId(methodId: String?) = synchronized(lock) {
         if (configuredMethodId != methodId) {
@@ -75,8 +93,38 @@ class PrivilegedExecutionResolver(
         if (!forceReprobe) cachedMethod?.let { return it }
         cachedMethod = null
         val byId = methods.associateBy { it.id }
+        // A host that is already running is proof, not a prediction.
+        //
+        // Probing asks "could this method start a host now", which for
+        // jdwp-inject means "is there a live wireless-debugging connection". With
+        // Wi-Fi off that is false even while the host it started is up and
+        // serving — so Auto detect reported nothing available and the app claimed
+        // no privileged execution method, on a device that was applying profiles
+        // perfectly. Trusting the running host also stops detection from tearing
+        // down something that works in favour of something that merely probes.
+        runningHostMethodProvider?.invoke()?.let { runningId ->
+            byId[runningId]?.let { method ->
+                com.wuyr.jdwp_injector.debug.JdwpDebugLog.d(
+                    "selectBestMethod: host already running via $runningId; keeping it",
+                )
+                return method.also { cachedMethod = it }
+            }
+        }
         for (method in autoDetectionOrder.mapNotNull(byId::get)) {
-            if (method.probe().isAvailable) return method.also { cachedMethod = it }
+            // Timed because detection sits on the cold path for both app start
+            // and the quick tile: nothing can be applied until it returns. Which
+            // probe is slow is not obvious - `su` and the PServer binder call are
+            // both plausible - so measure rather than guess.
+            val startedAt = System.currentTimeMillis()
+            val probe = method.probe()
+            val elapsed = System.currentTimeMillis() - startedAt
+            if (elapsed >= SLOW_PROBE_LOG_THRESHOLD_MS) {
+                com.wuyr.jdwp_injector.debug.JdwpDebugLog.w(
+                    "probe(${method.id}): ${elapsed}ms available=${probe.isAvailable}" +
+                        (probe.failureReason?.let { " reason=$it" } ?: ""),
+                )
+            }
+            if (probe.isAvailable) return method.also { cachedMethod = it }
         }
         return null
     }
@@ -92,11 +140,37 @@ class PrivilegedExecutionResolver(
     }
 
     companion object {
-        val DEFAULT_AUTO_DETECTION_ORDER = listOf("pserver-stdout", "root-shell")
+        /** Probes slower than this are logged; detection blocks on them. */
+        private const val SLOW_PROBE_LOG_THRESHOLD_MS = 250L
 
-        fun default(context: Context): PrivilegedExecutionResolver = PrivilegedExecutionResolver(
-            listOf(PServerExecutionMethod(RootExec()), RootShellExecutionMethod()),
-        )
+        // jdwp-inject is tried last: it is the no-root fallback, and unlike the
+        // other two it needs a wireless-debugging connection to start the host.
+        val DEFAULT_AUTO_DETECTION_ORDER = listOf("pserver-stdout", "root-shell", "jdwp-inject")
+
+        fun default(
+            context: Context,
+            jdwpConnectionProvider: (() -> com.aure.clustertune.jdwp.AdbConnectionInfo?)? = null,
+            jdwpSharedShellProvider: (() -> com.wuyr.jdwp_injector.adb.AdbClient?)? = null,
+            jdwpShellInvalidator: (() -> Unit)? = null,
+            jdwpPersistentInjector: ((String, String, Int, () -> Unit) -> Boolean)? = null,
+            jdwpShellUseLock: Any = Any(),
+        ): PrivilegedExecutionResolver {
+            val methods = mutableListOf<PrivilegedExecutionMethod>(
+                PServerExecutionMethod(RootExec()),
+                RootShellExecutionMethod(),
+            )
+            if (jdwpConnectionProvider != null) {
+                methods += com.aure.clustertune.jdwp.JdwpHostExecutionMethod(
+                    context = context,
+                    connectionProvider = jdwpConnectionProvider,
+                    sharedShellProvider = jdwpSharedShellProvider,
+                    shellInvalidator = jdwpShellInvalidator,
+                    persistentInjector = jdwpPersistentInjector,
+                    shellUseLock = jdwpShellUseLock,
+                )
+            }
+            return PrivilegedExecutionResolver(methods)
+        }
     }
 }
 
@@ -111,8 +185,22 @@ internal class PServerExecutionMethod(
     override val id = "pserver-stdout"
 
     override fun probe(): ExecutionProbeResult {
-        return if (rootExec.pServerAvailable) ExecutionProbeResult(true)
-        else ExecutionProbeResult(false, "PServerBinder not available")
+        if (!rootExec.pServerAvailable) {
+            return ExecutionProbeResult(false, "PServerBinder not available")
+        }
+        // Presence is not permission — see PServerHostExecutor.verify. Reporting
+        // available here without a real transaction makes auto-detection pick
+        // PServer on devices whose SELinux policy refuses the call, which then
+        // shadows a method that does work.
+        return rootExec.verify().fold(
+            onSuccess = { ExecutionProbeResult(true) },
+            onFailure = {
+                ExecutionProbeResult(
+                    false,
+                    "PServer rejected the call (${it.message ?: "transaction failed"})",
+                )
+            },
+        )
     }
 
     override fun launchHost(request: HostLaunchRequest): Result<Unit> =

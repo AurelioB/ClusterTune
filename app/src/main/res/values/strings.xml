@@ -110,4 +110,12 @@
     <string name="settings_execution_pserver_description">Compatible with AYN and Retroid devices, except Odin 2 Mini.</string>
     <string name="settings_execution_root">Root</string>
     <string name="settings_execution_root_description">Compatible with all rooting methods that provide su.</string>
+    <string name="settings_execution_jdwp">Wireless debugging</string>
+    <string name="settings_execution_jdwp_description">Pair once per boot using Android\'s built-in Wireless debugging; profiles then keep applying with Wi\u2011Fi off until you reboot. Works on the Odin 2 Mini, no GPU underclocking.</string>
+    <string name="settings_execution_jdwp_setup">Set up wireless debugging</string>
+    <string name="settings_execution_jdwp_host_running">Privileged host running — profiles apply without Wi-Fi.</string>
+    <string name="settings_execution_jdwp_logging">Wireless debugging execution method logging</string>
+    <string name="settings_execution_jdwp_logging_summary">Records connection and apply diagnostics on-device. Off by default; turn on only when reproducing a problem.</string>
+    <string name="settings_execution_jdwp_logging_view">View log</string>
+    <string name="settings_execution_jdwp_logging_download">Download log</string>
 </resources>

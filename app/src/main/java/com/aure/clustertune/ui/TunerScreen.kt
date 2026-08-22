@@ -129,6 +129,9 @@ import com.aure.clustertune.ui.designsystem.component.CtSwitch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
 
 private const val NEW_PROFILE_DIALOG_ID = "__new_profile__"
 private enum class MainTab {
@@ -155,12 +158,24 @@ fun MainTunerScreen(
     onDeleteAppProfileAssignment: (String) -> Unit,
     onRefreshInstalledApps: () -> Unit,
     onOpenSettings: () -> Unit,
+    /**
+     * No-root setup entry points shown when nothing privileged is available.
+     * Defaulted so previews and any other caller compile unchanged.
+     */
+    onOpenWirelessDebugSetup: (() -> Unit)? = null,
+    onConnectWirelessDebug: (() -> Unit)? = null,
+    wirelessConnectStatus: String = "",
+    isWirelessDebugConnected: Boolean = false,
     onOpenSupport: () -> Unit,
     onRefreshLiveValues: () -> Unit,
     onStatusMessageShown: () -> Unit,
     onErrorMessageShown: () -> Unit,
 ) {
     var dialogProfileId by remember { mutableStateOf<String?>(null) }
+    // Focus targets for the no-root setup panel so D-pad up/down chains between
+    // the two buttons instead of escaping into the nav rail.
+    val setupButtonFocus = remember { FocusRequester() }
+    val connectButtonFocus = remember { FocusRequester() }
     var selectedTab by remember { mutableStateOf(MainTab.PROFILES) }
     var appToConfigure by remember { mutableStateOf<InstalledAppInfo?>(null) }
     var showAppAssignmentDialog by remember { mutableStateOf(false) }
@@ -226,6 +241,51 @@ fun MainTunerScreen(
                             color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.SemiBold,
                         )
+                        if (onOpenWirelessDebugSetup != null) {
+                            Text(
+                                text = "You can apply profiles over Android's built-in " +
+                                    "Wireless debugging. Set it up once per boot below.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                text = "Status: $wirelessConnectStatus",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isWirelessDebugConnected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                            )
+                            Button(
+                                onClick = onOpenWirelessDebugSetup,
+                                modifier = Modifier
+                                    .focusRequester(setupButtonFocus)
+                                    .focusProperties { down = connectButtonFocus },
+                            ) {
+                                Text("Set up wireless debugging")
+                            }
+                            if (onConnectWirelessDebug != null) {
+                                Text(
+                                    text = "Already paired this boot? Just tap Connect:",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Button(
+                                    onClick = onConnectWirelessDebug,
+                                    modifier = Modifier
+                                        .focusRequester(connectButtonFocus)
+                                        // Without an explicit target, the 2-D focus
+                                        // search from Connect goes up-and-left into
+                                        // the nav rail (geometrically closer) rather
+                                        // than back to Set up directly above it.
+                                        .focusProperties { up = setupButtonFocus },
+                                ) {
+                                    Text("Connect")
+                                }
+                            }
+                        }
                     } else {
                         Box(
                             modifier = Modifier

@@ -57,6 +57,7 @@ class SettingsStorage(private val context: Context) {
     private val includePrereleaseUpdatesKey = booleanPreferencesKey("include_prerelease_updates")
     private val lastUpdateCheckMillisKey = longPreferencesKey("last_update_check_millis")
     private val displayFrequenciesAsPercentKey = booleanPreferencesKey("display_frequencies_as_percent")
+    private val wirelessDebugLoggingKey = booleanPreferencesKey("wireless_debug_logging_enabled")
     private val leftEdgeProfilePickerEnabledKey = booleanPreferencesKey("left_edge_profile_picker_enabled")
     private val edgeHandleHeightDpKey = intPreferencesKey("edge_handle_height_dp")
     private val edgeHandleThicknessDpKey = intPreferencesKey("edge_handle_thickness_dp")
@@ -91,6 +92,7 @@ class SettingsStorage(private val context: Context) {
                 ?: DEFAULT_INCLUDE_PRERELEASE_UPDATES,
             lastUpdateCheckMillis = preferences[lastUpdateCheckMillisKey] ?: 0L,
             displayFrequenciesAsPercent = preferences[displayFrequenciesAsPercentKey] ?: false,
+            wirelessDebugLoggingEnabled = preferences[wirelessDebugLoggingKey] ?: false,
             leftEdgeProfilePickerEnabled = preferences[leftEdgeProfilePickerEnabledKey] ?: false,
             edgeHandleHeightDp = (preferences[edgeHandleHeightDpKey] ?: DEFAULT_EDGE_HANDLE_HEIGHT_DP)
                 .coerceIn(MIN_EDGE_HANDLE_HEIGHT_DP, MAX_EDGE_HANDLE_HEIGHT_DP),
@@ -211,6 +213,12 @@ class SettingsStorage(private val context: Context) {
         }
     }
 
+    suspend fun persistWirelessDebugLoggingEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { preferences ->
+            preferences[wirelessDebugLoggingKey] = enabled
+        }
+    }
+
     suspend fun persistDisplayFrequenciesAsPercent(enabled: Boolean) {
         context.settingsDataStore.edit { preferences ->
             preferences[displayFrequenciesAsPercentKey] = enabled
@@ -287,7 +295,13 @@ class SettingsStorage(private val context: Context) {
 }
 
 internal fun supportedExecutionMethodId(methodId: String?): String? {
-    return methodId?.takeIf { it == "pserver-stdout" || it == "root-shell" }
+    // Any new execution method MUST be listed here. An id missing from this
+    // whitelist is silently dropped on read, so the picker appears to accept a
+    // selection and then reports "Not selected" - a trap this fork hit once
+    // already with the jdwp method.
+    return methodId?.takeIf {
+        it == "pserver-stdout" || it == "root-shell" || it == "jdwp-inject"
+    }
 }
 
 internal fun normalizeEdgeHandleThicknessDp(thicknessDp: Int): Int {

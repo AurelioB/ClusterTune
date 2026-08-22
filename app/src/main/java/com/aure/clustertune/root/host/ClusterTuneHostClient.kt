@@ -65,9 +65,29 @@ class ClusterTuneHostClient(
     private val context: Context,
     private val resolver: PrivilegedExecutionResolver,
 ) {
+    /**
+     * The method a live host is actually attached through, or null if none is.
+     *
+     * Distinct from [selectedMethodId], which falls back to the configured
+     * preference. This one is evidence rather than intent, so it is safe for the
+     * resolver to consult without creating a loop.
+     */
+    val runningMethodId: String?
+        get() = if (binder?.isBinderAlive == true) attachedMethod else null
+
     /** The lifecycle method currently selected for starting the host. */
     val selectedMethodId: String?
         get() = attachedMethod ?: resolver.configuredMethodIdSnapshot
+
+    /**
+     * Whether a live host binder is currently attached.
+     *
+     * Deliberately cheap and non-blocking: it inspects the cached binder only
+     * and never calls [ensureStarted], so UI can poll it without risking a host
+     * launch on the main thread.
+     */
+    val isRunning: Boolean
+        get() = binder?.isBinderAlive == true
 
     private val lock = START_LOCKS.computeIfAbsent(Process.myUid()) { Any() }
     private val serviceName = HostProtocol.SERVICE_PREFIX + Process.myUid()
@@ -76,16 +96,60 @@ class ClusterTuneHostClient(
     @Volatile private var attachedMethod: String? = null
     private var death: IBinder.DeathRecipient? = null
 
+    /**
+     * Begin listening for a host that is already running from a previous app
+     * process, so it can be adopted instead of relaunched.
+     *
+     * Safe and cheap to call on every app start. Without it, killing the app
+     * stranded a perfectly healthy host: the handoff broadcast had already been
+     * delivered to a process that no longer exists, and nothing else advertises
+     * the host — it is never registered with ServiceManager.
+     */
+    fun listenForAdoption() {
+        HostRendezvous.listen(context, serviceName, generation)
+    }
+
+    /**
+     * Waits briefly for an adoptable host to re-announce itself.
+     *
+     * An adoptable host repeats its handoff every couple of seconds while
+     * nothing is attached, so a short wait here turns "app restarted while the
+     * host is alive" from a race into a deterministic reattach.
+     */
+    private fun awaitAdoption(timeoutMs: Long): IBinder? {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            HostRendezvous.lookup(serviceName)?.let { return it }
+            Thread.sleep(ADOPTION_POLL_MS)
+        }
+        return HostRendezvous.lookup(serviceName)
+    }
+
     fun ensureStarted(timeoutMs: Long = 3000): Result<Unit> = synchronized(lock) {
         runCatching {
             val configuredMethod = resolver.configuredMethodIdSnapshot
-            binder?.takeIf { it.isBinderAlive && (configuredMethod == null || attachedMethod == configuredMethod) }?.let {
+            // Can anything actually start a replacement host right now?
+            //
+            // This gates every destructive step below. Switching execution method
+            // with Wi-Fi off used to tear down a perfectly good host to honour the
+            // new choice, then fail to start its replacement, and switching back
+            // did not help because the old host had already been stopped. A
+            // running host is worth more than a preference that cannot currently
+            // be acted on, so when nothing can replace it we keep it and let the
+            // preference take effect the next time a host genuinely needs starting.
+            val canStartReplacement = resolver.selectionSnapshot().methodId != null
+            val methodMatters = canStartReplacement && configuredMethod != null
+            binder?.takeIf {
+                it.isBinderAlive && (!methodMatters || attachedMethod == configuredMethod)
+            }?.let {
                 return@runCatching
             }
             detach()
             (HostRendezvous.lookup(serviceName) ?: service())?.let { existing ->
                 val legacyService = HostRendezvous.lookup(serviceName) == null
-                val pingAttempt = runCatching { ping(existing, configuredMethod) }
+                val pingAttempt = runCatching {
+                    ping(existing, configuredMethod.takeIf { methodMatters })
+                }
                 val pingFailure = pingAttempt.exceptionOrNull()
                 if (pingAttempt.isSuccess) {
                     if (!legacyService) sendLease(existing)
@@ -93,7 +157,8 @@ class ClusterTuneHostClient(
                     return@runCatching
                 }
                 val remoteVersion = (pingFailure as? HostProtocolMismatch)?.remoteVersion
-                if (remoteVersion != null || pingFailure is HostIdentityMismatch) {
+                // Only replace a live host when a replacement can be started.
+                if ((remoteVersion != null || pingFailure is HostIdentityMismatch) && canStartReplacement) {
                     runCatching { transact(existing, HostProtocol.STOP, wireVersion = remoteVersion ?: HostProtocol.VERSION, expectedVersion = remoteVersion ?: HostProtocol.VERSION) { } }
                     detach(existing)
                     check(waitForServiceReplacement(existing, timeoutMs)) { "previous privileged host is still registered" }
@@ -104,6 +169,24 @@ class ClusterTuneHostClient(
                 }
             }
             val selection = resolver.selectionSnapshot()
+            // Always try to adopt before launching.
+            //
+            // A host may already be running from a previous app process, or from
+            // before the user changed execution method, and simply not have
+            // re-announced itself yet. This used to run only when no method was
+            // available at all, so after switching method and back the app went
+            // straight to "launch a new one" — which needs wireless debugging —
+            // even though the original host was still alive and adoptable.
+            HostRendezvous.listen(context, serviceName, generation)
+            com.aure.clustertune.jdwp.JdwpHostExecutionMethod.requestAdoption()
+            awaitAdoption(ADOPTION_WAIT_MS)?.let { adopted ->
+                val pingAttempt = runCatching { ping(adopted, null) }
+                if (pingAttempt.isSuccess) {
+                    sendLease(adopted)
+                    attach(adopted, pingAttempt.getOrThrow().method, requireLegacyService = false)
+                    return@runCatching
+                }
+            }
             val method = selection.methodId ?: error("no privileged execution method")
             val dex = HostDexRuntime(context).extract(generation)
             // Keep the classpath as a raw colon-delimited value. The launcher quotes the
@@ -394,7 +477,12 @@ class ClusterTuneHostClient(
     private fun readRequiredString(parcel: Parcel, label: String): String =
         parcel.readString()?.also { require(it.length <= 512) { "$label is too long" } }
             ?: error("missing $label")
-    companion object { private val START_LOCKS=ConcurrentHashMap<Int,Any>() }
+    companion object {
+        private val START_LOCKS = ConcurrentHashMap<Int, Any>()
+        private const val ADOPTION_POLL_MS = 100L
+        /** Covers two of the host's 1.5s adopt-request polls, plus slack. */
+        private const val ADOPTION_WAIT_MS = 4000L
+    }
 }
 
 /** Host protocol uses -1 as the wire sentinel for an unavailable optional node. */

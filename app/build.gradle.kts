@@ -94,6 +94,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":jdwp-injector"))
     val composeBom = platform("androidx.compose:compose-bom:2024.09.03")
 
     implementation("androidx.core:core-ktx:1.13.1")
