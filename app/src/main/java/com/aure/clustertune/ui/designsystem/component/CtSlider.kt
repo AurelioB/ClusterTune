@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.animateDpAsState
 
 /** A compact-looking slider that retains Material's 48 dp interaction target. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -35,6 +36,12 @@ internal fun CtSlider(
     visualHeight: androidx.compose.ui.unit.Dp = 36.dp,
     trackHeight: androidx.compose.ui.unit.Dp = 6.dp,
     thumbSize: DpSize = DpSize(4.dp, 24.dp),
+    /**
+     * True while a controller is actively driving this slider. Widens the thumb
+     * rather than resizing the whole control — the same signal the 1.0.2 build
+     * used, and the reason the container itself only reacts to hover.
+     */
+    active: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Box(
@@ -74,10 +81,20 @@ internal fun CtSlider(
             colors = colors,
             interactionSource = interactionSource,
             thumb = {
+                val activeThumbSize = DpSize(
+                    width = animateDpAsState(
+                        if (active) thumbSize.width * 2f else thumbSize.width,
+                        label = "ctSliderThumbWidth",
+                    ).value,
+                    height = animateDpAsState(
+                        if (active) thumbSize.height + 4.dp else thumbSize.height,
+                        label = "ctSliderThumbHeight",
+                    ).value,
+                )
                 SliderDefaults.Thumb(
                     interactionSource = interactionSource,
                     colors = colors,
-                    thumbSize = thumbSize,
+                    thumbSize = activeThumbSize,
                 )
             },
             track = { sliderState ->

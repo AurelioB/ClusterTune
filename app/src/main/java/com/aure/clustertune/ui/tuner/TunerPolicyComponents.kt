@@ -38,6 +38,28 @@ import kotlin.math.roundToInt
 import com.aure.clustertune.model.CpuPolicyInfo
 import com.aure.clustertune.model.GpuPolicyInfo
 import com.aure.clustertune.ui.designsystem.component.CtRowSurface
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import com.aure.clustertune.ui.designsystem.component.rememberCtAdjustable
+import com.aure.clustertune.ui.designsystem.component.animatedScale
+import com.aure.clustertune.ui.designsystem.component.ctAdjustable
+import androidx.compose.animation.core.animateDpAsState
 
 @Composable
 internal fun TunerPolicyCard(
@@ -47,6 +69,7 @@ internal fun TunerPolicyCard(
     compactMode: Boolean = false,
     displayFrequenciesAsPercent: Boolean = false,
     actualValue: Int = selectedValue,
+    focusRequester: FocusRequester? = null,
 ) {
     val supported = policy.supportedFrequencies.filter { it <= policy.selectableMaxFreq }.ifEmpty { listOf(policy.selectableMaxFreq) }
     val displaySelectedValue = policy.clampToWritableMax(selectedValue)
@@ -70,6 +93,7 @@ internal fun TunerPolicyCard(
         maxIndex = supported.lastIndex,
         onIndexChange = { index -> onValueChanged(supported[index]) },
         compactMode = compactMode,
+        focusRequester = focusRequester,
     )
 }
 
@@ -82,11 +106,40 @@ private fun TunerFrequencyCard(
     maxIndex: Int,
     onIndexChange: (Int) -> Unit,
     compactMode: Boolean,
+    focusRequester: FocusRequester? = null,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val stock = valueIndex >= maxIndex
     val sliderColor = if (stock) colorScheme.onSurfaceVariant.copy(alpha = 0.58f) else colorScheme.primary
+
+    // Controller support, via the shared hover-then-adjust contract (CtAdjustable)
+    // so this card, the edge-handle sliders and the numeric fields cannot drift
+    // apart again. A/Center enters adjust mode and grows the card, left/right
+    // step, up/down are swallowed while adjusting so focus cannot escape
+    // mid-edit, and B leaves adjust mode rather than closing the screen.
+    val interactionSource = remember { MutableInteractionSource() }
+    val adjustable = rememberCtAdjustable()
+
+    fun step(delta: Int) {
+        if (maxIndex <= 0) return
+        val next = (valueIndex + delta).coerceIn(0, maxIndex)
+        if (next != valueIndex) onIndexChange(next)
+    }
+
+    val borderColor = when {
+        adjustable.adjusting -> colorScheme.primary
+        adjustable.focused -> colorScheme.primary.copy(alpha = 0.82f)
+        else -> colorScheme.outlineVariant.copy(alpha = 0.28f)
+    }
+    val borderWidth = if (adjustable.focused || adjustable.adjusting) 2.dp else 1.dp
+    val scale = adjustable.animatedScale()
+
     CtRowSurface(
+        modifier = Modifier
+            .scale(scale)
+            .border(BorderStroke(borderWidth, borderColor), RoundedCornerShape(20.dp))
+            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+            .ctAdjustable(adjustable, interactionSource, onStep = ::step),
         minimumHeight = 62.dp,
         shape = RoundedCornerShape(20.dp),
         contentPadding = PaddingValues(0.dp),
@@ -141,6 +194,7 @@ private fun TunerFrequencyCard(
                         )
                     }
                     TunerFrequencySlider(
+                        active = adjustable.adjusting,
                         valueIndex = valueIndex,
                         maxIndex = maxIndex,
                         onIndexChange = onIndexChange,
@@ -168,13 +222,18 @@ private fun TunerFrequencySlider(
     maxIndex: Int,
     onIndexChange: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    /** True while the parent card is in controller adjust mode. */
+    active: Boolean = false,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val sliderColor = if (valueIndex >= maxIndex) colorScheme.onSurfaceVariant.copy(alpha = 0.58f) else colorScheme.primary
     val density = LocalDensity.current
     val trackHeight = with(density) { 4.dp.toPx() }
     val tickRadius = with(density) { 1.4.dp.toPx() }
-    val thumbRadius = with(density) { 7.dp.toPx() }
+    // Grows while the parent card is in adjust mode, so it is obvious which
+    // slider the D-pad is driving without moving the row itself.
+    val thumbRadiusDp by animateDpAsState(if (active) 9.dp else 7.dp, label = "tunerThumb")
+    val thumbRadius = with(density) { thumbRadiusDp.toPx() }
     val cornerRadius = CornerRadius(trackHeight / 2f, trackHeight / 2f)
 
     BoxWithConstraints(
@@ -258,6 +317,7 @@ internal fun TunerGpuPolicyCard(
     actualValue: Int = selectedValue,
     onValueChanged: (Int) -> Unit,
     compactMode: Boolean = false,
+    focusRequester: FocusRequester? = null,
 ) {
     val supported = policy.supportedFrequenciesHz.filter { it <= policy.selectableMaxFrequencyHz }
         .ifEmpty { listOf(policy.selectableMaxFrequencyHz) }.distinct().sorted()
@@ -274,6 +334,7 @@ internal fun TunerGpuPolicyCard(
             onValueChanged(supported[index.coerceIn(0, supported.lastIndex)])
         },
         compactMode = compactMode,
+        focusRequester = focusRequester,
     )
 }
 
