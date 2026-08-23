@@ -165,6 +165,72 @@ class ClusterTuneHostClient(
         val state = readStatePayload(p)
         HostSnapshot(capabilities, state, epoch)
     }
+
+    fun readAutoCapabilities(): Result<HostAutoCapabilities> = call(HostProtocol.READ_AUTO_CAPABILITIES) { p ->
+        HostAutoCapabilities(
+            frameStats = readBoolean(p, "frame statistics capability"),
+            cpuLoad = readBoolean(p, "CPU load capability"),
+            cpuClocks = readBoolean(p, "CPU clock capability"),
+            gpuBusy = readBoolean(p, "GPU busy capability"),
+            gpuClock = readBoolean(p, "GPU clock capability"),
+            thermal = readBoolean(p, "thermal capability"),
+            frameBackend = readBoundedOptionalString(p, "frame backend"),
+            unsupportedReason = readBoundedOptionalString(p, "unsupported reason"),
+        )
+    }
+
+    fun startAutoSession(request: AutoSessionRequest): Result<HostAutoSessionSnapshot> =
+        call(HostProtocol.START_AUTO_SESSION, writer = { p ->
+            require(HostTelemetryParsers.isValidPackageName(request.packageName)) { "invalid target package" }
+            p.writeString(request.packageName)
+            p.writeInt(request.targetFps)
+            p.writeLong(request.heartbeatTimeoutMs)
+        }, reader = ::readAutoSnapshot)
+
+    /** A null session ID addresses the current owner session. */
+    fun readAutoTelemetry(
+        sessionId: String? = null,
+        hostEpoch: Long? = null,
+        afterSequence: Long = -1L,
+    ): Result<HostAutoSessionSnapshot> =
+        call(HostProtocol.READ_AUTO_TELEMETRY, writer = { p ->
+            writeSessionId(p, sessionId, nullable = true)
+            writeExpectedEpoch(p, hostEpoch)
+            require(afterSequence >= -1L) { "invalid telemetry sequence" }
+            p.writeLong(afterSequence)
+        }, reader = ::readAutoSnapshot)
+
+    fun readAutoTelemetry(handle: HostAutoSessionHandle, afterSequence: Long = -1L): Result<HostAutoSessionSnapshot> =
+        readAutoTelemetry(handle.sessionId, handle.hostEpoch, afterSequence)
+
+    fun applyAutoStep(sessionId: String, hostEpoch: Long, request: ApplyRequest): Result<HostAutoSessionSnapshot> =
+        call(HostProtocol.APPLY_AUTO_STEP, writer = { p ->
+            writeSessionId(p, sessionId, nullable = false)
+            writeExpectedEpoch(p, hostEpoch)
+            writeApplyRequest(p, request)
+        }, reader = ::readAutoSnapshot)
+
+    fun applyAutoStep(handle: HostAutoSessionHandle, request: ApplyRequest): Result<HostAutoSessionSnapshot> =
+        applyAutoStep(handle.sessionId, handle.hostEpoch, request)
+
+    fun heartbeatAutoSession(sessionId: String, hostEpoch: Long): Result<HostAutoSessionSnapshot> =
+        call(HostProtocol.HEARTBEAT_AUTO_SESSION, writer = { p ->
+            writeSessionId(p, sessionId, nullable = false)
+            writeExpectedEpoch(p, hostEpoch)
+        }, reader = ::readAutoSnapshot)
+
+    fun heartbeatAutoSession(handle: HostAutoSessionHandle): Result<HostAutoSessionSnapshot> =
+        heartbeatAutoSession(handle.sessionId, handle.hostEpoch)
+
+    /** A null ID preempts whichever automatic session is active in this host. */
+    fun stopAutoSession(sessionId: String? = null, hostEpoch: Long? = null): Result<HostAutoSessionSnapshot> =
+        call(HostProtocol.STOP_AUTO_SESSION, writer = { p ->
+            writeSessionId(p, sessionId, nullable = true)
+            writeExpectedEpoch(p, hostEpoch)
+        }, reader = ::readAutoSnapshot)
+
+    fun stopAutoSession(handle: HostAutoSessionHandle): Result<HostAutoSessionSnapshot> =
+        stopAutoSession(handle.sessionId, handle.hostEpoch)
     private fun readCapabilitiesPayload(p: Parcel): HostCapabilities {
         val count = readCount(p, 64, "CPU domains")
         require(count > 0) { "host returned no CPU domains" }
@@ -219,11 +285,11 @@ class ClusterTuneHostClient(
         val gpuCur = if (gpuFlag == 1) decodeOptionalHostValue(p.readLong()) else null
         return HostState(cpus, mins, currents, gpu, gpuMin, gpuCur)
     }
-    fun applyProfile(request: ApplyRequest): Result<HostState> = call(HostProtocol.APPLY_PROFILE, writer = { p ->
-        p.writeInt(request.cpuMax.size); request.cpuMax.forEachIndexed { i, value -> p.writeString(request.cpuIds.getOrNull(i).orEmpty()); p.writeLong(value) }
-        p.writeInt(if(request.gpuMax!=null)1 else 0); request.gpuMax?.let(p::writeLong); p.writeInt(if(request.resetToStock)1 else 0)
-        p.writeString(request.gpuId); p.writeString(request.gpuMaxPath); p.writeLong(request.stabilizedStockCeiling ?: -1L)
-    }, reader = { p -> readStatePayload(p) })
+    fun applyProfile(request: ApplyRequest): Result<HostState> = call(
+        HostProtocol.APPLY_PROFILE,
+        writer = { p -> writeApplyRequest(p, request) },
+        reader = ::readStatePayload,
+    )
     fun stop(): Result<Unit> = call(HostProtocol.STOP) { Unit }.also { if (it.isSuccess) detach() }
     private fun <T> call(code: Int, reader: (Parcel) -> T): Result<T> = call(code, {}, reader)
     private fun <T> call(
@@ -250,6 +316,16 @@ class ClusterTuneHostClient(
                 indeterminate = true,
                 message = "privileged host transport lost during mutation",
             )
+        }
+        if (code in AUTO_SESSION_MUTATIONS) {
+            throw RemoteHostSessionFailure(
+                requestCode = code,
+                indeterminate = code != HostProtocol.HEARTBEAT_AUTO_SESSION,
+                message = "privileged host transport lost during automatic session mutation",
+            )
+        }
+        if (code == HostProtocol.STOP) {
+            throw HostDispatchFailure(true, "privileged host transport lost during shutdown")
         }
         detach()
         ensureStarted().getOrThrow()
@@ -379,6 +455,145 @@ class ClusterTuneHostClient(
             .invoke(null, serviceName) as? IBinder
     }.getOrNull()
 
+    private fun writeApplyRequest(parcel: Parcel, request: ApplyRequest) {
+        require(request.cpuMax.size in 1..64) { "invalid CPU domain count" }
+        require(request.cpuIds.size == request.cpuMax.size) { "CPU domain IDs are required" }
+        parcel.writeInt(request.cpuMax.size)
+        request.cpuMax.forEachIndexed { index, value ->
+            val id = request.cpuIds[index]
+            require(id.length <= HostProtocol.MAX_METADATA_LENGTH) { "CPU domain ID is too long" }
+            parcel.writeString(id)
+            parcel.writeLong(value)
+        }
+        parcel.writeInt(if (request.gpuMax != null) 1 else 0)
+        request.gpuMax?.let(parcel::writeLong)
+        parcel.writeInt(if (request.resetToStock) 1 else 0)
+        request.gpuId?.let { require(it.length <= HostProtocol.MAX_METADATA_LENGTH) }
+        request.gpuMaxPath?.let { require(it.length <= HostProtocol.MAX_METADATA_LENGTH) }
+        parcel.writeString(request.gpuId)
+        parcel.writeString(request.gpuMaxPath)
+        parcel.writeLong(request.stabilizedStockCeiling ?: -1L)
+    }
+
+    private fun writeSessionId(parcel: Parcel, sessionId: String?, nullable: Boolean) {
+        require(nullable || !sessionId.isNullOrEmpty()) { "session ID is required" }
+        sessionId?.let {
+            require(it.length <= HostProtocol.MAX_SESSION_ID_LENGTH && '\u0000' !in it) { "invalid session ID" }
+        }
+        parcel.writeString(sessionId)
+    }
+
+    private fun writeExpectedEpoch(parcel: Parcel, hostEpoch: Long?) {
+        parcel.writeLong(hostEpoch ?: Long.MIN_VALUE)
+    }
+
+    private fun readAutoSnapshot(parcel: Parcel): HostAutoSessionSnapshot {
+        val sessionId = readBoundedOptionalString(parcel, "session ID", HostProtocol.MAX_SESSION_ID_LENGTH)
+        val epoch = parcel.readLong()
+        val statusOrdinal = parcel.readInt()
+        val status = HostAutoSessionStatus.values().getOrNull(statusOrdinal)
+            ?: error("invalid automatic session status: $statusOrdinal")
+        val targetFps = parcel.readInt()
+        require(targetFps in 0..240) { "invalid target FPS" }
+        val telemetry = if (readBoolean(parcel, "telemetry presence")) readAutoTelemetryPayload(parcel) else null
+        val state = if (readBoolean(parcel, "state presence")) readStatePayload(parcel) else null
+        val restorationAttempted = readBoolean(parcel, "restoration attempted")
+        val restorationComplete = readBoolean(parcel, "restoration complete")
+        val message = readBoundedOptionalString(parcel, "session message")
+        return HostAutoSessionSnapshot(
+            sessionId = sessionId,
+            hostEpoch = epoch,
+            status = status,
+            targetFps = targetFps,
+            telemetry = telemetry,
+            state = state,
+            restorationAttempted = restorationAttempted,
+            restorationComplete = restorationComplete,
+            message = message,
+        )
+    }
+
+    private fun readAutoTelemetryPayload(parcel: Parcel): HostAutoTelemetry {
+        val sequence = parcel.readLong()
+        require(sequence >= 0L) { "invalid telemetry sequence" }
+        val timestamp = parcel.readLong()
+        val backend = readBoundedOptionalString(parcel, "frame backend")
+        val confidence = parcel.readInt()
+        require(confidence in 0..1000) { "invalid frame confidence" }
+        val layer = readBoundedOptionalString(parcel, "frame layer")
+        val frameCount = parcel.readInt()
+        require(frameCount in 0..100_000) { "invalid frame count" }
+        val fps = readOptionalInt(parcel, "frame rate")?.also { require(it in 0..1_000_000) }
+        val p95 = readOptionalLong(parcel, "p95 frame time")?.also { require(it >= 0L) }
+        val slow = readOptionalInt(parcel, "slow-frame ratio")?.also { require(it in 0..1000) }
+        val stale = readBoolean(parcel, "frame staleness")
+        val cpuLoads = readOptionalIntList(parcel, 64, "CPU load").onEach { value ->
+            if (value != null) require(value in 0..1000) { "invalid CPU load" }
+        }
+        val cpuClocks = readOptionalLongList(parcel, 64, "CPU clocks").onEach { value ->
+            if (value != null) require(value >= 0L) { "invalid CPU clock" }
+        }
+        val gpuBusy = readOptionalInt(parcel, "GPU busy")?.also { require(it in 0..1000) }
+        val gpuClock = readOptionalLong(parcel, "GPU clock")?.also { require(it >= 0L) }
+        val thermalCount = readCount(parcel, HostProtocol.MAX_THERMAL_READINGS, "thermal readings")
+        val thermal = List(thermalCount) {
+            HostThermalReading(
+                type = readRequiredString(parcel, "thermal type").also { require(it.length <= 64) },
+                temperatureMilliCelsius = parcel.readLong().also { require(it in -200_000L..300_000L) },
+            )
+        }
+        val unsupportedCount = readCount(parcel, HostProtocol.MAX_UNSUPPORTED_METRICS, "unsupported metrics")
+        val unsupported = List(unsupportedCount) { readRequiredString(parcel, "unsupported metric") }
+        return HostAutoTelemetry(
+            sequence = sequence,
+            timestampNanos = timestamp,
+            frameBackend = backend,
+            frameConfidencePermille = confidence,
+            frameLayer = layer,
+            frameCount = frameCount,
+            fpsMilli = fps,
+            frameTimeP95Nanos = p95,
+            slowFrameRatioPermille = slow,
+            frameStale = stale,
+            cpuLoadPermille = cpuLoads,
+            cpuClockKHz = cpuClocks,
+            gpuBusyPermille = gpuBusy,
+            gpuClockHz = gpuClock,
+            thermal = thermal,
+            unsupportedMetrics = unsupported,
+        )
+    }
+
+    private fun readBoolean(parcel: Parcel, label: String): Boolean {
+        val value = parcel.readInt()
+        require(value == 0 || value == 1) { "invalid $label flag" }
+        return value == 1
+    }
+
+    private fun readOptionalInt(parcel: Parcel, label: String): Int? =
+        if (readBoolean(parcel, "$label presence")) parcel.readInt() else null
+
+    private fun readOptionalLong(parcel: Parcel, label: String): Long? =
+        if (readBoolean(parcel, "$label presence")) parcel.readLong() else null
+
+    private fun readOptionalIntList(parcel: Parcel, maximum: Int, label: String): List<Int?> {
+        val count = readCount(parcel, maximum, label)
+        return List(count) { readOptionalInt(parcel, "$label value") }
+    }
+
+    private fun readOptionalLongList(parcel: Parcel, maximum: Int, label: String): List<Long?> {
+        val count = readCount(parcel, maximum, label)
+        return List(count) { readOptionalLong(parcel, "$label value") }
+    }
+
+    private fun readBoundedOptionalString(
+        parcel: Parcel,
+        label: String,
+        maximum: Int = HostProtocol.MAX_METADATA_LENGTH,
+    ): String? = parcel.readString()?.also {
+        require(it.length <= maximum && '\u0000' !in it) { "$label is invalid" }
+    }
+
     private fun readCount(parcel: Parcel, maximum: Int, label: String): Int {
         val count = parcel.readInt()
         require(count in 0..maximum) { "invalid $label count: $count" }
@@ -394,7 +609,15 @@ class ClusterTuneHostClient(
     private fun readRequiredString(parcel: Parcel, label: String): String =
         parcel.readString()?.also { require(it.length <= 512) { "$label is too long" } }
             ?: error("missing $label")
-    companion object { private val START_LOCKS=ConcurrentHashMap<Int,Any>() }
+    companion object {
+        private val START_LOCKS = ConcurrentHashMap<Int, Any>()
+        private val AUTO_SESSION_MUTATIONS = setOf(
+            HostProtocol.START_AUTO_SESSION,
+            HostProtocol.APPLY_AUTO_STEP,
+            HostProtocol.HEARTBEAT_AUTO_SESSION,
+            HostProtocol.STOP_AUTO_SESSION,
+        )
+    }
 }
 
 /** Host protocol uses -1 as the wire sentinel for an unavailable optional node. */

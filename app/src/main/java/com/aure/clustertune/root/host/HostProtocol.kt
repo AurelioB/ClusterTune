@@ -3,7 +3,7 @@ package com.aure.clustertune.root.host
 /** Private wire contract between ClusterTune and its persistent privileged host. */
 object HostProtocol {
     const val DESCRIPTOR = "com.aure.clustertune.root.host.IClusterTuneHost"
-    const val VERSION = 6
+    const val VERSION = 7
     const val SERVICE_PREFIX = "clustertune.host."
     const val PING = 1
     const val HOST_IDENTITY = 2
@@ -13,6 +13,18 @@ object HostProtocol {
     const val STOP = 7
     const val READ_SNAPSHOT = 9
     const val LEASE = 10
+    const val READ_AUTO_CAPABILITIES = 11
+    const val START_AUTO_SESSION = 12
+    const val READ_AUTO_TELEMETRY = 13
+    const val APPLY_AUTO_STEP = 14
+    const val HEARTBEAT_AUTO_SESSION = 15
+    const val STOP_AUTO_SESSION = 16
+
+    const val MAX_PACKAGE_LENGTH = 255
+    const val MAX_SESSION_ID_LENGTH = 64
+    const val MAX_METADATA_LENGTH = 512
+    const val MAX_THERMAL_READINGS = 32
+    const val MAX_UNSUPPORTED_METRICS = 16
 }
 
 data class CpuDomain(
@@ -81,3 +93,81 @@ class HostDispatchFailure(
     message: String,
     cause: Throwable? = null,
 ) : IllegalStateException(message, cause)
+
+/** Host-side telemetry support. Frame telemetry is required to begin an automatic session. */
+data class HostAutoCapabilities(
+    val frameStats: Boolean,
+    val cpuLoad: Boolean,
+    val cpuClocks: Boolean,
+    val gpuBusy: Boolean,
+    val gpuClock: Boolean,
+    val thermal: Boolean,
+    val frameBackend: String? = null,
+    val unsupportedReason: String? = null,
+) {
+    val autoSessionSupported: Boolean get() = frameStats
+}
+
+data class AutoSessionRequest(
+    val packageName: String,
+    val targetFps: Int,
+    val heartbeatTimeoutMs: Long = 15_000L,
+)
+
+data class HostAutoSessionHandle(val sessionId: String, val hostEpoch: Long)
+
+enum class HostAutoSessionStatus {
+    ACTIVE,
+    STOPPED,
+    EXPIRED,
+    STALE,
+    UNSUPPORTED,
+    RESTORE_FAILED,
+}
+
+data class HostThermalReading(
+    val type: String,
+    val temperatureMilliCelsius: Long,
+)
+
+/** One bounded telemetry sample. Nullable metrics are explicitly unavailable on this device. */
+data class HostAutoTelemetry(
+    val sequence: Long,
+    val timestampNanos: Long,
+    val frameBackend: String?,
+    val frameConfidencePermille: Int,
+    val frameLayer: String?,
+    val frameCount: Int,
+    val fpsMilli: Int?,
+    val frameTimeP95Nanos: Long?,
+    val slowFrameRatioPermille: Int?,
+    val frameStale: Boolean,
+    val cpuLoadPermille: List<Int?>,
+    val cpuClockKHz: List<Long?>,
+    val gpuBusyPermille: Int?,
+    val gpuClockHz: Long?,
+    val thermal: List<HostThermalReading>,
+    val unsupportedMetrics: List<String> = emptyList(),
+)
+
+/** Returned by every session command so stale IDs and unsupported devices remain typed. */
+data class HostAutoSessionSnapshot(
+    val sessionId: String?,
+    val hostEpoch: Long,
+    val status: HostAutoSessionStatus,
+    val targetFps: Int,
+    val telemetry: HostAutoTelemetry? = null,
+    val state: HostState? = null,
+    val restorationAttempted: Boolean = false,
+    val restorationComplete: Boolean = false,
+    val message: String? = null,
+) {
+    val handle: HostAutoSessionHandle?
+        get() = sessionId?.let { HostAutoSessionHandle(it, hostEpoch) }
+}
+
+class RemoteHostSessionFailure(
+    val requestCode: Int,
+    val indeterminate: Boolean,
+    message: String,
+) : IllegalStateException(message)

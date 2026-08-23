@@ -25,6 +25,13 @@ class RootHostHandoffInstrumentationTest {
             assertEquals("root-shell", client.selectedMethodId)
             val snapshot = client.readSnapshot().getOrThrow()
             assertTrue(snapshot.capabilities.cpus.isNotEmpty())
+            val autoCapabilities = client.readAutoCapabilities().getOrThrow()
+            if (autoCapabilities.frameStats) {
+                assertTrue(autoCapabilities.frameBackend?.contains("surfaceflinger") == true)
+            }
+            val noSession = client.stopAutoSession().getOrThrow()
+            assertEquals(HostAutoSessionStatus.STOPPED, noSession.status)
+            assertTrue(noSession.restorationComplete)
         } finally {
             client.stop()
         }

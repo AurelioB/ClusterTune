@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.os.Binder;
 import android.os.IBinder;
 import android.os.Parcel;
+import android.os.SystemClock;
 import android.content.Intent;
 import android.os.UserHandle;
 
@@ -12,6 +13,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /** app_process entry point. It exposes only the typed ClusterTune protocol. */
 public final class ClusterTuneHostEntry {
@@ -60,18 +64,22 @@ public final class ClusterTuneHostEntry {
         context.sendBroadcastAsUser(handoff, UserHandle.getUserHandleForUid(owner));
         log("broadcast handoff returned");
 
-        synchronized (host) {
-            log("wait entered");
-            long leaseDeadline = System.currentTimeMillis() + 5000L;
-            while (!host.stopping) {
-                if (host.lease == null && System.currentTimeMillis() >= leaseDeadline) {
-                    host.stopping = true;
-                    break;
+        try {
+            synchronized (host) {
+                log("wait entered");
+                long leaseDeadline = SystemClock.elapsedRealtime() + 5000L;
+                while (!host.stopping) {
+                    if (host.lease == null && SystemClock.elapsedRealtime() >= leaseDeadline) {
+                        host.stopping = true;
+                        break;
+                    }
+                    long remaining = leaseDeadline - SystemClock.elapsedRealtime();
+                    if (host.lease == null && remaining <= 0L) continue;
+                    host.wait(host.lease == null ? remaining : 0L);
                 }
-                long remaining = leaseDeadline - System.currentTimeMillis();
-                if (host.lease == null && remaining <= 0L) continue;
-                host.wait(host.lease == null ? remaining : 0L);
             }
+        } finally {
+            host.closeBeforeExit();
         }
         log("wait exited");
     }
@@ -135,7 +143,11 @@ public final class ClusterTuneHostEntry {
         final long epoch = System.nanoTime();
         boolean stopping;
         IBinder lease;
+        IBinder.DeathRecipient leaseDeath;
+        final RealHostFilesystem filesystem;
         final HostApplyEngine engine;
+        final ScheduledExecutorService watchdog;
+        volatile HostAutoSessionController autoController;
         HostCapabilities capabilities;
 
         HostBinder(String name, int owner, long generation, String method) {
@@ -143,7 +155,23 @@ public final class ClusterTuneHostEntry {
             this.owner = owner;
             this.generation = generation;
             this.method = method;
-            this.engine = new HostApplyEngine(new RealHostFilesystem());
+            this.filesystem = new RealHostFilesystem();
+            this.engine = new HostApplyEngine(filesystem);
+            this.watchdog = Executors.newSingleThreadScheduledExecutor(runnable -> {
+                Thread thread = new Thread(runnable, "ClusterTune-auto-watchdog");
+                thread.setDaemon(true);
+                return thread;
+            });
+            this.watchdog.scheduleWithFixedDelay(() -> {
+                HostAutoSessionController controller = autoController;
+                if (controller != null) {
+                    try {
+                        controller.expireIfNeeded();
+                    } catch (Throwable throwable) {
+                        log("automatic session watchdog failed: " + throwable);
+                    }
+                }
+            }, 1L, 1L, TimeUnit.SECONDS);
             attachInterface(this, HostProtocol.DESCRIPTOR);
         }
 
@@ -172,6 +200,79 @@ public final class ClusterTuneHostEntry {
             }
         }
 
+        private HostCapabilities ensureCapabilities() {
+            capabilities = capabilities == null ? discover() : capabilities;
+            return capabilities;
+        }
+
+        private HostAutoSessionController autoController() {
+            HostAutoSessionController current = autoController;
+            if (current == null) {
+                current = HostAutoSessionController.production(ensureCapabilities(), filesystem, engine, epoch);
+                autoController = current;
+            }
+            return current;
+        }
+
+        private HostAutoSessionSnapshot stopAutoForExternalApply(String reason) {
+            HostAutoSessionController current = autoController;
+            return current == null ? null : current.stopCurrent(reason);
+        }
+
+        private void requireCompleteRestoration(HostAutoSessionSnapshot snapshot) {
+            if (snapshot != null && snapshot.getRestorationAttempted() && !snapshot.getRestorationComplete()) {
+                throw new HostApplyFailure(
+                        HostApplyPhase.ROLLBACK,
+                        true,
+                        false,
+                        false,
+                        snapshot.getMessage() == null ? "automatic session restoration failed" : snapshot.getMessage(),
+                        null);
+            }
+        }
+
+        private void closeBeforeExit() {
+            watchdog.shutdownNow();
+            try {
+                HostAutoSessionSnapshot stopped = stopAutoForExternalApply("privileged host lease ended");
+                if (stopped != null && !stopped.getRestorationComplete()) {
+                    log("automatic session restore incomplete during host shutdown: " + stopped.getMessage());
+                }
+            } catch (Throwable throwable) {
+                log("automatic session shutdown failed: " + throwable);
+            }
+            IBinder currentLease = lease;
+            IBinder.DeathRecipient currentDeath = leaseDeath;
+            lease = null;
+            leaseDeath = null;
+            if (currentLease != null && currentDeath != null) {
+                try { currentLease.unlinkToDeath(currentDeath, 0); } catch (Throwable ignored) { }
+            }
+        }
+
+        private String readBoundedString(Parcel data, int maximumLength, String label, boolean nullable) {
+            String value = data.readString();
+            if (value == null) {
+                if (nullable) return null;
+                throw new IllegalArgumentException(label + " is missing");
+            }
+            if (value.length() > maximumLength || value.indexOf('\u0000') >= 0) {
+                throw new IllegalArgumentException(label + " is invalid");
+            }
+            return value;
+        }
+
+        private Long readExpectedEpoch(Parcel data) {
+            long value = data.readLong();
+            return value == Long.MIN_VALUE ? null : value;
+        }
+
+        private long requireExpectedEpoch(Parcel data) {
+            Long value = readExpectedEpoch(data);
+            if (value == null) throw new IllegalArgumentException("host epoch is missing");
+            return value;
+        }
+
         @Override
         protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) {
             try {
@@ -198,43 +299,102 @@ public final class ClusterTuneHostEntry {
                             reply.writeInt(owner);
                             return true;
                         case HostProtocol.READ_CAPABILITIES:
-                            capabilities = capabilities == null ? discover() : capabilities;
-                            writeCapabilities(reply, capabilities);
+                            writeCapabilities(reply, ensureCapabilities());
                             return true;
                         case HostProtocol.READ_STATE:
-                            capabilities = capabilities == null ? discover() : capabilities;
-                            writeState(reply, capabilities);
+                            writeState(reply, ensureCapabilities());
                             return true;
                         case HostProtocol.READ_SNAPSHOT:
-                            capabilities = capabilities == null ? discover() : capabilities;
+                            capabilities = ensureCapabilities();
                             header(reply, true);
                             reply.writeLong(epoch);
                             writeCapabilitiesPayload(reply, capabilities);
                             writeStatePayload(reply, capabilities);
                             return true;
-                        case HostProtocol.APPLY_PROFILE:
-                            HostCapabilities applied = apply(data);
+                        case HostProtocol.APPLY_PROFILE: {
+                            HostCapabilities discovered = ensureCapabilities();
+                            ApplyRequest request = readApplyRequest(data, discovered);
+                            HostAutoSessionSnapshot stopped = stopAutoForExternalApply("automatic session preempted by profile apply");
+                            requireCompleteRestoration(stopped);
+                            engine.applyOrThrow(discovered, request);
                             header(reply, true);
-                            writeStatePayload(reply, applied);
+                            writeStatePayload(reply, discovered);
                             return true;
-                        case HostProtocol.STOP:
+                        }
+                        case HostProtocol.STOP: {
+                            HostAutoSessionSnapshot stopped = stopAutoForExternalApply("privileged host stopped");
                             stopping = true;
                             remove(name, this);
-                            header(reply, true);
                             notifyAll();
+                            requireCompleteRestoration(stopped);
+                            header(reply, true);
                             return true;
+                        }
                         case HostProtocol.LEASE:
                             IBinder candidate = data.readStrongBinder();
                             if (candidate == null) throw new IllegalArgumentException("host lease missing");
+                            if (lease == candidate && leaseDeath != null) {
+                                header(reply, true);
+                                return true;
+                            }
+                            IBinder previousLease = lease;
+                            IBinder.DeathRecipient previousDeath = leaseDeath;
+                            if (previousLease != null && previousDeath != null) {
+                                try { previousLease.unlinkToDeath(previousDeath, 0); } catch (Throwable ignored) { }
+                            }
                             lease = candidate;
-                            candidate.linkToDeath(() -> {
+                            IBinder.DeathRecipient recipient = () -> {
                                 synchronized (this) {
-                                    stopping = true;
-                                    notifyAll();
+                                    if (lease == candidate) {
+                                        stopping = true;
+                                        notifyAll();
+                                    }
                                 }
-                            }, 0);
+                            };
+                            leaseDeath = recipient;
+                            candidate.linkToDeath(recipient, 0);
                             header(reply, true);
                             return true;
+                        case HostProtocol.READ_AUTO_CAPABILITIES:
+                            writeAutoCapabilities(reply, autoController().capabilities());
+                            return true;
+                        case HostProtocol.START_AUTO_SESSION: {
+                            String packageName = readBoundedString(data, HostProtocol.MAX_PACKAGE_LENGTH, "target package", false);
+                            int targetFps = data.readInt();
+                            long heartbeatTimeoutMs = data.readLong();
+                            HostAutoSessionSnapshot snapshot = autoController().start(
+                                    new AutoSessionRequest(packageName, targetFps, heartbeatTimeoutMs));
+                            writeAutoSnapshot(reply, snapshot);
+                            return true;
+                        }
+                        case HostProtocol.READ_AUTO_TELEMETRY: {
+                            String sessionId = readBoundedString(data, HostProtocol.MAX_SESSION_ID_LENGTH, "session ID", true);
+                            Long expectedEpoch = readExpectedEpoch(data);
+                            long afterSequence = data.readLong();
+                            if (afterSequence < -1L) throw new IllegalArgumentException("invalid telemetry sequence");
+                            writeAutoSnapshot(reply, autoController().readTelemetry(sessionId, expectedEpoch, afterSequence));
+                            return true;
+                        }
+                        case HostProtocol.APPLY_AUTO_STEP: {
+                            String sessionId = readBoundedString(data, HostProtocol.MAX_SESSION_ID_LENGTH, "session ID", false);
+                            long expectedEpoch = requireExpectedEpoch(data);
+                            HostCapabilities discovered = ensureCapabilities();
+                            ApplyRequest request = readApplyRequest(data, discovered);
+                            writeAutoSnapshot(reply, autoController().applyStep(sessionId, expectedEpoch, request));
+                            return true;
+                        }
+                        case HostProtocol.HEARTBEAT_AUTO_SESSION: {
+                            String sessionId = readBoundedString(data, HostProtocol.MAX_SESSION_ID_LENGTH, "session ID", false);
+                            long expectedEpoch = requireExpectedEpoch(data);
+                            writeAutoSnapshot(reply, autoController().heartbeat(sessionId, expectedEpoch));
+                            return true;
+                        }
+                        case HostProtocol.STOP_AUTO_SESSION: {
+                            String sessionId = readBoundedString(data, HostProtocol.MAX_SESSION_ID_LENGTH, "session ID", true);
+                            Long expectedEpoch = readExpectedEpoch(data);
+                            writeAutoSnapshot(reply, autoController().stop(sessionId, expectedEpoch));
+                            return true;
+                        }
                         default:
                             throw new IllegalArgumentException("unknown request");
                     }
@@ -370,9 +530,7 @@ public final class ClusterTuneHostEntry {
             return 3;
         }
 
-        private HostCapabilities apply(Parcel data) {
-            capabilities = capabilities == null ? discover() : capabilities;
-            HostCapabilities discovered = capabilities;
+        private ApplyRequest readApplyRequest(Parcel data, HostCapabilities discovered) {
             int count = data.readInt();
             if (count < 0 || count != discovered.getCpus().size()) {
                 throw new IllegalArgumentException("CPU domain count mismatch");
@@ -382,7 +540,7 @@ public final class ClusterTuneHostEntry {
             ArrayList<String> ids = new ArrayList<>(count);
             for (int index = 0; index < count; index++) {
                 String id = data.readString();
-                if (id == null) {
+                if (id == null || id.length() > HostProtocol.MAX_METADATA_LENGTH) {
                     throw new IllegalArgumentException("CPU domain id is missing");
                 }
                 ids.add(id);
@@ -409,8 +567,13 @@ public final class ClusterTuneHostEntry {
                     throw new IllegalArgumentException("CPU domain order mismatch");
                 }
             }
-            engine.applyOrThrow(discovered, new ApplyRequest(max, gpu, reset, ids, gpuId, gpuPath, stabilized > 0 ? stabilized : null));
-            return discovered;
+            if (gpuId != null && gpuId.length() > HostProtocol.MAX_METADATA_LENGTH) {
+                throw new IllegalArgumentException("GPU identity is too long");
+            }
+            if (gpuPath != null && gpuPath.length() > HostProtocol.MAX_METADATA_LENGTH) {
+                throw new IllegalArgumentException("GPU path is too long");
+            }
+            return new ApplyRequest(max, gpu, reset, ids, gpuId, gpuPath, stabilized > 0 ? stabilized : null);
         }
 
         private void writeCapabilities(Parcel reply, HostCapabilities value) {
@@ -478,6 +641,106 @@ public final class ClusterTuneHostEntry {
                 reply.writeLong(gpu.getMinPath() == null ? -1 : readLong(new File(gpu.getMinPath())));
                 reply.writeLong(gpu.getCurPath() == null ? -1 : readLong(new File(gpu.getCurPath())));
             }
+        }
+
+        private void writeAutoCapabilities(Parcel reply, HostAutoCapabilities value) {
+            header(reply, true);
+            reply.writeInt(value.getFrameStats() ? 1 : 0);
+            reply.writeInt(value.getCpuLoad() ? 1 : 0);
+            reply.writeInt(value.getCpuClocks() ? 1 : 0);
+            reply.writeInt(value.getGpuBusy() ? 1 : 0);
+            reply.writeInt(value.getGpuClock() ? 1 : 0);
+            reply.writeInt(value.getThermal() ? 1 : 0);
+            reply.writeString(bounded(value.getFrameBackend()));
+            reply.writeString(bounded(value.getUnsupportedReason()));
+        }
+
+        private void writeAutoSnapshot(Parcel reply, HostAutoSessionSnapshot value) {
+            header(reply, true);
+            reply.writeString(value.getSessionId());
+            reply.writeLong(value.getHostEpoch());
+            reply.writeInt(value.getStatus().ordinal());
+            reply.writeInt(value.getTargetFps());
+            HostAutoTelemetry telemetry = value.getTelemetry();
+            reply.writeInt(telemetry == null ? 0 : 1);
+            if (telemetry != null) writeAutoTelemetryPayload(reply, telemetry);
+            HostState state = value.getState();
+            reply.writeInt(state == null ? 0 : 1);
+            if (state != null) writeHostStateValue(reply, state);
+            reply.writeInt(value.getRestorationAttempted() ? 1 : 0);
+            reply.writeInt(value.getRestorationComplete() ? 1 : 0);
+            reply.writeString(bounded(value.getMessage()));
+        }
+
+        private void writeAutoTelemetryPayload(Parcel reply, HostAutoTelemetry value) {
+            reply.writeLong(value.getSequence());
+            reply.writeLong(value.getTimestampNanos());
+            reply.writeString(bounded(value.getFrameBackend()));
+            reply.writeInt(value.getFrameConfidencePermille());
+            reply.writeString(bounded(value.getFrameLayer()));
+            reply.writeInt(value.getFrameCount());
+            writeOptionalInt(reply, value.getFpsMilli());
+            writeOptionalLong(reply, value.getFrameTimeP95Nanos());
+            writeOptionalInt(reply, value.getSlowFrameRatioPermille());
+            reply.writeInt(value.getFrameStale() ? 1 : 0);
+            writeOptionalIntList(reply, value.getCpuLoadPermille(), 64);
+            writeOptionalLongList(reply, value.getCpuClockKHz(), 64);
+            writeOptionalInt(reply, value.getGpuBusyPermille());
+            writeOptionalLong(reply, value.getGpuClockHz());
+            List<HostThermalReading> thermal = value.getThermal();
+            int thermalCount = Math.min(thermal.size(), HostProtocol.MAX_THERMAL_READINGS);
+            reply.writeInt(thermalCount);
+            for (int index = 0; index < thermalCount; index++) {
+                HostThermalReading reading = thermal.get(index);
+                reply.writeString(bounded(reading.getType()));
+                reply.writeLong(reading.getTemperatureMilliCelsius());
+            }
+            List<String> unsupported = value.getUnsupportedMetrics();
+            int unsupportedCount = Math.min(unsupported.size(), HostProtocol.MAX_UNSUPPORTED_METRICS);
+            reply.writeInt(unsupportedCount);
+            for (int index = 0; index < unsupportedCount; index++) {
+                reply.writeString(bounded(unsupported.get(index)));
+            }
+        }
+
+        private void writeHostStateValue(Parcel reply, HostState value) {
+            int count = Math.min(value.getCpuMax().size(), 64);
+            reply.writeInt(count);
+            for (int index = 0; index < count; index++) reply.writeLong(value.getCpuMax().get(index));
+            for (int index = 0; index < count; index++) reply.writeLong(value.getCpuMin().get(index));
+            for (int index = 0; index < count; index++) reply.writeLong(value.getCpuCurrent().get(index));
+            reply.writeInt(value.getGpuMax() == null ? 0 : 1);
+            if (value.getGpuMax() != null) {
+                reply.writeLong(value.getGpuMax());
+                reply.writeLong(value.getGpuMin() == null ? -1L : value.getGpuMin());
+                reply.writeLong(value.getGpuCurrent() == null ? -1L : value.getGpuCurrent());
+            }
+        }
+
+        private void writeOptionalInt(Parcel reply, Integer value) {
+            reply.writeInt(value == null ? 0 : 1);
+            if (value != null) reply.writeInt(value);
+        }
+
+        private void writeOptionalLong(Parcel reply, Long value) {
+            reply.writeInt(value == null ? 0 : 1);
+            if (value != null) reply.writeLong(value);
+        }
+
+        private void writeOptionalIntList(Parcel reply, List<Integer> values, int maximum) {
+            int count = Math.min(values.size(), maximum);
+            reply.writeInt(count);
+            for (int index = 0; index < count; index++) writeOptionalInt(reply, values.get(index));
+        }
+
+        private void writeOptionalLongList(Parcel reply, List<Long> values, int maximum) {
+            int count = Math.min(values.size(), maximum);
+            reply.writeInt(count);
+            for (int index = 0; index < count; index++) writeOptionalLong(reply, values.get(index));
+        }
+
+        private String bounded(String value) {
+            return value == null ? null : value.substring(0, Math.min(value.length(), HostProtocol.MAX_METADATA_LENGTH));
         }
     }
 
