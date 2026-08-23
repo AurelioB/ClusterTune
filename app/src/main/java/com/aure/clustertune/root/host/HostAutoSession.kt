@@ -256,7 +256,7 @@ class HostAutoSessionController(
         val current = HostHardwareStateReader.read(fs, hostCapabilities)
         val alreadyApplied = session.lastAppliedRequest == request || requestMatchesState(request, current)
         if (!alreadyApplied) {
-            applyEngine.applyOrThrow(hostCapabilities, request)
+            applyEngine.applyOrThrow(capabilitiesWithinEnvelope(session), request)
             session.lastAppliedRequest = request
         }
         return activeSnapshot(session, state = HostHardwareStateReader.read(fs, hostCapabilities))
@@ -345,12 +345,11 @@ class HostAutoSessionController(
         require(request.stabilizedStockCeiling == null) { "automatic steps cannot override the GPU stock ceiling" }
         request.cpuMax.forEachIndexed { index, requested ->
             val cpu = hostCapabilities.cpus[index]
-            val effective = if (requested >= cpu.selectableMax) {
-                cpu.stockMax.takeIf { it > 0L } ?: cpu.selectableMax
-            } else {
-                requested
-            }
-            require(requested > 0L && requested <= session.cpuCeilingEnvelope[index] && effective <= session.cpuCeilingEnvelope[index]) {
+            val envelope = session.cpuCeilingEnvelope[index]
+            require(
+                requested > 0L && requested <= envelope &&
+                    (cpu.supportedFrequencies.isEmpty() || requested == envelope || requested in cpu.supportedFrequencies),
+            ) {
                 "automatic CPU target exceeds the session envelope for ${cpu.id}"
             }
         }
@@ -359,10 +358,33 @@ class HostAutoSessionController(
                 ?: throw IllegalArgumentException("automatic GPU target requested without a checkpointed GPU")
             val gpu = hostCapabilities.gpu
                 ?: throw IllegalArgumentException("automatic GPU target requested without a GPU domain")
-            val effective = if (requested >= gpu.selectableMax) gpu.selectableMax else requested
-            require(requested > 0L && requested <= envelope && effective <= envelope) { "automatic GPU target exceeds the session envelope" }
+            require(
+                requested > 0L && requested <= envelope &&
+                    (gpu.supportedFrequencies.isEmpty() || requested == envelope || requested in gpu.supportedFrequencies),
+            ) { "automatic GPU target exceeds the session envelope" }
         }
     }
+
+    /** Treat the captured session ceiling as Stock only for this bounded transaction. */
+    private fun capabilitiesWithinEnvelope(session: ActiveSession): HostCapabilities = HostCapabilities(
+        cpus = hostCapabilities.cpus.mapIndexed { index, cpu ->
+            val ceiling = session.cpuCeilingEnvelope[index]
+            cpu.copy(
+                stockMax = ceiling,
+                selectableMax = ceiling,
+                currentMax = ceiling,
+            )
+        },
+        gpu = hostCapabilities.gpu?.let { gpu ->
+            val ceiling = session.gpuCeilingEnvelope
+                ?: throw IllegalStateException("Auto Tune GPU checkpoint is unavailable")
+            gpu.copy(
+                stockMax = ceiling,
+                selectableMax = ceiling,
+                currentMax = ceiling,
+            )
+        },
+    )
 
     private fun requestMatchesState(request: ApplyRequest, state: HostState): Boolean {
         if (request.resetToStock || request.cpuMax != state.cpuMax) return false

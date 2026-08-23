@@ -101,6 +101,45 @@ class HostAutoSessionTest {
     }
 
     @Test
+    fun `session can trim and recover an exact hidden GPU checkpoint`() {
+        val fs = FakeFs(
+            values = mutableMapOf("min" to "200", "max" to "800", "gmin" to "300", "gmax" to "900"),
+            modes = mutableMapOf("min" to 416, "max" to 420, "gmin" to 416, "gmax" to 420),
+        )
+        val base = capabilities(withGpu = true)
+        val hiddenGpu = requireNotNull(base.gpu).copy(
+            supportedFrequencies = emptyList(),
+            selectableMax = 600,
+            stockMax = 900,
+            observedMax = 900,
+        )
+        val capabilities = base.copy(gpu = hiddenGpu)
+        val controller = HostAutoSessionController(
+            capabilities,
+            fs,
+            HostApplyEngine(fs),
+            FakeTelemetry(capabilities.cpus.size, hasGpu = true),
+            hostEpoch = 42L,
+            clock = FakeClock(),
+        )
+        val started = controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+
+        controller.applyStep(session, started.hostEpoch, request(cpu = 800, gpu = 600))
+        controller.applyStep(session, started.hostEpoch, request(cpu = 600, gpu = 900))
+
+        assertEquals("600", fs.values["max"])
+        assertEquals("900", fs.values["gmax"])
+        assertFails {
+            controller.applyStep(
+                session,
+                started.hostEpoch,
+                request(cpu = 800, gpu = 900).copy(stabilizedStockCeiling = 900),
+            )
+        }
+    }
+
+    @Test
     fun `unknown session is stale and null stop preempts current owner`() {
         val fixture = fixture()
         assertEquals(HostAutoSessionStatus.STOPPED, fixture.controller.stop(null, null).status)
