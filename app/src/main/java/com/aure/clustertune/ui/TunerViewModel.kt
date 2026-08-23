@@ -270,6 +270,7 @@ class TunerViewModel(
         profileId: String?,
         customMaxFrequencies: Map<Int, Int> = emptyMap(),
         customGpuMaxFrequencyHz: Int? = null,
+        autoTuneTargetFps: Int? = null,
     ) {
         viewModelScope.launch {
             repository.saveAppProfileAssignment(
@@ -279,6 +280,7 @@ class TunerViewModel(
                     profileId = profileId,
                     customMaxFrequencies = customMaxFrequencies,
                     customGpuMaxFrequencyHz = customGpuMaxFrequencyHz,
+                    autoTuneTargetFps = autoTuneTargetFps,
                 ),
             )
             transientMessage.value = "Saved app profile for $appLabel"
@@ -292,6 +294,7 @@ class TunerViewModel(
         profileId: String?,
         customMaxFrequencies: Map<Int, Int> = emptyMap(),
         customGpuMaxFrequencyHz: Int? = null,
+        autoTuneTargetFps: Int? = null,
     ) {
         repository.saveAppProfileAssignment(
             AppProfileAssignment(
@@ -300,6 +303,7 @@ class TunerViewModel(
                 profileId = profileId,
                 customMaxFrequencies = customMaxFrequencies,
                 customGpuMaxFrequencyHz = customGpuMaxFrequencyHz,
+                autoTuneTargetFps = autoTuneTargetFps,
             ),
         )
     }

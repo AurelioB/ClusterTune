@@ -30,10 +30,11 @@ class ProfileStorageCodecTest {
     }
 
     @Test
-    fun `app assignments preserve named and custom targets`() {
+    fun `app assignments preserve named custom and auto tune targets`() {
         val assignments = listOf(
             AppProfileAssignment("named.app", "Named", profileId = "small"),
             AppProfileAssignment("custom.app", "Custom", customMaxFrequencies = mapOf(0 to 2_000_000), customGpuMaxFrequencyHz = 500_000_000),
+            AppProfileAssignment("auto.app", "Auto", autoTuneTargetFps = 60),
         )
 
         val parsed = ProfileStorageCodec.parseAppProfileAssignments(
@@ -43,6 +44,7 @@ class ProfileStorageCodecTest {
         assertEquals(assignments.associateBy { it.packageName }, parsed.associateBy { it.packageName })
         assertEquals(false, parsed.first { it.packageName == "named.app" }.isCustom)
         assertEquals(true, parsed.first { it.packageName == "custom.app" }.isCustom)
+        assertEquals(60, parsed.first { it.packageName == "auto.app" }.autoTuneTargetFps)
     }
 
     @Test
@@ -52,6 +54,29 @@ class ProfileStorageCodecTest {
         )
 
         assertEquals(listOf(AppProfileAssignment("legacy.app", "Legacy", profileId = "small")), parsed)
+    }
+
+    @Test
+    fun `app assignments normalize named then custom then auto tune targets`() {
+        val parsed = ProfileStorageCodec.parseAppProfileAssignments(
+            """
+            [
+              {"packageName":"named","appLabel":"Named","profileId":"small","customMaxFrequencies":{"0":1000},"autoTuneTargetFps":120},
+              {"packageName":"custom","appLabel":"Custom","customMaxFrequencies":{"0":1000},"autoTuneTargetFps":60},
+              {"packageName":"auto","appLabel":"Auto","autoTuneTargetFps":30},
+              {"packageName":"invalid","appLabel":"Invalid","autoTuneTargetFps":90}
+            ]
+            """.trimIndent(),
+        )
+
+        assertEquals(
+            mapOf(
+                "named" to AppProfileAssignment("named", "Named", profileId = "small"),
+                "custom" to AppProfileAssignment("custom", "Custom", customMaxFrequencies = mapOf(0 to 1_000)),
+                "auto" to AppProfileAssignment("auto", "Auto", autoTuneTargetFps = 30),
+            ),
+            parsed.associateBy { it.packageName },
+        )
     }
 
     @Test

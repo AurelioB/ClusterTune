@@ -299,13 +299,14 @@ class MainActivity : ComponentActivity() {
                             onMoveProfile = viewModel::moveProfile,
                             launchableApps = launchableApps,
                             recentActiveApps = recentActiveApps,
-                            onSaveAppProfileAssignment = { packageName, appLabel, profileId, customMaxFrequencies, customGpuMaxFrequencyHz ->
+                            onSaveAppProfileAssignment = { packageName, appLabel, profileId, customMaxFrequencies, customGpuMaxFrequencyHz, autoTuneTargetFps ->
                                 viewModel.saveAppProfileAssignment(
                                     packageName = packageName,
                                     appLabel = appLabel,
                                     profileId = profileId,
                                     customMaxFrequencies = customMaxFrequencies,
                                     customGpuMaxFrequencyHz = customGpuMaxFrequencyHz,
+                                    autoTuneTargetFps = autoTuneTargetFps,
                                 )
                             },
                             onDeleteAppProfileAssignment = viewModel::deleteAppProfileAssignment,

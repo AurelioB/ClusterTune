@@ -74,7 +74,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
-                    onAppProfileAssignmentChange = { _, _, _ -> },
+                    onAppProfileAssignmentChange = { _, _, _, _ -> },
                 )
             }
         }
@@ -103,7 +103,7 @@ class CompactOverlayScreenTest {
                         onRefreshLiveValues = {},
                         contextPackageName = "com.example.game",
                         contextLabel = "Example game",
-                        onAppProfileAssignmentChange = { _, _, _ -> },
+                        onAppProfileAssignmentChange = { _, _, _, _ -> },
                     )
                 }
             }
@@ -133,7 +133,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
-                    onAppProfileAssignmentChange = { _, _, _ -> assignmentCount++ },
+                    onAppProfileAssignmentChange = { _, _, _, _ -> assignmentCount++ },
                 )
             }
         }
@@ -216,7 +216,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
-                    onAppProfileAssignmentChange = { _, _, _ -> },
+                    onAppProfileAssignmentChange = { _, _, _, _ -> },
                 )
             }
         }
@@ -224,6 +224,49 @@ class CompactOverlayScreenTest {
         composeRule.onNodeWithText("Large").performClick()
         composeRule.runOnIdle {
             assertEquals("large", appliedProfile?.id)
+        }
+    }
+
+    @Test
+    fun autoTunePresets_saveSelectedTarget_andDismissAssignmentPicker() {
+        var selectedTargetFps: Int? = null
+        var dismissCount = 0
+        composeRule.setContent {
+            MaterialTheme {
+                CompactOverlayScreen(
+                    state = state(
+                        assignment = AppProfileAssignment(
+                            packageName = "com.example.game",
+                            appLabel = "Example game",
+                            autoTuneTargetFps = 60,
+                        ),
+                    ),
+                    displayFrequenciesAsPercent = false,
+                    mode = CompactOverlayMode.PROFILES,
+                    onModeChange = {},
+                    onApplyProfile = { _, _ -> },
+                    onApplyCurrent = { _, _, _, _ -> },
+                    onDismissRequest = { dismissCount++ },
+                    onRefreshLiveValues = {},
+                    contextPackageName = "com.example.game",
+                    contextLabel = "Example game",
+                    onAppProfileAssignmentChange = { profile, values, gpu, targetFps ->
+                        assertEquals(null, profile)
+                        assertEquals(null, values)
+                        assertEquals(null, gpu)
+                        selectedTargetFps = targetFps
+                    },
+                    showAppProfileToggle = false,
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("Auto 30 FPS").assertExists()
+        composeRule.onNodeWithText("Auto 60 FPS").assertExists()
+        composeRule.onNodeWithText("Auto 120 FPS").performClick()
+        composeRule.runOnIdle {
+            assertEquals(120, selectedTargetFps)
+            assertEquals(1, dismissCount)
         }
     }
 
@@ -248,7 +291,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
-                    onAppProfileAssignmentChange = { _, _, _ -> },
+                    onAppProfileAssignmentChange = { _, _, _, _ -> },
                 )
             }
         }
@@ -297,7 +340,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
-                    onAppProfileAssignmentChange = { _, _, _ -> },
+                    onAppProfileAssignmentChange = { _, _, _, _ -> },
                     showAppProfileToggle = false,
                 )
             }
@@ -341,7 +384,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
-                    onAppProfileAssignmentChange = { _, _, _ -> },
+                    onAppProfileAssignmentChange = { _, _, _, _ -> },
                 )
             }
         }
@@ -376,8 +419,8 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
-                    onAppProfileAssignmentChange = { profile, values, gpu ->
-                        if (profile == null && values == null && gpu == null) removeCount++
+                    onAppProfileAssignmentChange = { profile, values, gpu, autoTuneTargetFps ->
+                        if (profile == null && values == null && gpu == null && autoTuneTargetFps == null) removeCount++
                     },
                 )
             }

@@ -269,10 +269,12 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                             contextLabel = currentForegroundApp?.label,
                             contextIcon = currentForegroundApp?.icon,
                             onAppProfileAssignmentChange = currentForegroundApp?.let { app ->
-                                { profile, customValues, customGpuMaxFrequencyHz ->
+                                { profile, customValues, customGpuMaxFrequencyHz, autoTuneTargetFps ->
                                     compactAssignmentMutationJob?.cancel()
                                     compactAssignmentMutationJob = lifecycleScope.launch {
-                                        if (profile == null && customValues == null && customGpuMaxFrequencyHz == null) {
+                                        if (profile == null && customValues == null && customGpuMaxFrequencyHz == null &&
+                                            autoTuneTargetFps == null
+                                        ) {
                                             viewModel.deleteAppProfileAssignmentAwait(app.packageName)
                                         } else if (profile != null) {
                                             // A named profile is self-contained; do not freeze its
@@ -282,6 +284,13 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                                                 app.label,
                                                 profile.id,
                                             )
+                                        } else if (autoTuneTargetFps != null) {
+                                            viewModel.saveAppProfileAssignmentAwait(
+                                                app.packageName,
+                                                app.label,
+                                                profileId = null,
+                                                autoTuneTargetFps = autoTuneTargetFps,
+                                            )
                                         } else {
                                             viewModel.saveAppProfileAssignmentAwait(
                                                 app.packageName,
@@ -289,6 +298,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                                                 profile?.id,
                                                 customMaxFrequencies = customValues ?: emptyMap(),
                                                 customGpuMaxFrequencyHz = customGpuMaxFrequencyHz,
+                                                autoTuneTargetFps = null,
                                             )
                                         }
                                         compactAssignmentMutationJob = null

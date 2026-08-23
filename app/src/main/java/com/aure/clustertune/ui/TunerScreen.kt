@@ -109,6 +109,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.aure.clustertune.R
+import com.aure.clustertune.model.AUTO_TUNE_TARGET_FPS_PRESETS
+import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.CpuPolicyInfo
 import com.aure.clustertune.model.InstalledAppInfo
 import com.aure.clustertune.model.PerformanceProfile
@@ -151,7 +153,7 @@ fun MainTunerScreen(
     onMoveProfile: (String, Int) -> Unit,
     launchableApps: List<InstalledAppInfo>,
     recentActiveApps: List<InstalledAppInfo>,
-    onSaveAppProfileAssignment: (String, String, String?, Map<Int, Int>, Int?) -> Unit,
+    onSaveAppProfileAssignment: (String, String, String?, Map<Int, Int>, Int?, Int?) -> Unit,
     onDeleteAppProfileAssignment: (String) -> Unit,
     onRefreshInstalledApps: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -284,12 +286,12 @@ fun MainTunerScreen(
                     onApplyProfile = { profile, _ ->
                         // Named profiles carry their CPU and GPU values in profile storage.
                         // Keep the assignment declarative so later profile edits are picked up.
-                        onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null)
+                        onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null, null)
                         showAppAssignmentDialog = false
                     },
                     onApplyCurrent = { customState, profile, customValues, _ ->
                         if (profile != null) {
-                            onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null)
+                            onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null, null)
                         } else if (customValues == null && customState.currentGpuMaxFrequencyHz == null) {
                             onDeleteAppProfileAssignment(app.packageName)
                         } else {
@@ -299,6 +301,7 @@ fun MainTunerScreen(
                                 null,
                                 customValues ?: emptyMap(),
                                 customState.currentGpuMaxFrequencyHz,
+                                null,
                             )
                         }
                         showAppAssignmentDialog = false
@@ -308,10 +311,35 @@ fun MainTunerScreen(
                     contextPackageName = app.packageName,
                     contextLabel = app.label,
                     contextIcon = app.icon,
-                    onAppProfileAssignmentChange = { profile, customValues, customGpu ->
-                        if (profile == null && customValues == null && customGpu == null) onDeleteAppProfileAssignment(app.packageName)
-                        else if (profile != null) onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null)
-                        else onSaveAppProfileAssignment(app.packageName, app.label, null, customValues ?: emptyMap(), customGpu)
+                    onAppProfileAssignmentChange = { profile, customValues, customGpu, autoTuneTargetFps ->
+                        when {
+                            profile == null && customValues == null && customGpu == null && autoTuneTargetFps == null -> {
+                                onDeleteAppProfileAssignment(app.packageName)
+                            }
+                            profile != null -> {
+                                onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null, null)
+                            }
+                            autoTuneTargetFps != null -> {
+                                onSaveAppProfileAssignment(
+                                    app.packageName,
+                                    app.label,
+                                    null,
+                                    emptyMap(),
+                                    null,
+                                    autoTuneTargetFps,
+                                )
+                            }
+                            else -> {
+                                onSaveAppProfileAssignment(
+                                    app.packageName,
+                                    app.label,
+                                    null,
+                                    customValues ?: emptyMap(),
+                                    customGpu,
+                                    null,
+                                )
+                            }
+                        }
                     },
                     showAppProfileToggle = false,
                     showAssignmentRemove = assignment != null,
@@ -388,7 +416,7 @@ fun CompactOverlayScreen(
     contextPackageName: String? = null,
     contextLabel: String? = null,
     contextIcon: Drawable? = null,
-    onAppProfileAssignmentChange: ((PerformanceProfile?, Map<Int, Int>?, Int?) -> Unit)? = null,
+    onAppProfileAssignmentChange: ((PerformanceProfile?, Map<Int, Int>?, Int?, Int?) -> Unit)? = null,
     showAppProfileToggle: Boolean = true,
     showAssignmentRemove: Boolean = false,
     onRemoveAssignment: (() -> Unit)? = null,
@@ -399,12 +427,23 @@ fun CompactOverlayScreen(
         state.appProfileAssignments.firstOrNull { it.packageName == packageName }
     }
     val canAssign = !contextPackageName.isNullOrBlank() && onAppProfileAssignmentChange != null
-    var appProfileEnabled by remember(contextPackageName, assignment?.profileId, assignment?.customMaxFrequencies) {
+    var appProfileEnabled by remember(
+        contextPackageName,
+        assignment?.profileId,
+        assignment?.customMaxFrequencies,
+        assignment?.customGpuMaxFrequencyHz,
+        assignment?.autoTuneTargetFps,
+    ) {
         mutableStateOf(assignment != null)
+    }
+    var stagedAutoTuneTargetFps by remember(assignment?.autoTuneTargetFps) {
+        mutableStateOf(assignment?.autoTuneTargetFps)
     }
     var stagedProfile by remember(assignment?.profileId, state.selectedDisplayProfileId) {
         mutableStateOf(
-            if (assignment?.isCustom == true || (assignment == null && state.isManualSelection)) {
+            if (assignment?.isCustom == true || assignment?.isAutoTune == true ||
+                (assignment == null && state.isManualSelection)
+            ) {
                 null
             } else {
                 profiles.firstOrNull { it.id == assignment?.profileId }
@@ -461,7 +500,7 @@ fun CompactOverlayScreen(
             onRefreshLiveValues()
         }
     }
-    val selectedProfileId = if (customDraft) null else stagedProfile?.id
+    val selectedProfileId = if (customDraft || stagedAutoTuneTargetFps != null) null else stagedProfile?.id
         ?: listOfNotNull(assignment?.profileId, state.activeDisplayProfileId, state.lastAppliedDisplayProfileId)
             .firstOrNull { id -> profiles.any { it.id == id } }
 
@@ -518,7 +557,8 @@ fun CompactOverlayScreen(
                                     onCheckedChange = { enabled ->
                                         appProfileEnabled = enabled
                                         if (!enabled) {
-                                            onAppProfileAssignmentChange?.invoke(null, null, null)
+                                            stagedAutoTuneTargetFps = null
+                                            onAppProfileAssignmentChange?.invoke(null, null, null, null)
                                         }
                                     },
                                     modifier = Modifier.scale(0.78f),
@@ -562,7 +602,22 @@ fun CompactOverlayScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (customDraft) {
+                    if (canAssign) {
+                        AUTO_TUNE_TARGET_FPS_PRESETS.forEach { targetFps ->
+                            ProfileChoiceRow(
+                                title = "Auto $targetFps FPS",
+                                selected = stagedAutoTuneTargetFps == targetFps,
+                                applying = false,
+                                onClick = {
+                                    stagedAutoTuneTargetFps = targetFps
+                                    appProfileEnabled = true
+                                    onAppProfileAssignmentChange?.invoke(null, null, null, targetFps)
+                                    onDismissRequest()
+                                },
+                            )
+                        }
+                    }
+                    if (customDraft && stagedAutoTuneTargetFps == null) {
                         ProfileChoiceRow(
                             title = "Custom",
                             selected = true,
@@ -576,6 +631,7 @@ fun CompactOverlayScreen(
                             selected = selectedProfileId == profile.id,
                             applying = applyingProfileId == profile.id,
                             onClick = {
+                                stagedAutoTuneTargetFps = null
                                 stagedProfile = profile
                                 stagedCustomValues = profile.maxFrequencies
                                 stagedGpuValue = profile.gpuMaxFrequencyHz ?: state.currentGpuMaxFrequencyHz
@@ -606,6 +662,7 @@ fun CompactOverlayScreen(
                             isManualSelection = customDraft,
                         ),
                         onApplyProfile = { profile ->
+                            stagedAutoTuneTargetFps = null
                             stagedProfile = profile
                             customDraft = false
                             stagedCustomValues = profile.maxFrequencies
@@ -613,6 +670,7 @@ fun CompactOverlayScreen(
                             if (mode == CompactOverlayMode.PROFILES) onApplyProfile(profile, appProfileEnabled)
                         },
                         onClearSelection = {
+                            stagedAutoTuneTargetFps = null
                             stagedProfile = null
                             customDraft = true
                         },
@@ -625,9 +683,13 @@ fun CompactOverlayScreen(
                         state = state.copy(currentValues = stagedCustomValues, currentGpuMaxFrequencyHz = stagedGpuValue),
                         displayFrequenciesAsPercent = displayFrequenciesAsPercent,
                         onPolicyValueChange = { policy, value ->
+                            stagedAutoTuneTargetFps = null
                             stagedCustomValues = stagedCustomValues + (policy.id to value)
                         },
-                        onGpuValueChange = { stagedGpuValue = it },
+                        onGpuValueChange = {
+                            stagedAutoTuneTargetFps = null
+                            stagedGpuValue = it
+                        },
                         compactMode = true,
                     )
                 }
@@ -1249,7 +1311,7 @@ private fun AppProfilesSection(
                                     is AppListItem.App -> {
                                         val assignment = assignmentsByPackage[item.app.packageName]
                                         val profileName = assignment?.let {
-                                            if (it.isCustom) "Custom" else profilesById[it.profileId]?.name ?: "Missing profile"
+                                            appProfileAssignmentLabel(it, profilesById)
                                         }
                                         AppProfileAppRow(
                                             app = item.app,
@@ -1283,8 +1345,17 @@ private fun AppProfilesSection(
                     }
                 }
             }
-        }
     }
+}
+
+internal fun appProfileAssignmentLabel(
+    assignment: AppProfileAssignment,
+    profilesById: Map<String, PerformanceProfile>,
+): String = when {
+    assignment.isCustom -> "Custom"
+    assignment.isAutoTune -> "Auto ${assignment.autoTuneTargetFps} FPS"
+    else -> profilesById[assignment.profileId]?.name ?: "Missing profile"
+}
 
 @Composable
 private fun AppListHeader(section: AppListSection) {

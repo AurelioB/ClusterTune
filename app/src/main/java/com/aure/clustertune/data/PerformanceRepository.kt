@@ -835,6 +835,17 @@ class PerformanceRepository(
 
     suspend fun saveAppProfileAssignment(assignment: AppProfileAssignment) {
         if (assignment.packageName.isBlank() || !assignment.hasValidTarget) return
+        if (assignment.isAutoTune) {
+            profileStorage.saveAppProfileAssignment(
+                assignment.copy(
+                    appLabel = assignment.appLabel.ifBlank { assignment.packageName },
+                    profileId = null,
+                    customMaxFrequencies = emptyMap(),
+                    customGpuMaxFrequencyHz = null,
+                ),
+            )
+            return
+        }
         val state = observeState().first()
         if (assignment.isCustom) {
             val validValues = assignment.customMaxFrequencies.filter { (policyId, frequency) ->
@@ -851,6 +862,7 @@ class PerformanceRepository(
                     profileId = null,
                     customMaxFrequencies = validValues,
                     customGpuMaxFrequencyHz = validGpu,
+                    autoTuneTargetFps = null,
                 ),
             )
             return
@@ -862,6 +874,7 @@ class PerformanceRepository(
                 profileId = profile.id,
                 customMaxFrequencies = emptyMap(),
                 customGpuMaxFrequencyHz = null,
+                autoTuneTargetFps = null,
             ),
         )
     }
@@ -1207,7 +1220,8 @@ internal fun supportedAppProfileAssignments(
     val supportedPolicyIds = realProfiles.flatMapTo(mutableSetOf()) { profile -> profile.maxFrequencies.keys }
     return assignments.filter { assignment ->
         assignment.hasValidTarget &&
-            ((assignment.isCustom && assignment.customMaxFrequencies.keys.all { it in supportedPolicyIds }) ||
+            ((assignment.isAutoTune) ||
+                (assignment.isCustom && assignment.customMaxFrequencies.keys.all { it in supportedPolicyIds }) ||
                 assignment.profileId in supportedProfileIds)
     }
 }
