@@ -30,8 +30,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
                 val container = AppContainer(context)
                 val settings = container.settingsStorage.settings.first()
                 if (settings.applyLastProfileOnBoot) {
-                    container.repository.applyPersistedLastValuesOnBoot()
-                    QuickSettingsTileRefresher.requestUpdate(context)
+                    BootProfileRestoreService.start(context)
                 }
                 if (settings.sleepProfileEnabled) {
                     SleepProfileMonitorService.start(context)

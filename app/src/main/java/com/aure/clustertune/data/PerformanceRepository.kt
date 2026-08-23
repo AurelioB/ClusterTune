@@ -647,14 +647,15 @@ class PerformanceRepository(
                 // Stock is already the device baseline; still refresh the
                 // persisted identity so the tile cannot retain a stale app
                 // override after a reboot.
-                profileStorage.persistEffectiveProfileState(
-                    EffectiveProfileState(
-                        id = ProfileStateResolver.STOCK_PROFILE_ID,
-                        name = "Stock",
-                        source = EffectiveProfileSource.STOCK,
+                effectiveIdentity = ProfileStateResolver.STOCK_PROFILE_ID to "Stock"
+                return@withLock Result.success(
+                    ApplyOutcome(
+                        actualValues = state.actualValues,
+                        verificationPassed = true,
+                        commandOutput = null,
+                        actualGpuMaxFrequencyHz = state.actualGpuMaxFrequencyHz,
                     ),
                 )
-                return@withLock Result.failure(IllegalStateException("Boot apply skipped: stock is active"))
             }
             effectiveIdentity = target.profileId?.let { id ->
                 id to (state.displayProfiles.firstOrNull { profile -> profile.id == id }?.name ?: "Manual")
@@ -676,7 +677,11 @@ class PerformanceRepository(
                 EffectiveProfileState(
                     id = id,
                     name = name,
-                    source = if (id == ProfileStateResolver.MANUAL_PROFILE_ID) EffectiveProfileSource.MANUAL else EffectiveProfileSource.NORMAL,
+                    source = when (id) {
+                        ProfileStateResolver.STOCK_PROFILE_ID -> EffectiveProfileSource.STOCK
+                        ProfileStateResolver.MANUAL_PROFILE_ID -> EffectiveProfileSource.MANUAL
+                        else -> EffectiveProfileSource.NORMAL
+                    },
                 ),
             )
         }

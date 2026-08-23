@@ -54,6 +54,7 @@ import com.aure.clustertune.MainActivity
 import com.aure.clustertune.R
 import com.aure.clustertune.apps.ForegroundAppInfo
 import com.aure.clustertune.apps.ForegroundAppResolver
+import com.aure.clustertune.apps.VENDOR_GAME_ASSISTANT_PACKAGES
 import com.aure.clustertune.apps.VisibleAppWindowEvents
 import com.aure.clustertune.permissions.AppProfileAccessibilityAccess
 import com.aure.clustertune.model.AppSettings
@@ -102,6 +103,7 @@ internal fun updateCompactProfilePickerForeground(
 
 class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRegistryOwner {
     private val foregroundIgnoredPackages by lazy { setOf(packageName, SYSTEM_UI_PACKAGE) }
+    private val foregroundExcludedPackages = VENDOR_GAME_ASSISTANT_PACKAGES
 
     override val viewModelStore = ViewModelStore()
     private val savedStateController = SavedStateRegistryController.create(this)
@@ -435,6 +437,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                     val foreground = async(Dispatchers.Default) {
                         foregroundAppResolver.resolve(
                             targetDisplayId = overlayDisplayId,
+                            excludedPackages = foregroundExcludedPackages,
                         )
                     }
                     settings.await() to foreground.await()
@@ -451,7 +454,11 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
             }
             VisibleAppWindowEvents.snapshots
                 .distinctUntilChangedBy { snapshot ->
-                    foregroundAppResolver.selectPackageName(snapshot, overlayDisplayId)
+                    foregroundAppResolver.selectPackageName(
+                        snapshot,
+                        overlayDisplayId,
+                        foregroundExcludedPackages,
+                    )
                 }
                 .collect { snapshot ->
                     if (!windowController.isShowing(OverlayType.COMPACT_PROFILE_PICKER)) return@collect
@@ -459,6 +466,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                         foregroundAppResolver.resolve(
                             snapshot,
                             overlayDisplayId,
+                            foregroundExcludedPackages,
                         )
                     }
                     val updated = updateCompactProfilePickerForeground(

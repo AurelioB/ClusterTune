@@ -75,6 +75,15 @@
         </service>
 
         <service
+            android:name=".boot.BootProfileRestoreService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-enabled performance profile restoration after device startup" />
+        </service>
+
+        <service
             android:name=".apps.AppProfileAccessibilityService"
             android:exported="true"
             android:label="@string/app_profile_accessibility_service_label"

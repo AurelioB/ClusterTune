@@ -153,15 +153,16 @@ class AppProfileAccessibilityService : AccessibilityService() {
                 byDisplay.getOrPut(displayId) { mutableListOf() }.add(item)
             }
         }
-        val eventFallbacks = fallbackPackagesByDisplay.toMap()
-        fallbackPackagesByDisplay.clear()
-        eventFallbacks.forEach { (displayId, packageName) ->
-            if (byDisplay[displayId].isNullOrEmpty()) {
-                byDisplay.getOrPut(displayId) { mutableListOf() }
-                    .add(VisibleAppWindow(packageName, displayId, isFocused = true, isActive = true))
-            }
-        }
-        val tracked = disappearanceTracker.stabilize(byDisplay, ::isDisplayOn, android.os.SystemClock.uptimeMillis())
+        val withEventFallbacks = mergeEventFallbackWindows(
+            observed = byDisplay,
+            eventFallbacks = fallbackPackagesByDisplay,
+            obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
+        )
+        val tracked = disappearanceTracker.stabilize(
+            withEventFallbacks,
+            ::isDisplayOn,
+            android.os.SystemClock.uptimeMillis(),
+        )
         val normalized = tracked.windowsByDisplay.mapValues { (_, items) ->
             items.distinct().sortedWith(compareBy({ it.packageName }, { it.isFocused.not() }, { it.isActive.not() }))
         }.filterValues { it.isNotEmpty() }.toSortedMap()
@@ -191,7 +192,11 @@ class AppProfileAccessibilityService : AccessibilityService() {
     }
 
     private fun isUsefulFallbackPackage(packageName: String): Boolean {
-        if (packageName.isBlank() || packageName == this.packageName || packageName in TRANSIENT_PACKAGES) {
+        if (packageName.isBlank() ||
+            packageName == this.packageName ||
+            packageName in TRANSIENT_PACKAGES ||
+            packageName in VENDOR_GAME_ASSISTANT_PACKAGES
+        ) {
             return false
         }
         val inputMethodPackage = Settings.Secure.getString(

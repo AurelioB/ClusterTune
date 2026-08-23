@@ -44,4 +44,47 @@ class ForegroundAppResolverSelectionTest {
             )?.packageName,
         )
     }
+
+    @Test
+    fun vendorAssistantDoesNotReplaceVisibleGame() {
+        val snapshot = VisibleAppSnapshot(
+            windowsByDisplay = mapOf(
+                0 to listOf(
+                    VisibleAppWindow("com.example.game", 0),
+                    VisibleAppWindow(
+                        "com.ayn.gameassistant",
+                        0,
+                        isFocused = true,
+                        isActive = true,
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(
+            "com.example.game",
+            selectVisibleAppWindow(
+                snapshot,
+                targetDisplayId = 0,
+                excludedPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
+            )?.packageName,
+        )
+    }
+
+    @Test
+    fun legacyRetroidAssistantIsAlsoExcluded() {
+        val snapshot = VisibleAppSnapshot(
+            windowsByDisplay = mapOf(
+                0 to listOf(
+                    VisibleAppWindow("com.example.game", 0, isActive = true),
+                    VisibleAppWindow("com.retroidpocket.gameassistant", 0, isFocused = true),
+                ),
+            ),
+        )
+
+        assertEquals(
+            "com.example.game",
+            selectVisibleAppWindow(snapshot, 0, VENDOR_GAME_ASSISTANT_PACKAGES)?.packageName,
+        )
+    }
 }

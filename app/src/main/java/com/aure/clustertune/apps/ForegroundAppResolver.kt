@@ -18,11 +18,9 @@ class ForegroundAppResolver(context: Context) {
     fun resolve(
         snapshot: VisibleAppSnapshot = VisibleAppWindowEvents.snapshots.value,
         targetDisplayId: Int? = null,
+        excludedPackages: Set<String> = emptySet(),
     ): ForegroundAppInfo? {
-        // Keep ignored packages as explicit candidates. The overlay uses these
-        // transient samples to distinguish a shade transition from a real app
-        // change, rather than treating the transition as an unknown/null app.
-        val window = selectVisibleAppWindow(snapshot, targetDisplayId) ?: return null
+        val window = selectVisibleAppWindow(snapshot, targetDisplayId, excludedPackages) ?: return null
         val packageName = window.packageName
         val applicationInfo = applicationInfo(packageName)
         return ForegroundAppInfo(
@@ -39,8 +37,11 @@ class ForegroundAppResolver(context: Context) {
     }
 
     /** Select the same deterministic candidate used by [resolve]. */
-    fun selectPackageName(snapshot: VisibleAppSnapshot, targetDisplayId: Int? = null): String? =
-        selectVisibleAppWindow(snapshot, targetDisplayId)?.packageName
+    fun selectPackageName(
+        snapshot: VisibleAppSnapshot,
+        targetDisplayId: Int? = null,
+        excludedPackages: Set<String> = emptySet(),
+    ): String? = selectVisibleAppWindow(snapshot, targetDisplayId, excludedPackages)?.packageName
 
     private fun applicationInfo(packageName: String) = runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -58,16 +59,28 @@ class ForegroundAppResolver(context: Context) {
 internal fun selectVisibleAppWindow(
     snapshot: VisibleAppSnapshot,
     targetDisplayId: Int? = null,
+    excludedPackages: Set<String> = emptySet(),
 ): VisibleAppWindow? {
     val windows = if (targetDisplayId != null) {
         snapshot.windowsByDisplay[targetDisplayId].orEmpty()
     } else {
         snapshot.windowsByDisplay.values.asSequence().flatten().toList()
     }
-    return windows.sortedWith(
-        compareByDescending<VisibleAppWindow> { it.isFocused }
-            .thenByDescending { it.isActive }
-            .thenBy { it.displayId }
-            .thenBy { it.packageName },
-    ).firstOrNull()
+    return windows.asSequence()
+        .filterNot { it.packageName in excludedPackages }
+        .sortedWith(
+            compareByDescending<VisibleAppWindow> { it.isFocused }
+                .thenByDescending { it.isActive }
+                .thenBy { it.displayId }
+                .thenBy { it.packageName },
+        )
+        .firstOrNull()
 }
+
+/** Vendor performance overlays that remain visible above the actual game window. */
+internal val VENDOR_GAME_ASSISTANT_PACKAGES = setOf(
+    "com.odin.gameassistant",
+    "com.ayn.gameassistant",
+    "com.rp.gameassistant",
+    "com.retroidpocket.gameassistant",
+)

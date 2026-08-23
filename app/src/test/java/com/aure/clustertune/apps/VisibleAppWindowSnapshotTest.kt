@@ -96,4 +96,45 @@ class VisibleAppWindowSnapshotTest {
         assertTrue(VisibleAppSnapshot.Empty.packages.isEmpty())
     }
 
+    @Test
+    fun vendorAssistantOnlySnapshotRetainsLastRealWindowEvent() {
+        val merged = mergeEventFallbackWindows(
+            observed = mapOf(
+                0 to listOf(
+                    VisibleAppWindow(
+                        "com.ayn.gameassistant",
+                        0,
+                        isFocused = true,
+                        isActive = true,
+                    ),
+                ),
+            ),
+            eventFallbacks = mapOf(0 to "com.example.game"),
+            obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
+        )
+
+        assertEquals(
+            setOf("com.ayn.gameassistant", "com.example.game"),
+            merged.getValue(0).mapTo(mutableSetOf()) { it.packageName },
+        )
+    }
+
+    @Test
+    fun realObservedWindowWinsWithoutAddingStaleFallback() {
+        val merged = mergeEventFallbackWindows(
+            observed = mapOf(
+                0 to listOf(
+                    VisibleAppWindow("com.example.launcher", 0, isFocused = true, isActive = true),
+                    VisibleAppWindow("com.rp.gameassistant", 0),
+                ),
+            ),
+            eventFallbacks = mapOf(0 to "com.example.oldgame"),
+            obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
+        )
+
+        assertEquals(
+            setOf("com.example.launcher", "com.rp.gameassistant"),
+            merged.getValue(0).mapTo(mutableSetOf()) { it.packageName },
+        )
+    }
 }

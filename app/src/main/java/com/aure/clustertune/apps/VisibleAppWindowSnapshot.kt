@@ -21,6 +21,31 @@ data class VisibleAppSnapshot(
     companion object { val Empty = VisibleAppSnapshot() }
 }
 
+/**
+ * Restores the last real window event when an OEM game assistant is the only
+ * application window exposed by Accessibility for a display.
+ */
+internal fun mergeEventFallbackWindows(
+    observed: Map<Int, List<VisibleAppWindow>>,
+    eventFallbacks: Map<Int, String>,
+    obscuringPackages: Set<String>,
+): Map<Int, List<VisibleAppWindow>> {
+    val merged = observed.mapValuesTo(mutableMapOf()) { (_, windows) -> windows.toMutableList() }
+    eventFallbacks.forEach { (displayId, packageName) ->
+        val windows = merged.getOrPut(displayId) { mutableListOf() }
+        val hasRealWindow = windows.any { it.packageName !in obscuringPackages }
+        if (!hasRealWindow && windows.none { it.packageName == packageName }) {
+            windows += VisibleAppWindow(
+                packageName = packageName,
+                displayId = displayId,
+                isFocused = false,
+                isActive = true,
+            )
+        }
+    }
+    return merged
+}
+
 /** Deterministic bounded confirmation for displays temporarily omitted by accessibility. */
 internal class VisibleWindowDisappearanceTracker(
     private val graceMs: Long = 300L,
