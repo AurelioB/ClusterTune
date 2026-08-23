@@ -1,5 +1,7 @@
 package com.aure.clustertune.model
 
+import com.aure.clustertune.autotune.AdaptiveTuneRuntimeState
+
 data class TunerState(
     val isLoading: Boolean = true,
     val isPrivilegedHostAvailable: Boolean = false,
@@ -15,6 +17,7 @@ data class TunerState(
     val displayProfiles: List<PerformanceProfile> = emptyList(),
     val appProfileAssignments: List<AppProfileAssignment> = emptyList(),
     val profileSwitchHistory: List<ProfileSwitchHistoryEntry> = emptyList(),
+    val autoTuneRuntime: AdaptiveTuneRuntimeState = AdaptiveTuneRuntimeState(),
     val selectedProfileId: String? = null,
     val selectedDisplayProfileId: String? = null,
     val selectedDisplayProfileName: String? = null,
