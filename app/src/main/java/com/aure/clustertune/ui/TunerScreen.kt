@@ -109,6 +109,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.aure.clustertune.R
+import com.aure.clustertune.autotune.AdaptiveTuneReason
+import com.aure.clustertune.autotune.AdaptiveTuneRuntimeState
 import com.aure.clustertune.model.AUTO_TUNE_TARGET_FPS_PRESETS
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.CpuPolicyInfo
@@ -130,6 +132,7 @@ import com.aure.clustertune.ui.designsystem.component.CtStatePanelState
 import com.aure.clustertune.ui.designsystem.component.CtSwitch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.roundToInt
 
 private const val NEW_PROFILE_DIALOG_ID = "__new_profile__"
@@ -1197,6 +1200,174 @@ private sealed interface AppListItem {
     }
 }
 
+internal data class AutoTuneRuntimePresentation(
+    val appAndTarget: String,
+    val status: String,
+    val frameMetrics: String?,
+    val utilization: String?,
+    val message: String?,
+    val frameBackend: String?,
+    val active: Boolean,
+)
+
+internal fun autoTuneRuntimePresentation(
+    runtime: AdaptiveTuneRuntimeState,
+): AutoTuneRuntimePresentation? {
+    val runtimeMessage = runtime.message?.trim()?.takeIf { it.isNotEmpty() }
+    if (!runtime.active && runtimeMessage == null) return null
+
+    val app = runtime.appLabel?.trim()?.takeIf { it.isNotEmpty() }
+        ?: runtime.packageName?.trim()?.takeIf { it.isNotEmpty() }
+        ?: "Current app"
+    val target = runtime.targetFps?.takeIf { it > 0 }
+    val measuredFps = runtime.measuredFps?.takeIf { it.isFinite() && it >= 0.0 }
+    val p95FrameTimeMillis = runtime.p95FrameTimeMillis?.takeIf { it.isFinite() && it >= 0.0 }
+    val frameMetrics = buildList {
+        measuredFps?.let { add("${formatOneDecimal(it)} FPS") }
+        p95FrameTimeMillis?.let { add("P95 ${formatOneDecimal(it)} ms") }
+    }.joinToString(" · ").ifEmpty { null }
+    val utilization = buildList {
+        runtime.cpuLoad.toSortedMap().forEach { (policyId, load) ->
+            load?.takeIf { it.isFinite() }?.let {
+                add("CPU C$policyId ${formatUtilization(it)}")
+            }
+        }
+        runtime.gpuBusy?.takeIf { it.isFinite() }?.let {
+            add("GPU ${formatUtilization(it)}")
+        }
+    }.joinToString(" · ").ifEmpty { null }
+
+    return AutoTuneRuntimePresentation(
+        appAndTarget = if (target == null) app else "$app · Target $target FPS",
+        status = runtime.status?.name?.humanizeEnumName()
+            ?: if (runtime.active) "Active" else "Stopped",
+        frameMetrics = frameMetrics,
+        utilization = utilization,
+        message = runtimeMessage ?: runtime.reason?.presentationMessage(),
+        frameBackend = runtime.frameBackend?.trim()?.takeIf { it.isNotEmpty() },
+        active = runtime.active,
+    )
+}
+
+private fun formatOneDecimal(value: Double): String = String.format(Locale.US, "%.1f", value)
+
+private fun formatUtilization(value: Double): String =
+    "${(value.coerceIn(0.0, 1.0) * 100).roundToInt()}%"
+
+private fun String.humanizeEnumName(): String =
+    lowercase().replace('_', ' ').replaceFirstChar { it.titlecase() }
+
+private fun AdaptiveTuneReason.presentationMessage(): String = when (this) {
+    AdaptiveTuneReason.WARMUP -> "Collecting warmup samples"
+    AdaptiveTuneReason.HEALTHY_QUALIFYING -> "Confirming stable performance"
+    AdaptiveTuneReason.FRAME_DATA_GRACE -> "Waiting for frame data"
+    AdaptiveTuneReason.FRAME_DATA_STALE -> "Frame data is stale"
+    AdaptiveTuneReason.NON_MONOTONIC_SAMPLE -> "Waiting for the next telemetry sample"
+    AdaptiveTuneReason.HEALTHY_AT_FLOOR -> "Target met at the minimum ceilings"
+    AdaptiveTuneReason.HEALTHY_NO_TRIM_CANDIDATE -> "Target met; no safe trim candidate"
+    AdaptiveTuneReason.WITHIN_TARGET_BAND -> "Performance is within the target band"
+    AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY -> "Raising a CPU ceiling"
+    AdaptiveTuneReason.GPU_BOTTLENECK_RECOVERY -> "Raising the GPU ceiling"
+    AdaptiveTuneReason.RECOVERY_AT_BASE -> "Recovery reached the assigned ceilings"
+    AdaptiveTuneReason.RECOVERY_FROZEN -> "Recovery is paused after an unsuccessful trial"
+    AdaptiveTuneReason.EFFICIENCY_TRIM -> "Testing a lower frequency ceiling"
+    AdaptiveTuneReason.TRIAL_WATCH -> "Watching the latest frequency change"
+    AdaptiveTuneReason.TRIAL_ACCEPTED -> "The latest frequency change is stable"
+    AdaptiveTuneReason.TRIAL_REGRESSION -> "Reverted a change that reduced performance"
+    AdaptiveTuneReason.TRIAL_NO_GAIN -> "Reverted a change with no measurable gain"
+    AdaptiveTuneReason.MODERATE_THERMAL_RAISE_BLOCKED -> "Thermals are blocking frequency increases"
+    AdaptiveTuneReason.SEVERE_THERMAL_DOWNSHIFT -> "Reducing frequencies because of severe thermals"
+    AdaptiveTuneReason.SEVERE_THERMAL_AT_FLOOR -> "Severe thermals persist at minimum ceilings"
+    AdaptiveTuneReason.REQUESTED_STOP -> "Auto Tune stopped"
+}
+
+@Composable
+internal fun AutoTuneRuntimeStatusCard(
+    presentation: AutoTuneRuntimePresentation,
+    modifier: Modifier = Modifier,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = colorScheme.surfaceContainerHigh.copy(alpha = 0.56f),
+        border = BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.32f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CtIcon(
+                    imageVector = Icons.Outlined.Tune,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = if (presentation.active) colorScheme.primary else colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "Auto Tune",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = presentation.status,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (presentation.active) colorScheme.primary else colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                text = presentation.appAndTarget,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            presentation.frameMetrics?.let { metrics ->
+                Text(
+                    text = metrics,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant,
+                )
+            }
+            presentation.utilization?.let { utilization ->
+                Text(
+                    text = utilization,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            presentation.message?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            presentation.frameBackend?.let { backend ->
+                Text(
+                    text = "Frames · $backend",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun AppProfilesSection(
     state: TunerState,
@@ -1214,7 +1385,18 @@ private fun AppProfilesSection(
             activeRailBubbleLabel = null
         }
     }
-    val sortedApps = remember(apps) { apps.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.label }) }
+    // Accessibility can assign a visible package even when it has no launcher
+    // activity. Keep those assignments editable from the full Apps screen.
+    val sortedApps = remember(apps, state.appProfileAssignments) {
+        (apps + state.appProfileAssignments.map { assignment ->
+            InstalledAppInfo(
+                packageName = assignment.packageName,
+                label = assignment.appLabel.ifBlank { assignment.packageName },
+            )
+        })
+            .distinctBy { it.packageName }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.label })
+    }
     val appsByPackage = remember(sortedApps) { sortedApps.associateBy { it.packageName } }
     val recentKnownApps = remember(recentApps, appsByPackage) {
         recentApps
@@ -1226,6 +1408,9 @@ private fun AppProfilesSection(
         state.appProfileAssignments.associateBy { it.packageName }
     }
     val profilesById = remember(state.displayProfiles) { state.displayProfiles.associateBy { it.id } }
+    val autoTunePresentation = remember(state.autoTuneRuntime) {
+        autoTuneRuntimePresentation(state.autoTuneRuntime)
+    }
     val appGroups = remember(sortedApps) {
         sortedApps.groupBy { appListLetter(it.label) }
     }
@@ -1281,70 +1466,80 @@ private fun AppProfilesSection(
             .toMap()
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-            if (sortedApps.isEmpty()) {
-                AssignmentEmptyState(
-                    title = "No apps found",
-                    message = "Refresh the app list and make sure ClusterTune can query installed packages.",
-                )
-            } else {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Row(
+    Column(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        autoTunePresentation?.let { presentation ->
+            AutoTuneRuntimeStatusCard(presentation = presentation)
+        }
+        if (sortedApps.isEmpty()) {
+            AssignmentEmptyState(
+                title = "No apps found",
+                message = "Refresh the app list and make sure ClusterTune can query installed packages.",
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    LazyColumn(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .weight(1f)
                             .fillMaxHeight(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        LazyColumn(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
-                            state = listState,
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            itemsIndexed(
-                                items = listItems,
-                                key = { _, item -> item.key },
-                            ) { _, item ->
-                                when (item) {
-                                    is AppListItem.Header -> AppListHeader(section = item.section)
-                                    is AppListItem.App -> {
-                                        val assignment = assignmentsByPackage[item.app.packageName]
-                                        val profileName = assignment?.let {
-                                            appProfileAssignmentLabel(it, profilesById)
-                                        }
-                                        AppProfileAppRow(
-                                            app = item.app,
-                                            profileName = profileName,
-                                            onClick = { onConfigureApp(item.app) },
-                                        )
+                        itemsIndexed(
+                            items = listItems,
+                            key = { _, item -> item.key },
+                        ) { _, item ->
+                            when (item) {
+                                is AppListItem.Header -> AppListHeader(section = item.section)
+                                is AppListItem.App -> {
+                                    val assignment = assignmentsByPackage[item.app.packageName]
+                                    val profileName = assignment?.let {
+                                        appProfileAssignmentLabel(it, profilesById)
                                     }
+                                    AppProfileAppRow(
+                                        app = item.app,
+                                        profileName = profileName,
+                                        onClick = { onConfigureApp(item.app) },
+                                    )
                                 }
                             }
                         }
-                        AlphabetScrubber(
-                            sections = railSections,
-                            enabledSectionKeys = firstIndexBySection.keys,
-                            onSectionSelected = { section ->
-                                activeRailBubbleLabel = section.bubbleLabel
-                                firstIndexBySection[section.key]?.let { index ->
-                                    coroutineScope.launch { listState.scrollToItem(index) }
-                                }
-                            },
-                        )
                     }
-                    activeRailBubbleLabel?.let { label ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 96.dp),
-                            contentAlignment = Alignment.TopCenter,
-                        ) {
-                            SectionBubble(label = label)
-                        }
+                    AlphabetScrubber(
+                        sections = railSections,
+                        enabledSectionKeys = firstIndexBySection.keys,
+                        onSectionSelected = { section ->
+                            activeRailBubbleLabel = section.bubbleLabel
+                            firstIndexBySection[section.key]?.let { index ->
+                                coroutineScope.launch { listState.scrollToItem(index) }
+                            }
+                        },
+                    )
+                }
+                activeRailBubbleLabel?.let { label ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 96.dp),
+                        contentAlignment = Alignment.TopCenter,
+                    ) {
+                        SectionBubble(label = label)
                     }
                 }
             }
+        }
     }
 }
 

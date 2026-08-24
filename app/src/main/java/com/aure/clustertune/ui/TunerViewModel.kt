@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.aure.clustertune.autotune.AdaptiveTuneRuntime
 import com.aure.clustertune.data.InstalledAppRepository
 import com.aure.clustertune.data.PerformanceRepository
 import com.aure.clustertune.data.SettingsStorage
@@ -64,8 +65,15 @@ class TunerViewModel(
         }
     }
 
-    val state: StateFlow<TunerState> = combine(
+    private val repositoryState = combine(
         repository.observeState(),
+        AdaptiveTuneRuntime.state,
+    ) { repositoryState, autoTuneRuntime ->
+        repositoryState.copy(autoTuneRuntime = autoTuneRuntime)
+    }
+
+    val state: StateFlow<TunerState> = combine(
+        repositoryState,
         edits,
         gpuEdit,
         transientMessage,
