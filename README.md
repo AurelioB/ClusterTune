@@ -11,7 +11,7 @@
 ClusterTune sets maximum CPU and GPU frequencies on Android handhelds.
 
 > [!WARNING]
-> Changing CPU limits can affect stability, performance, temperature, and battery life. Start with tested values and use **Stock** to restore normal limits.
+> Changing CPU or GPU limits can affect stability, performance, temperature, and battery life. Start with tested values and use **Stock** to restore normal limits.
 
 ## Why underclock?
 
@@ -24,6 +24,7 @@ Lower CPU limits can reduce power use, heat, fan noise, and battery drain. Games
 * Profiles that can be created, reordered, imported, and exported
 * Bundled presets and a Stock profile for supported processors
 * Automatic app profiles using saved profiles or custom frequency values across one or more displays
+* Per-app Auto Tune targets for 30, 60, or 120 FPS, using SurfaceFlinger frame statistics and device load to lower available CPU/GPU ceilings safely
 * Quick Settings access to pick, tune, or cycle profiles
 * A left edge gesture that opens profile controls over the current app
 * Optional profile automation after boot and while asleep
@@ -59,6 +60,10 @@ Execution method detection runs on first launch. Approve the `su` request if Roo
 
 Choose a bundled profile or create one. **Stock** restores the device's normal maximum frequencies.
 
+For an app profile, choose **Auto 30 FPS**, **Auto 60 FPS**, or **Auto 120 FPS** to let ClusterTune search for lower maximum frequencies while that app owns the focused window. The target is a performance floor, not a frame-rate limiter. Auto Tune never raises a CPU or GPU ceiling above the saved normal profile, and it restores the exact pre-session limits when the app, profile, or screen state changes, or when the session watchdog expires. SurfaceFlinger frame statistics are required; CPU/GPU utilization and thermal sensors are used when the device exposes them.
+
+CPU and GPU ceilings are device-wide. In multi-window or multi-display use, the focused Auto Tune app owns the adaptive session; fixed assignments on other visible displays do not constrain that session. Applying a profile manually pauses Auto Tune for the current foreground ownership; it can start again after the focused app or its assignment changes.
+
 ## Screenshots
 
 | Main app | Profile editor |
@@ -74,6 +79,7 @@ Choose a bundled profile or create one. **Stock** restores the device's normal m
 * No execution method found: confirm that PServer is available or that the root manager provides `su`, then run detection again from Settings.
 * Profile controls missing: check Display over other apps.
 * Assigned app not switching profiles: confirm its assignment, Accessibility, and Notifications.
+* Auto Tune stops while an app is open: check the Auto Tune status card. Some vendor builds do not expose usable SurfaceFlinger frame statistics or GPU telemetry; include the reported frame backend and error when filing an issue.
 
 For help, open a [GitHub issue](https://github.com/AurelioB/ClusterTune/issues) with your device model, Android version, execution method, and the relevant log details. Please do not include private data.
 
