@@ -32,7 +32,8 @@ class PerformanceRepositoryAppProfileTest {
             AppProfileAssignment("custom.app", "Custom", customMaxFrequencies = mapOf(0 to 900_000)),
             AppProfileAssignment("invalid-custom.app", "Invalid", customMaxFrequencies = mapOf(9 to 900_000)),
             AppProfileAssignment("auto.app", "Auto", autoTuneTargetFps = 60),
-            AppProfileAssignment("invalid-auto.app", "Invalid Auto", autoTuneTargetFps = 90),
+            AppProfileAssignment("custom-auto.app", "Custom Auto", autoTuneTargetFps = 90),
+            AppProfileAssignment("invalid-auto.app", "Invalid Auto", autoTuneTargetFps = 241),
         )
 
         val result = supportedAppProfileAssignments(
@@ -41,7 +42,7 @@ class PerformanceRepositoryAppProfileTest {
         )
 
         assertEquals(
-            listOf(assignments[0], assignments[1], assignments[4], assignments[6]),
+            listOf(assignments[0], assignments[1], assignments[4], assignments[6], assignments[7]),
             result,
         )
     }

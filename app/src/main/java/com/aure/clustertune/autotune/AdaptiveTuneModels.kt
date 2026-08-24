@@ -1,10 +1,14 @@
 package com.aure.clustertune.autotune
 
-const val MIN_ADAPTIVE_TARGET_FPS = 15
-const val MAX_ADAPTIVE_TARGET_FPS = 240
+import com.aure.clustertune.model.AUTO_TUNE_TARGET_FPS_PRESETS
+import com.aure.clustertune.model.MAX_AUTO_TUNE_TARGET_FPS
+import com.aure.clustertune.model.MIN_AUTO_TUNE_TARGET_FPS
+
+const val MIN_ADAPTIVE_TARGET_FPS = MIN_AUTO_TUNE_TARGET_FPS
+const val MAX_ADAPTIVE_TARGET_FPS = MAX_AUTO_TUNE_TARGET_FPS
 
 /** Common targets offered by the UI. [AdaptiveTuneConfig.targetFps] is not limited to these values. */
-val ADAPTIVE_TARGET_FPS_PRESETS: List<Int> = listOf(30, 60, 120)
+val ADAPTIVE_TARGET_FPS_PRESETS: List<Int> = AUTO_TUNE_TARGET_FPS_PRESETS
 
 /**
  * Controller tuning parameters. Time values use the same monotonic nanosecond clock as

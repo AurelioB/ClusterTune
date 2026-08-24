@@ -1,7 +1,8 @@
 package com.aure.clustertune.data
 
 import com.aure.clustertune.model.AppProfileAssignment
-import com.aure.clustertune.model.AUTO_TUNE_TARGET_FPS_PRESETS
+import com.aure.clustertune.model.MAX_AUTO_TUNE_TARGET_FPS
+import com.aure.clustertune.model.MIN_AUTO_TUNE_TARGET_FPS
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileSwitchHistoryEntry
 import com.aure.clustertune.model.ProfileSource
@@ -143,7 +144,7 @@ object ProfileStorageCodec {
                     val parsedCustomGpu = assignment.customGpuMaxFrequencyHz?.takeIf { it > 0 }
                     val hasCustomTarget = parsedCustomValues.isNotEmpty() || parsedCustomGpu != null
                     val autoTuneTargetFps = assignment.autoTuneTargetFps
-                        ?.takeIf { it in AUTO_TUNE_TARGET_FPS_PRESETS }
+                        ?.takeIf { it in MIN_AUTO_TUNE_TARGET_FPS..MAX_AUTO_TUNE_TARGET_FPS }
                     // Normalize malformed mixed targets deterministically. Keep
                     // existing named/custom assignments ahead of the newer
                     // auto-tune target so legacy data never changes meaning.

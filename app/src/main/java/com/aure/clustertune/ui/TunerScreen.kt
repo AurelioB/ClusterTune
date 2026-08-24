@@ -75,6 +75,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -95,6 +96,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -115,6 +117,8 @@ import com.aure.clustertune.model.AUTO_TUNE_TARGET_FPS_PRESETS
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.CpuPolicyInfo
 import com.aure.clustertune.model.InstalledAppInfo
+import com.aure.clustertune.model.MAX_AUTO_TUNE_TARGET_FPS
+import com.aure.clustertune.model.MIN_AUTO_TUNE_TARGET_FPS
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.model.ProfileSource
@@ -129,6 +133,7 @@ import com.aure.clustertune.ui.designsystem.component.CtSelectableRow
 import com.aure.clustertune.ui.designsystem.component.CtSelectionIndicator
 import com.aure.clustertune.ui.designsystem.component.CtStatePanel
 import com.aure.clustertune.ui.designsystem.component.CtStatePanelState
+import com.aure.clustertune.ui.designsystem.component.CtSlider
 import com.aure.clustertune.ui.designsystem.component.CtSwitch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -136,6 +141,14 @@ import java.util.Locale
 import kotlin.math.roundToInt
 
 private const val NEW_PROFILE_DIALOG_ID = "__new_profile__"
+private const val DEFAULT_AUTO_TUNE_TARGET_FPS = 60
+
+internal object CompactOverlayTestTags {
+    const val AUTO_TUNE_TARGET_SLIDER = "compact_overlay_auto_tune_target_slider"
+    const val AUTO_TUNE_SWITCH = "compact_overlay_auto_tune_switch"
+    const val APP_PROFILE_SWITCH = "compact_overlay_app_profile_switch"
+}
+
 private enum class MainTab {
     PROFILES,
     APPS,
@@ -439,10 +452,13 @@ fun CompactOverlayScreen(
     ) {
         mutableStateOf(assignment != null)
     }
-    var stagedAutoTuneTargetFps by remember(assignment?.autoTuneTargetFps) {
+    var stagedAutoTuneTargetFps by remember(contextPackageName, assignment?.autoTuneTargetFps) {
         mutableStateOf(assignment?.autoTuneTargetFps)
     }
-    var stagedProfile by remember(assignment?.profileId, state.selectedDisplayProfileId) {
+    var autoTuneDraftTargetFps by remember(contextPackageName, assignment?.autoTuneTargetFps) {
+        mutableIntStateOf(assignment?.autoTuneTargetFps ?: DEFAULT_AUTO_TUNE_TARGET_FPS)
+    }
+    var stagedProfile by remember(contextPackageName, assignment?.profileId, state.selectedDisplayProfileId) {
         mutableStateOf(
             if (assignment?.isCustom == true || assignment?.isAutoTune == true ||
                 (assignment == null && state.isManualSelection)
@@ -455,19 +471,24 @@ fun CompactOverlayScreen(
             },
         )
     }
-    val initialValues = remember(assignment?.profileId, assignment?.customMaxFrequencies, state.displayProfiles) {
+    val initialValues = remember(contextPackageName, assignment?.profileId, assignment?.customMaxFrequencies, state.displayProfiles) {
         assignment?.customMaxFrequencies?.takeIf { it.isNotEmpty() }
             ?: profiles.firstOrNull { it.id == assignment?.profileId }?.maxFrequencies
             ?: state.currentValues
     }
-    var stagedCustomValues by remember(initialValues) { mutableStateOf(initialValues) }
-    val initialGpuValue = remember(assignment?.profileId, assignment?.customGpuMaxFrequencyHz, state.currentGpuMaxFrequencyHz) {
+    var stagedCustomValues by remember(contextPackageName, initialValues) { mutableStateOf(initialValues) }
+    val initialGpuValue = remember(
+        contextPackageName,
+        assignment?.profileId,
+        assignment?.customGpuMaxFrequencyHz,
+        state.currentGpuMaxFrequencyHz,
+    ) {
         assignment?.customGpuMaxFrequencyHz
             ?: profiles.firstOrNull { it.id == assignment?.profileId }?.gpuMaxFrequencyHz
             ?: state.currentGpuMaxFrequencyHz
     }
-    var stagedGpuValue by remember(initialGpuValue) { mutableStateOf(initialGpuValue) }
-    var customDraft by remember(assignment?.profileId, assignment?.customMaxFrequencies) {
+    var stagedGpuValue by remember(contextPackageName, initialGpuValue) { mutableStateOf(initialGpuValue) }
+    var customDraft by remember(contextPackageName, assignment?.profileId, assignment?.customMaxFrequencies) {
         mutableStateOf(assignment?.isCustom == true || (assignment == null && state.isManualSelection))
     }
     // Keep the preset selection derived from the complete staged values. This also
@@ -564,7 +585,9 @@ fun CompactOverlayScreen(
                                             onAppProfileAssignmentChange?.invoke(null, null, null, null)
                                         }
                                     },
-                                    modifier = Modifier.scale(0.78f),
+                                    modifier = Modifier
+                                        .testTag(CompactOverlayTestTags.APP_PROFILE_SWITCH)
+                                        .scale(0.78f),
                                 )
                             }
                         }
@@ -606,19 +629,25 @@ fun CompactOverlayScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     if (canAssign) {
-                        AUTO_TUNE_TARGET_FPS_PRESETS.forEach { targetFps ->
-                            ProfileChoiceRow(
-                                title = "Auto $targetFps FPS",
-                                selected = stagedAutoTuneTargetFps == targetFps,
-                                applying = false,
-                                onClick = {
-                                    stagedAutoTuneTargetFps = targetFps
-                                    appProfileEnabled = true
-                                    onAppProfileAssignmentChange?.invoke(null, null, null, targetFps)
-                                    onDismissRequest()
-                                },
-                            )
-                        }
+                        AutoTunePickerSection(
+                            targetFps = autoTuneDraftTargetFps,
+                            assigned = assignment?.autoTuneTargetFps == autoTuneDraftTargetFps,
+                            updating = assignment?.isAutoTune == true,
+                            onTargetChange = { autoTuneDraftTargetFps = it },
+                            onAssign = {
+                                stagedAutoTuneTargetFps = autoTuneDraftTargetFps
+                                appProfileEnabled = true
+                                onAppProfileAssignmentChange?.invoke(null, null, null, autoTuneDraftTargetFps)
+                                onDismissRequest()
+                            },
+                        )
+                        Text(
+                            text = "Profiles",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+                        )
                     }
                     if (customDraft && stagedAutoTuneTargetFps == null) {
                         ProfileChoiceRow(
@@ -655,46 +684,61 @@ fun CompactOverlayScreen(
                         .padding(start = 12.dp, top = 4.dp, end = 12.dp, bottom = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    ProfileChipSelector(
-                        state = state.copy(
-                            currentValues = stagedCustomValues,
-                            currentGpuMaxFrequencyHz = stagedGpuValue,
-                            activeDisplayProfileId = null,
-                            lastAppliedDisplayProfileId = null,
-                            selectedDisplayProfileId = stagedProfile?.id,
-                            isManualSelection = customDraft,
-                        ),
-                        onApplyProfile = { profile ->
-                            stagedAutoTuneTargetFps = null
-                            stagedProfile = profile
-                            customDraft = false
-                            stagedCustomValues = profile.maxFrequencies
-                            stagedGpuValue = profile.gpuMaxFrequencyHz ?: state.currentGpuMaxFrequencyHz
-                            if (mode == CompactOverlayMode.PROFILES) onApplyProfile(profile, appProfileEnabled)
-                        },
-                        onClearSelection = {
-                            stagedAutoTuneTargetFps = null
-                            stagedProfile = null
-                            customDraft = true
-                        },
-                        onOpenFullApp = null,
-                        stripUnderclockSuffix = true,
-                        applyingProfileId = applyingProfileId,
-                        compact = true,
-                    )
-                    PolicyEditorSection(
-                        state = state.copy(currentValues = stagedCustomValues, currentGpuMaxFrequencyHz = stagedGpuValue),
-                        displayFrequenciesAsPercent = displayFrequenciesAsPercent,
-                        onPolicyValueChange = { policy, value ->
-                            stagedAutoTuneTargetFps = null
-                            stagedCustomValues = stagedCustomValues + (policy.id to value)
-                        },
-                        onGpuValueChange = {
-                            stagedAutoTuneTargetFps = null
-                            stagedGpuValue = it
-                        },
-                        compactMode = true,
-                    )
+                    if (canAssign) {
+                        AutoTuneTargetSection(
+                            enabled = stagedAutoTuneTargetFps != null,
+                            targetFps = autoTuneDraftTargetFps,
+                            onEnabledChange = { enabled ->
+                                if (enabled) {
+                                    appProfileEnabled = true
+                                    stagedAutoTuneTargetFps = autoTuneDraftTargetFps
+                                } else {
+                                    stagedAutoTuneTargetFps = null
+                                }
+                            },
+                            onTargetChange = { targetFps ->
+                                autoTuneDraftTargetFps = targetFps
+                                stagedAutoTuneTargetFps = targetFps
+                                appProfileEnabled = true
+                            },
+                        )
+                    }
+                    if (stagedAutoTuneTargetFps == null) {
+                        ProfileChipSelector(
+                            state = state.copy(
+                                currentValues = stagedCustomValues,
+                                currentGpuMaxFrequencyHz = stagedGpuValue,
+                                activeDisplayProfileId = null,
+                                lastAppliedDisplayProfileId = null,
+                                selectedDisplayProfileId = stagedProfile?.id,
+                                isManualSelection = customDraft,
+                            ),
+                            onApplyProfile = { profile ->
+                                stagedProfile = profile
+                                customDraft = false
+                                stagedCustomValues = profile.maxFrequencies
+                                stagedGpuValue = profile.gpuMaxFrequencyHz ?: state.currentGpuMaxFrequencyHz
+                                if (mode == CompactOverlayMode.PROFILES) onApplyProfile(profile, appProfileEnabled)
+                            },
+                            onClearSelection = {
+                                stagedProfile = null
+                                customDraft = true
+                            },
+                            onOpenFullApp = null,
+                            stripUnderclockSuffix = true,
+                            applyingProfileId = applyingProfileId,
+                            compact = true,
+                        )
+                        PolicyEditorSection(
+                            state = state.copy(currentValues = stagedCustomValues, currentGpuMaxFrequencyHz = stagedGpuValue),
+                            displayFrequenciesAsPercent = displayFrequenciesAsPercent,
+                            onPolicyValueChange = { policy, value ->
+                                stagedCustomValues = stagedCustomValues + (policy.id to value)
+                            },
+                            onGpuValueChange = { stagedGpuValue = it },
+                            compactMode = true,
+                        )
+                    }
                 }
             }
             if (mode == CompactOverlayMode.TUNER) {
@@ -709,22 +753,203 @@ fun CompactOverlayScreen(
                     TextButton(onClick = onDismissRequest) { Text("Cancel") }
                     Button(
                         onClick = {
-                            onApplyCurrent(
-                                state.copy(currentValues = stagedCustomValues, currentGpuMaxFrequencyHz = stagedGpuValue),
-                                stagedProfile.takeUnless { customDraft },
-                                stagedCustomValues.takeIf { customDraft },
-                                appProfileEnabled,
-                            )
+                            val autoTuneTargetFps = stagedAutoTuneTargetFps
+                            if (autoTuneTargetFps != null && canAssign) {
+                                onAppProfileAssignmentChange?.invoke(null, null, null, autoTuneTargetFps)
+                                onDismissRequest()
+                            } else {
+                                onApplyCurrent(
+                                    state.copy(currentValues = stagedCustomValues, currentGpuMaxFrequencyHz = stagedGpuValue),
+                                    stagedProfile.takeUnless { customDraft },
+                                    stagedCustomValues.takeIf { customDraft },
+                                    appProfileEnabled,
+                                )
+                            }
                         },
-                        enabled = state.policies.isNotEmpty() && state.isPrivilegedHostAvailable,
+                        enabled = if (stagedAutoTuneTargetFps != null && canAssign) {
+                            true
+                        } else {
+                            state.policies.isNotEmpty() && state.isPrivilegedHostAvailable
+                        },
                         modifier = Modifier.height(30.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                    ) { Text("Apply") }
+                    ) { Text(if (stagedAutoTuneTargetFps != null && canAssign) "Save" else "Apply") }
                 }
             }
         }
     }
 }
+
+@Composable
+private fun AutoTunePickerSection(
+    targetFps: Int,
+    assigned: Boolean,
+    updating: Boolean,
+    onTargetChange: (Int) -> Unit,
+    onAssign: () -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    CtSectionCard(
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Auto Tune",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurface,
+                    )
+                    Text(
+                        text = "$targetFps FPS target",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (assigned) {
+                    Text(
+                        text = "Assigned",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colorScheme.primary,
+                    )
+                }
+            }
+        },
+        shape = RoundedCornerShape(20.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        CtSlider(
+            value = targetFps.toFloat(),
+            onValueChange = { onTargetChange(snapAutoTuneTargetFps(it)) },
+            modifier = Modifier.testTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER),
+            valueRange = MIN_AUTO_TUNE_TARGET_FPS.toFloat()..MAX_AUTO_TUNE_TARGET_FPS.toFloat(),
+            accessibilityLabel = "Auto Tune target",
+            accessibilityValue = "$targetFps FPS",
+            accessibilitySteps = MAX_AUTO_TUNE_TARGET_FPS - MIN_AUTO_TUNE_TARGET_FPS - 1,
+        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                text = "$MIN_AUTO_TUNE_TARGET_FPS FPS",
+                style = MaterialTheme.typography.labelSmall,
+                color = colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "$MAX_AUTO_TUNE_TARGET_FPS FPS",
+                style = MaterialTheme.typography.labelSmall,
+                color = colorScheme.onSurfaceVariant,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            AUTO_TUNE_TARGET_FPS_PRESETS.forEach { preset ->
+                AssistChip(
+                    onClick = { onTargetChange(preset) },
+                    label = { Text("$preset FPS") },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = if (targetFps == preset) {
+                            colorScheme.primaryContainer
+                        } else {
+                            colorScheme.surfaceContainerHighest
+                        },
+                        labelColor = if (targetFps == preset) {
+                            colorScheme.onPrimaryContainer
+                        } else {
+                            colorScheme.onSurfaceVariant
+                        },
+                    ),
+                )
+            }
+        }
+        Text(
+            text = "Performance floor, not an FPS limiter. Match the app's own frame-rate cap.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colorScheme.onSurfaceVariant,
+        )
+        Button(
+            onClick = onAssign,
+            modifier = Modifier.fillMaxWidth().height(36.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+        ) {
+            Text(if (updating) "Update Auto Tune" else "Assign Auto Tune")
+        }
+    }
+}
+
+@Composable
+private fun AutoTuneTargetSection(
+    enabled: Boolean,
+    targetFps: Int,
+    onEnabledChange: (Boolean) -> Unit,
+    onTargetChange: (Int) -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    CtSectionCard(
+        shape = RoundedCornerShape(20.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Auto Tune",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface,
+                )
+                Text(
+                    text = if (enabled) "$targetFps FPS target" else "Set a performance floor",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant,
+                )
+            }
+            CtSwitch(
+                checked = enabled,
+                onCheckedChange = onEnabledChange,
+                modifier = Modifier
+                    .testTag(CompactOverlayTestTags.AUTO_TUNE_SWITCH)
+                    .semantics { contentDescription = "Auto Tune" },
+            )
+        }
+        if (enabled) {
+            CtSlider(
+                value = targetFps.toFloat(),
+                onValueChange = { onTargetChange(snapAutoTuneTargetFps(it)) },
+                modifier = Modifier.testTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER),
+                valueRange = MIN_AUTO_TUNE_TARGET_FPS.toFloat()..MAX_AUTO_TUNE_TARGET_FPS.toFloat(),
+                accessibilityLabel = "Auto Tune target",
+                accessibilityValue = "$targetFps FPS",
+                accessibilitySteps = MAX_AUTO_TUNE_TARGET_FPS - MIN_AUTO_TUNE_TARGET_FPS - 1,
+            )
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    text = "$MIN_AUTO_TUNE_TARGET_FPS FPS",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "$MAX_AUTO_TUNE_TARGET_FPS FPS",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                text = "Performance floor, not an FPS limiter. Match the app's own frame-rate cap.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+internal fun snapAutoTuneTargetFps(value: Float): Int =
+    value.roundToInt().coerceIn(MIN_AUTO_TUNE_TARGET_FPS, MAX_AUTO_TUNE_TARGET_FPS)
 
 @Composable
 private fun ProfilePickerEmptyOptionCard() {

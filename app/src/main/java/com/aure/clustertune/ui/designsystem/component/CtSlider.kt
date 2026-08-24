@@ -15,9 +15,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 
@@ -35,6 +37,9 @@ internal fun CtSlider(
     visualHeight: androidx.compose.ui.unit.Dp = 36.dp,
     trackHeight: androidx.compose.ui.unit.Dp = 6.dp,
     thumbSize: DpSize = DpSize(4.dp, 24.dp),
+    accessibilityLabel: String? = null,
+    accessibilityValue: String? = null,
+    accessibilitySteps: Int = 0,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Box(
@@ -44,7 +49,10 @@ internal fun CtSlider(
                 progressBarRangeInfo = ProgressBarRangeInfo(
                     current = value.coerceIn(valueRange),
                     range = valueRange,
+                    steps = accessibilitySteps.coerceAtLeast(0),
                 )
+                accessibilityLabel?.let { contentDescription = it }
+                accessibilityValue?.let { stateDescription = it }
                 if (!enabled) disabled()
                 setProgress { targetValue ->
                     if (!enabled) {

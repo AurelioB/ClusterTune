@@ -24,7 +24,7 @@ Lower CPU limits can reduce power use, heat, fan noise, and battery drain. Games
 * Profiles that can be created, reordered, imported, and exported
 * Bundled presets and a Stock profile for supported processors
 * Automatic app profiles using saved profiles or custom frequency values across one or more displays
-* Per-app Auto Tune targets for 30, 60, or 120 FPS, using SurfaceFlinger frame statistics and device load to lower available CPU/GPU ceilings safely
+* Per-app Auto Tune targets from 15 to 240 FPS, with 30/60/120 shortcuts, using SurfaceFlinger frame statistics and device load to lower available CPU/GPU ceilings safely
 * Quick Settings access to pick, tune, or cycle profiles
 * A left edge gesture that opens profile controls over the current app
 * Optional profile automation after boot and while asleep
@@ -60,7 +60,7 @@ Execution method detection runs on first launch. Approve the `su` request if Roo
 
 Choose a bundled profile or create one. **Stock** restores the device's normal maximum frequencies.
 
-For an app profile, choose **Auto 30 FPS**, **Auto 60 FPS**, or **Auto 120 FPS** to let ClusterTune search for lower maximum frequencies while that app owns the focused window. The target is a performance floor, not a frame-rate limiter. Auto Tune never raises a CPU or GPU ceiling above the saved normal profile, and it restores the exact pre-session limits when the app, profile, or screen state changes, or when the session watchdog expires. SurfaceFlinger frame statistics are required; CPU/GPU utilization and thermal sensors are used when the device exposes them.
+For an app profile, use the **Auto Tune** target slider (15–240 FPS) or its 30/60/120 shortcuts to let ClusterTune search for lower maximum frequencies while that app owns the focused window. The target is a performance floor, not a frame-rate limiter; for best efficiency, set the app's own frame-rate cap to the same value. Auto Tune never raises a CPU or GPU ceiling above the saved normal profile, and it restores the exact pre-session limits when the app, profile, or screen state changes, or when the session watchdog expires. SurfaceFlinger frame statistics are required; CPU/GPU utilization and thermal sensors are used when the device exposes them.
 
 CPU and GPU ceilings are device-wide. In multi-window or multi-display use, the focused Auto Tune app owns the adaptive session; fixed assignments on other visible displays do not constrain that session. Applying a profile manually pauses Auto Tune for the current foreground ownership; it can start again after the focused app or its assignment changes.
 

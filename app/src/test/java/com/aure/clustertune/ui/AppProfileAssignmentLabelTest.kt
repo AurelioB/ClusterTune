@@ -9,13 +9,20 @@ import org.junit.Test
 class AppProfileAssignmentLabelTest {
 
     @Test
+    fun `auto tune slider rounds to whole fps and clamps to supported range`() {
+        assertEquals(15, snapAutoTuneTargetFps(14.4f))
+        assertEquals(77, snapAutoTuneTargetFps(76.6f))
+        assertEquals(240, snapAutoTuneTargetFps(240.6f))
+    }
+
+    @Test
     fun `labels auto custom named and missing assignments`() {
         val named = PerformanceProfile("balanced", "Balanced", mapOf(0 to 1_000), ProfileSource.USER)
         val profiles = mapOf(named.id to named)
 
         assertEquals(
-            "Auto 60 FPS",
-            appProfileAssignmentLabel(assignment(autoTuneTargetFps = 60), profiles),
+            "Auto 77 FPS",
+            appProfileAssignmentLabel(assignment(autoTuneTargetFps = 77), profiles),
         )
         assertEquals(
             "Custom",

@@ -8,6 +8,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -15,11 +17,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.SemanticsProperties
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.aure.clustertune.model.AppProfileAssignment
@@ -221,26 +221,20 @@ class CompactOverlayScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("Large").performClick()
+        composeRule.onNodeWithText("Large").performScrollTo().performClick()
         composeRule.runOnIdle {
             assertEquals("large", appliedProfile?.id)
         }
     }
 
     @Test
-    fun autoTunePresets_saveSelectedTarget_andDismissAssignmentPicker() {
+    fun autoTunePicker_savesArbitraryTargetOnlyFromExplicitAction() {
         var selectedTargetFps: Int? = null
         var dismissCount = 0
         composeRule.setContent {
             MaterialTheme {
                 CompactOverlayScreen(
-                    state = state(
-                        assignment = AppProfileAssignment(
-                            packageName = "com.example.game",
-                            appLabel = "Example game",
-                            autoTuneTargetFps = 60,
-                        ),
-                    ),
+                    state = state(),
                     displayFrequenciesAsPercent = false,
                     mode = CompactOverlayMode.PROFILES,
                     onModeChange = {},
@@ -261,13 +255,130 @@ class CompactOverlayScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("Auto 30 FPS").assertExists()
-        composeRule.onNodeWithText("Auto 60 FPS").assertExists()
-        composeRule.onNodeWithText("Auto 120 FPS").performClick()
+        composeRule.onNodeWithText("30 FPS").assertExists()
+        composeRule.onNodeWithText("60 FPS").assertExists()
+        composeRule.onNodeWithText("120 FPS").assertExists()
+        composeRule.onNodeWithText("Performance floor, not an FPS limiter. Match the app's own frame-rate cap.")
+            .assertExists()
+        composeRule.onNodeWithText("120 FPS").performClick()
+        composeRule.onNodeWithText("120 FPS target").assertExists()
+        composeRule.onNodeWithTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER)
+            .assertContentDescriptionEquals("Auto Tune target")
+            .performSemanticsAction(SemanticsActions.SetProgress) { setProgress ->
+                setProgress(77f)
+            }
         composeRule.runOnIdle {
-            assertEquals(120, selectedTargetFps)
+            assertEquals(null, selectedTargetFps)
+            assertEquals(0, dismissCount)
+        }
+        composeRule.onNodeWithText("77 FPS target").assertExists()
+        composeRule.onNodeWithText("Assign Auto Tune").performClick()
+        composeRule.runOnIdle {
+            assertEquals(77, selectedTargetFps)
             assertEquals(1, dismissCount)
         }
+    }
+
+    @Test
+    fun autoTunePicker_restoresArbitraryAssignedTarget() {
+        composeRule.setContent {
+            MaterialTheme {
+                CompactOverlayScreen(
+                    state = state(
+                        assignment = AppProfileAssignment(
+                            packageName = "com.example.game",
+                            appLabel = "Example game",
+                            autoTuneTargetFps = 77,
+                        ),
+                    ),
+                    displayFrequenciesAsPercent = false,
+                    mode = CompactOverlayMode.PROFILES,
+                    onModeChange = {},
+                    onApplyProfile = { _, _ -> },
+                    onApplyCurrent = { _, _, _, _ -> },
+                    onDismissRequest = {},
+                    onRefreshLiveValues = {},
+                    contextPackageName = "com.example.game",
+                    contextLabel = "Example game",
+                    onAppProfileAssignmentChange = { _, _, _, _ -> },
+                    showAppProfileToggle = false,
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("77 FPS target").assertExists()
+        composeRule.onNodeWithText("Assigned").assertExists()
+        composeRule.onNodeWithText("Update Auto Tune").assertExists()
+        composeRule.onNodeWithTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER)
+            .performSemanticsAction(SemanticsActions.SetProgress) { setProgress ->
+                setProgress(78f)
+            }
+        assertTrue(composeRule.onAllNodesWithText("Assigned").fetchSemanticsNodes().isEmpty())
+        composeRule.onNodeWithText("78 FPS target").assertExists()
+    }
+
+    @Test
+    fun tunerMode_exposesAssignedAutoTuneControlsToAccessibility() {
+        composeRule.setContent {
+            MaterialTheme {
+                CompactOverlayScreen(
+                    state = state(
+                        assignment = AppProfileAssignment(
+                            packageName = "com.example.game",
+                            appLabel = "Example game",
+                            autoTuneTargetFps = 77,
+                        ),
+                    ),
+                    displayFrequenciesAsPercent = false,
+                    mode = CompactOverlayMode.TUNER,
+                    onModeChange = {},
+                    onApplyProfile = { _, _ -> },
+                    onApplyCurrent = { _, _, _, _ -> },
+                    onDismissRequest = {},
+                    onRefreshLiveValues = {},
+                    contextPackageName = "com.example.game",
+                    contextLabel = "Example game",
+                    onAppProfileAssignmentChange = { _, _, _, _ -> },
+                    showAppProfileToggle = false,
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Auto Tune").assertExists()
+        composeRule.onNodeWithTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER)
+            .assertContentDescriptionEquals("Auto Tune target")
+        composeRule.onNodeWithText("77 FPS target").assertExists()
+    }
+
+    @Test
+    fun autoTunePicker_resetsDraftWhenForegroundPackageChanges() {
+        var packageName by mutableStateOf("first.app")
+        val assignments = listOf(
+            AppProfileAssignment("first.app", "First", autoTuneTargetFps = 77),
+            AppProfileAssignment("second.app", "Second", autoTuneTargetFps = 90),
+        )
+        composeRule.setContent {
+            MaterialTheme {
+                CompactOverlayScreen(
+                    state = state().copy(appProfileAssignments = assignments),
+                    displayFrequenciesAsPercent = false,
+                    mode = CompactOverlayMode.PROFILES,
+                    onModeChange = {},
+                    onApplyProfile = { _, _ -> },
+                    onApplyCurrent = { _, _, _, _ -> },
+                    onDismissRequest = {},
+                    onRefreshLiveValues = {},
+                    contextPackageName = packageName,
+                    contextLabel = packageName,
+                    onAppProfileAssignmentChange = { _, _, _, _ -> },
+                    showAppProfileToggle = false,
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("77 FPS target").assertExists()
+        composeRule.runOnIdle { packageName = "second.app" }
+        composeRule.onNodeWithText("90 FPS target").assertExists()
     }
 
     @Test
@@ -347,7 +458,7 @@ class CompactOverlayScreenTest {
         }
 
         assertTrue(composeRule.onAllNodesWithText("App profile").fetchSemanticsNodes().isEmpty())
-        composeRule.onNodeWithText("Large").performClick()
+        composeRule.onNodeWithText("Large").performScrollTo().performClick()
         composeRule.runOnIdle { assertEquals("large", appliedProfile?.id) }
     }
 
@@ -426,7 +537,7 @@ class CompactOverlayScreenTest {
             }
         }
 
-        composeRule.onNode(hasSwitchRole).performClick()
+        composeRule.onNodeWithTag(CompactOverlayTestTags.APP_PROFILE_SWITCH).performClick()
         composeRule.runOnIdle { assertEquals(1, removeCount) }
     }
 
@@ -508,13 +619,6 @@ class CompactOverlayScreenTest {
         composeRule.onNodeWithContentDescription("Profiles").assertExists()
         composeRule.onNodeWithContentDescription("Tuner").assertExists()
         composeRule.onNodeWithContentDescription("Close").assertExists()
-    }
-
-    private companion object {
-        val hasSwitchRole = SemanticsMatcher("has switch role") { node ->
-            node.config.contains(SemanticsProperties.Role) &&
-                node.config[SemanticsProperties.Role] == Role.Switch
-        }
     }
 
     private fun state(assignment: AppProfileAssignment? = null): TunerState {
