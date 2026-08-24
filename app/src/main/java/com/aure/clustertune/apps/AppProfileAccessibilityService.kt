@@ -26,6 +26,7 @@ class AppProfileAccessibilityService : AccessibilityService() {
     private var displayListenerRegistered = false
     private var coordinator: AppProfileCoordinator? = null
     private val fallbackPackagesByDisplay = mutableMapOf<Int, String>()
+    private var mostRecentAppIdentity: RecentAppIdentity? = null
     private val disappearanceTracker = VisibleWindowDisappearanceTracker(ABSENCE_CONFIRMATION_DELAY_MS)
     private val displayManager by lazy { getSystemService(DisplayManager::class.java) }
     private val refresh = Runnable { publishSnapshot() }
@@ -41,6 +42,9 @@ class AppProfileAccessibilityService : AccessibilityService() {
 
         override fun onDisplayRemoved(displayId: Int) {
             fallbackPackagesByDisplay.remove(displayId)
+            if (mostRecentAppIdentity?.displayId == displayId) {
+                mostRecentAppIdentity = null
+            }
             disappearanceTracker.removeDisplay(displayId)
             scheduleRefresh()
         }
@@ -98,12 +102,9 @@ class AppProfileAccessibilityService : AccessibilityService() {
         ) {
             if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
                 event.packageName?.toString()?.takeIf(::isUsefulFallbackPackage)?.let { packageName ->
-                    val eventDisplayId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                        event.displayId.takeIf { it >= 0 } ?: Display.DEFAULT_DISPLAY
-                    } else {
-                        Display.DEFAULT_DISPLAY
-                    }
+                    val eventDisplayId = resolveEventDisplayId(event)
                     fallbackPackagesByDisplay[eventDisplayId] = packageName
+                    mostRecentAppIdentity = RecentAppIdentity(eventDisplayId, packageName)
                 }
             }
             scheduleRefresh()
@@ -126,6 +127,7 @@ class AppProfileAccessibilityService : AccessibilityService() {
         coordinator?.stop()
         coordinator = null
         fallbackPackagesByDisplay.clear()
+        mostRecentAppIdentity = null
         disappearanceTracker.clear()
         VisibleAppWindowEvents.clear(isInteractive = false)
         super.onDestroy()
@@ -166,6 +168,12 @@ class AppProfileAccessibilityService : AccessibilityService() {
         val normalized = tracked.windowsByDisplay.mapValues { (_, items) ->
             items.distinct().sortedWith(compareBy({ it.packageName }, { it.isFocused.not() }, { it.isActive.not() }))
         }.filterValues { it.isNotEmpty() }.toSortedMap()
+        fallbackPackagesByDisplay.keys.retainAll(normalized.keys)
+        mostRecentAppIdentity = mostRecentAppIdentity?.takeIf { identity ->
+            normalized[identity.displayId].orEmpty().any { window ->
+                window.packageName == identity.packageName
+            }
+        }
         val scheduledAt = absenceConfirmationScheduledAt
         val confirmationAt = tracked.nextDeadlineMs
         if (confirmationAt == null) {
@@ -176,17 +184,48 @@ class AppProfileAccessibilityService : AccessibilityService() {
             handler.postAtTime(absenceConfirmation, confirmationAt)
             absenceConfirmationScheduledAt = confirmationAt
         }
-        VisibleAppWindowEvents.publish(VisibleAppSnapshot(normalized, isInteractive = true))
+        VisibleAppWindowEvents.publish(
+            VisibleAppSnapshot(
+                windowsByDisplay = normalized,
+                isInteractive = true,
+                recentPackageByDisplay = fallbackPackagesByDisplay.filterKeys(normalized::containsKey),
+                mostRecentAppIdentity = mostRecentAppIdentity,
+            ),
+        )
     }
 
     private fun isDisplayOn(displayId: Int): Boolean =
         displayManager?.getDisplay(displayId)?.state == Display.STATE_ON
+
+    private fun resolveEventDisplayId(event: AccessibilityEvent): Int {
+        val reportedDisplayId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            event.displayId
+        } else {
+            null
+        }
+        if (reportedDisplayId != null && reportedDisplayId >= 0) return reportedDisplayId
+
+        val windowIdsByDisplay = buildMap {
+            val allDisplays = windowsOnAllDisplays
+            for (displayIndex in 0 until allDisplays.size()) {
+                val displayId = allDisplays.keyAt(displayIndex)
+                put(displayId, allDisplays.valueAt(displayIndex).orEmpty().map { it.id })
+            }
+        }
+        return resolveAccessibilityEventDisplayId(
+            reportedDisplayId = reportedDisplayId,
+            eventWindowId = event.windowId,
+            windowIdsByDisplay = windowIdsByDisplay,
+            defaultDisplayId = Display.DEFAULT_DISPLAY,
+        )
+    }
 
     private fun enterSuspendedState() {
         handler.removeCallbacks(refresh)
         handler.removeCallbacks(absenceConfirmation)
         absenceConfirmationScheduledAt = null
         fallbackPackagesByDisplay.clear()
+        mostRecentAppIdentity = null
         disappearanceTracker.pause()
         VisibleAppWindowEvents.clear(isInteractive = false)
     }
@@ -216,4 +255,19 @@ class AppProfileAccessibilityService : AccessibilityService() {
             "com.google.android.permissioncontroller",
         )
     }
+}
+
+internal fun resolveAccessibilityEventDisplayId(
+    reportedDisplayId: Int?,
+    eventWindowId: Int,
+    windowIdsByDisplay: Map<Int, List<Int>>,
+    defaultDisplayId: Int = 0,
+): Int {
+    reportedDisplayId?.takeIf { it >= 0 }?.let { return it }
+    if (eventWindowId >= 0) {
+        windowIdsByDisplay.toSortedMap().entries.firstOrNull { (_, windowIds) ->
+            eventWindowId in windowIds
+        }?.let { return it.key }
+    }
+    return defaultDisplayId
 }

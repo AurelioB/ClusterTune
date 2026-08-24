@@ -137,4 +137,15 @@ class VisibleAppWindowSnapshotTest {
             merged.getValue(0).mapTo(mutableSetOf()) { it.packageName },
         )
     }
+
+    @Test
+    fun missingDisplayDoesNotKeepAStaleEventFallbackAlive() {
+        val merged = mergeEventFallbackWindows(
+            observed = emptyMap(),
+            eventFallbacks = mapOf(0 to "com.example.closedgame"),
+            obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
+        )
+
+        assertTrue(merged.isEmpty())
+    }
 }

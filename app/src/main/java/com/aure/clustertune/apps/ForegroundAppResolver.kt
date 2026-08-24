@@ -71,6 +71,12 @@ internal fun selectVisibleAppWindow(
         .sortedWith(
             compareByDescending<VisibleAppWindow> { it.isFocused }
                 .thenByDescending { it.isActive }
+                .thenByDescending { window ->
+                    snapshot.mostRecentAppIdentity?.let { recent ->
+                        recent.displayId == window.displayId && recent.packageName == window.packageName
+                    } == true
+                }
+                .thenByDescending { snapshot.recentPackageByDisplay[it.displayId] == it.packageName }
                 .thenBy { it.displayId }
                 .thenBy { it.packageName },
         )

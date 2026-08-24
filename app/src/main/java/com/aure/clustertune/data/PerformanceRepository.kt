@@ -3,6 +3,18 @@ package com.aure.clustertune.data
 import android.util.Log
 import com.aure.clustertune.apps.CombinedAppProfileResolver
 import com.aure.clustertune.apps.VisibleAppProfileTarget
+import com.aure.clustertune.autotune.AdaptiveCpuPolicy
+import com.aure.clustertune.autotune.AdaptiveFrameMetrics
+import com.aure.clustertune.autotune.AdaptiveFrequencyCeilings
+import com.aure.clustertune.autotune.AdaptiveGpuDomain
+import com.aure.clustertune.autotune.AdaptiveThermalState
+import com.aure.clustertune.autotune.AdaptiveTuneBackend
+import com.aure.clustertune.autotune.AdaptiveTuneBackendSession
+import com.aure.clustertune.autotune.AdaptiveTuneEnvelope
+import com.aure.clustertune.autotune.AdaptiveTuneObservation
+import com.aure.clustertune.autotune.AdaptiveTuneRuntime
+import com.aure.clustertune.autotune.AdaptiveTuneSample
+import com.aure.clustertune.autotune.AdaptiveTuneSupersededException
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.CpuPolicyInfo
 import com.aure.clustertune.model.DEFAULT_PROFILE_SWITCH_HISTORY_LIMIT
@@ -17,10 +29,20 @@ import com.aure.clustertune.model.TunerState
 import com.aure.clustertune.model.EffectiveProfileSource
 import com.aure.clustertune.model.EffectiveProfileState
 import com.aure.clustertune.root.host.ApplyRequest
+import com.aure.clustertune.root.host.AutoSessionRequest
 import com.aure.clustertune.root.host.ClusterTuneHostClient
+import com.aure.clustertune.root.host.HostAutoSessionHandle
+import com.aure.clustertune.root.host.HostAutoSessionSnapshot
+import com.aure.clustertune.root.host.HostAutoSessionStatus
+import com.aure.clustertune.root.host.HostAutoTelemetry
+import com.aure.clustertune.root.host.HostCapabilities
 import com.aure.clustertune.root.host.HostState
+import com.aure.clustertune.root.host.CpuDomain as HostCpuDomain
+import com.aure.clustertune.root.host.GpuDomain as HostGpuDomain
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -32,6 +54,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 private data class StorageState(
@@ -76,7 +99,7 @@ class PerformanceRepository(
     private val settingsStorage: SettingsStorage,
     private val gpuDetector: GpuPolicyDetector? = null,
     private val hostClient: ClusterTuneHostClient,
-) {
+) : AdaptiveTuneBackend {
     class SupersededManualApplyException : Exception("Manual apply superseded")
 
     companion object {
@@ -114,7 +137,22 @@ class PerformanceRepository(
         val profileName: String,
     )
 
+    data class NormalProfileIdentity(
+        val profileId: String,
+        val profileName: String,
+        val source: EffectiveProfileSource,
+    )
+
     private val liveRefreshToken = MutableStateFlow(0)
+    private val autoTuneContexts = ConcurrentHashMap<String, AutoTuneContext>()
+
+    private data class AutoTuneContext(
+        val handle: HostAutoSessionHandle,
+        val policies: List<CpuPolicyInfo>,
+        val cpuDomains: List<HostCpuDomain>,
+        val gpuDomain: HostGpuDomain?,
+        val envelope: AdaptiveTuneEnvelope,
+    )
 
     @OptIn(ExperimentalCoroutinesApi::class)
     fun observeState(): Flow<TunerState> {
@@ -275,6 +313,299 @@ class PerformanceRepository(
             .flowOn(Dispatchers.IO)
     }
 
+    override suspend fun start(
+        packageName: String,
+        targetFps: Int,
+        generation: Long,
+    ): AdaptiveTuneBackendSession {
+        var startedHandle: HostAutoSessionHandle? = null
+        var hostStartAttempted = false
+        try {
+            return processApplyMutex.withLock {
+                if (!AdaptiveTuneRuntime.isCurrent(generation)) throw AdaptiveTuneSupersededException()
+                require(packageName.isNotBlank()) { "Auto Tune package is required" }
+
+                val state = observeState().first()
+                check(state.isPrivilegedHostAvailable && state.policies.isNotEmpty()) {
+                    "Privileged frequency control is unavailable"
+                }
+                ensureNormalBaselineLocked(state)
+                val normalTarget = resolvePersistedTarget(
+                    policies = state.policies,
+                    profiles = state.displayProfiles,
+                    profileId = profileStorage.lastAppliedDisplayProfileId.first(),
+                    values = profileStorage.lastValues.first(),
+                    gpuValue = profileStorage.lastGpuValue.first(),
+                    gpuStockFallback = state.gpuPolicy?.observedMaxFrequencyHz,
+                ) ?: error("Normal profile envelope is unavailable")
+
+                // A previous static or automatic app override must not become the new
+                // baseline. Reapply the persisted normal envelope before checkpointing.
+                val normalOutcome = applyValuesLocked(
+                    policies = state.policies,
+                    selectedValues = normalTarget.values,
+                    isReset = normalTarget.isReset,
+                    appliedDisplayProfileId = normalTarget.profileId,
+                    persistNormalState = false,
+                    allowObservedMaxValues = allowsObservedMaxValues(normalTarget, state.policies),
+                    gpuPolicy = state.gpuPolicy,
+                    selectedGpuMaxFrequencyHz = normalTarget.gpuValue,
+                ).getOrThrow()
+                if (!AdaptiveTuneRuntime.isCurrent(generation)) throw AdaptiveTuneSupersededException()
+
+                val hostCapabilities = withContext(Dispatchers.IO) {
+                    hostClient.readAutoCapabilities().getOrThrow()
+                }
+                check(hostCapabilities.autoSessionSupported) {
+                    hostCapabilities.unsupportedReason ?: "Frame telemetry is unavailable for this device"
+                }
+                val baseline = withContext(Dispatchers.IO) { hostClient.readSnapshot().getOrThrow() }
+                hostStartAttempted = true
+                val started = withContext(Dispatchers.IO) {
+                    hostClient.startAutoSession(
+                        AutoSessionRequest(
+                            packageName = packageName,
+                            targetFps = targetFps,
+                            heartbeatTimeoutMs = AUTO_TUNE_HEARTBEAT_TIMEOUT_MS,
+                        ),
+                    ).getOrThrow().also { snapshot ->
+                        if (snapshot.status == HostAutoSessionStatus.ACTIVE) {
+                            startedHandle = snapshot.handle
+                        }
+                    }
+                }
+                if (started.status != HostAutoSessionStatus.ACTIVE) {
+                    error(started.message ?: "Unable to start Auto Tune")
+                }
+                val handle = started.handle
+                    ?: error("Privileged host did not return an Auto Tune session")
+                check(handle.hostEpoch == baseline.epoch) { "Privileged host changed during Auto Tune startup" }
+                val startedState = started.state
+                    ?: error("Privileged host did not return the Auto Tune checkpoint state")
+                validateAutoSessionBaseline(
+                    policies = state.policies,
+                    gpuPolicy = state.gpuPolicy,
+                    capabilities = baseline.capabilities,
+                    hostState = startedState,
+                    expectedCpu = normalOutcome.actualValues.mapValues { it.value.toLong() },
+                    expectedGpu = normalOutcome.actualGpuMaxFrequencyHz?.toLong(),
+                )
+                val envelope = buildAdaptiveEnvelope(
+                    policies = state.policies,
+                    gpuPolicy = state.gpuPolicy,
+                    capabilities = baseline.capabilities,
+                    hostState = startedState,
+                )
+                if (!AdaptiveTuneRuntime.isCurrent(generation)) throw AdaptiveTuneSupersededException()
+
+                val policiesInHostOrder = baseline.capabilities.cpus.map { domain ->
+                    val policyId = domain.autoTunePolicyId()
+                    state.policies.single { it.id == policyId }
+                }
+                autoTuneContexts.clear()
+                autoTuneContexts[handle.sessionId] = AutoTuneContext(
+                    handle = handle,
+                    policies = policiesInHostOrder,
+                    cpuDomains = baseline.capabilities.cpus,
+                    gpuDomain = baseline.capabilities.gpu,
+                    envelope = envelope,
+                )
+                AdaptiveTuneBackendSession(
+                    sessionId = handle.sessionId,
+                    hostEpoch = handle.hostEpoch,
+                    generation = generation,
+                    envelope = envelope,
+                    frameBackend = hostCapabilities.frameBackend,
+                )
+            }
+        } catch (failure: Throwable) {
+            // A Binder reply can be lost after the privileged host accepted START.
+            // Once the transaction was attempted, conservatively stop by exact
+            // handle when available and by current-owner semantics otherwise.
+            if (hostStartAttempted) {
+                val cleanupFailure = withContext(NonCancellable) {
+                    runCatching {
+                        processApplyMutex.withLock {
+                            val handle = startedHandle
+                            // Without an exact handle, never let an older generation's
+                            // ambiguous START reply preempt a successor. A successor
+                            // session/profile apply preempts the old host owner atomically;
+                            // otherwise the host watchdog remains the fallback.
+                            if (handle == null && !AdaptiveTuneRuntime.isCurrent(generation)) {
+                                return@withLock
+                            }
+                            val stopped = withContext(Dispatchers.IO) {
+                                handle?.let { hostClient.stopAutoSession(it).getOrThrow() }
+                                    ?: hostClient.stopAutoSession().getOrThrow()
+                            }
+                            if (handle != null) {
+                                validateAutoTuneRestoration(stopped, handle.sessionId, handle.hostEpoch)
+                                autoTuneContexts[handle.sessionId]?.let { context ->
+                                    if (context.handle == handle) autoTuneContexts.remove(handle.sessionId, context)
+                                }
+                            } else {
+                                validateGlobalAutoTuneRestoration(stopped)
+                            }
+                            refreshLiveValues()
+                        }
+                    }.exceptionOrNull()
+                }
+                if (cleanupFailure != null) {
+                    throw IllegalStateException(
+                        "Auto Tune startup restoration failed: ${cleanupFailure.message.orEmpty()}",
+                        failure,
+                    ).also { it.addSuppressed(cleanupFailure) }
+                }
+            }
+            throw failure
+        }
+    }
+
+    override suspend fun heartbeat(session: AdaptiveTuneBackendSession) {
+        requireCurrentAutoTuneSession(session)
+        val snapshot = withContext(Dispatchers.IO) {
+            hostClient.heartbeatAutoSession(session.hostHandle()).getOrThrow()
+        }
+        requireActiveAutoTuneSnapshot(snapshot.status, snapshot.message)
+    }
+
+    override suspend fun sample(
+        session: AdaptiveTuneBackendSession,
+        afterSequence: Long,
+    ): Pair<Long, AdaptiveTuneObservation> {
+        val context = requireCurrentAutoTuneSession(session)
+        val snapshot = withContext(Dispatchers.IO) {
+            hostClient.readAutoTelemetry(session.hostHandle(), afterSequence).getOrThrow()
+        }
+        requireActiveAutoTuneSnapshot(snapshot.status, snapshot.message)
+        val telemetry = snapshot.telemetry ?: error("Privileged host returned no Auto Tune telemetry")
+        return telemetry.sequence to AdaptiveTuneObservation(
+            sample = telemetry.toAdaptiveTuneSample(context.policies),
+            frameBackend = telemetry.frameBackend,
+        )
+    }
+
+    override suspend fun apply(
+        session: AdaptiveTuneBackendSession,
+        ceilings: AdaptiveFrequencyCeilings,
+    ) {
+        processApplyMutex.withLock {
+            val context = requireCurrentAutoTuneSession(session)
+            validateAdaptiveCeilings(ceilings, context.envelope)
+            val gpuTarget = context.envelope.gpu?.let {
+                ceilings.gpuHz ?: error("Auto Tune GPU ceiling is missing")
+            }
+            val request = ApplyRequest(
+                cpuMax = context.cpuDomains.map { domain ->
+                    val policyId = domain.autoTunePolicyId()
+                    ceilings.cpuKHz[policyId]
+                        ?: error("Auto Tune CPU ceiling is missing for ${domain.id}")
+                },
+                gpuMax = gpuTarget,
+                resetToStock = false,
+                cpuIds = context.cpuDomains.map(HostCpuDomain::id),
+                gpuId = gpuTarget?.let { context.gpuDomain?.id },
+                gpuMaxPath = gpuTarget?.let { context.gpuDomain?.maxPath },
+            )
+            val snapshot = withContext(Dispatchers.IO) {
+                hostClient.applyAutoStep(
+                    handle = context.handle,
+                    request = request,
+                ).getOrThrow()
+            }
+            requireActiveAutoTuneSnapshot(snapshot.status, snapshot.message)
+            val appliedState = snapshot.state ?: error("Privileged host returned no Auto Tune apply state")
+            check(appliedState.cpuMax == request.cpuMax && appliedState.gpuMax == request.gpuMax) {
+                "Privileged host applied a different Auto Tune ceiling"
+            }
+            if (!AdaptiveTuneRuntime.isCurrent(session.generation)) {
+                val stopped = withContext(Dispatchers.IO) {
+                    hostClient.stopAutoSession(context.handle).getOrThrow()
+                }
+                validateAutoTuneRestoration(stopped, context.handle.sessionId, context.handle.hostEpoch)
+                autoTuneContexts.remove(session.sessionId, context)
+                refreshLiveValues()
+                throw AdaptiveTuneSupersededException("Auto Tune step was superseded")
+            }
+        }
+    }
+
+    override suspend fun stop(session: AdaptiveTuneBackendSession) {
+        processApplyMutex.withLock {
+            val context = autoTuneContexts[session.sessionId]
+            val snapshot = withContext(Dispatchers.IO) {
+                hostClient.stopAutoSession(context?.handle ?: session.hostHandle()).getOrThrow()
+            }
+            validateAutoTuneRestoration(snapshot, session.sessionId, session.hostEpoch)
+            if (context != null) autoTuneContexts.remove(session.sessionId, context)
+            refreshLiveValues()
+        }
+    }
+
+    /**
+     * Invalidates this process' owner before waiting for hardware serialization, then
+     * idempotently restores the exact automatic session owned by this repository.
+     */
+    suspend fun ensureAutoTuneStopped(
+        reason: String,
+        coordinatorLease: Long,
+    ): Result<Unit> {
+        if (!AdaptiveTuneRuntime.invalidateIfCoordinatorCurrent(coordinatorLease, reason)) {
+            return Result.success(Unit)
+        }
+        return try {
+            processApplyMutex.withLock {
+                if (!AdaptiveTuneRuntime.isCoordinatorCurrent(coordinatorLease)) {
+                    return@withLock Result.success(Unit)
+                }
+                stopAutoTuneSessionLocked(forceGlobalPreemption = false)
+                Result.success(Unit)
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Throwable) {
+            val detail = failure.message?.takeIf(String::isNotBlank) ?: failure.javaClass.simpleName
+            AdaptiveTuneRuntime.reportCleanupFailureIfCoordinatorCurrent(
+                coordinatorLease,
+                "Auto Tune restoration failed: $detail".take(240),
+            )
+            Result.failure(failure)
+        }
+    }
+
+    private suspend fun stopAutoTuneSessionLocked(forceGlobalPreemption: Boolean) {
+        val knownContexts = autoTuneContexts.values.toList()
+        check(knownContexts.size <= 1) { "Multiple Auto Tune sessions are locally owned" }
+        val known = knownContexts.singleOrNull()
+        if (known == null && !forceGlobalPreemption) return
+        val stopped = withContext(Dispatchers.IO) {
+            if (!forceGlobalPreemption) {
+                checkNotNull(known)
+                hostClient.stopAutoSession(known.handle).getOrThrow()
+            } else {
+                // Sleep must use the no-ID form because a service-owned repository
+                // can be distinct from the coordinator-owned repository.
+                hostClient.stopAutoSession().getOrThrow()
+            }
+        }
+        if (known != null) {
+            validateAutoTuneRestoration(stopped, known.handle.sessionId, known.handle.hostEpoch)
+            autoTuneContexts.remove(known.handle.sessionId, known)
+        } else {
+            validateGlobalAutoTuneRestoration(stopped)
+        }
+        refreshLiveValues()
+    }
+
+    private fun requireCurrentAutoTuneSession(session: AdaptiveTuneBackendSession): AutoTuneContext {
+        if (!AdaptiveTuneRuntime.isCurrent(session.generation)) {
+            throw AdaptiveTuneSupersededException("Auto Tune session was superseded")
+        }
+        val context = autoTuneContexts[session.sessionId] ?: error("Auto Tune session is no longer owned")
+        check(context.handle.hostEpoch == session.hostEpoch) { "Auto Tune host was replaced" }
+        return context
+    }
+
     suspend fun applyValues(
         policies: List<CpuPolicyInfo>,
         selectedValues: Map<Int, Int>,
@@ -331,6 +662,7 @@ class PerformanceRepository(
         manualRequestToken: Long? = null,
         onHardwareApplied: (suspend (ApplyOutcome) -> Unit)? = null,
     ): Result<ApplyOutcome> {
+        AdaptiveTuneRuntime.invalidate("A fixed profile superseded Auto Tune")
         return processApplyMutex.withLock {
             if (manualRequestToken != null && !isLatestManualRequest(manualRequestToken)) {
                 return@withLock Result.failure(SupersededManualApplyException())
@@ -503,35 +835,45 @@ class PerformanceRepository(
 
 
     suspend fun applySleepProfile(profileId: String): Result<ApplyOutcome> {
-        val resultAndProfile = processApplyMutex.withLock {
-            val state = observeState().first()
-            if (!state.isPrivilegedHostAvailable) {
-                return@withLock Pair<Result<ApplyOutcome>, PerformanceProfile?>(
-                    Result.failure(IllegalStateException("Privileged host unavailable")),
-                    null,
-                )
+        // Invalidate before contending for the process-wide apply lock so an
+        // in-flight controller cannot enqueue another step ahead of sleep.
+        AdaptiveTuneRuntime.invalidate("Device sleep superseded Auto Tune")
+        val resultAndProfile = try {
+            processApplyMutex.withLock {
+                stopAutoTuneSessionLocked(forceGlobalPreemption = true)
+                val state = observeState().first()
+                if (!state.isPrivilegedHostAvailable) {
+                    return@withLock Pair<Result<ApplyOutcome>, PerformanceProfile?>(
+                        Result.failure(IllegalStateException("Privileged host unavailable")),
+                        null,
+                    )
+                }
+                if (state.policies.isEmpty()) return@withLock null
+                val sleepProfile = state.displayProfiles.firstOrNull { profile -> profile.id == profileId }
+                    ?: return@withLock null
+                ensureNormalBaselineLocked(state)
+                val currentValues = state.actualValues
+                val gpuPolicy = state.gpuPolicy
+                val currentGpu = state.actualGpuMaxFrequencyHz
+                // SCREEN_OFF can be delivered repeatedly while the display is
+                // transitioning. Preserve the first pre-sleep snapshot until the
+                // corresponding wake restore consumes it.
+                if (profileStorage.sleepRestoreValues.first().isEmpty()) {
+                    profileStorage.persistSleepRestoreState(
+                        currentValues,
+                        state.activeDisplayProfileId ?: state.lastAppliedDisplayProfileId,
+                        currentGpu,
+                        gpuKnown = gpuPolicy != null && currentGpu != null,
+                        effectiveProfileState = profileStorage.effectiveProfileState.first(),
+                    )
+                }
+                val sleepGpuTarget = if (currentGpu == null) null else sleepProfile.gpuMaxFrequencyHz
+                applyValuesLocked(state.policies, sleepProfile.maxFrequencies, sleepProfile.id == ProfileStateResolver.STOCK_PROFILE_ID, sleepProfile.id, false, gpuPolicy = gpuPolicy, selectedGpuMaxFrequencyHz = sleepGpuTarget) to sleepProfile
             }
-            if (state.policies.isEmpty()) return@withLock null
-            val sleepProfile = state.displayProfiles.firstOrNull { profile -> profile.id == profileId }
-                ?: return@withLock null
-            ensureNormalBaselineLocked(state)
-            val currentValues = state.actualValues
-            val gpuPolicy = state.gpuPolicy
-            val currentGpu = state.actualGpuMaxFrequencyHz
-            // SCREEN_OFF can be delivered repeatedly while the display is
-            // transitioning. Preserve the first pre-sleep snapshot until the
-            // corresponding wake restore consumes it.
-            if (profileStorage.sleepRestoreValues.first().isEmpty()) {
-                profileStorage.persistSleepRestoreState(
-                    currentValues,
-                    state.activeDisplayProfileId ?: state.lastAppliedDisplayProfileId,
-                    currentGpu,
-                    gpuKnown = gpuPolicy != null && currentGpu != null,
-                    effectiveProfileState = profileStorage.effectiveProfileState.first(),
-                )
-            }
-            val sleepGpuTarget = if (currentGpu == null) null else sleepProfile.gpuMaxFrequencyHz
-            applyValuesLocked(state.policies, sleepProfile.maxFrequencies, sleepProfile.id == ProfileStateResolver.STOCK_PROFILE_ID, sleepProfile.id, false, gpuPolicy = gpuPolicy, selectedGpuMaxFrequencyHz = sleepGpuTarget) to sleepProfile
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Throwable) {
+            return Result.failure(failure)
         } ?: return Result.failure(IllegalStateException("Sleep profile is unavailable"))
         val result = resultAndProfile.first
         val sleepProfile = resultAndProfile.second ?: return result
@@ -548,6 +890,12 @@ class PerformanceRepository(
 
     suspend fun restorePreSleepState(): Result<ApplyOutcome> {
         val resultAndIdentity = processApplyMutex.withLock {
+            val restoreValues = profileStorage.sleepRestoreValues.first()
+            // SCREEN_ON, USER_PRESENT, and a sticky-service reconciliation can all
+            // report the same wake. A duplicate must not invalidate an Auto Tune
+            // session that already resumed after the first restore.
+            if (restoreValues.isEmpty()) return@withLock null
+            AdaptiveTuneRuntime.invalidate("Device wake profile restoration superseded Auto Tune")
             val state = observeState().first()
             if (!state.isPrivilegedHostAvailable) {
                 return@withLock SleepRestoreApply(
@@ -558,7 +906,6 @@ class PerformanceRepository(
             }
             val policies = state.policies
             if (policies.isEmpty()) return@withLock null
-            val restoreValues = profileStorage.sleepRestoreValues.first()
             // A wake broadcast can be delivered more than once. The snapshot
             // is consumed only after a successful restore, so an empty value
             // set means there is no pending sleep transition to restore. Do
@@ -622,6 +969,7 @@ class PerformanceRepository(
     }
 
     suspend fun applyPersistedLastValuesOnBoot(): Result<ApplyOutcome> {
+        AdaptiveTuneRuntime.invalidate("Boot profile restoration superseded Auto Tune")
         var effectiveIdentity: Pair<String, String>? = null
         val result = processApplyMutex.withLock {
             val state = observeState().first()
@@ -887,6 +1235,7 @@ class PerformanceRepository(
     suspend fun applyVisibleAppProfilesTemporarily(
         assignments: List<AppProfileAssignment>,
     ): Result<AppProfileApplyOutcome> {
+        AdaptiveTuneRuntime.invalidate("A fixed app profile superseded Auto Tune")
         return processApplyMutex.withLock {
             val uniqueAssignments = assignments
                 .filter { it.hasValidTarget && it.packageName.isNotBlank() }
@@ -983,6 +1332,7 @@ class PerformanceRepository(
     }
 
     suspend fun restoreNormalProfileTemporarilyWithIdentity(): Result<TemporaryRestoreOutcome> {
+        AdaptiveTuneRuntime.invalidate("Normal profile restoration superseded Auto Tune")
         return processApplyMutex.withLock {
             val state = observeState().first()
             if (!state.isPrivilegedHostAvailable || state.policies.isEmpty()) return@withLock Result.failure(IllegalStateException("Profile automation is unavailable"))
@@ -1010,6 +1360,44 @@ class PerformanceRepository(
                 }
                 TemporaryRestoreOutcome(hardware, profileId, profileName)
             }
+        }
+    }
+
+    /**
+     * Reconciles the persisted presentation after host-side Auto Tune restoration.
+     * No hardware is read or written. A newer manual, sleep, or normal identity is
+     * preserved by conditionally updating only an app/composite effective state.
+     */
+    suspend fun restoreAutoTuneEffectiveIdentity(
+        trigger: String,
+        coordinatorLease: Long,
+    ): Result<NormalProfileIdentity?> {
+        return try {
+            processApplyMutex.withLock {
+                if (!AdaptiveTuneRuntime.isCoordinatorCurrent(coordinatorLease)) {
+                    return@withLock Result.success(null)
+                }
+                val effective = profileStorage.effectiveProfileState.first()
+                if (effective?.source !in setOf(EffectiveProfileSource.APP, EffectiveProfileSource.COMBINED)) {
+                    return@withLock Result.success(null)
+                }
+                val identity = resolveNormalProfileIdentity(
+                    lastAppliedProfileId = profileStorage.lastAppliedDisplayProfileId.first(),
+                    storedProfiles = profileStorage.profiles.first(),
+                    history = profileStorage.profileSwitchHistory.first(),
+                )
+                logProfileSwitch(
+                    profileId = identity.profileId,
+                    profileName = identity.profileName,
+                    trigger = trigger,
+                    effectiveSource = identity.source,
+                )
+                Result.success(identity)
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: Throwable) {
+            Result.failure(failure)
         }
     }
 
@@ -1224,6 +1612,260 @@ internal fun supportedAppProfileAssignments(
                 (assignment.isCustom && assignment.customMaxFrequencies.keys.all { it in supportedPolicyIds }) ||
                 assignment.profileId in supportedProfileIds)
     }
+}
+
+internal fun resolveNormalProfileIdentity(
+    lastAppliedProfileId: String?,
+    storedProfiles: List<PerformanceProfile>,
+    history: List<ProfileSwitchHistoryEntry>,
+): PerformanceRepository.NormalProfileIdentity {
+    val profileId = lastAppliedProfileId ?: ProfileStateResolver.MANUAL_PROFILE_ID
+    val source = when (profileId) {
+        ProfileStateResolver.STOCK_PROFILE_ID -> EffectiveProfileSource.STOCK
+        ProfileStateResolver.MANUAL_PROFILE_ID -> EffectiveProfileSource.MANUAL
+        else -> EffectiveProfileSource.NORMAL
+    }
+    val profileName = when (source) {
+        EffectiveProfileSource.STOCK -> "Stock"
+        EffectiveProfileSource.MANUAL -> "Manual"
+        else -> storedProfiles.firstOrNull { it.id == profileId }?.name
+            ?: history.firstOrNull { it.profileId == profileId }?.profileName
+            ?: "Previous profile"
+    }
+    return PerformanceRepository.NormalProfileIdentity(profileId, profileName, source)
+}
+
+private const val AUTO_TUNE_HEARTBEAT_TIMEOUT_MS = 15_000L
+private val AUTO_TUNE_RELEVANT_THERMAL_TYPE = Regex(
+    "cpu|gpu|soc|ap|cluster|little|big|silver|gold",
+    RegexOption.IGNORE_CASE,
+)
+
+private fun AdaptiveTuneBackendSession.hostHandle() = HostAutoSessionHandle(sessionId, hostEpoch)
+
+private fun requireActiveAutoTuneSnapshot(status: HostAutoSessionStatus, message: String?) {
+    check(status == HostAutoSessionStatus.ACTIVE) {
+        message ?: "Auto Tune host session is $status"
+    }
+}
+
+internal fun validateAutoTuneRestoration(
+    snapshot: HostAutoSessionSnapshot,
+    sessionId: String,
+    hostEpoch: Long,
+) {
+    check(
+        snapshot.sessionId == sessionId &&
+            snapshot.hostEpoch == hostEpoch &&
+            snapshot.status in setOf(HostAutoSessionStatus.STOPPED, HostAutoSessionStatus.EXPIRED) &&
+            snapshot.restorationAttempted && snapshot.restorationComplete,
+    ) {
+        snapshot.message ?: "Auto Tune restoration could not be verified"
+    }
+}
+
+internal fun validateGlobalAutoTuneRestoration(snapshot: HostAutoSessionSnapshot) {
+    val terminal = snapshot.status in setOf(
+        HostAutoSessionStatus.STOPPED,
+        HostAutoSessionStatus.EXPIRED,
+    )
+    val validEnvelope = if (snapshot.sessionId == null) {
+        snapshot.status == HostAutoSessionStatus.STOPPED && !snapshot.restorationAttempted
+    } else {
+        snapshot.restorationAttempted
+    }
+    check(terminal && snapshot.restorationComplete && validEnvelope) {
+        snapshot.message ?: "Global Auto Tune restoration could not be verified"
+    }
+}
+
+private fun HostCpuDomain.autoTunePolicyId(): Int =
+    id.removePrefix("policy").toIntOrNull()
+        ?: error("Invalid Auto Tune CPU domain id: $id")
+
+internal fun validateAutoSessionBaseline(
+    policies: List<CpuPolicyInfo>,
+    gpuPolicy: GpuPolicyInfo?,
+    capabilities: HostCapabilities,
+    hostState: HostState,
+    expectedCpu: Map<Int, Long>,
+    expectedGpu: Long?,
+) {
+    require(
+        hostState.cpuMax.size == capabilities.cpus.size &&
+            hostState.cpuMin.size == capabilities.cpus.size,
+    ) {
+        "Auto Tune host returned an incomplete CPU checkpoint"
+    }
+    val policiesById = policies.associateBy(CpuPolicyInfo::id)
+    require(policiesById.size == policies.size && policies.size == capabilities.cpus.size) {
+        "Auto Tune CPU topology changed during startup"
+    }
+    capabilities.cpus.forEachIndexed { index, domain ->
+        val policyId = domain.autoTunePolicyId()
+        val policy = policiesById[policyId]
+            ?: throw IllegalArgumentException("Auto Tune CPU domain ${domain.id} is unavailable")
+        require(
+            domain.maxPath == policy.scalingMaxPath &&
+                domain.minPath == policy.scalingMinPath,
+        ) { "Auto Tune CPU paths changed for ${domain.id}" }
+        require(hostState.cpuMax[index] == expectedCpu[policyId]) {
+            "Auto Tune CPU baseline changed before checkpointing for ${domain.id}"
+        }
+        require(hostState.cpuMin[index] in 1..hostState.cpuMax[index]) {
+            "Auto Tune CPU minimum is invalid for ${domain.id}"
+        }
+    }
+    val hostGpu = capabilities.gpu
+    require((hostGpu == null) == (gpuPolicy == null)) {
+        "Auto Tune GPU topology changed during startup"
+    }
+    if (hostGpu != null) {
+        require(hostGpu.maxPath == gpuPolicy?.maxFrequencyPath) {
+            "Auto Tune GPU path changed during startup"
+        }
+        require(hostState.gpuMax != null && hostState.gpuMax == expectedGpu) {
+            "Auto Tune GPU baseline changed before checkpointing"
+        }
+        if (hostGpu.minPath != null) {
+            require(hostState.gpuMin != null && hostState.gpuMin in 1..hostState.gpuMax) {
+                "Auto Tune GPU minimum is invalid"
+            }
+        }
+    } else {
+        require(hostState.gpuMax == null && expectedGpu == null) {
+            "Auto Tune GPU checkpoint is inconsistent"
+        }
+    }
+}
+
+internal fun buildAdaptiveEnvelope(
+    policies: List<CpuPolicyInfo>,
+    gpuPolicy: GpuPolicyInfo?,
+    capabilities: HostCapabilities,
+    hostState: HostState,
+): AdaptiveTuneEnvelope {
+    require(
+        policies.size == capabilities.cpus.size &&
+            hostState.cpuMax.size == capabilities.cpus.size &&
+            hostState.cpuMin.size == capabilities.cpus.size,
+    ) {
+        "Auto Tune CPU topology changed during startup"
+    }
+    val policiesById = policies.associateBy(CpuPolicyInfo::id)
+    require(policiesById.size == policies.size) { "Auto Tune CPU policy ids are duplicated" }
+    val cpu = capabilities.cpus.mapIndexed { index, domain ->
+        val policyId = domain.autoTunePolicyId()
+        val policy = policiesById[policyId]
+            ?: throw IllegalArgumentException("Auto Tune CPU domain ${domain.id} is unavailable")
+        require(domain.maxPath == policy.scalingMaxPath && domain.minPath == policy.scalingMinPath) {
+            "Auto Tune CPU paths changed for ${domain.id}"
+        }
+        val base = hostState.cpuMax[index].takeIf { it > 0L }
+            ?: error("Auto Tune CPU baseline is unavailable for policy${policy.id}")
+        val floor = hostState.cpuMin[index].takeIf { it > 0L && it <= base }
+            ?: error("Auto Tune CPU minimum is unavailable for policy${policy.id}")
+        val available = domain.supportedFrequencies.ifEmpty {
+            policy.supportedFrequencies.map(Int::toLong)
+        }
+        AdaptiveCpuPolicy(
+            policyId = policy.id,
+            availableCeilingsKHz = available
+                .filter { it in floor..base }
+                .distinct()
+                .sorted(),
+            baseCeilingKHz = base,
+        )
+    }
+    val gpu = capabilities.gpu?.let { domain ->
+        val policy = gpuPolicy
+            ?: throw IllegalArgumentException("Auto Tune GPU topology changed during startup")
+        require(domain.maxPath == policy.maxFrequencyPath) {
+            "Auto Tune GPU path changed during startup"
+        }
+        val base = hostState.gpuMax?.takeIf { it > 0L }
+            ?: error("Auto Tune GPU baseline is unavailable")
+        val floor = if (domain.minPath != null) {
+            hostState.gpuMin?.takeIf { it > 0L && it <= base }
+                ?: error("Auto Tune GPU minimum is unavailable")
+        } else {
+            1L
+        }
+        val available = domain.supportedFrequencies.ifEmpty {
+            policy.supportedFrequenciesHz.map(Int::toLong)
+        }
+        AdaptiveGpuDomain(
+            id = domain.id,
+            availableCeilingsHz = available
+                .filter { it in floor..base }
+                .distinct()
+                .sorted(),
+            baseCeilingHz = base,
+        )
+    }
+    require(capabilities.gpu != null || gpuPolicy == null) {
+        "Auto Tune GPU topology changed during startup"
+    }
+    return AdaptiveTuneEnvelope(cpuPolicies = cpu, gpu = gpu)
+}
+
+internal fun validateAdaptiveCeilings(
+    ceilings: AdaptiveFrequencyCeilings,
+    envelope: AdaptiveTuneEnvelope,
+) {
+    require(ceilings.cpuKHz.keys == envelope.cpuPolicies.mapTo(mutableSetOf()) { it.policyId }) {
+        "Auto Tune CPU ceiling set does not match the session"
+    }
+    envelope.cpuPolicies.forEach { policy ->
+        val value = ceilings.cpuKHz.getValue(policy.policyId)
+        val allowed = (policy.availableCeilingsKHz + policy.baseCeilingKHz).toSet()
+        require(value in allowed && value <= policy.baseCeilingKHz) {
+            "Auto Tune CPU ceiling exceeds or is outside the base envelope"
+        }
+    }
+    val gpu = envelope.gpu
+    if (gpu == null) {
+        require(ceilings.gpuHz == null) { "Auto Tune GPU ceiling was supplied without a GPU domain" }
+    } else {
+        val value = ceilings.gpuHz ?: error("Auto Tune GPU ceiling is missing")
+        require(value in (gpu.availableCeilingsHz + gpu.baseCeilingHz).toSet() && value <= gpu.baseCeilingHz) {
+            "Auto Tune GPU ceiling exceeds or is outside the base envelope"
+        }
+    }
+}
+
+internal fun HostAutoTelemetry.toAdaptiveTuneSample(
+    policies: List<CpuPolicyInfo>,
+): AdaptiveTuneSample {
+    val frames = fpsMilli?.takeIf { it > 0 && frameConfidencePermille >= 250 }?.let { fps ->
+        AdaptiveFrameMetrics(
+            fps = fps / 1_000.0,
+            p95FrameTimeMillis = frameTimeP95Nanos?.takeIf { it > 0L }?.div(1_000_000.0),
+            slowFrameRatio = slowFrameRatioPermille?.coerceIn(0, 1000)?.div(1_000.0),
+            isStale = frameStale || frameConfidencePermille < 250,
+        )
+    }
+    val cpu = policies.mapIndexed { index, policy ->
+        policy.id to cpuLoadPermille.getOrNull(index)?.coerceIn(0, 1000)?.div(1_000.0)
+    }.toMap()
+    val relevantTemperatures = thermal.asSequence()
+        .filter { AUTO_TUNE_RELEVANT_THERMAL_TYPE.containsMatchIn(it.type) }
+        .map { it.temperatureMilliCelsius }
+        .filter { it in -200_000L..300_000L }
+        .toList()
+    val maximumTemperature = relevantTemperatures.maxOrNull()
+    val thermalState = when {
+        maximumTemperature != null && maximumTemperature >= 85_000L -> AdaptiveThermalState.SEVERE
+        maximumTemperature != null && maximumTemperature >= 75_000L -> AdaptiveThermalState.MODERATE
+        else -> AdaptiveThermalState.NORMAL
+    }
+    return AdaptiveTuneSample(
+        timestampNanos = timestampNanos,
+        frames = frames,
+        cpuLoad = cpu,
+        gpuBusy = gpuBusyPermille?.coerceIn(0, 1000)?.div(1_000.0),
+        thermalState = thermalState,
+    )
 }
 
 private fun Long.toIntChecked(): Int {

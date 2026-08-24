@@ -12,9 +12,18 @@ data class VisibleAppWindow(
     val isActive: Boolean = false,
 )
 
+data class RecentAppIdentity(
+    val displayId: Int,
+    val packageName: String,
+)
+
 data class VisibleAppSnapshot(
     val windowsByDisplay: Map<Int, List<VisibleAppWindow>> = emptyMap(),
     val isInteractive: Boolean = false,
+    /** Last real window-state event per display, used when OEM focus flags are ambiguous. */
+    val recentPackageByDisplay: Map<Int, String> = emptyMap(),
+    /** Globally latest real window-state event, used to break equal cross-display focus ties. */
+    val mostRecentAppIdentity: RecentAppIdentity? = null,
 ) {
     val packages: Set<String> get() = windowsByDisplay.values.flatten().mapTo(linkedSetOf()) { it.packageName }
 
@@ -32,7 +41,9 @@ internal fun mergeEventFallbackWindows(
 ): Map<Int, List<VisibleAppWindow>> {
     val merged = observed.mapValuesTo(mutableMapOf()) { (_, windows) -> windows.toMutableList() }
     eventFallbacks.forEach { (displayId, packageName) ->
-        val windows = merged.getOrPut(displayId) { mutableListOf() }
+        // A completely missing display must flow through the disappearance
+        // tracker so a closed/crashed app expires after its grace period.
+        val windows = merged[displayId]?.takeIf { it.isNotEmpty() } ?: return@forEach
         val hasRealWindow = windows.any { it.packageName !in obscuringPackages }
         if (!hasRealWindow && windows.none { it.packageName == packageName }) {
             windows += VisibleAppWindow(
