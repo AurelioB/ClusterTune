@@ -47,6 +47,25 @@ class HostAutoSessionTest {
     }
 
     @Test
+    fun `late session stop cannot overwrite a manual profile applied after preemption`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        fixture.controller.applyStep(started.sessionId!!, started.hostEpoch, request(cpu = 600))
+
+        val preempted = requireNotNull(fixture.controller.stopCurrent("manual profile preemption"))
+        assertTrue(preempted.restorationComplete)
+        assertEquals("800", fixture.fs.values["max"])
+
+        HostApplyEngine(fixture.fs).applyOrThrow(capabilities(withGpu = false), request(cpu = 400))
+        assertEquals("400", fixture.fs.values["max"])
+
+        val lateStop = fixture.controller.stop(started.sessionId, started.hostEpoch)
+
+        assertEquals(preempted, lateStop)
+        assertEquals("400", fixture.fs.values["max"])
+    }
+
+    @Test
     fun `failed restoration stays latched and explicit stop retries the original checkpoint`() {
         val fixture = fixture()
         val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
