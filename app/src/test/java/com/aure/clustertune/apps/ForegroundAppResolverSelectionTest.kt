@@ -6,6 +6,39 @@ import org.junit.Test
 
 class ForegroundAppResolverSelectionTest {
     @Test
+    fun packageSpecificSelectionFindsRequestedVisibleApp() {
+        val snapshot = VisibleAppSnapshot(
+            windowsByDisplay = mapOf(
+                0 to listOf(
+                    VisibleAppWindow("game", 0, isActive = true),
+                    VisibleAppWindow("frontend", 0, isFocused = true, isActive = true),
+                ),
+            ),
+        )
+
+        assertEquals(
+            VisibleAppWindow("game", 0, isActive = true),
+            selectVisibleAppWindowForPackage(snapshot, packageName = "game"),
+        )
+    }
+
+    @Test
+    fun packageSpecificSelectionCanBeRestrictedToOneDisplay() {
+        val snapshot = VisibleAppSnapshot(
+            windowsByDisplay = mapOf(
+                0 to listOf(VisibleAppWindow("game", 0, isFocused = true)),
+                2 to listOf(VisibleAppWindow("game", 2, isActive = true)),
+            ),
+        )
+
+        assertEquals(
+            2,
+            selectVisibleAppWindowForPackage(snapshot, "game", targetDisplayId = 2)?.displayId,
+        )
+        assertNull(selectVisibleAppWindowForPackage(snapshot, "other", targetDisplayId = 2))
+    }
+
+    @Test
     fun targetDisplayGameBeatsFocusedFrontendOnAnotherDisplay() {
         val snapshot = VisibleAppSnapshot(
             windowsByDisplay = mapOf(

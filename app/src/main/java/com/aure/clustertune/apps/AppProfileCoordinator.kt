@@ -184,7 +184,11 @@ class AppProfileCoordinator(
             excludedPackages = excludedPackages,
         )
 
-        val desiredAutoTuneSignature = plan.autoTuneAssignment?.toAutoTuneSignature()
+        val desiredAutoTuneSignature = plan.autoTuneAssignment?.toAutoTuneSignature(
+            effectiveTargetFps = requireNotNull(plan.effectiveAutoTuneTargetFps),
+            displayId = requireNotNull(plan.foregroundDisplayId),
+            displayRefreshRateFps = plan.foregroundDisplayRefreshRateFps,
+        )
         if (input.configuration.effectiveState?.source == EffectiveProfileSource.SLEEP) {
             pausedAutoTuneSignature = activeAutoTune?.signature ?: desiredAutoTuneSignature
             sleepPauseActive = true
@@ -213,9 +217,9 @@ class AppProfileCoordinator(
             pausedAutoTuneSignature = desiredAutoTuneSignature
             stopAutoTune("A fixed profile superseded Auto Tune")
         }
-        plan.autoTuneAssignment?.let { assignment ->
+        if (plan.autoTuneAssignment != null) {
             if (pausedAutoTuneSignature != desiredAutoTuneSignature) {
-                startAutoTuneIfNeeded(assignment)
+                startAutoTuneIfNeeded(requireNotNull(desiredAutoTuneSignature))
             }
             legacyEffectiveStateUnknown = false
             return
@@ -267,9 +271,8 @@ class AppProfileCoordinator(
         }
     }
 
-    private suspend fun startAutoTuneIfNeeded(assignment: AppProfileAssignment) {
+    private suspend fun startAutoTuneIfNeeded(signature: AutoTuneSignature) {
         if (terminated || !isCoordinatorCurrent()) return
-        val signature = assignment.toAutoTuneSignature()
         if (activeAutoTune?.signature == signature) return
 
         if (!stopAutoTune(
@@ -673,7 +676,10 @@ class AppProfileCoordinator(
     private data class AutoTuneSignature(
         val packageName: String,
         val appLabel: String,
+        val configuredTargetFps: Int,
         val targetFps: Int,
+        val displayId: Int,
+        val displayRefreshRateFps: Int?,
     )
 
     private data class ActiveAutoTune(
@@ -682,10 +688,17 @@ class AppProfileCoordinator(
         var confirmed: Boolean = false,
     )
 
-    private fun AppProfileAssignment.toAutoTuneSignature() = AutoTuneSignature(
+    private fun AppProfileAssignment.toAutoTuneSignature(
+        effectiveTargetFps: Int,
+        displayId: Int,
+        displayRefreshRateFps: Int?,
+    ) = AutoTuneSignature(
         packageName = packageName,
         appLabel = appLabel,
-        targetFps = requireNotNull(autoTuneTargetFps),
+        configuredTargetFps = requireNotNull(autoTuneTargetFps),
+        targetFps = effectiveTargetFps,
+        displayId = displayId,
+        displayRefreshRateFps = displayRefreshRateFps,
     )
 
     private companion object {

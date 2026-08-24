@@ -32,6 +32,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.aure.clustertune.apps.VisibleAppWindowEvents
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.overlay.OverlayHostService
 import com.aure.clustertune.overlay.OverlayPermission
@@ -112,6 +113,7 @@ class MainActivity : ComponentActivity() {
                     val applyingProfileId = viewModel.applyingProfileId.collectAsStateWithLifecycle().value
                     val launchableApps = viewModel.launchableApps.collectAsStateWithLifecycle().value
                     val recentActiveApps = viewModel.recentActiveApps.collectAsStateWithLifecycle().value
+                    val visibleAppSnapshot = VisibleAppWindowEvents.snapshots.collectAsStateWithLifecycle().value
                     var showSettings by rememberSaveable { mutableStateOf(false) }
                     var showSupport by rememberSaveable { mutableStateOf(false) }
                     BackHandler(enabled = showSettings || showSupport) {
@@ -299,6 +301,7 @@ class MainActivity : ComponentActivity() {
                             onMoveProfile = viewModel::moveProfile,
                             launchableApps = launchableApps,
                             recentActiveApps = recentActiveApps,
+                            visibleAppSnapshot = visibleAppSnapshot,
                             onSaveAppProfileAssignment = { packageName, appLabel, profileId, customMaxFrequencies, customGpuMaxFrequencyHz, autoTuneTargetFps ->
                                 viewModel.saveAppProfileAssignment(
                                     packageName = packageName,

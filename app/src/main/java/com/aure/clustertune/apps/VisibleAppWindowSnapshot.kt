@@ -3,6 +3,7 @@ package com.aure.clustertune.apps
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.math.roundToInt
 
 /** A visible application window, grouped by physical display. */
 data class VisibleAppWindow(
@@ -24,11 +25,20 @@ data class VisibleAppSnapshot(
     val recentPackageByDisplay: Map<Int, String> = emptyMap(),
     /** Globally latest real window-state event, used to break equal cross-display focus ties. */
     val mostRecentAppIdentity: RecentAppIdentity? = null,
+    /** Nominal current refresh rate for each connected display, rounded to whole FPS. */
+    val refreshRateFpsByDisplay: Map<Int, Int> = emptyMap(),
 ) {
     val packages: Set<String> get() = windowsByDisplay.values.flatten().mapTo(linkedSetOf()) { it.packageName }
 
     companion object { val Empty = VisibleAppSnapshot() }
 }
+
+/** Converts values such as 59.94 Hz to their nominal whole-frame refresh rate. */
+internal fun nominalDisplayRefreshRateFps(refreshRateHz: Float): Int? =
+    refreshRateHz
+        .takeIf { it.isFinite() && it > 0f }
+        ?.roundToInt()
+        ?.takeIf { it > 0 }
 
 /**
  * Restores the last real window event when an OEM game assistant is the only

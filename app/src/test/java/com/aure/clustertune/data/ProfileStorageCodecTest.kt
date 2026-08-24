@@ -34,7 +34,7 @@ class ProfileStorageCodecTest {
         val assignments = listOf(
             AppProfileAssignment("named.app", "Named", profileId = "small"),
             AppProfileAssignment("custom.app", "Custom", customMaxFrequencies = mapOf(0 to 2_000_000), customGpuMaxFrequencyHz = 500_000_000),
-            AppProfileAssignment("auto.app", "Auto", autoTuneTargetFps = 77),
+            AppProfileAssignment("auto.app", "Auto", autoTuneTargetFps = Int.MAX_VALUE),
         )
 
         val parsed = ProfileStorageCodec.parseAppProfileAssignments(
@@ -44,7 +44,7 @@ class ProfileStorageCodecTest {
         assertEquals(assignments.associateBy { it.packageName }, parsed.associateBy { it.packageName })
         assertEquals(false, parsed.first { it.packageName == "named.app" }.isCustom)
         assertEquals(true, parsed.first { it.packageName == "custom.app" }.isCustom)
-        assertEquals(77, parsed.first { it.packageName == "auto.app" }.autoTuneTargetFps)
+        assertEquals(Int.MAX_VALUE, parsed.first { it.packageName == "auto.app" }.autoTuneTargetFps)
     }
 
     @Test
@@ -57,15 +57,17 @@ class ProfileStorageCodecTest {
     }
 
     @Test
-    fun `app assignments normalize named then custom then auto tune targets`() {
+    fun `app assignments normalize mixed targets and reject non-positive auto tune targets`() {
         val parsed = ProfileStorageCodec.parseAppProfileAssignments(
             """
             [
               {"packageName":"named","appLabel":"Named","profileId":"small","customMaxFrequencies":{"0":1000},"autoTuneTargetFps":120},
               {"packageName":"custom","appLabel":"Custom","customMaxFrequencies":{"0":1000},"autoTuneTargetFps":60},
               {"packageName":"auto","appLabel":"Auto","autoTuneTargetFps":30},
-              {"packageName":"custom-auto","appLabel":"Custom Auto","autoTuneTargetFps":90},
-              {"packageName":"invalid","appLabel":"Invalid","autoTuneTargetFps":241}
+              {"packageName":"custom-auto","appLabel":"Custom Auto","autoTuneTargetFps":241},
+              {"packageName":"max","appLabel":"Max","autoTuneTargetFps":2147483647},
+              {"packageName":"zero","appLabel":"Zero","autoTuneTargetFps":0},
+              {"packageName":"negative","appLabel":"Negative","autoTuneTargetFps":-1}
             ]
             """.trimIndent(),
         )
@@ -75,7 +77,8 @@ class ProfileStorageCodecTest {
                 "named" to AppProfileAssignment("named", "Named", profileId = "small"),
                 "custom" to AppProfileAssignment("custom", "Custom", customMaxFrequencies = mapOf(0 to 1_000)),
                 "auto" to AppProfileAssignment("auto", "Auto", autoTuneTargetFps = 30),
-                "custom-auto" to AppProfileAssignment("custom-auto", "Custom Auto", autoTuneTargetFps = 90),
+                "custom-auto" to AppProfileAssignment("custom-auto", "Custom Auto", autoTuneTargetFps = 241),
+                "max" to AppProfileAssignment("max", "Max", autoTuneTargetFps = Int.MAX_VALUE),
             ),
             parsed.associateBy { it.packageName },
         )

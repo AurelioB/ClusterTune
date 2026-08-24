@@ -9,10 +9,18 @@ import org.junit.Test
 class AppProfileAssignmentLabelTest {
 
     @Test
-    fun `auto tune slider rounds to whole fps and clamps to supported range`() {
-        assertEquals(15, snapAutoTuneTargetFps(14.4f))
-        assertEquals(77, snapAutoTuneTargetFps(76.6f))
-        assertEquals(240, snapAutoTuneTargetFps(240.6f))
+    fun `auto tune slider rounds to whole fps and clamps to the current display`() {
+        assertEquals(1, snapAutoTuneTargetFps(0.4f, maximumTargetFps = 60))
+        assertEquals(59, snapAutoTuneTargetFps(58.6f, maximumTargetFps = 60))
+        assertEquals(60, snapAutoTuneTargetFps(120f, maximumTargetFps = 60))
+        assertEquals(77, snapAutoTuneTargetFps(76.6f, maximumTargetFps = 120))
+    }
+
+    @Test
+    fun `auto tune maximum prefers the app display then the local display`() {
+        assertEquals(120, autoTuneTargetMaximumFps(120, 60))
+        assertEquals(60, autoTuneTargetMaximumFps(null, 60))
+        assertEquals(60, autoTuneTargetMaximumFps(null, null))
     }
 
     @Test

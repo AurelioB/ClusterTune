@@ -168,6 +168,15 @@ class AppProfileAccessibilityService : AccessibilityService() {
         val normalized = tracked.windowsByDisplay.mapValues { (_, items) ->
             items.distinct().sortedWith(compareBy({ it.packageName }, { it.isFocused.not() }, { it.isActive.not() }))
         }.filterValues { it.isNotEmpty() }.toSortedMap()
+        val refreshRateFpsByDisplay = displayManager?.displays
+            .orEmpty()
+            .mapNotNull { display ->
+                nominalDisplayRefreshRateFps(display.refreshRate)?.let { refreshRateFps ->
+                    display.displayId to refreshRateFps
+                }
+            }
+            .toMap()
+            .toSortedMap()
         fallbackPackagesByDisplay.keys.retainAll(normalized.keys)
         mostRecentAppIdentity = mostRecentAppIdentity?.takeIf { identity ->
             normalized[identity.displayId].orEmpty().any { window ->
@@ -190,6 +199,7 @@ class AppProfileAccessibilityService : AccessibilityService() {
                 isInteractive = true,
                 recentPackageByDisplay = fallbackPackagesByDisplay.filterKeys(normalized::containsKey),
                 mostRecentAppIdentity = mostRecentAppIdentity,
+                refreshRateFpsByDisplay = refreshRateFpsByDisplay,
             ),
         )
     }

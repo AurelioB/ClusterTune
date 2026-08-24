@@ -1,10 +1,25 @@
 package com.aure.clustertune.apps
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class VisibleAppWindowSnapshotTest {
+    @Test
+    fun fractionalDisplayRefreshRateIsRoundedToNominalFps() {
+        assertEquals(60, nominalDisplayRefreshRateFps(59.94f))
+        assertEquals(120, nominalDisplayRefreshRateFps(119.88f))
+    }
+
+    @Test
+    fun invalidDisplayRefreshRatesAreUnavailable() {
+        assertNull(nominalDisplayRefreshRateFps(0f))
+        assertNull(nominalDisplayRefreshRateFps(-60f))
+        assertNull(nominalDisplayRefreshRateFps(Float.NaN))
+        assertNull(nominalDisplayRefreshRateFps(Float.POSITIVE_INFINITY))
+    }
+
     @Test
     fun packagesIncludeApplicationsFromEveryDisplay() {
         val snapshot = VisibleAppSnapshot(

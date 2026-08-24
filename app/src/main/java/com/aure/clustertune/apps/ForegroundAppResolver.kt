@@ -9,6 +9,8 @@ data class ForegroundAppInfo(
     val packageName: String,
     val label: String,
     val icon: Drawable? = null,
+    val displayId: Int? = null,
+    val currentRefreshRateFps: Int? = null,
 )
 
 class ForegroundAppResolver(context: Context) {
@@ -33,6 +35,8 @@ class ForegroundAppResolver(context: Context) {
             icon = applicationInfo?.let {
                 runCatching { it.loadIcon(packageManager) }.getOrNull()
             },
+            displayId = window.displayId,
+            currentRefreshRateFps = snapshot.refreshRateFpsByDisplay[window.displayId],
         )
     }
 
@@ -61,27 +65,40 @@ internal fun selectVisibleAppWindow(
     targetDisplayId: Int? = null,
     excludedPackages: Set<String> = emptySet(),
 ): VisibleAppWindow? {
-    val windows = if (targetDisplayId != null) {
-        snapshot.windowsByDisplay[targetDisplayId].orEmpty()
-    } else {
-        snapshot.windowsByDisplay.values.asSequence().flatten().toList()
-    }
-    return windows.asSequence()
+    return snapshot.visibleWindows(targetDisplayId)
         .filterNot { it.packageName in excludedPackages }
-        .sortedWith(
-            compareByDescending<VisibleAppWindow> { it.isFocused }
-                .thenByDescending { it.isActive }
-                .thenByDescending { window ->
-                    snapshot.mostRecentAppIdentity?.let { recent ->
-                        recent.displayId == window.displayId && recent.packageName == window.packageName
-                    } == true
-                }
-                .thenByDescending { snapshot.recentPackageByDisplay[it.displayId] == it.packageName }
-                .thenBy { it.displayId }
-                .thenBy { it.packageName },
-        )
+        .sortedWith(snapshot.visibleWindowComparator())
         .firstOrNull()
 }
+
+/** Selects the strongest visible window for one package, optionally on one display. */
+internal fun selectVisibleAppWindowForPackage(
+    snapshot: VisibleAppSnapshot,
+    packageName: String,
+    targetDisplayId: Int? = null,
+): VisibleAppWindow? = snapshot.visibleWindows(targetDisplayId)
+    .filter { it.packageName == packageName }
+    .sortedWith(snapshot.visibleWindowComparator())
+    .firstOrNull()
+
+private fun VisibleAppSnapshot.visibleWindows(targetDisplayId: Int?): Sequence<VisibleAppWindow> =
+    if (targetDisplayId != null) {
+        windowsByDisplay[targetDisplayId].orEmpty().asSequence()
+    } else {
+        windowsByDisplay.values.asSequence().flatten()
+    }
+
+private fun VisibleAppSnapshot.visibleWindowComparator(): Comparator<VisibleAppWindow> =
+    compareByDescending<VisibleAppWindow> { it.isFocused }
+        .thenByDescending { it.isActive }
+        .thenByDescending { window ->
+            mostRecentAppIdentity?.let { recent ->
+                recent.displayId == window.displayId && recent.packageName == window.packageName
+            } == true
+        }
+        .thenByDescending { recentPackageByDisplay[it.displayId] == it.packageName }
+        .thenBy { it.displayId }
+        .thenBy { it.packageName }
 
 /** Vendor performance overlays that remain visible above the actual game window. */
 internal val VENDOR_GAME_ASSISTANT_PACKAGES = setOf(

@@ -182,6 +182,7 @@ class ClusterTuneHostClient(
     fun startAutoSession(request: AutoSessionRequest): Result<HostAutoSessionSnapshot> =
         call(HostProtocol.START_AUTO_SESSION, writer = { p ->
             require(HostTelemetryParsers.isValidPackageName(request.packageName)) { "invalid target package" }
+            require(request.targetFps > 0) { "invalid target FPS" }
             p.writeString(request.packageName)
             p.writeInt(request.targetFps)
             p.writeLong(request.heartbeatTimeoutMs)
@@ -494,7 +495,9 @@ class ClusterTuneHostClient(
         val status = HostAutoSessionStatus.values().getOrNull(statusOrdinal)
             ?: error("invalid automatic session status: $statusOrdinal")
         val targetFps = parcel.readInt()
-        require(targetFps in 0..240) { "invalid target FPS" }
+        require(targetFps >= 0 && (status != HostAutoSessionStatus.ACTIVE || targetFps > 0)) {
+            "invalid target FPS"
+        }
         val telemetry = if (readBoolean(parcel, "telemetry presence")) readAutoTelemetryPayload(parcel) else null
         val state = if (readBoolean(parcel, "state presence")) readStatePayload(parcel) else null
         val restorationAttempted = readBoolean(parcel, "restoration attempted")

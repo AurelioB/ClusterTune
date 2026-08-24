@@ -7,6 +7,48 @@ import org.junit.Test
 
 class HostTelemetrySourceTest {
     @Test
+    fun `frame target accepts every positive Int and rejects non-positive values`() {
+        val layer = "SurfaceView[com.game/com.game.Main](BLAST)#1"
+        val runner = RecordingRunner { arguments ->
+            when {
+                arguments.last() == "--list" -> success(layer)
+                "--latency" in arguments -> success(latency(1_000L, 1_001L))
+                else -> error("unexpected command: $arguments")
+            }
+        }
+
+        listOf(1, Int.MAX_VALUE).forEach { targetFps ->
+            val source = source(runner, FakeClock(1_000L))
+
+            assertTrue(source.begin("com.game", targetFps).isSuccess)
+            source.end()
+        }
+        listOf(0, -1, Int.MIN_VALUE).forEach { targetFps ->
+            val source = source(runner, FakeClock(1_000L))
+
+            assertTrue(source.begin("com.game", targetFps).isFailure)
+        }
+    }
+
+    @Test
+    fun `huge target keeps latency budget at least one nanosecond`() {
+        val layer = "SurfaceView[com.game/com.game.Main](BLAST)#1"
+        val runner = RecordingRunner { arguments ->
+            when {
+                arguments.last() == "--list" -> success(layer)
+                "--latency" in arguments -> success(latency(1_000L, 1_001L))
+                else -> error("unexpected command: $arguments")
+            }
+        }
+        val source = source(runner, FakeClock(1_000L))
+
+        source.begin("com.game", Int.MAX_VALUE).getOrThrow()
+        val sample = source.sample()
+
+        assertEquals(0, sample.slowFrameRatioPermille)
+    }
+
+    @Test
     fun `latency baseline excludes buffered frames from before the session`() {
         val layer = "SurfaceView[com.game/com.game.Main](BLAST)#1"
         val clock = FakeClock(10_000_000_000L)

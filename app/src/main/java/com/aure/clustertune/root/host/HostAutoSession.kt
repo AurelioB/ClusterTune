@@ -169,7 +169,7 @@ class HostAutoSessionController(
     fun start(request: AutoSessionRequest): HostAutoSessionSnapshot {
         expireLocked()
         require(HostTelemetryParsers.isValidPackageName(request.packageName)) { "invalid target package" }
-        require(request.targetFps in 15..240) { "target FPS must be between 15 and 240" }
+        require(request.targetFps > 0) { "target FPS must be positive" }
         require(request.heartbeatTimeoutMs in MIN_HEARTBEAT_TIMEOUT_MS..MAX_HEARTBEAT_TIMEOUT_MS) {
             "heartbeat timeout must be between $MIN_HEARTBEAT_TIMEOUT_MS and $MAX_HEARTBEAT_TIMEOUT_MS ms"
         }

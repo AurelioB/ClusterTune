@@ -148,6 +148,65 @@ class HostAutoSessionTest {
     }
 
     @Test
+    fun `session targets accept every positive Int and reject non-positive values`() {
+        listOf(1, Int.MAX_VALUE).forEach { targetFps ->
+            val fixture = fixture()
+            val started = fixture.controller.start(AutoSessionRequest("com.game", targetFps, 5_000))
+
+            assertEquals(HostAutoSessionStatus.ACTIVE, started.status)
+            assertEquals(targetFps, started.targetFps)
+            assertEquals(listOf(targetFps), fixture.telemetry.begunTargets)
+        }
+
+        listOf(0, -1, Int.MIN_VALUE).forEach { targetFps ->
+            val fixture = fixture()
+
+            assertFails {
+                fixture.controller.start(AutoSessionRequest("com.game", targetFps, 5_000))
+            }
+            assertEquals(0, fixture.telemetry.beginCount)
+        }
+    }
+
+    @Test
+    fun `snapshot target keeps zero sentinel only outside active sessions`() {
+        assertEquals(
+            0,
+            HostAutoSessionSnapshot(
+                sessionId = null,
+                hostEpoch = 42L,
+                status = HostAutoSessionStatus.STOPPED,
+                targetFps = 0,
+            ).targetFps,
+        )
+        assertEquals(
+            Int.MAX_VALUE,
+            HostAutoSessionSnapshot(
+                sessionId = "session",
+                hostEpoch = 42L,
+                status = HostAutoSessionStatus.ACTIVE,
+                targetFps = Int.MAX_VALUE,
+            ).targetFps,
+        )
+        assertFails {
+            HostAutoSessionSnapshot(
+                sessionId = "session",
+                hostEpoch = 42L,
+                status = HostAutoSessionStatus.ACTIVE,
+                targetFps = 0,
+            )
+        }
+        assertFails {
+            HostAutoSessionSnapshot(
+                sessionId = null,
+                hostEpoch = 42L,
+                status = HostAutoSessionStatus.STOPPED,
+                targetFps = -1,
+            )
+        }
+    }
+
+    @Test
     fun `heartbeat expiry actively restores when watchdog polls`() {
         val fixture = fixture()
         val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
@@ -383,9 +442,11 @@ class HostAutoSessionTest {
 
     private class FakeTelemetry(private val cpuCount: Int, private val hasGpu: Boolean) : HostTelemetrySource {
         var beginCount = 0
+        val begunTargets = mutableListOf<Int>()
         override fun capabilities() = HostAutoCapabilities(true, true, false, hasGpu, false, false, "fake")
         override fun begin(packageName: String, targetFps: Int): Result<Unit> {
             beginCount++
+            begunTargets += targetFps
             return Result.success(Unit)
         }
         override fun sample() = HostRawTelemetry(

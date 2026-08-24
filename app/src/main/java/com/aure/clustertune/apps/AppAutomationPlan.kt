@@ -14,6 +14,9 @@ internal data class AppAutomationPlan(
     val foregroundPackageName: String?,
     val autoTuneAssignment: AppProfileAssignment?,
     val staticAssignments: List<AppProfileAssignment>,
+    val foregroundDisplayId: Int? = null,
+    val foregroundDisplayRefreshRateFps: Int? = null,
+    val effectiveAutoTuneTargetFps: Int? = null,
 )
 
 internal fun resolveAppAutomationPlan(
@@ -31,13 +34,24 @@ internal fun resolveAppAutomationPlan(
         .distinctBy { it.packageName }
         .associateBy { it.packageName }
     val visiblePackageNames = snapshot.packages.filterNotTo(linkedSetOf()) { it in excludedPackages }
-    val foregroundPackageName = selectVisibleAppWindow(
+    val foregroundWindow = selectVisibleAppWindow(
         snapshot = snapshot,
         excludedPackages = excludedPackages,
-    )?.packageName
+    )
+    val foregroundPackageName = foregroundWindow?.packageName
+    val foregroundDisplayRefreshRateFps = foregroundWindow?.displayId
+        ?.let(snapshot.refreshRateFpsByDisplay::get)
     val autoTuneAssignment = foregroundPackageName
         ?.let(assignmentsByPackage::get)
         ?.takeIf(AppProfileAssignment::isAutoTune)
+    val effectiveAutoTuneTargetFps = autoTuneAssignment
+        ?.autoTuneTargetFps
+        ?.let { configuredTargetFps ->
+            effectiveAutoTuneTargetFps(
+                configuredTargetFps = configuredTargetFps,
+                currentDisplayRefreshRateFps = foregroundDisplayRefreshRateFps,
+            )
+        }
     val staticAssignments = visiblePackageNames
         .mapNotNull(assignmentsByPackage::get)
         .filterNot(AppProfileAssignment::isAutoTune)
@@ -48,5 +62,17 @@ internal fun resolveAppAutomationPlan(
         foregroundPackageName = foregroundPackageName,
         autoTuneAssignment = autoTuneAssignment,
         staticAssignments = staticAssignments,
+        foregroundDisplayId = foregroundWindow?.displayId,
+        foregroundDisplayRefreshRateFps = foregroundDisplayRefreshRateFps,
+        effectiveAutoTuneTargetFps = effectiveAutoTuneTargetFps,
     )
 }
+
+/** Caps a configured target to the hosting display while retaining it as the fallback. */
+internal fun effectiveAutoTuneTargetFps(
+    configuredTargetFps: Int,
+    currentDisplayRefreshRateFps: Int?,
+): Int = currentDisplayRefreshRateFps
+    ?.takeIf { configuredTargetFps > 0 && it > 0 }
+    ?.let { minOf(configuredTargetFps, it) }
+    ?: configuredTargetFps

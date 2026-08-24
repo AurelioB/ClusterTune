@@ -244,6 +244,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
+                    contextDisplayRefreshRateFps = 120,
                     onAppProfileAssignmentChange = { profile, values, gpu, targetFps ->
                         assertEquals(null, profile)
                         assertEquals(null, values)
@@ -300,6 +301,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
+                    contextDisplayRefreshRateFps = 120,
                     onAppProfileAssignmentChange = { _, _, _, _ -> },
                     showAppProfileToggle = false,
                 )
@@ -338,6 +340,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = "com.example.game",
                     contextLabel = "Example game",
+                    contextDisplayRefreshRateFps = 120,
                     onAppProfileAssignmentChange = { _, _, _, _ -> },
                     showAppProfileToggle = false,
                 )
@@ -370,6 +373,7 @@ class CompactOverlayScreenTest {
                     onRefreshLiveValues = {},
                     contextPackageName = packageName,
                     contextLabel = packageName,
+                    contextDisplayRefreshRateFps = 120,
                     onAppProfileAssignmentChange = { _, _, _, _ -> },
                     showAppProfileToggle = false,
                 )
@@ -379,6 +383,81 @@ class CompactOverlayScreenTest {
         composeRule.onNodeWithText("77 FPS target").assertExists()
         composeRule.runOnIdle { packageName = "second.app" }
         composeRule.onNodeWithText("90 FPS target").assertExists()
+    }
+
+    @Test
+    fun autoTunePicker_capsSelectionToCurrentDisplayRefreshRate() {
+        var selectedTargetFps: Int? = null
+        composeRule.setContent {
+            MaterialTheme {
+                CompactOverlayScreen(
+                    state = state(),
+                    displayFrequenciesAsPercent = false,
+                    mode = CompactOverlayMode.PROFILES,
+                    onModeChange = {},
+                    onApplyProfile = { _, _ -> },
+                    onApplyCurrent = { _, _, _, _ -> },
+                    onDismissRequest = {},
+                    onRefreshLiveValues = {},
+                    contextPackageName = "com.example.game",
+                    contextLabel = "Example game",
+                    contextDisplayRefreshRateFps = 60,
+                    onAppProfileAssignmentChange = { _, _, _, targetFps ->
+                        selectedTargetFps = targetFps
+                    },
+                    showAppProfileToggle = false,
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("60 FPS · current display").assertExists()
+        assertTrue(composeRule.onAllNodesWithText("120 FPS").fetchSemanticsNodes().isEmpty())
+        composeRule.onNodeWithTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER)
+            .performSemanticsAction(SemanticsActions.SetProgress) { setProgress ->
+                setProgress(120f)
+            }
+        composeRule.onNodeWithText("60 FPS target").assertExists()
+        composeRule.onNodeWithText("Assign Auto Tune").performClick()
+        composeRule.runOnIdle { assertEquals(60, selectedTargetFps) }
+    }
+
+    @Test
+    fun autoTunePicker_tracksRefreshModeWithoutRewritingUnsavedTarget() {
+        var refreshRateFps by mutableStateOf(120)
+        var assignmentChangeCount = 0
+        composeRule.setContent {
+            MaterialTheme {
+                CompactOverlayScreen(
+                    state = state(
+                        assignment = AppProfileAssignment(
+                            packageName = "com.example.game",
+                            appLabel = "Example game",
+                            autoTuneTargetFps = 120,
+                        ),
+                    ),
+                    displayFrequenciesAsPercent = false,
+                    mode = CompactOverlayMode.PROFILES,
+                    onModeChange = {},
+                    onApplyProfile = { _, _ -> },
+                    onApplyCurrent = { _, _, _, _ -> },
+                    onDismissRequest = {},
+                    onRefreshLiveValues = {},
+                    contextPackageName = "com.example.game",
+                    contextLabel = "Example game",
+                    contextDisplayRefreshRateFps = refreshRateFps,
+                    onAppProfileAssignmentChange = { _, _, _, _ -> assignmentChangeCount++ },
+                    showAppProfileToggle = false,
+                )
+            }
+        }
+
+        composeRule.onNodeWithText("120 FPS target").assertExists()
+        composeRule.runOnIdle { refreshRateFps = 60 }
+        composeRule.onNodeWithText("60 FPS target").assertExists()
+        assertTrue(composeRule.onAllNodesWithText("120 FPS").fetchSemanticsNodes().isEmpty())
+        composeRule.runOnIdle { refreshRateFps = 120 }
+        composeRule.onNodeWithText("120 FPS target").assertExists()
+        composeRule.runOnIdle { assertEquals(0, assignmentChangeCount) }
     }
 
     @Test

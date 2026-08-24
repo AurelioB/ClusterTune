@@ -268,6 +268,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                             contextPackageName = currentForegroundApp?.packageName,
                             contextLabel = currentForegroundApp?.label,
                             contextIcon = currentForegroundApp?.icon,
+                            contextDisplayRefreshRateFps = currentForegroundApp?.currentRefreshRateFps,
                             onAppProfileAssignmentChange = currentForegroundApp?.let { app ->
                                 { profile, customValues, customGpuMaxFrequencyHz, autoTuneTargetFps ->
                                     compactAssignmentMutationJob?.cancel()
@@ -465,10 +466,10 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
             VisibleAppWindowEvents.snapshots
                 .distinctUntilChangedBy { snapshot ->
                     foregroundAppResolver.selectPackageName(
-                        snapshot,
-                        overlayDisplayId,
-                        foregroundExcludedPackages,
-                    )
+                        snapshot = snapshot,
+                        targetDisplayId = overlayDisplayId,
+                        excludedPackages = foregroundExcludedPackages,
+                    ) to snapshot.refreshRateFpsByDisplay[overlayDisplayId]
                 }
                 .collect { snapshot ->
                     if (!windowController.isShowing(OverlayType.COMPACT_PROFILE_PICKER)) return@collect

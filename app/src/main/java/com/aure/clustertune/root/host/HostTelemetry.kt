@@ -410,7 +410,7 @@ class SystemHostTelemetrySource(
 
     override fun begin(packageName: String, targetFps: Int): Result<Unit> = runCatching {
         require(HostTelemetryParsers.isValidPackageName(packageName)) { "invalid target package" }
-        require(targetFps in 15..240) { "invalid target FPS" }
+        require(targetFps > 0) { "invalid target FPS" }
         check(capabilities().frameStats) { "SurfaceFlinger frame statistics are unavailable" }
         frameSessionStartedNanos = clock.nanoTime()
         previousTimeStats = emptyMap()
@@ -532,7 +532,8 @@ class SystemHostTelemetrySource(
         val p95 = intervals.sorted().let { sorted ->
             if (sorted.isEmpty()) null else sorted[(ceil(sorted.size * 0.95).toInt() - 1).coerceIn(0, sorted.lastIndex)]
         }
-        val targetPeriod = targetFps.takeIf { it > 0 }?.let { 1_000_000_000L / it }
+        val targetPeriod = targetFps.takeIf { it > 0 }
+            ?.let { (1_000_000_000L / it).coerceAtLeast(1L) }
         val slowRatio = targetPeriod?.let { budget ->
             if (intervals.isEmpty()) null else (intervals.count { it > budget + budget / 2L } * 1000 / intervals.size)
         }

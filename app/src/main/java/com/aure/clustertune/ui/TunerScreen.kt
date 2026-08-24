@@ -111,13 +111,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.aure.clustertune.R
+import com.aure.clustertune.apps.VisibleAppSnapshot
+import com.aure.clustertune.apps.selectVisibleAppWindowForPackage
 import com.aure.clustertune.autotune.AdaptiveTuneReason
 import com.aure.clustertune.autotune.AdaptiveTuneRuntimeState
 import com.aure.clustertune.model.AUTO_TUNE_TARGET_FPS_PRESETS
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.CpuPolicyInfo
 import com.aure.clustertune.model.InstalledAppInfo
-import com.aure.clustertune.model.MAX_AUTO_TUNE_TARGET_FPS
 import com.aure.clustertune.model.MIN_AUTO_TUNE_TARGET_FPS
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileStateResolver
@@ -169,6 +170,7 @@ fun MainTunerScreen(
     onMoveProfile: (String, Int) -> Unit,
     launchableApps: List<InstalledAppInfo>,
     recentActiveApps: List<InstalledAppInfo>,
+    visibleAppSnapshot: VisibleAppSnapshot = VisibleAppSnapshot.Empty,
     onSaveAppProfileAssignment: (String, String, String?, Map<Int, Int>, Int?, Int?) -> Unit,
     onDeleteAppProfileAssignment: (String) -> Unit,
     onRefreshInstalledApps: () -> Unit,
@@ -292,6 +294,12 @@ fun MainTunerScreen(
     if (showAppAssignmentDialog) {
         appToConfigure?.let { app ->
             val assignment = state.appProfileAssignments.firstOrNull { it.packageName == app.packageName }
+            val visibleWindow = remember(app.packageName, visibleAppSnapshot) {
+                selectVisibleAppWindowForPackage(visibleAppSnapshot, app.packageName)
+            }
+            val currentRefreshRateFps = visibleWindow?.let { window ->
+                visibleAppSnapshot.refreshRateFpsByDisplay[window.displayId]
+            }
             var appOverlayMode by remember(app.packageName) { mutableStateOf(CompactOverlayMode.PROFILES) }
             CtCompactOverlayFrame(onDismissRequest = { showAppAssignmentDialog = false }) {
                 CompactOverlayScreen(
@@ -327,6 +335,7 @@ fun MainTunerScreen(
                     contextPackageName = app.packageName,
                     contextLabel = app.label,
                     contextIcon = app.icon,
+                    contextDisplayRefreshRateFps = currentRefreshRateFps,
                     onAppProfileAssignmentChange = { profile, customValues, customGpu, autoTuneTargetFps ->
                         when {
                             profile == null && customValues == null && customGpu == null && autoTuneTargetFps == null -> {
@@ -432,6 +441,7 @@ fun CompactOverlayScreen(
     contextPackageName: String? = null,
     contextLabel: String? = null,
     contextIcon: Drawable? = null,
+    contextDisplayRefreshRateFps: Int? = null,
     onAppProfileAssignmentChange: ((PerformanceProfile?, Map<Int, Int>?, Int?, Int?) -> Unit)? = null,
     showAppProfileToggle: Boolean = true,
     showAssignmentRemove: Boolean = false,
@@ -442,6 +452,11 @@ fun CompactOverlayScreen(
     val assignment = contextPackageName?.let { packageName ->
         state.appProfileAssignments.firstOrNull { it.packageName == packageName }
     }
+    val localDisplayRefreshRateFps = rememberCurrentDisplayRefreshRateFps()
+    val maximumAutoTuneTargetFps = autoTuneTargetMaximumFps(
+        contextDisplayRefreshRateFps = contextDisplayRefreshRateFps,
+        localDisplayRefreshRateFps = localDisplayRefreshRateFps,
+    )
     val canAssign = !contextPackageName.isNullOrBlank() && onAppProfileAssignmentChange != null
     var appProfileEnabled by remember(
         contextPackageName,
@@ -455,9 +470,14 @@ fun CompactOverlayScreen(
     var stagedAutoTuneTargetFps by remember(contextPackageName, assignment?.autoTuneTargetFps) {
         mutableStateOf(assignment?.autoTuneTargetFps)
     }
+    // Keep the configured draft separate from the live effective value. If the
+    // panel changes 120 -> 60 -> 120 while this dialog is open, the unsaved
+    // 120 FPS preference returns instead of being silently rewritten.
     var autoTuneDraftTargetFps by remember(contextPackageName, assignment?.autoTuneTargetFps) {
         mutableIntStateOf(assignment?.autoTuneTargetFps ?: DEFAULT_AUTO_TUNE_TARGET_FPS)
     }
+    val effectiveAutoTuneDraftTargetFps = autoTuneDraftTargetFps
+        .coerceIn(MIN_AUTO_TUNE_TARGET_FPS, maximumAutoTuneTargetFps)
     var stagedProfile by remember(contextPackageName, assignment?.profileId, state.selectedDisplayProfileId) {
         mutableStateOf(
             if (assignment?.isCustom == true || assignment?.isAutoTune == true ||
@@ -630,14 +650,16 @@ fun CompactOverlayScreen(
                 ) {
                     if (canAssign) {
                         AutoTunePickerSection(
-                            targetFps = autoTuneDraftTargetFps,
+                            targetFps = effectiveAutoTuneDraftTargetFps,
+                            maximumTargetFps = maximumAutoTuneTargetFps,
                             assigned = assignment?.autoTuneTargetFps == autoTuneDraftTargetFps,
                             updating = assignment?.isAutoTune == true,
                             onTargetChange = { autoTuneDraftTargetFps = it },
                             onAssign = {
-                                stagedAutoTuneTargetFps = autoTuneDraftTargetFps
+                                stagedAutoTuneTargetFps = effectiveAutoTuneDraftTargetFps
+                                autoTuneDraftTargetFps = effectiveAutoTuneDraftTargetFps
                                 appProfileEnabled = true
-                                onAppProfileAssignmentChange?.invoke(null, null, null, autoTuneDraftTargetFps)
+                                onAppProfileAssignmentChange?.invoke(null, null, null, effectiveAutoTuneDraftTargetFps)
                                 onDismissRequest()
                             },
                         )
@@ -687,7 +709,8 @@ fun CompactOverlayScreen(
                     if (canAssign) {
                         AutoTuneTargetSection(
                             enabled = stagedAutoTuneTargetFps != null,
-                            targetFps = autoTuneDraftTargetFps,
+                            targetFps = effectiveAutoTuneDraftTargetFps,
+                            maximumTargetFps = maximumAutoTuneTargetFps,
                             onEnabledChange = { enabled ->
                                 if (enabled) {
                                     appProfileEnabled = true
@@ -755,7 +778,12 @@ fun CompactOverlayScreen(
                         onClick = {
                             val autoTuneTargetFps = stagedAutoTuneTargetFps
                             if (autoTuneTargetFps != null && canAssign) {
-                                onAppProfileAssignmentChange?.invoke(null, null, null, autoTuneTargetFps)
+                                onAppProfileAssignmentChange?.invoke(
+                                    null,
+                                    null,
+                                    null,
+                                    autoTuneTargetFps.coerceAtMost(maximumAutoTuneTargetFps),
+                                )
                                 onDismissRequest()
                             } else {
                                 onApplyCurrent(
@@ -783,6 +811,7 @@ fun CompactOverlayScreen(
 @Composable
 private fun AutoTunePickerSection(
     targetFps: Int,
+    maximumTargetFps: Int,
     assigned: Boolean,
     updating: Boolean,
     onTargetChange: (Int) -> Unit,
@@ -822,14 +851,10 @@ private fun AutoTunePickerSection(
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        CtSlider(
-            value = targetFps.toFloat(),
-            onValueChange = { onTargetChange(snapAutoTuneTargetFps(it)) },
-            modifier = Modifier.testTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER),
-            valueRange = MIN_AUTO_TUNE_TARGET_FPS.toFloat()..MAX_AUTO_TUNE_TARGET_FPS.toFloat(),
-            accessibilityLabel = "Auto Tune target",
-            accessibilityValue = "$targetFps FPS",
-            accessibilitySteps = MAX_AUTO_TUNE_TARGET_FPS - MIN_AUTO_TUNE_TARGET_FPS - 1,
+        AutoTuneTargetSlider(
+            targetFps = targetFps,
+            maximumTargetFps = maximumTargetFps,
+            onTargetChange = onTargetChange,
         )
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(
@@ -838,13 +863,13 @@ private fun AutoTunePickerSection(
                 color = colorScheme.onSurfaceVariant,
             )
             Text(
-                text = "$MAX_AUTO_TUNE_TARGET_FPS FPS",
+                text = "$maximumTargetFps FPS · current display",
                 style = MaterialTheme.typography.labelSmall,
                 color = colorScheme.onSurfaceVariant,
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AUTO_TUNE_TARGET_FPS_PRESETS.forEach { preset ->
+            AUTO_TUNE_TARGET_FPS_PRESETS.filter { it <= maximumTargetFps }.forEach { preset ->
                 AssistChip(
                     onClick = { onTargetChange(preset) },
                     label = { Text("$preset FPS") },
@@ -882,6 +907,7 @@ private fun AutoTunePickerSection(
 private fun AutoTuneTargetSection(
     enabled: Boolean,
     targetFps: Int,
+    maximumTargetFps: Int,
     onEnabledChange: (Boolean) -> Unit,
     onTargetChange: (Int) -> Unit,
 ) {
@@ -918,14 +944,10 @@ private fun AutoTuneTargetSection(
             )
         }
         if (enabled) {
-            CtSlider(
-                value = targetFps.toFloat(),
-                onValueChange = { onTargetChange(snapAutoTuneTargetFps(it)) },
-                modifier = Modifier.testTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER),
-                valueRange = MIN_AUTO_TUNE_TARGET_FPS.toFloat()..MAX_AUTO_TUNE_TARGET_FPS.toFloat(),
-                accessibilityLabel = "Auto Tune target",
-                accessibilityValue = "$targetFps FPS",
-                accessibilitySteps = MAX_AUTO_TUNE_TARGET_FPS - MIN_AUTO_TUNE_TARGET_FPS - 1,
+            AutoTuneTargetSlider(
+                targetFps = targetFps,
+                maximumTargetFps = maximumTargetFps,
+                onTargetChange = onTargetChange,
             )
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(
@@ -934,7 +956,7 @@ private fun AutoTuneTargetSection(
                     color = colorScheme.onSurfaceVariant,
                 )
                 Text(
-                    text = "$MAX_AUTO_TUNE_TARGET_FPS FPS",
+                    text = "$maximumTargetFps FPS · current display",
                     style = MaterialTheme.typography.labelSmall,
                     color = colorScheme.onSurfaceVariant,
                 )
@@ -948,8 +970,37 @@ private fun AutoTuneTargetSection(
     }
 }
 
-internal fun snapAutoTuneTargetFps(value: Float): Int =
-    value.roundToInt().coerceIn(MIN_AUTO_TUNE_TARGET_FPS, MAX_AUTO_TUNE_TARGET_FPS)
+@Composable
+private fun AutoTuneTargetSlider(
+    targetFps: Int,
+    maximumTargetFps: Int,
+    onTargetChange: (Int) -> Unit,
+) {
+    if (maximumTargetFps <= MIN_AUTO_TUNE_TARGET_FPS) return
+    CtSlider(
+        value = targetFps.toFloat(),
+        onValueChange = { onTargetChange(snapAutoTuneTargetFps(it, maximumTargetFps)) },
+        modifier = Modifier.testTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER),
+        valueRange = MIN_AUTO_TUNE_TARGET_FPS.toFloat()..maximumTargetFps.toFloat(),
+        accessibilityLabel = "Auto Tune target",
+        accessibilityValue = "$targetFps FPS",
+        accessibilitySteps = (maximumTargetFps - MIN_AUTO_TUNE_TARGET_FPS - 1).coerceAtLeast(0),
+    )
+}
+
+internal fun autoTuneTargetMaximumFps(
+    contextDisplayRefreshRateFps: Int?,
+    localDisplayRefreshRateFps: Int?,
+): Int = (contextDisplayRefreshRateFps?.takeIf { it > 0 }
+    ?: localDisplayRefreshRateFps?.takeIf { it > 0 }
+    ?: DEFAULT_AUTO_TUNE_TARGET_FPS)
+    .coerceAtLeast(MIN_AUTO_TUNE_TARGET_FPS)
+
+internal fun snapAutoTuneTargetFps(value: Float, maximumTargetFps: Int): Int =
+    value.roundToInt().coerceIn(
+        MIN_AUTO_TUNE_TARGET_FPS,
+        maximumTargetFps.coerceAtLeast(MIN_AUTO_TUNE_TARGET_FPS),
+    )
 
 @Composable
 private fun ProfilePickerEmptyOptionCard() {

@@ -2,10 +2,107 @@ package com.aure.clustertune.apps
 
 import com.aure.clustertune.model.AppProfileAssignment
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class AppAutomationPlanTest {
+    @Test
+    fun `automatic runtime target is capped by foreground display refresh rate`() {
+        val configured = automatic("game", 120)
+        val snapshot = VisibleAppSnapshot(
+            windowsByDisplay = mapOf(
+                2 to listOf(VisibleAppWindow("game", 2, isFocused = true, isActive = true)),
+            ),
+            isInteractive = true,
+            refreshRateFpsByDisplay = mapOf(2 to 60),
+        )
+
+        val plan = resolveAppAutomationPlan(snapshot, listOf(configured))
+
+        assertEquals(configured, plan.autoTuneAssignment)
+        assertEquals(120, plan.autoTuneAssignment?.autoTuneTargetFps)
+        assertEquals(60, plan.effectiveAutoTuneTargetFps)
+        assertEquals(2, plan.foregroundDisplayId)
+        assertEquals(60, plan.foregroundDisplayRefreshRateFps)
+    }
+
+    @Test
+    fun `automatic runtime target keeps lower configured target`() {
+        val plan = resolveAppAutomationPlan(
+            snapshot = VisibleAppSnapshot(
+                windowsByDisplay = mapOf(
+                    0 to listOf(VisibleAppWindow("game", 0, isFocused = true)),
+                ),
+                isInteractive = true,
+                refreshRateFpsByDisplay = mapOf(0 to 120),
+            ),
+            assignments = listOf(automatic("game", 60)),
+        )
+
+        assertEquals(60, plan.effectiveAutoTuneTargetFps)
+    }
+
+    @Test
+    fun `automatic runtime target falls back to configured target when refresh is unavailable`() {
+        val plan = resolveAppAutomationPlan(
+            snapshot = VisibleAppSnapshot(
+                windowsByDisplay = mapOf(
+                    0 to listOf(VisibleAppWindow("game", 0, isFocused = true)),
+                ),
+                isInteractive = true,
+            ),
+            assignments = listOf(automatic("game", 120)),
+        )
+
+        assertEquals(120, plan.effectiveAutoTuneTargetFps)
+        assertNull(plan.foregroundDisplayRefreshRateFps)
+    }
+
+    @Test
+    fun `display mode identity changes even when effective target remains capped`() {
+        val assignment = automatic("game", 30)
+        fun plan(refreshRateFps: Int) = resolveAppAutomationPlan(
+            snapshot = VisibleAppSnapshot(
+                windowsByDisplay = mapOf(
+                    0 to listOf(VisibleAppWindow("game", 0, isFocused = true)),
+                ),
+                isInteractive = true,
+                refreshRateFpsByDisplay = mapOf(0 to refreshRateFps),
+            ),
+            assignments = listOf(assignment),
+        )
+
+        val at60Hz = plan(60)
+        val at120Hz = plan(120)
+
+        assertEquals(30, at60Hz.effectiveAutoTuneTargetFps)
+        assertEquals(30, at120Hz.effectiveAutoTuneTargetFps)
+        assertNotEquals(at60Hz, at120Hz)
+    }
+
+    @Test
+    fun `hosting display identity changes when app moves between displays`() {
+        val assignment = automatic("game", 120)
+        fun plan(displayId: Int) = resolveAppAutomationPlan(
+            snapshot = VisibleAppSnapshot(
+                windowsByDisplay = mapOf(
+                    displayId to listOf(VisibleAppWindow("game", displayId, isFocused = true)),
+                ),
+                isInteractive = true,
+                refreshRateFpsByDisplay = mapOf(displayId to 60),
+            ),
+            assignments = listOf(assignment),
+        )
+
+        val onDefaultDisplay = plan(0)
+        val onExternalDisplay = plan(2)
+
+        assertEquals(60, onDefaultDisplay.effectiveAutoTuneTargetFps)
+        assertEquals(60, onExternalDisplay.effectiveAutoTuneTargetFps)
+        assertNotEquals(onDefaultDisplay, onExternalDisplay)
+    }
+
     @Test
     fun `focused automatic assignment owns tuning across displays`() {
         val automatic = automatic("game", 60)

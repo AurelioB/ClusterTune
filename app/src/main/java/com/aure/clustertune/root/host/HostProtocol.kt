@@ -3,7 +3,7 @@ package com.aure.clustertune.root.host
 /** Private wire contract between ClusterTune and its persistent privileged host. */
 object HostProtocol {
     const val DESCRIPTOR = "com.aure.clustertune.root.host.IClusterTuneHost"
-    const val VERSION = 7
+    const val VERSION = 8
     const val SERVICE_PREFIX = "clustertune.host."
     const val PING = 1
     const val HOST_IDENTITY = 2
@@ -162,6 +162,12 @@ data class HostAutoSessionSnapshot(
     val restorationComplete: Boolean = false,
     val message: String? = null,
 ) {
+    init {
+        require(targetFps >= 0 && (status != HostAutoSessionStatus.ACTIVE || targetFps > 0)) {
+            "invalid target FPS"
+        }
+    }
+
     val handle: HostAutoSessionHandle?
         get() = sessionId?.let { HostAutoSessionHandle(it, hostEpoch) }
 }

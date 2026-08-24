@@ -1,11 +1,9 @@
 package com.aure.clustertune.autotune
 
 import com.aure.clustertune.model.AUTO_TUNE_TARGET_FPS_PRESETS
-import com.aure.clustertune.model.MAX_AUTO_TUNE_TARGET_FPS
 import com.aure.clustertune.model.MIN_AUTO_TUNE_TARGET_FPS
 
 const val MIN_ADAPTIVE_TARGET_FPS = MIN_AUTO_TUNE_TARGET_FPS
-const val MAX_ADAPTIVE_TARGET_FPS = MAX_AUTO_TUNE_TARGET_FPS
 
 /** Common targets offered by the UI. [AdaptiveTuneConfig.targetFps] is not limited to these values. */
 val ADAPTIVE_TARGET_FPS_PRESETS: List<Int> = AUTO_TUNE_TARGET_FPS_PRESETS
@@ -29,9 +27,7 @@ data class AdaptiveTuneConfig(
     val highUtilization: Double = 0.82,
 ) {
     init {
-        require(targetFps in MIN_ADAPTIVE_TARGET_FPS..MAX_ADAPTIVE_TARGET_FPS) {
-            "Target FPS must be between $MIN_ADAPTIVE_TARGET_FPS and $MAX_ADAPTIVE_TARGET_FPS"
-        }
+        require(targetFps >= MIN_ADAPTIVE_TARGET_FPS) { "Target FPS must be positive" }
         require(warmupSampleCount >= 0) { "Warmup sample count must not be negative" }
         require(healthyQualificationSampleCount > 0) {
             "Healthy qualification sample count must be positive"

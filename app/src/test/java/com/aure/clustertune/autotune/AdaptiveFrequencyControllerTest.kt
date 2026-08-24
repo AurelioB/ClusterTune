@@ -8,10 +8,10 @@ import org.junit.Test
 
 class AdaptiveFrequencyControllerTest {
     @Test
-    fun `preset and arbitrary sensible targets are supported`() {
+    fun `preset and every positive Int target are supported`() {
         assertEquals(listOf(30, 60, 120), ADAPTIVE_TARGET_FPS_PRESETS)
 
-        (ADAPTIVE_TARGET_FPS_PRESETS + 77).forEach { target ->
+        (ADAPTIVE_TARGET_FPS_PRESETS + listOf(1, 77, Int.MAX_VALUE)).forEach { target ->
             val controller = controller(targetFps = target, warmup = 0)
 
             assertEquals(mapOf(0 to 400L), controller.baseCeilings.cpuKHz)
@@ -24,8 +24,8 @@ class AdaptiveFrequencyControllerTest {
             }
         }
 
-        assertThrows(IllegalArgumentException::class.java) { AdaptiveTuneConfig(targetFps = 14) }
-        assertThrows(IllegalArgumentException::class.java) { AdaptiveTuneConfig(targetFps = 241) }
+        assertThrows(IllegalArgumentException::class.java) { AdaptiveTuneConfig(targetFps = 0) }
+        assertThrows(IllegalArgumentException::class.java) { AdaptiveTuneConfig(targetFps = -1) }
     }
 
     @Test
