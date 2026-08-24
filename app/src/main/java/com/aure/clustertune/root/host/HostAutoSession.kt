@@ -120,7 +120,9 @@ class HostAutoSessionController(
         val targetFps: Int,
         val timeoutNanos: Long,
         val checkpoint: HostHardwareCheckpoint,
+        val cpuFloorEnvelope: List<Long>,
         val cpuCeilingEnvelope: List<Long>,
+        val gpuFloorEnvelope: Long?,
         val gpuCeilingEnvelope: Long?,
         var deadlineNanos: Long,
         var sequence: Long = 0L,
@@ -132,7 +134,11 @@ class HostAutoSessionController(
      * A failed restore remains authoritative until the same checkpoint is restored exactly.
      * In particular, the partially restored hardware must never become a new session baseline.
      */
-    private data class PendingRestoration(val session: ActiveSession)
+    private data class PendingRestoration(
+        val session: ActiveSession,
+        val requestedStatus: HostAutoSessionStatus,
+        val message: String,
+    )
 
     private var active: ActiveSession? = null
     private var pendingRestoration: PendingRestoration? = null
@@ -199,7 +205,9 @@ class HostAutoSessionController(
             targetFps = request.targetFps,
             timeoutNanos = timeoutNanos,
             checkpoint = checkpoint,
+            cpuFloorEnvelope = hostCapabilities.cpus.map { cpu -> checkpoint.valueFor(cpu.minPath) },
             cpuCeilingEnvelope = hostCapabilities.cpus.map { cpu -> checkpoint.valueFor(cpu.maxPath) },
+            gpuFloorEnvelope = hostCapabilities.gpu?.minPath?.let { path -> checkpoint.valueFor(path) },
             gpuCeilingEnvelope = hostCapabilities.gpu?.let { checkpoint.valueFor(it.maxPath) },
             deadlineNanos = deadline(now, timeoutNanos),
         )
@@ -269,7 +277,9 @@ class HostAutoSessionController(
         validateWithinEnvelope(session, request)
         touch(session)
         val current = HostHardwareStateReader.read(fs, hostCapabilities)
-        val alreadyApplied = session.lastAppliedRequest == request || requestMatchesState(request, current)
+        // The kernel or another privileged actor can change a sysfs value between steps.
+        // A cached request is therefore only bookkeeping; live hardware is authoritative.
+        val alreadyApplied = requestMatchesState(request, current)
         if (!alreadyApplied) {
             applyEngine.applyOrThrow(capabilitiesWithinEnvelope(session), request)
             session.lastAppliedRequest = request
@@ -311,6 +321,9 @@ class HostAutoSessionController(
 
     @Synchronized
     fun expireIfNeeded(): HostAutoSessionSnapshot? {
+        pendingRestoration?.let { pending ->
+            return restorePendingLocked(pending, pending.requestedStatus, pending.message)
+        }
         expireLocked()
         return terminal
     }
@@ -335,7 +348,7 @@ class HostAutoSessionController(
         if (active !== session) return staleOrTerminal(session.id, hostEpoch)
         active = null
         runCatching(telemetrySource::end)
-        val pending = PendingRestoration(session)
+        val pending = PendingRestoration(session, requestedStatus, message)
         pendingRestoration = pending
         return restorePendingLocked(pending, requestedStatus, message)
     }
@@ -381,12 +394,13 @@ class HostAutoSessionController(
         require(request.stabilizedStockCeiling == null) { "automatic steps cannot override the GPU stock ceiling" }
         request.cpuMax.forEachIndexed { index, requested ->
             val cpu = hostCapabilities.cpus[index]
+            val floor = session.cpuFloorEnvelope[index]
             val envelope = session.cpuCeilingEnvelope[index]
             require(
-                requested > 0L && requested <= envelope &&
+                requested > 0L && requested >= floor && requested <= envelope &&
                     (cpu.supportedFrequencies.isEmpty() || requested == envelope || requested in cpu.supportedFrequencies),
             ) {
-                "automatic CPU target exceeds the session envelope for ${cpu.id}"
+                "automatic CPU target is outside the session envelope for ${cpu.id}"
             }
         }
         request.gpuMax?.let { requested ->
@@ -394,10 +408,11 @@ class HostAutoSessionController(
                 ?: throw IllegalArgumentException("automatic GPU target requested without a checkpointed GPU")
             val gpu = hostCapabilities.gpu
                 ?: throw IllegalArgumentException("automatic GPU target requested without a GPU domain")
+            val floor = session.gpuFloorEnvelope
             require(
-                requested > 0L && requested <= envelope &&
+                requested > 0L && (floor == null || requested >= floor) && requested <= envelope &&
                     (gpu.supportedFrequencies.isEmpty() || requested == envelope || requested in gpu.supportedFrequencies),
-            ) { "automatic GPU target exceeds the session envelope" }
+            ) { "automatic GPU target is outside the session envelope" }
         }
     }
 

@@ -175,6 +175,22 @@ class HostAutoSessionTest {
     }
 
     @Test
+    fun `automatic steps cannot lower a maximum below its checkpointed minimum`() {
+        val fixture = fixture(withGpu = true, cpuMin = 600, gpuMin = 600)
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+
+        assertFails { fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 400, gpu = 600)) }
+        assertFails { fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600, gpu = 300)) }
+
+        assertEquals("600", fixture.fs.values["min"])
+        assertEquals("600", fixture.fs.values["gmin"])
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals("900", fixture.fs.values["gmax"])
+        assertEquals(0, fixture.fs.batchMutations)
+    }
+
+    @Test
     fun `host apply engine runs only when cap changes`() {
         val fixture = fixture()
         val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
@@ -186,6 +202,40 @@ class HostAutoSessionTest {
 
         assertEquals(mutationsAfterFirst, fixture.fs.batchMutations)
         assertTrue(mutationsAfterFirst > 0)
+    }
+
+    @Test
+    fun `repeated request repairs live hardware drift`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+
+        fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+        val mutationsAfterFirst = fixture.fs.batchMutations
+        fixture.fs.values["max"] = "800"
+
+        fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+
+        assertEquals("600", fixture.fs.values["max"])
+        assertEquals(mutationsAfterFirst + 1, fixture.fs.batchMutations)
+    }
+
+    @Test
+    fun `watchdog retries a failed expiry restoration`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        fixture.controller.applyStep(requireNotNull(started.sessionId), started.hostEpoch, request(cpu = 600))
+        fixture.fs.failNextWrites("max", count = 1)
+        fixture.clock.now += 5_000_000_000L
+
+        val failed = requireNotNull(fixture.controller.expireIfNeeded())
+        val restored = requireNotNull(fixture.controller.expireIfNeeded())
+
+        assertEquals(HostAutoSessionStatus.RESTORE_FAILED, failed.status)
+        assertFalse(failed.restorationComplete)
+        assertEquals(HostAutoSessionStatus.EXPIRED, restored.status)
+        assertTrue(restored.restorationComplete)
+        assertEquals("800", fixture.fs.values["max"])
     }
 
     @Test
@@ -238,11 +288,15 @@ class HostAutoSessionTest {
         assertEquals(HostAutoSessionStatus.STOPPED, fixture.controller.stop(null, null).status)
     }
 
-    private fun fixture(withGpu: Boolean = false): Fixture {
-        val values = mutableMapOf("min" to "200", "max" to "800")
+    private fun fixture(
+        withGpu: Boolean = false,
+        cpuMin: Long = 200,
+        gpuMin: Long = 300,
+    ): Fixture {
+        val values = mutableMapOf("min" to cpuMin.toString(), "max" to "800")
         val modes = mutableMapOf("min" to 416, "max" to 420)
         if (withGpu) {
-            values.putAll(mapOf("gmin" to "300", "gmax" to "900"))
+            values.putAll(mapOf("gmin" to gpuMin.toString(), "gmax" to "900"))
             modes.putAll(mapOf("gmin" to 416, "gmax" to 420))
         }
         val fs = FakeFs(values, modes)
