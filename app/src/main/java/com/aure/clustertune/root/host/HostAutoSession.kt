@@ -128,7 +128,14 @@ class HostAutoSessionController(
         var lastAppliedRequest: ApplyRequest? = null,
     )
 
+    /**
+     * A failed restore remains authoritative until the same checkpoint is restored exactly.
+     * In particular, the partially restored hardware must never become a new session baseline.
+     */
+    private data class PendingRestoration(val session: ActiveSession)
+
     private var active: ActiveSession? = null
+    private var pendingRestoration: PendingRestoration? = null
     private var terminal: HostAutoSessionSnapshot? = null
 
     companion object {
@@ -160,6 +167,14 @@ class HostAutoSessionController(
         require(request.targetFps in 15..240) { "target FPS must be between 15 and 240" }
         require(request.heartbeatTimeoutMs in MIN_HEARTBEAT_TIMEOUT_MS..MAX_HEARTBEAT_TIMEOUT_MS) {
             "heartbeat timeout must be between $MIN_HEARTBEAT_TIMEOUT_MS and $MAX_HEARTBEAT_TIMEOUT_MS ms"
+        }
+        pendingRestoration?.let { pending ->
+            val restored = restorePendingLocked(
+                pending,
+                HostAutoSessionStatus.STOPPED,
+                "automatic session restored before replacement",
+            )
+            if (!restored.restorationComplete) return restored
         }
         active?.let {
             val stopped = stopLocked(it, HostAutoSessionStatus.STOPPED, "replaced by a new automatic session")
@@ -274,14 +289,22 @@ class HostAutoSessionController(
     @Synchronized
     fun stop(sessionId: String?, expectedHostEpoch: Long?): HostAutoSessionSnapshot {
         expireLocked()
-        val session = resolveActive(sessionId, expectedHostEpoch) ?: return staleOrTerminal(sessionId, expectedHostEpoch)
-        return stopLocked(session, HostAutoSessionStatus.STOPPED, "automatic session stopped")
+        resolveActive(sessionId, expectedHostEpoch)?.let { session ->
+            return stopLocked(session, HostAutoSessionStatus.STOPPED, "automatic session stopped")
+        }
+        resolvePendingRestoration(sessionId, expectedHostEpoch)?.let { pending ->
+            return restorePendingLocked(pending, HostAutoSessionStatus.STOPPED, "automatic session stopped")
+        }
+        return staleOrTerminal(sessionId, expectedHostEpoch)
     }
 
     /** Called before a normal profile apply, host replacement, or host shutdown. */
     @Synchronized
     fun stopCurrent(reason: String): HostAutoSessionSnapshot? {
         expireLocked()
+        pendingRestoration?.let { pending ->
+            return restorePendingLocked(pending, HostAutoSessionStatus.STOPPED, reason)
+        }
         val session = active ?: return null
         return stopLocked(session, HostAutoSessionStatus.STOPPED, reason)
     }
@@ -312,10 +335,23 @@ class HostAutoSessionController(
         if (active !== session) return staleOrTerminal(session.id, hostEpoch)
         active = null
         runCatching(telemetrySource::end)
+        val pending = PendingRestoration(session)
+        pendingRestoration = pending
+        return restorePendingLocked(pending, requestedStatus, message)
+    }
+
+    private fun restorePendingLocked(
+        pending: PendingRestoration,
+        requestedStatus: HostAutoSessionStatus,
+        message: String,
+    ): HostAutoSessionSnapshot {
+        if (pendingRestoration !== pending) return staleOrTerminal(pending.session.id, hostEpoch)
+        val session = pending.session
         val restoration = runCatching { HostCheckpointEngine(fs, hostCapabilities).restore(session.checkpoint) }
             .getOrElse { failure ->
                 HostCheckpointRestoreResult(false, listOf("restore error: ${failure.message.orEmpty().take(128)}"))
             }
+        if (restoration.complete) pendingRestoration = null
         val status = if (restoration.complete) requestedStatus else HostAutoSessionStatus.RESTORE_FAILED
         val detail = if (restoration.complete) message else "$message; restore incomplete for ${restoration.failures.joinToString()}"
         return HostAutoSessionSnapshot(
@@ -397,6 +433,12 @@ class HostAutoSessionController(
         return session.takeIf { sessionId == null || sessionId == it.id }
     }
 
+    private fun resolvePendingRestoration(sessionId: String?, expectedHostEpoch: Long?): PendingRestoration? {
+        if (expectedHostEpoch != null && expectedHostEpoch != hostEpoch) return null
+        val pending = pendingRestoration ?: return null
+        return pending.takeIf { sessionId == null || sessionId == it.session.id }
+    }
+
     private fun staleOrTerminal(sessionId: String?, expectedHostEpoch: Long?): HostAutoSessionSnapshot {
         terminal?.takeIf {
             (expectedHostEpoch == null || expectedHostEpoch == hostEpoch) &&
@@ -408,7 +450,7 @@ class HostAutoSessionController(
             hostEpoch = hostEpoch,
             status = HostAutoSessionStatus.STALE,
             targetFps = 0,
-            restorationComplete = active == null,
+            restorationComplete = active == null && pendingRestoration == null,
             message = when {
                 expectedHostEpoch != null && expectedHostEpoch != hostEpoch -> "stale privileged host epoch"
                 active == null -> "automatic session is no longer active"

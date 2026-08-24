@@ -47,6 +47,75 @@ class HostAutoSessionTest {
     }
 
     @Test
+    fun `failed restoration stays latched and explicit stop retries the original checkpoint`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        fixture.controller.applyStep(started.sessionId!!, started.hostEpoch, request(cpu = 600))
+        fixture.fs.failNextWrites("max", count = 1)
+
+        val failed = fixture.controller.stop(started.sessionId, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.RESTORE_FAILED, failed.status)
+        assertFalse(failed.restorationComplete)
+        assertEquals(failed, fixture.controller.current())
+        assertEquals("600", fixture.fs.values["max"])
+
+        val restored = fixture.controller.stop(started.sessionId, started.hostEpoch)
+        val idempotent = fixture.controller.stop(started.sessionId, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.STOPPED, restored.status)
+        assertTrue(restored.restorationComplete)
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals(restored, idempotent)
+    }
+
+    @Test
+    fun `replacement cannot checkpoint partially restored hardware`() {
+        val fixture = fixture()
+        val first = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        fixture.controller.applyStep(first.sessionId!!, first.hostEpoch, request(cpu = 600))
+        fixture.fs.failNextWrites("max", count = 2)
+        assertEquals(HostAutoSessionStatus.RESTORE_FAILED, fixture.controller.stop(first.sessionId, first.hostEpoch).status)
+
+        val blocked = fixture.controller.start(AutoSessionRequest("com.other", 30, 5_000))
+
+        assertEquals(HostAutoSessionStatus.RESTORE_FAILED, blocked.status)
+        assertEquals(first.sessionId, blocked.sessionId)
+        assertEquals(1, fixture.telemetry.beginCount)
+        assertEquals("600", fixture.fs.values["max"])
+
+        val replacement = fixture.controller.start(AutoSessionRequest("com.other", 30, 5_000))
+        assertEquals(HostAutoSessionStatus.ACTIVE, replacement.status)
+        assertNotEquals(first.sessionId, replacement.sessionId)
+        assertEquals(2, fixture.telemetry.beginCount)
+        assertEquals("800", fixture.fs.values["max"])
+
+        fixture.controller.applyStep(replacement.sessionId!!, replacement.hostEpoch, request(cpu = 600))
+        assertTrue(fixture.controller.stop(replacement.sessionId, replacement.hostEpoch).restorationComplete)
+        assertEquals("800", fixture.fs.values["max"])
+    }
+
+    @Test
+    fun `profile preemption remains blocked until pending restoration succeeds`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        fixture.controller.applyStep(started.sessionId!!, started.hostEpoch, request(cpu = 600))
+        fixture.fs.failNextWrites("max", count = 2)
+        assertEquals(HostAutoSessionStatus.RESTORE_FAILED, fixture.controller.stop(started.sessionId, started.hostEpoch).status)
+
+        val stillBlocked = requireNotNull(fixture.controller.stopCurrent("profile apply preemption"))
+
+        assertEquals(HostAutoSessionStatus.RESTORE_FAILED, stillBlocked.status)
+        assertFalse(stillBlocked.restorationComplete)
+        assertEquals("600", fixture.fs.values["max"])
+
+        val restored = requireNotNull(fixture.controller.stopCurrent("profile apply preemption"))
+        assertEquals(HostAutoSessionStatus.STOPPED, restored.status)
+        assertTrue(restored.restorationComplete)
+        assertEquals("800", fixture.fs.values["max"])
+    }
+
+    @Test
     fun `new session replaces and restores the previous session`() {
         val fixture = fixture()
         val first = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
@@ -160,15 +229,16 @@ class HostAutoSessionTest {
         val fs = FakeFs(values, modes)
         val capabilities = capabilities(withGpu)
         val clock = FakeClock()
+        val telemetry = FakeTelemetry(capabilities.cpus.size, withGpu)
         val controller = HostAutoSessionController(
             capabilities,
             fs,
             HostApplyEngine(fs),
-            FakeTelemetry(capabilities.cpus.size, withGpu),
+            telemetry,
             hostEpoch = 42L,
             clock = clock,
         )
-        return Fixture(fs, clock, controller)
+        return Fixture(fs, clock, telemetry, controller)
     }
 
     private fun capabilities(withGpu: Boolean): HostCapabilities {
@@ -222,6 +292,7 @@ class HostAutoSessionTest {
     private data class Fixture(
         val fs: FakeFs,
         val clock: FakeClock,
+        val telemetry: FakeTelemetry,
         val controller: HostAutoSessionController,
     )
 
@@ -230,8 +301,12 @@ class HostAutoSessionTest {
     }
 
     private class FakeTelemetry(private val cpuCount: Int, private val hasGpu: Boolean) : HostTelemetrySource {
+        var beginCount = 0
         override fun capabilities() = HostAutoCapabilities(true, true, false, hasGpu, false, false, "fake")
-        override fun begin(packageName: String, targetFps: Int) = Result.success(Unit)
+        override fun begin(packageName: String, targetFps: Int): Result<Unit> {
+            beginCount++
+            return Result.success(Unit)
+        }
         override fun sample() = HostRawTelemetry(
             timestampNanos = 1L,
             frameBackend = "fake",
@@ -256,10 +331,16 @@ class HostAutoSessionTest {
         val modes: MutableMap<String, Int>,
     ) : HostFilesystem {
         val operations = mutableListOf<String>()
+        private val failedWritesRemaining = mutableMapOf<String, Int>()
         var batchMutations = 0
         override fun read(path: String): String? = values[path]
         override fun write(path: String, value: String): Boolean {
             operations += "write:$path=$value"
+            val failures = failedWritesRemaining[path] ?: 0
+            if (failures > 0) {
+                failedWritesRemaining[path] = failures - 1
+                return false
+            }
             values[path] = value
             return true
         }
@@ -273,6 +354,11 @@ class HostAutoSessionTest {
         override fun mutate(operations: List<HostMutation>): Boolean {
             batchMutations++
             return super<HostFilesystem>.mutate(operations)
+        }
+
+        fun failNextWrites(path: String, count: Int) {
+            require(count >= 0)
+            failedWritesRemaining[path] = count
         }
     }
 }
