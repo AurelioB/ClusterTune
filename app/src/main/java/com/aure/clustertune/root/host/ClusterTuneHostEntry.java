@@ -233,13 +233,30 @@ public final class ClusterTuneHostEntry {
 
         private void closeBeforeExit() {
             watchdog.shutdownNow();
-            try {
-                HostAutoSessionSnapshot stopped = stopAutoForExternalApply("privileged host lease ended");
-                if (stopped != null && !stopped.getRestorationComplete()) {
-                    log("automatic session restore incomplete during host shutdown: " + stopped.getMessage());
+            HostAutoSessionSnapshot stopped = null;
+            Throwable stopFailure = null;
+            boolean restorationComplete = false;
+            // The process is about to discard its in-memory checkpoint, so make a few
+            // bounded attempts while it is still authoritative. This also retries a
+            // pending restoration created by a failed watchdog or earlier stop.
+            for (int attempt = 0; attempt < 3; attempt++) {
+                try {
+                    stopped = stopAutoForExternalApply("privileged host lease ended");
+                    stopFailure = null;
+                    if (stopped == null || stopped.getRestorationComplete()) {
+                        restorationComplete = true;
+                        break;
+                    }
+                } catch (Throwable throwable) {
+                    stopFailure = throwable;
                 }
-            } catch (Throwable throwable) {
-                log("automatic session shutdown failed: " + throwable);
+            }
+            if (!restorationComplete) {
+                if (stopped != null) {
+                    log("automatic session restore incomplete during host shutdown: " + stopped.getMessage());
+                } else if (stopFailure != null) {
+                    log("automatic session shutdown failed: " + stopFailure);
+                }
             }
             IBinder currentLease = lease;
             IBinder.DeathRecipient currentDeath = leaseDeath;

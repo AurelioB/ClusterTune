@@ -172,6 +172,14 @@ class HostAutoSessionTest {
         assertFails { fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 1_000, gpu = 900)) }
         assertFails { fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 800, gpu = 1_000)) }
         assertFails { fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 0, gpu = 900, reset = true)) }
+        assertFails { fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 800)) }
+        assertFails {
+            fixture.controller.applyStep(
+                session,
+                started.hostEpoch,
+                request(cpu = 800, gpu = 900).copy(cpuIds = emptyList()),
+            )
+        }
     }
 
     @Test

@@ -28,7 +28,7 @@ fun interface HostCommandRunner {
 /** Executes a fixed argv vector directly. It never invokes a shell or interpolates layer names. */
 class ProcessHostCommandRunner @JvmOverloads constructor(
     private val timeoutMs: Long = 750L,
-    private val maximumOutputBytes: Int = 1024 * 1024,
+    private val maximumOutputBytes: Int = 4 * 1024 * 1024,
 ) : HostCommandRunner {
     override fun run(arguments: List<String>): HostCommandResult {
         require(arguments.isNotEmpty() && arguments.size <= 16) { "invalid command arguments" }
@@ -85,17 +85,23 @@ data class HostTimeStatsLayer(
     val layerName: String,
     val packageName: String?,
     val totalFrames: Long?,
+    val totalTimelineFrames: Long?,
     val averageFpsMilli: Int?,
     val jankyFrames: Long?,
 )
 
 object HostTelemetryParsers {
     private val packagePattern = Regex("[A-Za-z][A-Za-z0-9_]*(?:\\.[A-Za-z0-9_]+)*")
+    private const val MAX_SURFACE_LAYER_CANDIDATES = 8
 
     fun isValidPackageName(value: String): Boolean =
         value.length in 1..HostProtocol.MAX_PACKAGE_LENGTH && packagePattern.matches(value)
 
-    fun surfaceLayers(text: String, packageName: String, maximum: Int = 4): List<String> {
+    fun surfaceLayers(
+        text: String,
+        packageName: String,
+        maximum: Int = MAX_SURFACE_LAYER_CANDIDATES,
+    ): List<String> {
         if (!isValidPackageName(packageName) || maximum <= 0) return emptyList()
         return text.lineSequence()
             .map(String::trim)
@@ -108,7 +114,7 @@ object HostTelemetryParsers {
                     .thenBy { it.length }
                     .thenBy { it },
             )
-            .take(maximum.coerceAtMost(8))
+            .take(maximum.coerceAtMost(MAX_SURFACE_LAYER_CANDIDATES))
             .toList()
     }
 
@@ -162,16 +168,18 @@ object HostTelemetryParsers {
                 result += HostTimeStatsLayer(
                     layerName = layer,
                     packageName = fields["packagename"]?.trim()?.takeIf(String::isNotEmpty),
-                    totalFrames = fields["totalframes"]?.let(::firstLong),
+                    totalFrames = fields["totalframes"]?.let(::nonNegativeFirstLong),
+                    totalTimelineFrames = fields["totaltimelineframes"]?.let(::nonNegativeFirstLong),
                     averageFpsMilli = average?.takeIf { it in 0..1_000_000 },
-                    jankyFrames = fields["jankyframes"]?.let(::firstLong),
+                    jankyFrames = fields["jankyframes"]?.let(::nonNegativeFirstLong)
+                        ?: fields["totaljankyframes"]?.let(::nonNegativeFirstLong),
                 )
             }
             fields = linkedMapOf()
         }
         text.lineSequence().forEach { raw ->
             if (raw.isBlank()) {
-                if (fields.containsKey("layername")) flush()
+                if (fields.isNotEmpty()) flush()
                 return@forEach
             }
             val delimiter = raw.indexOf('=').takeIf { it > 0 } ?: raw.indexOf(':').takeIf { it > 0 } ?: return@forEach
@@ -185,15 +193,22 @@ object HostTelemetryParsers {
     }
 
     fun matchingTimeStatsLayer(text: String, packageName: String): HostTimeStatsLayer? {
-        if (!isValidPackageName(packageName)) return null
+        return matchingTimeStatsLayers(text, packageName).firstOrNull()
+    }
+
+    /** Returns one aggregate per logical layer, combining refresh/render-rate TimeStats slices. */
+    fun matchingTimeStatsLayers(text: String, packageName: String): List<HostTimeStatsLayer> {
+        if (!isValidPackageName(packageName)) return emptyList()
         return surfaceTimeStats(text)
             .filter { it.packageName == packageName || containsPackageToken(it.layerName, packageName) }
+            .groupBy(HostTimeStatsLayer::layerName)
+            .values
+            .map(::aggregateTimeStatsSlices)
             .sortedWith(
                 compareByDescending<HostTimeStatsLayer> { "SurfaceView" in it.layerName || "BLAST" in it.layerName }
-                    .thenByDescending { it.totalFrames ?: -1L }
+                    .thenByDescending { it.totalFrames ?: it.totalTimelineFrames ?: -1L }
                     .thenBy { it.layerName },
             )
-            .firstOrNull()
     }
 
     fun procStat(text: String): Map<Int?, HostCpuTicks> {
@@ -217,6 +232,18 @@ object HostTelemetryParsers {
         val idle = current.idle - previous.idle
         if (total <= 0L || idle < 0L) return null
         return (((total - idle).coerceIn(0L, total) * 1000L) / total).toInt()
+    }
+
+    fun cpuPolicyLoadPermille(
+        previous: Map<Int?, HostCpuTicks>,
+        current: Map<Int?, HostCpuTicks>,
+        cpuIds: List<Int>,
+    ): Int? {
+        val commonIds = cpuIds.distinct().filter { previous[it] != null && current[it] != null }
+        if (commonIds.isEmpty()) return null
+        val previousCombined = combineTicks(commonIds.mapNotNull(previous::get)) ?: return null
+        val currentCombined = combineTicks(commonIds.mapNotNull(current::get)) ?: return null
+        return cpuLoadPermille(previousCombined, currentCombined)
     }
 
     fun cpuList(text: String): List<Int> {
@@ -250,16 +277,12 @@ object HostTelemetryParsers {
         return HostGpuBusyValue(busyTicks = busy, totalTicks = total)
     }
 
-    fun gpuBusyPermille(previous: HostGpuBusyValue?, current: HostGpuBusyValue?): Int? {
+    fun gpuBusyPermille(current: HostGpuBusyValue?): Int? {
         current?.instantaneousPermille?.let { return it.coerceIn(0, 1000) }
         val busy = current?.busyTicks ?: return null
         val total = current.totalTicks ?: return null
-        val previousBusy = previous?.busyTicks
-        val previousTotal = previous?.totalTicks
-        val deltaBusy = if (previousBusy != null && busy >= previousBusy) busy - previousBusy else busy
-        val deltaTotal = if (previousTotal != null && total >= previousTotal) total - previousTotal else total
-        if (deltaTotal <= 0L) return null
-        return ((deltaBusy.coerceIn(0L, deltaTotal) * 1000L) / deltaTotal).toInt()
+        if (total <= 0L) return null
+        return ((busy.coerceIn(0L, total) * 1000L) / total).toInt()
     }
 
     fun thermalMilliCelsius(text: String): Long? {
@@ -276,7 +299,47 @@ object HostTelemetryParsers {
     private fun saturatingAdd(left: Long, right: Long): Long =
         if (right > 0L && left > Long.MAX_VALUE - right) Long.MAX_VALUE else left + right
 
+    private fun combineTicks(values: List<HostCpuTicks>): HostCpuTicks? {
+        if (values.isEmpty()) return null
+        return HostCpuTicks(
+            total = values.fold(0L) { total, value -> saturatingAdd(total, value.total) },
+            idle = values.fold(0L) { idle, value -> saturatingAdd(idle, value.idle) },
+        )
+    }
+
+    private fun aggregateTimeStatsSlices(slices: List<HostTimeStatsLayer>): HostTimeStatsLayer {
+        require(slices.isNotEmpty())
+        val weightedFps = slices.mapNotNull { slice ->
+            val fps = slice.averageFpsMilli ?: return@mapNotNull null
+            val weight = (slice.totalFrames ?: slice.totalTimelineFrames)?.takeIf { it > 0L } ?: 1L
+            fps to weight
+        }
+        val totalWeight = weightedFps.sumOf { it.second.toDouble() }
+        val averageFps = if (totalWeight > 0.0) {
+            (weightedFps.sumOf { (fps, weight) -> fps.toDouble() * weight.toDouble() } / totalWeight)
+                .roundToInt()
+                .coerceIn(0, 1_000_000)
+        } else {
+            null
+        }
+        return HostTimeStatsLayer(
+            layerName = slices.first().layerName,
+            packageName = slices.mapNotNull(HostTimeStatsLayer::packageName).distinct().singleOrNull(),
+            totalFrames = sumNullable(slices.map(HostTimeStatsLayer::totalFrames)),
+            totalTimelineFrames = sumNullable(slices.map(HostTimeStatsLayer::totalTimelineFrames)),
+            averageFpsMilli = averageFps,
+            jankyFrames = sumNullable(slices.map(HostTimeStatsLayer::jankyFrames)),
+        )
+    }
+
+    private fun sumNullable(values: List<Long?>): Long? {
+        val present = values.filterNotNull()
+        if (present.isEmpty()) return null
+        return present.fold(0L, ::saturatingAdd)
+    }
+
     private fun firstLong(value: String): Long? = Regex("-?[0-9]+").find(value)?.value?.toLongOrNull()
+    private fun nonNegativeFirstLong(value: String): Long? = firstLong(value)?.takeIf { it >= 0L }
     private fun firstDecimal(value: String): Double? = Regex("[0-9]+(?:\\.[0-9]+)?").find(value)?.value?.toDoubleOrNull()
 }
 
@@ -312,8 +375,8 @@ class SystemHostTelemetrySource(
     private val runner: HostCommandRunner = ProcessHostCommandRunner(),
     private val clock: HostMonotonicClock = SystemHostMonotonicClock,
     thermalZones: List<Pair<String, String>>? = null,
+    private val dumpsys: String = "/system/bin/dumpsys",
 ) : HostTelemetrySource {
-    private val dumpsys = "/system/bin/dumpsys"
     private val cpuIdsByDomain = hostCapabilities.cpus.map { cpu ->
         val parent = File(cpu.maxPath).parentFile
         parent?.let { HostTelemetryParsers.cpuList(fs.read(File(it, "related_cpus").path).orEmpty()) }.orEmpty()
@@ -324,13 +387,12 @@ class SystemHostTelemetrySource(
     private var targetFps: Int = 0
     private var frameLayer: String? = null
     private var frameBackend: String? = null
+    private var frameSessionStartedNanos = 0L
     private var lastPresentedNanos = 0L
-    private var previousTimeStatsFrames: Long? = null
-    private var previousTimeStatsJanky: Long? = null
-    private var timeStatsEnabledByHost = false
+    private var previousTimeStats = emptyMap<String, TimeStatsCounters>()
+    private var previousTimeStatsSampleNanos: Long? = null
     private var staleFrameSamples = 0
     private var previousCpu = emptyMap<Int?, HostCpuTicks>()
-    private var previousGpuBusy: HostGpuBusyValue? = null
 
     override fun capabilities(): HostAutoCapabilities {
         val frameSupported = File(dumpsys).canExecute()
@@ -350,42 +412,32 @@ class SystemHostTelemetrySource(
         require(HostTelemetryParsers.isValidPackageName(packageName)) { "invalid target package" }
         require(targetFps in 15..240) { "invalid target FPS" }
         check(capabilities().frameStats) { "SurfaceFlinger frame statistics are unavailable" }
-        previousTimeStatsFrames = null
-        previousTimeStatsJanky = null
+        frameSessionStartedNanos = clock.nanoTime()
+        previousTimeStats = emptyMap()
+        previousTimeStatsSampleNanos = null
         val layers = listLayers(packageName)
         this.packageName = packageName
         this.targetFps = targetFps
         frameLayer = chooseLatencyLayer(layers)
         frameBackend = if (frameLayer != null) "surfaceflinger-latency" else null
         if (frameBackend == null) {
-            val dump = dumpTimeStats()
-            val existing = dump?.let { HostTelemetryParsers.matchingTimeStatsLayer(it, packageName) }
-            if (existing != null) {
-                frameLayer = existing.layerName
-                frameBackend = "surfaceflinger-timestats"
-                previousTimeStatsFrames = existing.totalFrames
-                previousTimeStatsJanky = existing.jankyFrames
-            } else if (layers.isNotEmpty() && enableTimeStats()) {
-                frameLayer = layers.first()
-                frameBackend = "surfaceflinger-timestats"
-            }
+            switchToTimeStats(packageName, layers)
         }
         check(frameBackend != null) { "no SurfaceFlinger frame statistics for $packageName" }
-        lastPresentedNanos = 0L
+        lastPresentedNanos = frameSessionStartedNanos
         staleFrameSamples = 0
         previousCpu = HostTelemetryParsers.procStat(fs.read("/proc/stat").orEmpty())
-        previousGpuBusy = readGpuBusy()
     }
 
     override fun end() {
-        if (timeStatsEnabledByHost) {
-            runCatching { runner.run(listOf(dumpsys, "SurfaceFlinger", "--timestats", "-disable")) }
-        }
-        timeStatsEnabledByHost = false
         packageName = null
         targetFps = 0
         frameLayer = null
         frameBackend = null
+        frameSessionStartedNanos = 0L
+        lastPresentedNanos = 0L
+        previousTimeStats = emptyMap()
+        previousTimeStatsSampleNanos = null
     }
 
     override fun sample(): HostRawTelemetry {
@@ -395,16 +447,11 @@ class SystemHostTelemetrySource(
         val aggregateLoad = HostTelemetryParsers.cpuLoadPermille(previousCpu[null], cpuNow[null])
         val cpuLoads = hostCapabilities.cpus.mapIndexed { index, _ ->
             val ids = cpuIdsByDomain[index]
-            if (ids.isEmpty()) aggregateLoad else {
-                val previous = combineTicks(ids.mapNotNull(previousCpu::get))
-                val current = combineTicks(ids.mapNotNull(cpuNow::get))
-                HostTelemetryParsers.cpuLoadPermille(previous, current) ?: aggregateLoad
-            }
+            if (ids.isEmpty()) aggregateLoad
+            else HostTelemetryParsers.cpuPolicyLoadPermille(previousCpu, cpuNow, ids) ?: aggregateLoad
         }
         previousCpu = cpuNow
-        val currentGpuBusy = readGpuBusy()
-        val gpuLoad = HostTelemetryParsers.gpuBusyPermille(previousGpuBusy, currentGpuBusy)
-        previousGpuBusy = currentGpuBusy
+        val gpuLoad = HostTelemetryParsers.gpuBusyPermille(readGpuBusy())
         val cpuClocks = hostCapabilities.cpus.map { cpu -> cpu.curPath?.let { fs.read(it)?.toLongOrNull()?.takeIf { value -> value >= 0L } } }
         val gpuClock = hostCapabilities.gpu?.curPath?.let { fs.read(it)?.toLongOrNull()?.takeIf { value -> value >= 0L } }
         val thermals = thermalNodes.mapNotNull { (type, path) ->
@@ -454,8 +501,15 @@ class SystemHostTelemetrySource(
         val targetPackage = packageName ?: return FrameReading(null, 0, null, 0, null, null, null, true, "frame_session_not_started")
         if (frameBackend == "surfaceflinger-timestats") return sampleTimeStats(targetPackage)
         if (frameLayer == null || staleFrameSamples >= 3) {
-            frameLayer = chooseLatencyLayer(listLayers(targetPackage))
-            staleFrameSamples = 0
+            val layers = listLayers(targetPackage)
+            frameLayer = chooseLatencyLayer(layers, newerThanNanos = lastPresentedNanos)
+            if (frameLayer != null) {
+                staleFrameSamples = 0
+            } else if (switchToTimeStats(targetPackage, layers)) {
+                // The activation dump is the new counter baseline. Avoid a second large dump in the
+                // same binder call; the next sample will report deltas from this transition point.
+                return FrameReading("surfaceflinger-timestats", 500, frameLayer, 0, null, null, null, true)
+            }
         }
         val layer = frameLayer ?: return FrameReading(frameBackend, 0, null, 0, null, null, null, true, "surface_layer_unavailable")
         val result = runCatching { runner.run(listOf(dumpsys, "SurfaceFlinger", "--latency", layer)) }.getOrNull()
@@ -465,7 +519,8 @@ class SystemHostTelemetrySource(
             return FrameReading(frameBackend, 0, layer, 0, null, null, null, true, if (result.timedOut) "surfaceflinger_timeout" else "surfaceflinger_command_failed")
         }
         val window = HostTelemetryParsers.surfaceLatency(result.stdout)
-        val recent = HostTelemetryParsers.rollingPresentedNanos(window.presentedNanos)
+        val sessionFrames = window.presentedNanos.filter { it >= frameSessionStartedNanos }
+        val recent = HostTelemetryParsers.rollingPresentedNanos(sessionFrames)
         val newFrames = recent.count { it > lastPresentedNanos }
         val latest = recent.lastOrNull()
         if (latest != null && latest > lastPresentedNanos) lastPresentedNanos = latest
@@ -489,28 +544,47 @@ class SystemHostTelemetrySource(
     private fun sampleTimeStats(targetPackage: String): FrameReading {
         val dump = dumpTimeStats()
             ?: return FrameReading("surfaceflinger-timestats", 250, frameLayer, 0, null, null, null, true, "surfaceflinger_timestats_failed")
-        val layer = HostTelemetryParsers.matchingTimeStatsLayer(dump, targetPackage)
+        val sampleTimestampNanos = clock.nanoTime()
+        val layers = HostTelemetryParsers.matchingTimeStatsLayers(dump, targetPackage)
+        val layer = layers.maxWithOrNull(
+            compareBy<HostTimeStatsLayer> { candidate ->
+                counterDelta(candidate.frameCounter(), previousTimeStats[candidate.layerName]?.frameCounter) ?: 0L
+            }.thenBy { candidate -> candidate.layerName == frameLayer }
+                .thenBy { candidate -> "SurfaceView" in candidate.layerName || "BLAST" in candidate.layerName }
+                .thenBy { candidate -> candidate.frameCounter() ?: -1L },
+        )
             ?: return FrameReading("surfaceflinger-timestats", 250, frameLayer, 0, null, null, null, true, "surface_layer_unavailable")
         frameLayer = layer.layerName
-        val total = layer.totalFrames
-        val previousTotal = previousTimeStatsFrames
-        val frames = if (total != null && previousTotal != null && total >= previousTotal) (total - previousTotal).coerceAtMost(Int.MAX_VALUE.toLong()).toInt() else 0
-        val janky = layer.jankyFrames
-        val previousJanky = previousTimeStatsJanky
-        val deltaJanky = if (janky != null && previousJanky != null && janky >= previousJanky) janky - previousJanky else null
-        val slow = if (frames > 0 && deltaJanky != null) ((deltaJanky.coerceAtMost(frames.toLong()) * 1000L) / frames).toInt() else null
-        previousTimeStatsFrames = total
-        previousTimeStatsJanky = janky
+        val previous = previousTimeStats[layer.layerName]
+        val frameDelta = counterDelta(layer.frameCounter(), previous?.frameCounter)
+        val frames = frameDelta?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt() ?: 0
+        val timelineDelta = counterDelta(layer.totalTimelineFrames, previous?.totalTimelineFrames)
+        val jankyDelta = counterDelta(layer.jankyFrames, previous?.jankyFrames)
+        val slow = if (timelineDelta != null && timelineDelta > 0L && jankyDelta != null) {
+            ((jankyDelta.coerceAtMost(timelineDelta) * 1000L) / timelineDelta).toInt()
+        } else {
+            null
+        }
+        val elapsed = previousTimeStatsSampleNanos?.let { sampleTimestampNanos - it }
+        val fpsMilli = if (frames > 0 && elapsed != null && elapsed > 0L) {
+            (frames.toDouble() * 1_000_000_000_000.0 / elapsed.toDouble())
+                .roundToInt()
+                .coerceIn(0, 1_000_000)
+        } else {
+            null
+        }
+        previousTimeStats = layers.associate { it.layerName to it.counters() }
+        previousTimeStatsSampleNanos = sampleTimestampNanos
         return FrameReading(
             backend = "surfaceflinger-timestats",
             confidencePermille = 500,
             layer = layer.layerName,
             newFrames = frames,
-            fpsMilli = layer.averageFpsMilli,
+            fpsMilli = fpsMilli,
             p95Nanos = null,
             slowRatioPermille = slow,
             stale = frames == 0,
-            reason = if (layer.averageFpsMilli == null) "timestats_fps_unavailable" else null,
+            reason = if (frames > 0 && fpsMilli == null) "timestats_fps_unavailable" else null,
         )
     }
 
@@ -520,32 +594,67 @@ class SystemHostTelemetrySource(
         return HostTelemetryParsers.surfaceLayers(result.stdout, packageName)
     }
 
-    private fun chooseLatencyLayer(layers: List<String>): String? {
+    private fun chooseLatencyLayer(layers: List<String>, newerThanNanos: Long? = null): String? {
         if (layers.isEmpty()) return null
-        // Query at most four bounded candidates and choose the layer with the freshest frame data.
+        // The layer parser applies the command-safety bound. Probe every retained candidate before
+        // choosing so lexical ordering cannot hide a later, actively presenting application layer.
         return layers.map { layer ->
             val result = runCatching { runner.run(listOf(dumpsys, "SurfaceFlinger", "--latency", layer)) }.getOrNull()
             val latest = result?.takeIf { it.exitCode == 0 && !it.timedOut && !it.truncated }
                 ?.let { HostTelemetryParsers.surfaceLatency(it.stdout).presentedNanos.lastOrNull() } ?: Long.MIN_VALUE
             layer to latest
-        }.filter { it.second != Long.MIN_VALUE }.maxWithOrNull(compareBy<Pair<String, Long>> { it.second }.thenByDescending { it.first })?.first
+        }.filter { (_, latest) ->
+            latest != Long.MIN_VALUE && (newerThanNanos == null || latest > newerThanNanos)
+        }.maxWithOrNull(compareBy<Pair<String, Long>> { it.second }.thenByDescending { it.first })?.first
+    }
+
+    private fun switchToTimeStats(targetPackage: String, fallbackLayers: List<String>): Boolean {
+        val dump = dumpTimeStats()
+        val dumpTimestampNanos = clock.nanoTime()
+        val existing = dump?.let { HostTelemetryParsers.matchingTimeStatsLayers(it, targetPackage) }.orEmpty()
+        // TimeStats enable is idempotent, but its ownership is global and cannot be queried.
+        // Re-enable for every fallback and deliberately leave it enabled at end so an unrelated
+        // consumer that already owned collection is never disabled by ClusterTune.
+        if (!enableTimeStats()) return false
+        frameLayer = existing.firstOrNull()?.layerName ?: fallbackLayers.firstOrNull()
+        frameBackend = "surfaceflinger-timestats"
+        previousTimeStats = existing.associate { it.layerName to it.counters() }
+        previousTimeStatsSampleNanos = if (existing.isEmpty()) clock.nanoTime() else dumpTimestampNanos
+        staleFrameSamples = 0
+        return true
     }
 
     private fun dumpTimeStats(): String? {
         val result = runCatching { runner.run(listOf(dumpsys, "SurfaceFlinger", "--timestats", "-dump")) }.getOrNull() ?: return null
-        return result.stdout.takeIf { result.exitCode == 0 && !result.timedOut && !result.truncated }
+        if (result.exitCode != 0 || result.timedOut) return null
+        if (!result.truncated) return result.stdout
+        // AOSP separates complete layer records with a blank line. When the bounded command output
+        // is clipped, retain only the complete prefix; never parse the possibly partial tail.
+        val boundary = result.stdout.lastIndexOf("\n\n")
+        return result.stdout.takeIf { boundary >= 0 }?.substring(0, boundary + 1)
     }
 
     private fun enableTimeStats(): Boolean {
         val result = runCatching { runner.run(listOf(dumpsys, "SurfaceFlinger", "--timestats", "-enable")) }.getOrNull() ?: return false
-        timeStatsEnabledByHost = result.exitCode == 0 && !result.timedOut
-        return timeStatsEnabledByHost
+        return result.exitCode == 0 && !result.timedOut && !result.truncated
     }
 
-    private fun combineTicks(values: List<HostCpuTicks>): HostCpuTicks? {
-        if (values.isEmpty()) return null
-        return HostCpuTicks(values.sumOf { it.total }, values.sumOf { it.idle })
-    }
+    private data class TimeStatsCounters(
+        val frameCounter: Long?,
+        val totalTimelineFrames: Long?,
+        val jankyFrames: Long?,
+    )
+
+    private fun HostTimeStatsLayer.frameCounter(): Long? = totalFrames ?: totalTimelineFrames
+
+    private fun HostTimeStatsLayer.counters() = TimeStatsCounters(
+        frameCounter = frameCounter(),
+        totalTimelineFrames = totalTimelineFrames,
+        jankyFrames = jankyFrames,
+    )
+
+    private fun counterDelta(current: Long?, previous: Long?): Long? =
+        if (current != null && previous != null && current >= previous) current - previous else null
 
     private data class GpuBusyNode(val path: String, val percentStyle: Boolean)
 

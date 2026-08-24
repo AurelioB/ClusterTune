@@ -127,7 +127,6 @@ class HostAutoSessionController(
         var deadlineNanos: Long,
         var sequence: Long = 0L,
         var latestTelemetry: HostAutoTelemetry? = null,
-        var lastAppliedRequest: ApplyRequest? = null,
     )
 
     /**
@@ -278,11 +277,10 @@ class HostAutoSessionController(
         touch(session)
         val current = HostHardwareStateReader.read(fs, hostCapabilities)
         // The kernel or another privileged actor can change a sysfs value between steps.
-        // A cached request is therefore only bookkeeping; live hardware is authoritative.
+        // Live hardware is authoritative even when this request repeats the previous target.
         val alreadyApplied = requestMatchesState(request, current)
         if (!alreadyApplied) {
             applyEngine.applyOrThrow(capabilitiesWithinEnvelope(session), request)
-            session.lastAppliedRequest = request
         }
         return activeSnapshot(session, state = HostHardwareStateReader.read(fs, hostCapabilities))
     }
@@ -382,11 +380,13 @@ class HostAutoSessionController(
 
     private fun validateRequestIdentity(request: ApplyRequest) {
         require(request.cpuMax.size == hostCapabilities.cpus.size) { "CPU domain count mismatch" }
-        if (request.cpuIds.isNotEmpty()) {
-            require(request.cpuIds == hostCapabilities.cpus.map(CpuDomain::id)) { "CPU domain order mismatch" }
+        require(request.cpuIds == hostCapabilities.cpus.map(CpuDomain::id)) { "CPU domain order mismatch" }
+        val gpu = hostCapabilities.gpu
+        require((request.gpuMax == null) == (gpu == null)) { "GPU domain count mismatch" }
+        if (gpu != null) {
+            require(request.gpuId == gpu.id) { "GPU identity mismatch" }
+            require(request.gpuMaxPath == gpu.maxPath) { "GPU path mismatch" }
         }
-        request.gpuId?.let { require(it == hostCapabilities.gpu?.id) { "GPU identity mismatch" } }
-        request.gpuMaxPath?.let { require(it == hostCapabilities.gpu?.maxPath) { "GPU path mismatch" } }
     }
 
     private fun validateWithinEnvelope(session: ActiveSession, request: ApplyRequest) {
