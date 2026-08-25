@@ -24,7 +24,7 @@ Lower CPU limits can reduce power use, heat, fan noise, and battery drain. Games
 * Profiles that can be created, reordered, imported, and exported
 * Bundled presets and a Stock profile for supported processors
 * Automatic app profiles using saved profiles or custom frequency values across one or more displays
-* Per-app Auto Tune targets in a dedicated overlay tab, with 30/60/120 shortcuts and a slider capped to the app display's current refresh mode, using SurfaceFlinger frame statistics and device load to lower available CPU/GPU ceilings safely
+* Per-app Auto Tune targets in a dedicated overlay tab, with a slider capped to the app display's current refresh mode, using SurfaceFlinger frame statistics and device load to lower available CPU/GPU ceilings safely
 * Quick Settings access to pick, tune, or cycle profiles
 * A left edge gesture that opens profile controls over the current app
 * Optional profile automation after boot and while asleep
@@ -60,7 +60,7 @@ Execution method detection runs on first launch. Approve the `su` request if Roo
 
 Choose a bundled profile or create one. **Stock** restores the device's normal maximum frequencies.
 
-For an app profile, open the overlay's **Auto Tune** tab and use the target slider or its 30/60/120 shortcuts to let ClusterTune search for lower maximum frequencies while that app owns the focused window. The slider follows the current refresh mode of the display hosting the app, so a device switching between 60 and 120 Hz never asks Auto Tune to chase frames the panel cannot present. Saved targets accept any positive FPS value for portability; at runtime ClusterTune uses the lower of that value and the app display's current refresh rate without rewriting the saved preference. The target is a performance floor, not a frame-rate limiter; for best efficiency, set the app's own frame-rate cap to the same value.
+For an app profile, open the overlay's **Auto Tune** tab and use the target slider to let ClusterTune search for lower maximum frequencies while that app owns the focused window. The slider follows the current refresh mode of the display hosting the app, so a device switching between 60 and 120 Hz never asks Auto Tune to chase frames the panel cannot present. Saved targets accept any positive FPS value for portability; at runtime ClusterTune uses the lower of that value and the app display's current refresh rate without rewriting the saved preference. The target is a performance floor, not a frame-rate limiter; for best efficiency, set the app's own frame-rate cap to the same value.
 
 Auto Tune writes only maximum-frequency ceilings. It never writes CPU/GPU minimum frequencies or governors, even when an OEM performance mode holds a minimum above the selected ceiling; that domain may temporarily run pinned at the ceiling while it is busy. Auto Tune never raises a ceiling above the saved normal profile, restores the maximum ceilings and permissions it owned when the session ends, and stops instead of fighting another privileged service that changes a maximum during the session. SurfaceFlinger frame statistics are required; CPU/GPU utilization and thermal sensors are used when the device exposes them.
 

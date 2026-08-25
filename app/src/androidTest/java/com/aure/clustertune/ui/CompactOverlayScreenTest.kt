@@ -173,7 +173,7 @@ class CompactOverlayScreenTest {
         composeRule.onNodeWithTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER)
             .performSemanticsAction(SemanticsActions.SetProgress) { setProgress -> setProgress(77f) }
         composeRule.runOnIdle { assertEquals(0, replacementCount) }
-        composeRule.onNodeWithText("Assign Auto Tune").performClick()
+        composeRule.onNodeWithText("Apply").performClick()
         composeRule.runOnIdle {
             assertEquals(1, replacementCount)
             assertEquals(77, replacementTarget)
@@ -349,14 +349,20 @@ class CompactOverlayScreenTest {
             }
         }
 
-        composeRule.onNodeWithText("30 FPS").assertExists()
-        composeRule.onNodeWithText("60 FPS").assertExists()
-        composeRule.onNodeWithText("120 FPS").assertExists()
-        composeRule.onNodeWithText("Performance floor, not an FPS limiter. Match the app's own frame-rate cap.")
-            .assertExists()
-        composeRule.onNodeWithText("120 FPS").performClick()
-        composeRule.onNodeWithText("120 FPS target").assertExists()
-        composeRule.onNodeWithTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER)
+        listOf("30 FPS", "60 FPS", "120 FPS").forEach { presetLabel ->
+            assertTrue(
+                "$presetLabel should not be a clickable preset",
+                composeRule.onAllNodesWithText(presetLabel).fetchSemanticsNodes()
+                    .none { it.config.contains(SemanticsActions.OnClick) },
+            )
+        }
+        assertTrue(
+            composeRule.onAllNodesWithText(
+                "Performance floor, not an FPS limiter. Match the app's own frame-rate cap.",
+            ).fetchSemanticsNodes().isEmpty(),
+        )
+        val sliderNode = composeRule.onNodeWithTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER)
+        sliderNode
             .assertContentDescriptionEquals("Auto Tune target")
             .performSemanticsAction(SemanticsActions.SetProgress) { setProgress ->
                 setProgress(77f)
@@ -366,7 +372,11 @@ class CompactOverlayScreenTest {
             assertEquals(0, dismissCount)
         }
         composeRule.onNodeWithText("77 FPS target").assertExists()
-        composeRule.onNodeWithText("Assign Auto Tune").performClick()
+        val applyBounds = composeRule.onNodeWithText("Apply").fetchSemanticsNode().boundsInRoot
+        val sliderBounds = sliderNode.fetchSemanticsNode().boundsInRoot
+        assertTrue("Apply should be below the Auto Tune controls", applyBounds.top > sliderBounds.bottom)
+        assertTrue("Apply should be right aligned", applyBounds.left > sliderBounds.center.x)
+        composeRule.onNodeWithText("Apply").performClick()
         composeRule.runOnIdle {
             assertEquals(77, selectedTargetFps)
             assertEquals(1, dismissCount)
@@ -403,7 +413,7 @@ class CompactOverlayScreenTest {
 
         composeRule.onNodeWithText("77 FPS target").assertExists()
         composeRule.onNodeWithText("Assigned").assertExists()
-        composeRule.onNodeWithText("Update Auto Tune").assertExists()
+        composeRule.onNodeWithText("Apply").assertExists()
         composeRule.onNodeWithTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER)
             .performSemanticsAction(SemanticsActions.SetProgress) { setProgress ->
                 setProgress(78f)
@@ -510,7 +520,7 @@ class CompactOverlayScreenTest {
                 setProgress(120f)
             }
         composeRule.onNodeWithText("60 FPS target").assertExists()
-        composeRule.onNodeWithText("Assign Auto Tune").performClick()
+        composeRule.onNodeWithText("Apply").performClick()
         composeRule.runOnIdle { assertEquals(60, selectedTargetFps) }
     }
 

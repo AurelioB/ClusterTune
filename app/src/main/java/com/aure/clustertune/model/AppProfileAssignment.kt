@@ -26,7 +26,6 @@ data class AppProfileAssignment(
 }
 
 const val MIN_AUTO_TUNE_TARGET_FPS = 1
-val AUTO_TUNE_TARGET_FPS_PRESETS = listOf(30, 60, 120)
 
 data class InstalledAppInfo(
     val packageName: String,

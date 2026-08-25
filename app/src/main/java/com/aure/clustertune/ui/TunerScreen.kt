@@ -115,7 +115,6 @@ import com.aure.clustertune.apps.VisibleAppSnapshot
 import com.aure.clustertune.apps.selectVisibleAppWindowForPackage
 import com.aure.clustertune.autotune.AdaptiveTuneReason
 import com.aure.clustertune.autotune.AdaptiveTuneRuntimeState
-import com.aure.clustertune.model.AUTO_TUNE_TARGET_FPS_PRESETS
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.CpuPolicyInfo
 import com.aure.clustertune.model.InstalledAppInfo
@@ -739,15 +738,8 @@ fun CompactOverlayScreen(
                             targetFps = effectiveAutoTuneDraftTargetFps,
                             maximumTargetFps = maximumAutoTuneTargetFps,
                             assigned = assignment?.autoTuneTargetFps == autoTuneDraftTargetFps,
-                            updating = assignment?.isAutoTune == true,
                             onTargetChange = {
                                 autoTuneDraftTargetFps = it
-                            },
-                            onAssign = {
-                                autoTuneDraftTargetFps = effectiveAutoTuneDraftTargetFps
-                                appProfileEnabled = true
-                                onAppProfileAssignmentChange?.invoke(null, null, null, effectiveAutoTuneDraftTargetFps)
-                                onDismissRequest()
                             },
                         )
                     } else {
@@ -783,6 +775,26 @@ fun CompactOverlayScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                     ) { Text("Apply") }
                 }
+            } else if (mode == CompactOverlayMode.AUTO_TUNE && canAssign) {
+                CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Button(
+                        onClick = {
+                            autoTuneDraftTargetFps = effectiveAutoTuneDraftTargetFps
+                            appProfileEnabled = true
+                            onAppProfileAssignmentChange?.invoke(null, null, null, effectiveAutoTuneDraftTargetFps)
+                            onDismissRequest()
+                        },
+                        modifier = Modifier.height(30.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                    ) { Text("Apply") }
+                }
             }
         }
     }
@@ -793,9 +805,7 @@ private fun AutoTunePickerSection(
     targetFps: Int,
     maximumTargetFps: Int,
     assigned: Boolean,
-    updating: Boolean,
     onTargetChange: (Int) -> Unit,
-    onAssign: () -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
     CtSectionCard(
@@ -847,38 +857,6 @@ private fun AutoTunePickerSection(
                 style = MaterialTheme.typography.labelSmall,
                 color = colorScheme.onSurfaceVariant,
             )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AUTO_TUNE_TARGET_FPS_PRESETS.filter { it <= maximumTargetFps }.forEach { preset ->
-                AssistChip(
-                    onClick = { onTargetChange(preset) },
-                    label = { Text("$preset FPS") },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = if (targetFps == preset) {
-                            colorScheme.primaryContainer
-                        } else {
-                            colorScheme.surfaceContainerHighest
-                        },
-                        labelColor = if (targetFps == preset) {
-                            colorScheme.onPrimaryContainer
-                        } else {
-                            colorScheme.onSurfaceVariant
-                        },
-                    ),
-                )
-            }
-        }
-        Text(
-            text = "Performance floor, not an FPS limiter. Match the app's own frame-rate cap.",
-            style = MaterialTheme.typography.bodySmall,
-            color = colorScheme.onSurfaceVariant,
-        )
-        Button(
-            onClick = onAssign,
-            modifier = Modifier.fillMaxWidth().height(36.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-        ) {
-            Text(if (updating) "Update Auto Tune" else "Assign Auto Tune")
         }
     }
 }

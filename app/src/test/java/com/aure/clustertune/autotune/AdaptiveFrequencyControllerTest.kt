@@ -8,10 +8,8 @@ import org.junit.Test
 
 class AdaptiveFrequencyControllerTest {
     @Test
-    fun `preset and every positive Int target are supported`() {
-        assertEquals(listOf(30, 60, 120), ADAPTIVE_TARGET_FPS_PRESETS)
-
-        (ADAPTIVE_TARGET_FPS_PRESETS + listOf(1, 77, Int.MAX_VALUE)).forEach { target ->
+    fun `every positive Int target is supported`() {
+        listOf(1, 30, 60, 77, 120, Int.MAX_VALUE).forEach { target ->
             val controller = controller(targetFps = target, warmup = 0)
 
             assertEquals(mapOf(0 to 400L), controller.baseCeilings.cpuKHz)

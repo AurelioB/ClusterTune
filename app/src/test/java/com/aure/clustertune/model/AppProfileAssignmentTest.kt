@@ -11,7 +11,7 @@ class AppProfileAssignmentTest {
         assertTrue(assignment(profileId = "balanced").hasValidTarget)
         assertTrue(assignment(customMaxFrequencies = mapOf(0 to 1_000_000)).hasValidTarget)
         assertTrue(assignment(customGpuMaxFrequencyHz = 500_000_000).hasValidTarget)
-        AUTO_TUNE_TARGET_FPS_PRESETS.forEach { targetFps ->
+        listOf(30, 60, 120).forEach { targetFps ->
             assertTrue(assignment(autoTuneTargetFps = targetFps).hasValidTarget)
         }
         assertTrue(assignment(autoTuneTargetFps = MIN_AUTO_TUNE_TARGET_FPS).hasValidTarget)
