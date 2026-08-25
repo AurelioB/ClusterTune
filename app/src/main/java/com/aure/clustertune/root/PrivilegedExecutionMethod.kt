@@ -56,6 +56,11 @@ class PrivilegedExecutionResolver(
         SelectionSnapshot(selectedMethodLocked(false)?.id, generation)
     }
 
+    /** Keep configuration changes from invalidating a host handoff after it has begun. */
+    internal fun <T> withStableSelection(block: (SelectionSnapshot) -> T): T = synchronized(lock) {
+        block(SelectionSnapshot(selectedMethodLocked(false)?.id, generation))
+    }
+
     fun selectedMethod(forceReprobe: Boolean = false): PrivilegedExecutionMethod? = synchronized(lock) {
         selectedMethodLocked(forceReprobe)
     }
