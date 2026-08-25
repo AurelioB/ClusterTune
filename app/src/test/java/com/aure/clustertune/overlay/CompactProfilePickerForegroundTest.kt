@@ -1,10 +1,16 @@
 package com.aure.clustertune.overlay
 
 import com.aure.clustertune.apps.ForegroundAppInfo
+import com.aure.clustertune.apps.VENDOR_GAME_ASSISTANT_PACKAGES
+import com.aure.clustertune.apps.VisibleAppSnapshot
+import com.aure.clustertune.apps.VisibleAppWindow
+import com.aure.clustertune.apps.mergeEventFallbackWindows
+import com.aure.clustertune.apps.selectVisibleAppWindow
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.ui.CompactOverlayMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CompactProfilePickerForegroundTest {
@@ -86,19 +92,77 @@ class CompactProfilePickerForegroundTest {
         )
     }
 
-    private val ignored = setOf("com.aure.clustertune", SYSTEM_UI_PACKAGE)
+    private val ownPackage = "com.aure.clustertune"
+    private val ignored = compactProfilePickerExcludedPackages(ownPackage)
     private fun app(packageName: String, label: String = packageName) =
         ForegroundAppInfo(packageName, label)
 
     @Test
-    fun nullDetectionClearsContext() {
-        assertNull(updateCompactProfilePickerForeground(app("com.game"), null, ignored))
+    fun unresolvedWithoutExactWindowIdentityClearsEstablishedContext() {
+        assertNull(
+            updateCompactProfilePickerForeground(
+                current = app("com.game"),
+                detected = null,
+                ignoredPackages = ignored,
+            ),
+        )
+    }
+
+    @Test
+    fun initialNullDetectionLeavesContextEmpty() {
+        assertNull(
+            updateCompactProfilePickerForeground(
+                current = null,
+                detected = null,
+                ignoredPackages = ignored,
+            ),
+        )
     }
 
     @Test
     fun ignoredDetectionPreservesContext() {
         val current = app("com.game")
         assertEquals(current, updateCompactProfilePickerForeground(current, app(SYSTEM_UI_PACKAGE), ignored))
+    }
+
+    @Test
+    fun assistantOnlySnapshotUsesDisplayFallbackAndPreservesGame() {
+        val assistantPackage = VENDOR_GAME_ASSISTANT_PACKAGES.first()
+        val snapshot = VisibleAppSnapshot(
+            windowsByDisplay = mergeEventFallbackWindows(
+                observed = mapOf(
+                    0 to listOf(VisibleAppWindow(assistantPackage, 0, isFocused = true)),
+                ),
+                eventFallbacks = mapOf(0 to "com.game"),
+                obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
+            ),
+            isInteractive = true,
+        )
+        val selected = selectVisibleAppWindow(
+            snapshot = snapshot,
+            targetDisplayId = 0,
+            excludedPackages = ignored,
+        )
+
+        assertEquals("com.game", selected?.packageName)
+        assertEquals(
+            app("com.game"),
+            updateCompactProfilePickerForeground(
+                current = app("com.game"),
+                detected = selected?.packageName?.let { app(it) },
+                ignoredPackages = ignored,
+            ),
+        )
+    }
+
+    @Test
+    fun resolverExclusionsContainTransientSystemOwnAndAssistantPackages() {
+        assertTrue("android" in ignored)
+        assertTrue(SYSTEM_UI_PACKAGE in ignored)
+        assertTrue("com.android.permissioncontroller" in ignored)
+        assertTrue("com.google.android.permissioncontroller" in ignored)
+        assertTrue(ownPackage in ignored)
+        assertTrue(VENDOR_GAME_ASSISTANT_PACKAGES.all(ignored::contains))
     }
 
     @Test

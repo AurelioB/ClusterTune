@@ -135,6 +135,134 @@ class VisibleAppWindowSnapshotTest {
     }
 
     @Test
+    fun unresolvedApplicationWindowDoesNotSynthesizeARealFallbackWindow() {
+        val merged = mergeEventFallbackWindows(
+            observed = mapOf(0 to emptyList()),
+            eventFallbacks = mapOf(0 to "com.example.game"),
+            obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
+        )
+
+        assertTrue(merged.getValue(0).isEmpty())
+    }
+
+    @Test
+    fun sameWindowIdRetainsPackageAcrossTemporaryRootLoss() {
+        val cache = AccessibilityWindowPackageCache()
+        val identity = AccessibilityWindowIdentity(displayId = 0, windowId = 42)
+        cache.record(identity, "com.example.game")
+
+        assertEquals("com.example.game", cache.resolvePackage(identity, resolvedPackageName = null))
+    }
+
+    @Test
+    fun excludedPackageReuseInvalidatesTheOldWindowIdentity() {
+        val cache = AccessibilityWindowPackageCache()
+        val identity = AccessibilityWindowIdentity(displayId = 0, windowId = 42)
+        cache.record(identity, "com.example.game")
+
+        cache.remove(identity)
+
+        assertNull(cache.resolvePackage(identity, resolvedPackageName = null))
+    }
+
+    @Test
+    fun differentRootlessWindowIdDoesNotInheritAndExpiresAfterGrace() {
+        val cache = AccessibilityWindowPackageCache()
+        val tracker = VisibleWindowDisappearanceTracker(graceMs = 500)
+        val oldIdentity = AccessibilityWindowIdentity(displayId = 0, windowId = 42)
+        val newIdentity = AccessibilityWindowIdentity(displayId = 0, windowId = 43)
+        cache.record(oldIdentity, "com.example.game")
+        tracker.stabilize(
+            observed = mapOf(
+                0 to listOf(VisibleAppWindow("com.example.game", 0, isFocused = true)),
+            ),
+            displayOn = { true },
+            nowMs = 0,
+        )
+
+        cache.retainOnly(setOf(newIdentity))
+        val rootlessPackage = cache.resolvePackage(newIdentity, resolvedPackageName = null)
+        val retainedDuringGrace = tracker.stabilize(emptyMap(), { true }, nowMs = 100)
+        val expired = tracker.stabilize(emptyMap(), { true }, nowMs = 600)
+
+        assertNull(rootlessPackage)
+        assertEquals(
+            "com.example.game",
+            retainedDuringGrace.windowsByDisplay.getValue(0).single().packageName,
+        )
+        assertTrue(expired.windowsByDisplay.isEmpty())
+    }
+
+    @Test
+    fun identicalWindowIdsOnDifferentDisplaysAreIsolated() {
+        val cache = AccessibilityWindowPackageCache()
+        val primaryIdentity = AccessibilityWindowIdentity(displayId = 0, windowId = 42)
+        val secondaryIdentity = AccessibilityWindowIdentity(displayId = 1, windowId = 42)
+        cache.record(primaryIdentity, "com.example.primary")
+        cache.record(secondaryIdentity, "com.example.secondary")
+
+        assertEquals("com.example.primary", cache.resolvePackage(primaryIdentity, null))
+        assertEquals("com.example.secondary", cache.resolvePackage(secondaryIdentity, null))
+    }
+
+    @Test
+    fun removedWindowIdIsForgottenAndItsPublishedAppExpires() {
+        val cache = AccessibilityWindowPackageCache()
+        val tracker = VisibleWindowDisappearanceTracker(graceMs = 500)
+        val identity = AccessibilityWindowIdentity(displayId = 0, windowId = 42)
+        cache.record(identity, "com.example.game")
+        tracker.stabilize(
+            observed = mapOf(
+                0 to listOf(VisibleAppWindow("com.example.game", 0, isFocused = true)),
+            ),
+            displayOn = { true },
+            nowMs = 0,
+        )
+
+        cache.retainOnly(emptySet())
+        val retainedDuringGrace = tracker.stabilize(emptyMap(), { true }, nowMs = 100)
+        val expired = tracker.stabilize(emptyMap(), { true }, nowMs = 600)
+
+        assertNull(cache.resolvePackage(identity, resolvedPackageName = null))
+        assertEquals(
+            "com.example.game",
+            retainedDuringGrace.windowsByDisplay.getValue(0).single().packageName,
+        )
+        assertTrue(expired.windowsByDisplay.isEmpty())
+    }
+
+    @Test
+    fun observedFallbackSelectionIsIndependentOfEnumerationOrder() {
+        val alpha = VisibleAppWindow("com.example.alpha", 0, isActive = true)
+        val zeta = VisibleAppWindow("com.example.zeta", 0, isActive = true)
+
+        assertNull(selectObservedFallbackPackage(emptyList(), null))
+        assertEquals("com.example.alpha", selectObservedFallbackPackage(listOf(zeta, alpha), null))
+        assertEquals("com.example.alpha", selectObservedFallbackPackage(listOf(alpha, zeta), null))
+    }
+
+    @Test
+    fun observedFallbackSelectionUsesFocusActivityAndCachedRecencyInOrder() {
+        val focused = VisibleAppWindow("com.example.focused", 0, isFocused = true)
+        val active = VisibleAppWindow("com.example.active", 0, isActive = true)
+        val cached = VisibleAppWindow("com.example.cached", 0)
+        val other = VisibleAppWindow("com.example.other", 0)
+
+        assertEquals(
+            "com.example.focused",
+            selectObservedFallbackPackage(listOf(cached, active, focused), "com.example.cached"),
+        )
+        assertEquals(
+            "com.example.active",
+            selectObservedFallbackPackage(listOf(cached, active), "com.example.cached"),
+        )
+        assertEquals(
+            "com.example.cached",
+            selectObservedFallbackPackage(listOf(other, cached), "com.example.cached"),
+        )
+    }
+
+    @Test
     fun realObservedWindowWinsWithoutAddingStaleFallback() {
         val merged = mergeEventFallbackWindows(
             observed = mapOf(
@@ -154,13 +282,28 @@ class VisibleAppWindowSnapshotTest {
     }
 
     @Test
-    fun missingDisplayDoesNotKeepAStaleEventFallbackAlive() {
-        val merged = mergeEventFallbackWindows(
+    fun absentDisplayAllowsStaleEventFallbackToExpire() {
+        val tracker = VisibleWindowDisappearanceTracker(graceMs = 300)
+        tracker.stabilize(
+            observed = mapOf(
+                0 to listOf(VisibleAppWindow("com.example.closedgame", 0, isFocused = true)),
+            ),
+            displayOn = { true },
+            nowMs = 0,
+        )
+        val absent = mergeEventFallbackWindows(
             observed = emptyMap(),
             eventFallbacks = mapOf(0 to "com.example.closedgame"),
             obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
         )
+        val retainedDuringGrace = tracker.stabilize(absent, { true }, nowMs = 100)
+        val expired = tracker.stabilize(absent, { true }, nowMs = 400)
 
-        assertTrue(merged.isEmpty())
+        assertTrue(absent.isEmpty())
+        assertEquals(
+            "com.example.closedgame",
+            retainedDuringGrace.windowsByDisplay.getValue(0).single().packageName,
+        )
+        assertTrue(expired.windowsByDisplay.isEmpty())
     }
 }

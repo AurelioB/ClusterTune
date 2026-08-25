@@ -47,15 +47,21 @@ class OverlayWindowController(
     ) {
         dismissModal(restoreEdgeHandle = false)
         detachEdgeHandle()
-        val backHandler = ModalOverlayBackHandler(view, onBackPressed)
+        val backHandler = if (
+            modalWindowFlags() and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE == 0
+        ) {
+            ModalOverlayBackHandler(view, onBackPressed)
+        } else {
+            null
+        }
         try {
-            backHandler.install()
+            backHandler?.install()
             windowManager.addView(view, modalLayoutParams())
             modalType = type
             modalView = view
             modalBackHandler = backHandler
         } catch (throwable: Throwable) {
-            backHandler.dispose()
+            backHandler?.dispose()
             runCatching { windowManager.removeView(view) }
             attachEdgeHandle()
             throw throwable
@@ -279,7 +285,8 @@ internal fun shouldDismissOverlayOnKeyEvent(
 }
 
 internal fun modalWindowFlags(): Int {
-    return WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+    return WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
         WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
 }

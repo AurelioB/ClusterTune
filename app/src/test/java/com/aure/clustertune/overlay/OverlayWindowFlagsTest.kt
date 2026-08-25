@@ -7,10 +7,13 @@ import org.junit.Test
 class OverlayWindowFlagsTest {
 
     @Test
-    fun modalRetainsFocusAndCommonLayoutFlags() {
+    fun modalKeepsTheUnderlyingAppFocusedAndRetainsCommonLayoutFlags() {
         val flags = modalWindowFlags()
 
-        assertEquals(0, flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+        assertEquals(
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+        )
         assertCommonFlagsPresent(flags)
     }
 

@@ -13,6 +13,43 @@ data class VisibleAppWindow(
     val isActive: Boolean = false,
 )
 
+/** Stable identity of one Accessibility window on one physical display. */
+internal data class AccessibilityWindowIdentity(
+    val displayId: Int,
+    val windowId: Int,
+)
+
+/** Remembers only useful packages that were resolved for an exact Accessibility window. */
+internal class AccessibilityWindowPackageCache {
+    private val packagesByWindow = mutableMapOf<AccessibilityWindowIdentity, String>()
+
+    fun record(identity: AccessibilityWindowIdentity, packageName: String) {
+        if (identity.displayId >= 0 && identity.windowId >= 0 && packageName.isNotBlank()) {
+            packagesByWindow[identity] = packageName
+        }
+    }
+
+    fun remove(identity: AccessibilityWindowIdentity) {
+        packagesByWindow.remove(identity)
+    }
+
+    fun resolvePackage(
+        identity: AccessibilityWindowIdentity?,
+        resolvedPackageName: String?,
+    ): String? = resolvedPackageName?.takeIf { it.isNotBlank() }
+        ?: identity?.let(packagesByWindow::get)
+
+    fun retainOnly(observedIdentities: Set<AccessibilityWindowIdentity>) {
+        packagesByWindow.keys.retainAll(observedIdentities)
+    }
+
+    fun removeDisplay(displayId: Int) {
+        packagesByWindow.keys.removeAll { it.displayId == displayId }
+    }
+
+    fun clear() = packagesByWindow.clear()
+}
+
 data class RecentAppIdentity(
     val displayId: Int,
     val packageName: String,
@@ -40,6 +77,31 @@ internal fun nominalDisplayRefreshRateFps(refreshRateHz: Float): Int? =
         ?.roundToInt()
         ?.takeIf { it > 0 }
 
+/** System-owned application windows that cannot represent a user foreground app. */
+internal val TRANSIENT_APP_WINDOW_PACKAGES = setOf(
+    "android",
+    "com.android.systemui",
+    "com.android.permissioncontroller",
+    "com.google.android.permissioncontroller",
+)
+
+/**
+ * Selects a stable fallback after all useful windows have been enumerated.
+ * Candidates are ordered by focus, activity, prior event/cache recency, then package.
+ */
+internal fun selectObservedFallbackPackage(
+    candidates: List<VisibleAppWindow>,
+    existingPackageName: String?,
+): String? = candidates
+    .sortedWith(
+        compareByDescending<VisibleAppWindow> { it.isFocused }
+            .thenByDescending { it.isActive }
+            .thenByDescending { it.packageName == existingPackageName }
+            .thenBy { it.packageName },
+    )
+    .firstOrNull()
+    ?.packageName
+
 /**
  * Restores the last real window event when an OEM game assistant is the only
  * application window exposed by Accessibility for a display.
@@ -51,8 +113,8 @@ internal fun mergeEventFallbackWindows(
 ): Map<Int, List<VisibleAppWindow>> {
     val merged = observed.mapValuesTo(mutableMapOf()) { (_, windows) -> windows.toMutableList() }
     eventFallbacks.forEach { (displayId, packageName) ->
-        // A completely missing display must flow through the disappearance
-        // tracker so a closed/crashed app expires after its grace period.
+        // Missing and identity-unresolved displays must flow through the
+        // disappearance tracker so their prior app expires after its grace period.
         val windows = merged[displayId]?.takeIf { it.isNotEmpty() } ?: return@forEach
         val hasRealWindow = windows.any { it.packageName !in obscuringPackages }
         if (!hasRealWindow && windows.none { it.packageName == packageName }) {

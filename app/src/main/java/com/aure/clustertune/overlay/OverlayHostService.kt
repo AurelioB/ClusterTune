@@ -54,6 +54,7 @@ import com.aure.clustertune.MainActivity
 import com.aure.clustertune.R
 import com.aure.clustertune.apps.ForegroundAppInfo
 import com.aure.clustertune.apps.ForegroundAppResolver
+import com.aure.clustertune.apps.TRANSIENT_APP_WINDOW_PACKAGES
 import com.aure.clustertune.apps.VENDOR_GAME_ASSISTANT_PACKAGES
 import com.aure.clustertune.apps.VisibleAppWindowEvents
 import com.aure.clustertune.model.AppProfileAssignment
@@ -90,6 +91,9 @@ private data class EdgeHandleAppearance(
 )
 
 internal const val SYSTEM_UI_PACKAGE = "com.android.systemui"
+
+internal fun compactProfilePickerExcludedPackages(ownPackageName: String): Set<String> =
+    TRANSIENT_APP_WINDOW_PACKAGES + VENDOR_GAME_ASSISTANT_PACKAGES + ownPackageName
 
 internal fun updateCompactProfilePickerForeground(
     current: ForegroundAppInfo?,
@@ -133,8 +137,8 @@ internal fun correctedCompactOverlayMode(
 }
 
 class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRegistryOwner {
-    private val foregroundIgnoredPackages by lazy { setOf(packageName, SYSTEM_UI_PACKAGE) }
-    private val foregroundExcludedPackages = VENDOR_GAME_ASSISTANT_PACKAGES
+    private val foregroundIgnoredPackages by lazy { compactProfilePickerExcludedPackages(packageName) }
+    private val foregroundExcludedPackages by lazy { foregroundIgnoredPackages }
 
     override val viewModelStore = ViewModelStore()
     private val savedStateController = SavedStateRegistryController.create(this)
@@ -510,12 +514,13 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
             VisibleAppWindowEvents.snapshots
                 .distinctUntilChangedBy { snapshot ->
                     val preferredPackageName = compactProfilePickerForeground.value?.packageName
-                    foregroundAppResolver.selectPackageName(
+                    val selectedPackageName = foregroundAppResolver.selectPackageName(
                         snapshot = snapshot,
                         targetDisplayId = overlayDisplayId,
                         excludedPackages = foregroundExcludedPackages,
                         preferredPackageName = preferredPackageName,
-                    ) to snapshot.refreshRateFpsByDisplay[overlayDisplayId]
+                    )
+                    selectedPackageName to snapshot.refreshRateFpsByDisplay[overlayDisplayId]
                 }
                 .collect { snapshot ->
                     if (!windowController.isShowing(OverlayType.COMPACT_PROFILE_PICKER)) return@collect
