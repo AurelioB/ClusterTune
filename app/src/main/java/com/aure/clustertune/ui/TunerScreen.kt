@@ -1442,9 +1442,6 @@ private fun AdaptiveTuneReason.presentationMessage(): String = when (this) {
     AdaptiveTuneReason.TRIAL_ACCEPTED -> "The latest frequency change is stable"
     AdaptiveTuneReason.TRIAL_REGRESSION -> "Reverted a change that reduced performance"
     AdaptiveTuneReason.TRIAL_NO_GAIN -> "Reverted a change with no measurable gain"
-    AdaptiveTuneReason.MODERATE_THERMAL_RAISE_BLOCKED -> "Thermals are blocking frequency increases"
-    AdaptiveTuneReason.SEVERE_THERMAL_DOWNSHIFT -> "Reducing frequencies because of severe thermals"
-    AdaptiveTuneReason.SEVERE_THERMAL_AT_FLOOR -> "Severe thermals persist at minimum ceilings"
     AdaptiveTuneReason.REQUESTED_STOP -> "Auto Tune stopped"
 }
 

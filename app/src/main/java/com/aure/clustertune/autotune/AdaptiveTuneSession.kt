@@ -276,8 +276,5 @@ internal fun AdaptiveTuneReason.userMessage(): String = when (this) {
     AdaptiveTuneReason.TRIAL_ACCEPTED -> "Last ceiling change is stable"
     AdaptiveTuneReason.TRIAL_REGRESSION -> "Reverted a ceiling that hurt frame pacing"
     AdaptiveTuneReason.TRIAL_NO_GAIN -> "Reverted a ceiling that did not improve performance"
-    AdaptiveTuneReason.MODERATE_THERMAL_RAISE_BLOCKED -> "Thermal pressure is blocking a frequency raise"
-    AdaptiveTuneReason.SEVERE_THERMAL_DOWNSHIFT -> "Reducing a ceiling under severe thermal pressure"
-    AdaptiveTuneReason.SEVERE_THERMAL_AT_FLOOR -> "All ceilings are at their thermal safety floor"
     AdaptiveTuneReason.REQUESTED_STOP -> "Auto Tune stopped"
 }

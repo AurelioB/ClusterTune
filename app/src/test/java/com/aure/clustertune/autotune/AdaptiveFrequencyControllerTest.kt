@@ -83,14 +83,10 @@ class AdaptiveFrequencyControllerTest {
             frame(fps = 60.0, p95 = 10.0, slow = 0.25),
         ).forEachIndexed { index, unhealthyFrame ->
             val controller = controller(warmup = 0)
-            assertApply(
-                controller.step(
-                    sample(1, frame(60.0), thermal = AdaptiveThermalState.SEVERE),
-                ),
-            )
+            settleHealthyTrim(controller, startSecond = 1, cpuLoad = mapOf(0 to 0.1))
 
             val recovery = assertApply(
-                controller.step(sample(2, unhealthyFrame, cpu0 = 0.95)),
+                controller.step(sample(4, unhealthyFrame, cpu0 = 0.95)),
             )
 
             assertEquals("metric case $index", AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY, recovery.reason)
@@ -110,15 +106,18 @@ class AdaptiveFrequencyControllerTest {
             ),
         )
 
-        repeat(6) { index ->
-            assertApply(
-                controller.step(
-                    sample(
-                        second = (index + 1).toLong(),
-                        frames = frame(60.0),
-                        thermal = AdaptiveThermalState.SEVERE,
-                    ),
-                ),
+        listOf(1L, 4L, 7L).forEach { second ->
+            settleHealthyTrim(
+                controller,
+                startSecond = second,
+                cpuLoad = mapOf(0 to 0.1, 4 to 0.9),
+            )
+        }
+        listOf(10L, 13L, 16L).forEach { second ->
+            settleHealthyTrim(
+                controller,
+                startSecond = second,
+                cpuLoad = mapOf(0 to 0.9, 4 to 0.1),
             )
         }
         assertEquals(mapOf(0 to 100L, 4 to 100L), controller.currentCeilings().cpuKHz)
@@ -126,7 +125,7 @@ class AdaptiveFrequencyControllerTest {
         val before = controller.currentCeilings()
         val recovery = assertApply(
             controller.step(
-                sample(7, frame(35.0), cpuLoad = mapOf(0 to 0.25, 4 to 0.96)),
+                sample(19, frame(35.0), cpuLoad = mapOf(0 to 0.25, 4 to 0.96)),
             ),
         )
 
@@ -150,13 +149,23 @@ class AdaptiveFrequencyControllerTest {
                 ),
             ),
         )
-        assertApply(controller.step(sample(1, frame(60.0), thermal = AdaptiveThermalState.SEVERE)))
-        assertApply(controller.step(sample(2, frame(60.0), thermal = AdaptiveThermalState.SEVERE)))
+        settleHealthyTrim(
+            controller,
+            startSecond = 1,
+            cpuLoad = mapOf(0 to 0.1),
+            gpuBusy = 0.9,
+        )
+        settleHealthyTrim(
+            controller,
+            startSecond = 4,
+            cpuLoad = mapOf(0 to 0.9),
+            gpuBusy = 0.1,
+        )
         val before = controller.currentCeilings()
 
         val recovery = assertApply(
             controller.step(
-                sample(3, frame(40.0), cpu0 = 0.30, gpuBusy = 0.97),
+                sample(7, frame(40.0), cpu0 = 0.30, gpuBusy = 0.97),
             ),
         )
 
@@ -206,22 +215,22 @@ class AdaptiveFrequencyControllerTest {
     @Test
     fun `raise trial without gain rolls back and freezes only that recovery`() {
         val controller = controller(warmup = 0, freezeNanos = 10 * SECOND)
-        assertApply(controller.step(sample(1, frame(60.0), thermal = AdaptiveThermalState.SEVERE)))
-        assertApply(controller.step(sample(2, frame(50.0), cpu0 = 0.95)))
+        settleHealthyTrim(controller, startSecond = 1, cpuLoad = mapOf(0 to 0.1))
+        assertApply(controller.step(sample(4, frame(50.0), cpu0 = 0.95)))
         assertEquals(400L, controller.currentCeilings().cpuKHz.getValue(0))
 
-        val watch = assertHold(controller.step(sample(3, frame(50.0), cpu0 = 0.95)))
+        val watch = assertHold(controller.step(sample(5, frame(50.0), cpu0 = 0.95)))
         assertEquals(AdaptiveTuneReason.TRIAL_WATCH, watch.reason)
-        val rollback = assertApply(controller.step(sample(4, frame(50.0), cpu0 = 0.95)))
+        val rollback = assertApply(controller.step(sample(6, frame(50.0), cpu0 = 0.95)))
         assertEquals(AdaptiveTuneReason.TRIAL_NO_GAIN, rollback.reason)
         assertEquals(-1, rollback.change.stepDelta)
         assertEquals(300L, rollback.ceilings.cpuKHz.getValue(0))
 
-        val frozen = assertHold(controller.step(sample(5, frame(50.0), cpu0 = 0.95)))
+        val frozen = assertHold(controller.step(sample(7, frame(50.0), cpu0 = 0.95)))
         assertEquals(AdaptiveTuneStatus.FROZEN, frozen.status)
         assertEquals(AdaptiveTuneReason.RECOVERY_FROZEN, frozen.reason)
 
-        val retry = assertApply(controller.step(sample(14, frame(50.0), cpu0 = 0.95)))
+        val retry = assertApply(controller.step(sample(16, frame(50.0), cpu0 = 0.95)))
         assertEquals(AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY, retry.reason)
     }
 
@@ -243,7 +252,7 @@ class AdaptiveFrequencyControllerTest {
     }
 
     @Test
-    fun `moderate thermal blocks raises and severe thermal sheds one domain per sample`() {
+    fun `sustained healthy and unhealthy telemetry keeps optimization active`() {
         val envelope = AdaptiveTuneEnvelope(
             cpuPolicies = listOf(cpu(0, 100, 200), cpu(4, 100, 200)),
             gpu = AdaptiveGpuDomain(
@@ -253,45 +262,44 @@ class AdaptiveFrequencyControllerTest {
         )
         val controller = AdaptiveFrequencyController(config(warmup = 0), envelope)
 
-        val first = assertApply(
-            controller.step(sample(1, frames = null, thermal = AdaptiveThermalState.SEVERE)),
+        val first = settleHealthyTrim(
+            controller,
+            startSecond = 1,
+            cpuLoad = mapOf(0 to 0.1, 4 to 0.9),
+            gpuBusy = 0.9,
         )
-        val second = assertApply(
-            controller.step(sample(2, frames = null, thermal = AdaptiveThermalState.SEVERE)),
+        val second = settleHealthyTrim(
+            controller,
+            startSecond = 4,
+            cpuLoad = mapOf(0 to 0.9, 4 to 0.1),
+            gpuBusy = 0.9,
         )
-        val third = assertApply(
-            controller.step(sample(3, frames = null, thermal = AdaptiveThermalState.SEVERE)),
+        val third = settleHealthyTrim(
+            controller,
+            startSecond = 7,
+            cpuLoad = mapOf(0 to 0.9, 4 to 0.9),
+            gpuBusy = 0.1,
         )
         assertEquals(AdaptiveActuator.CpuPolicy(0), first.change.actuator)
         assertEquals(AdaptiveActuator.CpuPolicy(4), second.change.actuator)
         assertEquals(AdaptiveActuator.Gpu("gpu"), third.change.actuator)
-        assertOneChangedDomain(envelopeBase(envelope), first)
-        assertOneChangedDomain(first.ceilings, second)
-        assertOneChangedDomain(second.ceilings, third)
+        assertEquals(AdaptiveTuneStatus.OPTIMIZING, first.status)
+        assertEquals(AdaptiveTuneStatus.OPTIMIZING, second.status)
+        assertEquals(AdaptiveTuneStatus.OPTIMIZING, third.status)
 
-        val floor = assertHold(
-            controller.step(sample(4, frames = null, thermal = AdaptiveThermalState.SEVERE)),
-        )
-        assertEquals(AdaptiveTuneReason.SEVERE_THERMAL_AT_FLOOR, floor.reason)
-
-        val moderateController = AdaptiveFrequencyController(config(warmup = 0), envelope)
-        assertApply(
-            moderateController.step(sample(1, frame(60.0), thermal = AdaptiveThermalState.SEVERE)),
-        )
-        val blocked = assertHold(
-            moderateController.step(
+        val recovery = assertApply(
+            controller.step(
                 sample(
-                    second = 2,
+                    second = 10,
                     frames = frame(40.0),
-                    cpuLoad = mapOf(0 to 0.99, 4 to 0.1),
+                    cpuLoad = mapOf(0 to 0.1, 4 to 0.99),
                     gpuBusy = 0.1,
-                    thermal = AdaptiveThermalState.MODERATE,
                 ),
             ),
         )
-        assertEquals(AdaptiveTuneStatus.THERMAL_LIMITED, blocked.status)
-        assertEquals(AdaptiveTuneReason.MODERATE_THERMAL_RAISE_BLOCKED, blocked.reason)
-        assertEquals(100L, blocked.ceilings.cpuKHz.getValue(0))
+        assertEquals(AdaptiveTuneStatus.RECOVERING, recovery.status)
+        assertEquals(AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY, recovery.reason)
+        assertEquals(AdaptiveActuator.CpuPolicy(4), recovery.change.actuator)
     }
 
     @Test
@@ -309,11 +317,11 @@ class AdaptiveFrequencyControllerTest {
             ),
         )
         assertEquals(500L, sparse.currentCeilings().cpuKHz.getValue(0))
-        assertEquals(400L, assertApply(sparse.step(sample(1, null, thermal = AdaptiveThermalState.SEVERE))).change.toCeiling)
-        assertEquals(100L, assertApply(sparse.step(sample(2, null, thermal = AdaptiveThermalState.SEVERE))).change.toCeiling)
+        assertEquals(400L, settleHealthyTrim(sparse, startSecond = 1).change.toCeiling)
+        assertEquals(100L, settleHealthyTrim(sparse, startSecond = 4).change.toCeiling)
         assertEquals(
-            AdaptiveTuneReason.SEVERE_THERMAL_AT_FLOOR,
-            assertHold(sparse.step(sample(3, null, thermal = AdaptiveThermalState.SEVERE))).reason,
+            AdaptiveTuneReason.HEALTHY_AT_FLOOR,
+            assertHold(sparse.step(sample(7, frame(60.0)))).reason,
         )
         assertTrue(sparse.currentCeilings().cpuKHz.getValue(0) <= 500L)
 
@@ -325,8 +333,8 @@ class AdaptiveFrequencyControllerTest {
         )
         assertEquals(333L, empty.currentCeilings().cpuKHz.getValue(0))
         assertEquals(
-            AdaptiveTuneReason.SEVERE_THERMAL_AT_FLOOR,
-            assertHold(empty.step(sample(1, null, thermal = AdaptiveThermalState.SEVERE))).reason,
+            AdaptiveTuneReason.HEALTHY_AT_FLOOR,
+            assertHold(empty.step(sample(1, frame(60.0)))).reason,
         )
     }
 
@@ -339,17 +347,18 @@ class AdaptiveFrequencyControllerTest {
                 gpu = AdaptiveGpuDomain(availableCeilingsHz = listOf(300, 600), baseCeilingHz = 600),
             ),
         )
+        val observations = listOf(
+            Triple(mapOf(0 to 0.1, 4 to 0.9), 0.9, 1L),
+            Triple(mapOf(0 to 0.9, 4 to 0.1), 0.9, 4L),
+            Triple(mapOf(0 to 0.9, 4 to 0.9), 0.1, 7L),
+        )
         var previous = controller.currentCeilings()
-
-        repeat(3) { index ->
-            val decision = assertApply(
-                controller.step(
-                    sample(
-                        second = (index + 1).toLong(),
-                        frames = frame(60.0),
-                        thermal = AdaptiveThermalState.SEVERE,
-                    ),
-                ),
+        observations.forEach { (cpuLoad, gpuBusy, second) ->
+            val decision = settleHealthyTrim(
+                controller,
+                startSecond = second,
+                cpuLoad = cpuLoad,
+                gpuBusy = gpuBusy,
             )
             assertOneChangedDomain(previous, decision)
             previous = decision.ceilings
@@ -358,7 +367,7 @@ class AdaptiveFrequencyControllerTest {
         val recovery = assertApply(
             controller.step(
                 sample(
-                    second = 4,
+                    second = 10,
                     frames = frame(40.0),
                     cpuLoad = mapOf(0 to 0.2, 4 to 0.3),
                     gpuBusy = 0.99,
@@ -366,6 +375,35 @@ class AdaptiveFrequencyControllerTest {
             ),
         )
         assertOneChangedDomain(previous, recovery)
+    }
+
+    private fun settleHealthyTrim(
+        controller: AdaptiveFrequencyController,
+        startSecond: Long,
+        cpuLoad: Map<Int, Double?> = emptyMap(),
+        gpuBusy: Double? = null,
+    ): AdaptiveTuneDecision.Apply {
+        val trim = assertApply(
+            controller.step(sample(startSecond, frame(60.0), cpuLoad = cpuLoad, gpuBusy = gpuBusy)),
+        )
+        assertEquals(AdaptiveTuneReason.EFFICIENCY_TRIM, trim.reason)
+        assertEquals(
+            AdaptiveTuneReason.TRIAL_WATCH,
+            assertHold(
+                controller.step(
+                    sample(startSecond + 1, frame(60.0), cpuLoad = cpuLoad, gpuBusy = gpuBusy),
+                ),
+            ).reason,
+        )
+        assertEquals(
+            AdaptiveTuneReason.TRIAL_ACCEPTED,
+            assertHold(
+                controller.step(
+                    sample(startSecond + 2, frame(60.0), cpuLoad = cpuLoad, gpuBusy = gpuBusy),
+                ),
+            ).reason,
+        )
+        return trim
     }
 
     private fun controller(
@@ -414,18 +452,11 @@ class AdaptiveFrequencyControllerTest {
         cpu0: Double? = null,
         cpuLoad: Map<Int, Double?> = if (cpu0 == null) emptyMap() else mapOf(0 to cpu0),
         gpuBusy: Double? = null,
-        thermal: AdaptiveThermalState = AdaptiveThermalState.NORMAL,
     ) = AdaptiveTuneSample(
         timestampNanos = second * SECOND,
         frames = frames,
         cpuLoad = cpuLoad,
         gpuBusy = gpuBusy,
-        thermalState = thermal,
-    )
-
-    private fun envelopeBase(envelope: AdaptiveTuneEnvelope) = AdaptiveFrequencyCeilings(
-        cpuKHz = envelope.cpuPolicies.associate { it.policyId to it.baseCeilingKHz },
-        gpuHz = envelope.gpu?.baseCeilingHz,
     )
 
     private fun assertOneChangedDomain(

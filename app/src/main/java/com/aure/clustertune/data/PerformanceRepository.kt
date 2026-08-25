@@ -7,7 +7,6 @@ import com.aure.clustertune.autotune.AdaptiveCpuPolicy
 import com.aure.clustertune.autotune.AdaptiveFrameMetrics
 import com.aure.clustertune.autotune.AdaptiveFrequencyCeilings
 import com.aure.clustertune.autotune.AdaptiveGpuDomain
-import com.aure.clustertune.autotune.AdaptiveThermalState
 import com.aure.clustertune.autotune.AdaptiveTuneBackend
 import com.aure.clustertune.autotune.AdaptiveTuneBackendSession
 import com.aure.clustertune.autotune.AdaptiveTuneEnvelope
@@ -1676,10 +1675,6 @@ internal fun resolveNormalProfileIdentity(
 }
 
 private const val AUTO_TUNE_HEARTBEAT_TIMEOUT_MS = 15_000L
-private val AUTO_TUNE_RELEVANT_THERMAL_TYPE = Regex(
-    "cpu|gpu|soc|ap|cluster|little|big|silver|gold",
-    RegexOption.IGNORE_CASE,
-)
 
 private fun AdaptiveTuneBackendSession.hostHandle() = HostAutoSessionHandle(sessionId, hostEpoch)
 
@@ -1875,23 +1870,11 @@ internal fun HostAutoTelemetry.toAdaptiveTuneSample(
     val cpu = policies.mapIndexed { index, policy ->
         policy.id to cpuLoadPermille.getOrNull(index)?.coerceIn(0, 1000)?.div(1_000.0)
     }.toMap()
-    val relevantTemperatures = thermal.asSequence()
-        .filter { AUTO_TUNE_RELEVANT_THERMAL_TYPE.containsMatchIn(it.type) }
-        .map { it.temperatureMilliCelsius }
-        .filter { it in -200_000L..300_000L }
-        .toList()
-    val maximumTemperature = relevantTemperatures.maxOrNull()
-    val thermalState = when {
-        maximumTemperature != null && maximumTemperature >= 85_000L -> AdaptiveThermalState.SEVERE
-        maximumTemperature != null && maximumTemperature >= 75_000L -> AdaptiveThermalState.MODERATE
-        else -> AdaptiveThermalState.NORMAL
-    }
     return AdaptiveTuneSample(
         timestampNanos = timestampNanos,
         frames = frames,
         cpuLoad = cpu,
         gpuBusy = gpuBusyPermille?.coerceIn(0, 1000)?.div(1_000.0),
-        thermalState = thermalState,
     )
 }
 

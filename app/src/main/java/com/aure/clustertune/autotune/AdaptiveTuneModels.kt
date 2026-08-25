@@ -93,19 +93,12 @@ data class AdaptiveFrameMetrics(
     val isStale: Boolean = false,
 )
 
-enum class AdaptiveThermalState {
-    NORMAL,
-    MODERATE,
-    SEVERE,
-}
-
 /** One observation, timestamped with an injected monotonic clock. Loads are fractions from 0..1. */
 data class AdaptiveTuneSample(
     val timestampNanos: Long,
     val frames: AdaptiveFrameMetrics?,
     val cpuLoad: Map<Int, Double?> = emptyMap(),
     val gpuBusy: Double? = null,
-    val thermalState: AdaptiveThermalState = AdaptiveThermalState.NORMAL,
 )
 
 sealed interface AdaptiveActuator {
@@ -130,7 +123,6 @@ enum class AdaptiveTuneStatus {
     OPTIMIZING,
     WATCHING_TRIAL,
     FROZEN,
-    THERMAL_LIMITED,
     STOPPED,
 }
 
@@ -152,9 +144,6 @@ enum class AdaptiveTuneReason {
     TRIAL_ACCEPTED,
     TRIAL_REGRESSION,
     TRIAL_NO_GAIN,
-    MODERATE_THERMAL_RAISE_BLOCKED,
-    SEVERE_THERMAL_DOWNSHIFT,
-    SEVERE_THERMAL_AT_FLOOR,
     REQUESTED_STOP,
 }
 

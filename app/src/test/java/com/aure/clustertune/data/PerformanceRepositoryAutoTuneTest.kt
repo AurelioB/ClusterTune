@@ -3,7 +3,6 @@ package com.aure.clustertune.data
 import com.aure.clustertune.autotune.AdaptiveCpuPolicy
 import com.aure.clustertune.autotune.AdaptiveFrequencyCeilings
 import com.aure.clustertune.autotune.AdaptiveGpuDomain
-import com.aure.clustertune.autotune.AdaptiveThermalState
 import com.aure.clustertune.autotune.AdaptiveTuneEnvelope
 import com.aure.clustertune.model.CpuPolicyInfo
 import com.aure.clustertune.model.EffectiveProfileSource
@@ -282,10 +281,6 @@ class PerformanceRepositoryAutoTuneTest {
             slowFrameRatioPermille = 37,
             cpuLoadPermille = listOf(825, null),
             gpuBusyPermille = 610,
-            thermal = listOf(
-                HostThermalReading("cpu-thermal", 74_999L),
-                HostThermalReading("battery", 99_000L),
-            ),
         ).toAdaptiveTuneSample(listOf(cpuPolicy(0), cpuPolicy(4)))
 
         assertEquals(123_456L, sample.timestampNanos)
@@ -296,7 +291,6 @@ class PerformanceRepositoryAutoTuneTest {
         assertEquals(0.825, sample.cpuLoad[0] ?: error("missing policy0 load"), 0.000_001)
         assertNull(sample.cpuLoad[4])
         assertEquals(0.61, sample.gpuBusy ?: error("missing GPU load"), 0.000_001)
-        assertEquals(AdaptiveThermalState.NORMAL, sample.thermalState)
     }
 
     @Test
@@ -311,24 +305,25 @@ class PerformanceRepositoryAutoTuneTest {
     }
 
     @Test
-    fun `utilization is clamped and thermal thresholds use relevant sensors`() {
-        val moderate = telemetry(
+    fun `utilization is clamped and thermal readings are observational`() {
+        val withThermals = telemetry(
             cpuLoadPermille = listOf(-50, 1_200),
             gpuBusyPermille = 1_500,
             thermal = listOf(
                 HostThermalReading("battery", 90_000L),
                 HostThermalReading("soc", 75_000L),
-                HostThermalReading("gpu-invalid", 300_001L),
+                HostThermalReading("GPU", 100_000L),
             ),
         ).toAdaptiveTuneSample(listOf(cpuPolicy(0), cpuPolicy(4)))
-        val severe = telemetry(thermal = listOf(HostThermalReading("GPU", 85_000L)))
-            .toAdaptiveTuneSample(listOf(cpuPolicy(0)))
+        val withoutThermals = telemetry(
+            cpuLoadPermille = listOf(-50, 1_200),
+            gpuBusyPermille = 1_500,
+        ).toAdaptiveTuneSample(listOf(cpuPolicy(0), cpuPolicy(4)))
 
-        assertEquals(0.0, moderate.cpuLoad[0] ?: error("missing policy0 load"), 0.0)
-        assertEquals(1.0, moderate.cpuLoad[4] ?: error("missing policy4 load"), 0.0)
-        assertEquals(1.0, moderate.gpuBusy ?: error("missing GPU load"), 0.0)
-        assertEquals(AdaptiveThermalState.MODERATE, moderate.thermalState)
-        assertEquals(AdaptiveThermalState.SEVERE, severe.thermalState)
+        assertEquals(0.0, withThermals.cpuLoad[0] ?: error("missing policy0 load"), 0.0)
+        assertEquals(1.0, withThermals.cpuLoad[4] ?: error("missing policy4 load"), 0.0)
+        assertEquals(1.0, withThermals.gpuBusy ?: error("missing GPU load"), 0.0)
+        assertEquals(withoutThermals, withThermals)
     }
 
     @Test

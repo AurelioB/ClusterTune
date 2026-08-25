@@ -12,7 +12,6 @@ import com.aure.clustertune.autotune.AdaptiveCpuPolicy
 import com.aure.clustertune.autotune.AdaptiveFrameMetrics
 import com.aure.clustertune.autotune.AdaptiveFrequencyController
 import com.aure.clustertune.autotune.AdaptiveGpuDomain
-import com.aure.clustertune.autotune.AdaptiveThermalState
 import com.aure.clustertune.autotune.AdaptiveTuneConfig
 import com.aure.clustertune.autotune.AdaptiveTuneDecision
 import com.aure.clustertune.autotune.AdaptiveTuneEnvelope
@@ -239,11 +238,6 @@ class RootHostHandoffInstrumentationTest {
                 isStale = frameStale || frameConfidencePermille < 250,
             )
         }
-        val relevantThermal = thermal.asSequence()
-            .filter { RELEVANT_THERMAL_TYPE.containsMatchIn(it.type) }
-            .map(HostThermalReading::temperatureMilliCelsius)
-            .filter { it in -200_000L..300_000L }
-            .maxOrNull()
         return AdaptiveTuneSample(
             timestampNanos = timestampNanos,
             frames = frames,
@@ -251,11 +245,6 @@ class RootHostHandoffInstrumentationTest {
                 domain.policyId() to cpuLoadPermille.getOrNull(index)?.coerceIn(0, 1_000)?.div(1_000.0)
             }.toMap(),
             gpuBusy = gpuBusyPermille?.coerceIn(0, 1_000)?.div(1_000.0),
-            thermalState = when {
-                relevantThermal != null && relevantThermal >= 85_000L -> AdaptiveThermalState.SEVERE
-                relevantThermal != null && relevantThermal >= 75_000L -> AdaptiveThermalState.MODERATE
-                else -> AdaptiveThermalState.NORMAL
-            },
         )
     }
 
@@ -303,12 +292,5 @@ class RootHostHandoffInstrumentationTest {
             canvas.drawColor(if (frame % 2 == 0) Color.rgb(22, 28, 40) else Color.rgb(24, 30, 44))
             postInvalidateOnAnimation()
         }
-    }
-
-    companion object {
-        private val RELEVANT_THERMAL_TYPE = Regex(
-            "cpu|gpu|soc|ap|cluster|little|big|silver|gold",
-            RegexOption.IGNORE_CASE,
-        )
     }
 }

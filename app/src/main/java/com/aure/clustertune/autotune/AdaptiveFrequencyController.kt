@@ -73,7 +73,6 @@ class AdaptiveFrequencyController(
     private var warmupSamplesSeen = 0
     private var healthyQualificationSamplesSeen = 0
     private var trial: Trial? = null
-    private var thermalCursor = 0
     private var stoppedReason: AdaptiveTuneReason? = null
     private val raiseFrozenUntil = mutableMapOf<AdaptiveActuator, Long>()
     private val trimFrozenUntil = mutableMapOf<AdaptiveActuator, Long>()
@@ -118,14 +117,6 @@ class AdaptiveFrequencyController(
             }
         }
 
-        // Thermal safety remains effective during a short telemetry gap and always supersedes a
-        // performance trial. One domain is shed per severe sample so reductions are progressive.
-        if (sample.thermalState == AdaptiveThermalState.SEVERE) {
-            trial = null
-            healthyQualificationSamplesSeen = 0
-            return severeThermalStep()
-        }
-
         if (frame == null) {
             healthyQualificationSamplesSeen = 0
             return hold(AdaptiveTuneStatus.WAITING_FOR_FRAMES, AdaptiveTuneReason.FRAME_DATA_GRACE)
@@ -152,24 +143,10 @@ class AdaptiveFrequencyController(
                 healthyQualificationSamplesSeen = 0
                 recover(frame, sample)
             }
-            HealthState.HEALTHY -> {
-                if (sample.thermalState == AdaptiveThermalState.MODERATE) {
-                    healthyQualificationSamplesSeen = 0
-                    hold(AdaptiveTuneStatus.THERMAL_LIMITED, AdaptiveTuneReason.WITHIN_TARGET_BAND)
-                } else {
-                    qualifyHealthyThenTrim(frame, sample)
-                }
-            }
+            HealthState.HEALTHY -> qualifyHealthyThenTrim(frame, sample)
             HealthState.NEUTRAL -> {
                 healthyQualificationSamplesSeen = 0
-                hold(
-                    status = if (sample.thermalState == AdaptiveThermalState.MODERATE) {
-                        AdaptiveTuneStatus.THERMAL_LIMITED
-                    } else {
-                        AdaptiveTuneStatus.MONITORING
-                    },
-                    reason = AdaptiveTuneReason.WITHIN_TARGET_BAND,
-                )
+                hold(AdaptiveTuneStatus.MONITORING, AdaptiveTuneReason.WITHIN_TARGET_BAND)
             }
         }
     }
@@ -196,13 +173,6 @@ class AdaptiveFrequencyController(
         frame: FrameHealth,
         sample: AdaptiveTuneSample,
     ): AdaptiveTuneDecision {
-        if (sample.thermalState == AdaptiveThermalState.MODERATE) {
-            return hold(
-                AdaptiveTuneStatus.THERMAL_LIMITED,
-                AdaptiveTuneReason.MODERATE_THERMAL_RAISE_BLOCKED,
-            )
-        }
-
         val candidates = domains.filter { domain ->
             domain.currentIndex < domain.baseIndex && !isFrozen(raiseFrozenUntil, domain.actuator, sample.timestampNanos)
         }
@@ -263,11 +233,7 @@ class AdaptiveFrequencyController(
             targetIndex = domain.currentIndex - 1,
             kind = TrialKind.TRIM,
             baseline = frame,
-            status = if (sample.thermalState == AdaptiveThermalState.MODERATE) {
-                AdaptiveTuneStatus.THERMAL_LIMITED
-            } else {
-                AdaptiveTuneStatus.OPTIMIZING
-            },
+            status = AdaptiveTuneStatus.OPTIMIZING,
             reason = AdaptiveTuneReason.EFFICIENCY_TRIM,
         )
     }
@@ -289,14 +255,6 @@ class AdaptiveFrequencyController(
         sample: AdaptiveTuneSample,
     ): AdaptiveTuneDecision {
         if (isRegression(active.baseline, frame)) {
-            // Restoring a rejected trim is a raise. Moderate thermal pressure blocks that raise,
-            // but retains the trial so it can be restored as soon as the thermal rail clears.
-            if (sample.thermalState == AdaptiveThermalState.MODERATE) {
-                return hold(
-                    AdaptiveTuneStatus.THERMAL_LIMITED,
-                    AdaptiveTuneReason.MODERATE_THERMAL_RAISE_BLOCKED,
-                )
-            }
             trial = null
             trimFrozenUntil[active.domain.actuator] = freezeDeadline(sample.timestampNanos)
             return applyMove(
@@ -339,32 +297,6 @@ class AdaptiveFrequencyController(
         }
         trial = active.copy(observedSamples = observed)
         return hold(AdaptiveTuneStatus.WATCHING_TRIAL, AdaptiveTuneReason.TRIAL_WATCH)
-    }
-
-    private fun severeThermalStep(): AdaptiveTuneDecision {
-        if (domains.none { it.currentIndex > 0 }) {
-            return hold(
-                AdaptiveTuneStatus.THERMAL_LIMITED,
-                AdaptiveTuneReason.SEVERE_THERMAL_AT_FLOOR,
-            )
-        }
-        for (offset in domains.indices) {
-            val index = (thermalCursor + offset) % domains.size
-            val domain = domains[index]
-            if (domain.currentIndex > 0) {
-                thermalCursor = (index + 1) % domains.size
-                return applyMove(
-                    domain = domain,
-                    targetIndex = domain.currentIndex - 1,
-                    status = AdaptiveTuneStatus.THERMAL_LIMITED,
-                    reason = AdaptiveTuneReason.SEVERE_THERMAL_DOWNSHIFT,
-                )
-            }
-        }
-        return hold(
-            AdaptiveTuneStatus.THERMAL_LIMITED,
-            AdaptiveTuneReason.SEVERE_THERMAL_AT_FLOOR,
-        )
     }
 
     private fun selectRecoveryDomain(
