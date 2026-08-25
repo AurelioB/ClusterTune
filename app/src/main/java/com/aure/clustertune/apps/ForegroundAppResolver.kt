@@ -21,8 +21,14 @@ class ForegroundAppResolver(context: Context) {
         snapshot: VisibleAppSnapshot = VisibleAppWindowEvents.snapshots.value,
         targetDisplayId: Int? = null,
         excludedPackages: Set<String> = emptySet(),
+        preferredPackageName: String? = null,
     ): ForegroundAppInfo? {
-        val window = selectVisibleAppWindow(snapshot, targetDisplayId, excludedPackages) ?: return null
+        val window = selectVisibleAppWindow(
+            snapshot = snapshot,
+            targetDisplayId = targetDisplayId,
+            excludedPackages = excludedPackages,
+            preferredPackageName = preferredPackageName,
+        ) ?: return null
         val packageName = window.packageName
         val applicationInfo = applicationInfo(packageName)
         return ForegroundAppInfo(
@@ -45,7 +51,13 @@ class ForegroundAppResolver(context: Context) {
         snapshot: VisibleAppSnapshot,
         targetDisplayId: Int? = null,
         excludedPackages: Set<String> = emptySet(),
-    ): String? = selectVisibleAppWindow(snapshot, targetDisplayId, excludedPackages)?.packageName
+        preferredPackageName: String? = null,
+    ): String? = selectVisibleAppWindow(
+        snapshot = snapshot,
+        targetDisplayId = targetDisplayId,
+        excludedPackages = excludedPackages,
+        preferredPackageName = preferredPackageName,
+    )?.packageName
 
     private fun applicationInfo(packageName: String) = runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -64,10 +76,11 @@ internal fun selectVisibleAppWindow(
     snapshot: VisibleAppSnapshot,
     targetDisplayId: Int? = null,
     excludedPackages: Set<String> = emptySet(),
+    preferredPackageName: String? = null,
 ): VisibleAppWindow? {
     return snapshot.visibleWindows(targetDisplayId)
         .filterNot { it.packageName in excludedPackages }
-        .sortedWith(snapshot.visibleWindowComparator())
+        .sortedWith(snapshot.visibleWindowComparator(preferredPackageName))
         .firstOrNull()
 }
 
@@ -88,7 +101,9 @@ private fun VisibleAppSnapshot.visibleWindows(targetDisplayId: Int?): Sequence<V
         windowsByDisplay.values.asSequence().flatten()
     }
 
-private fun VisibleAppSnapshot.visibleWindowComparator(): Comparator<VisibleAppWindow> =
+private fun VisibleAppSnapshot.visibleWindowComparator(
+    preferredPackageName: String? = null,
+): Comparator<VisibleAppWindow> =
     compareByDescending<VisibleAppWindow> { it.isFocused }
         .thenByDescending { it.isActive }
         .thenByDescending { window ->
@@ -97,6 +112,12 @@ private fun VisibleAppSnapshot.visibleWindowComparator(): Comparator<VisibleAppW
             } == true
         }
         .thenByDescending { recentPackageByDisplay[it.displayId] == it.packageName }
+        // Keep an established picker context only after focus, activity, and the latest
+        // real window event are tied. This prevents a still-visible old app from masking
+        // a genuine foreground transition on OEMs that report ambiguous window flags.
+        .thenByDescending {
+            preferredPackageName != null && it.packageName == preferredPackageName
+        }
         .thenBy { it.displayId }
         .thenBy { it.packageName }
 
