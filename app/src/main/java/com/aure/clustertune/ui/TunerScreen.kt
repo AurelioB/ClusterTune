@@ -146,7 +146,6 @@ private const val DEFAULT_AUTO_TUNE_TARGET_FPS = 60
 
 internal object CompactOverlayTestTags {
     const val AUTO_TUNE_TARGET_SLIDER = "compact_overlay_auto_tune_target_slider"
-    const val AUTO_TUNE_SWITCH = "compact_overlay_auto_tune_switch"
     const val APP_PROFILE_SWITCH = "compact_overlay_app_profile_switch"
 }
 
@@ -300,7 +299,15 @@ fun MainTunerScreen(
             val currentRefreshRateFps = visibleWindow?.let { window ->
                 visibleAppSnapshot.refreshRateFpsByDisplay[window.displayId]
             }
-            var appOverlayMode by remember(app.packageName) { mutableStateOf(CompactOverlayMode.PROFILES) }
+            var appOverlayMode by remember(app.packageName, assignment?.isAutoTune) {
+                mutableStateOf(
+                    if (assignment?.isAutoTune == true) {
+                        CompactOverlayMode.AUTO_TUNE
+                    } else {
+                        CompactOverlayMode.PROFILES
+                    },
+                )
+            }
             CtCompactOverlayFrame(onDismissRequest = { showAppAssignmentDialog = false }) {
                 CompactOverlayScreen(
                     state = state,
@@ -424,7 +431,7 @@ fun MainTunerScreen(
 
 }
 
-enum class CompactOverlayMode { PROFILES, TUNER }
+enum class CompactOverlayMode { PROFILES, TUNER, AUTO_TUNE }
 
 /** Compact app-aware overlay shared by the edge picker and quick tuner. */
 @Composable
@@ -466,9 +473,6 @@ fun CompactOverlayScreen(
         assignment?.autoTuneTargetFps,
     ) {
         mutableStateOf(assignment != null)
-    }
-    var stagedAutoTuneTargetFps by remember(contextPackageName, assignment?.autoTuneTargetFps) {
-        mutableStateOf(assignment?.autoTuneTargetFps)
     }
     // Keep the configured draft separate from the live effective value. If the
     // panel changes 120 -> 60 -> 120 while this dialog is open, the unsaved
@@ -544,7 +548,7 @@ fun CompactOverlayScreen(
             onRefreshLiveValues()
         }
     }
-    val selectedProfileId = if (customDraft || stagedAutoTuneTargetFps != null) null else stagedProfile?.id
+    val selectedProfileId = if (customDraft) null else stagedProfile?.id
         ?: listOfNotNull(assignment?.profileId, state.activeDisplayProfileId, state.lastAppliedDisplayProfileId)
             .firstOrNull { id -> profiles.any { it.id == id } }
 
@@ -601,7 +605,6 @@ fun CompactOverlayScreen(
                                     onCheckedChange = { enabled ->
                                         appProfileEnabled = enabled
                                         if (!enabled) {
-                                            stagedAutoTuneTargetFps = null
                                             onAppProfileAssignmentChange?.invoke(null, null, null, null)
                                         }
                                     },
@@ -619,15 +622,21 @@ fun CompactOverlayScreen(
                                 .padding(2.dp),
                             horizontalArrangement = Arrangement.spacedBy(2.dp),
                         ) {
-                            listOf(CompactOverlayMode.PROFILES to "list", CompactOverlayMode.TUNER to "tune").forEach { (item, icon) ->
+                            listOf(
+                                Triple(CompactOverlayMode.PROFILES, "list", "Profiles"),
+                                Triple(CompactOverlayMode.TUNER, "tune", "Tuner"),
+                                Triple(CompactOverlayMode.AUTO_TUNE, "speed", "Auto Tune"),
+                            ).forEach { (item, icon, label) ->
                                 val selected = mode == item
                                 Box(
                                     modifier = Modifier.size(30.dp).clip(RoundedCornerShape(8.dp))
                                         .background(if (selected) colorScheme.primaryContainer else Color.Transparent)
-                                        .clickable { onModeChange(item) },
+                                        .clickable {
+                                            onModeChange(item)
+                                        },
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    CtIcon(icon, if (item == CompactOverlayMode.PROFILES) "Profiles" else "Tuner", tint = if (selected) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant, size = 18.dp)
+                                    CtIcon(icon, label, tint = if (selected) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant, size = 18.dp)
                                 }
                             }
                         }
@@ -648,30 +657,7 @@ fun CompactOverlayScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    if (canAssign) {
-                        AutoTunePickerSection(
-                            targetFps = effectiveAutoTuneDraftTargetFps,
-                            maximumTargetFps = maximumAutoTuneTargetFps,
-                            assigned = assignment?.autoTuneTargetFps == autoTuneDraftTargetFps,
-                            updating = assignment?.isAutoTune == true,
-                            onTargetChange = { autoTuneDraftTargetFps = it },
-                            onAssign = {
-                                stagedAutoTuneTargetFps = effectiveAutoTuneDraftTargetFps
-                                autoTuneDraftTargetFps = effectiveAutoTuneDraftTargetFps
-                                appProfileEnabled = true
-                                onAppProfileAssignmentChange?.invoke(null, null, null, effectiveAutoTuneDraftTargetFps)
-                                onDismissRequest()
-                            },
-                        )
-                        Text(
-                            text = "Profiles",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            color = colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 4.dp, top = 4.dp),
-                        )
-                    }
-                    if (customDraft && stagedAutoTuneTargetFps == null) {
+                    if (customDraft) {
                         ProfileChoiceRow(
                             title = "Custom",
                             selected = true,
@@ -685,7 +671,6 @@ fun CompactOverlayScreen(
                             selected = selectedProfileId == profile.id,
                             applying = applyingProfileId == profile.id,
                             onClick = {
-                                stagedAutoTuneTargetFps = null
                                 stagedProfile = profile
                                 stagedCustomValues = profile.maxFrequencies
                                 stagedGpuValue = profile.gpuMaxFrequencyHz ?: state.currentGpuMaxFrequencyHz
@@ -696,7 +681,7 @@ fun CompactOverlayScreen(
                     }
                     if (profiles.isEmpty()) ProfilePickerEmptyOptionCard()
                 }
-            } else {
+            } else if (mode == CompactOverlayMode.TUNER) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -706,60 +691,70 @@ fun CompactOverlayScreen(
                         .padding(start = 12.dp, top = 4.dp, end = 12.dp, bottom = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
+                    ProfileChipSelector(
+                        state = state.copy(
+                            currentValues = stagedCustomValues,
+                            currentGpuMaxFrequencyHz = stagedGpuValue,
+                            activeDisplayProfileId = null,
+                            lastAppliedDisplayProfileId = null,
+                            selectedDisplayProfileId = stagedProfile?.id,
+                            isManualSelection = customDraft,
+                        ),
+                        onApplyProfile = { profile ->
+                            stagedProfile = profile
+                            customDraft = false
+                            stagedCustomValues = profile.maxFrequencies
+                            stagedGpuValue = profile.gpuMaxFrequencyHz ?: state.currentGpuMaxFrequencyHz
+                        },
+                        onClearSelection = {
+                            stagedProfile = null
+                            customDraft = true
+                        },
+                        onOpenFullApp = null,
+                        stripUnderclockSuffix = true,
+                        applyingProfileId = applyingProfileId,
+                        compact = true,
+                    )
+                    PolicyEditorSection(
+                        state = state.copy(currentValues = stagedCustomValues, currentGpuMaxFrequencyHz = stagedGpuValue),
+                        displayFrequenciesAsPercent = displayFrequenciesAsPercent,
+                        onPolicyValueChange = { policy, value ->
+                            stagedCustomValues = stagedCustomValues + (policy.id to value)
+                        },
+                        onGpuValueChange = { stagedGpuValue = it },
+                        compactMode = true,
+                    )
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .heightIn(min = 0.dp, max = 340.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                ) {
                     if (canAssign) {
-                        AutoTuneTargetSection(
-                            enabled = stagedAutoTuneTargetFps != null,
+                        AutoTunePickerSection(
                             targetFps = effectiveAutoTuneDraftTargetFps,
                             maximumTargetFps = maximumAutoTuneTargetFps,
-                            onEnabledChange = { enabled ->
-                                if (enabled) {
-                                    appProfileEnabled = true
-                                    stagedAutoTuneTargetFps = autoTuneDraftTargetFps
-                                } else {
-                                    stagedAutoTuneTargetFps = null
-                                }
+                            assigned = assignment?.autoTuneTargetFps == autoTuneDraftTargetFps,
+                            updating = assignment?.isAutoTune == true,
+                            onTargetChange = {
+                                autoTuneDraftTargetFps = it
                             },
-                            onTargetChange = { targetFps ->
-                                autoTuneDraftTargetFps = targetFps
-                                stagedAutoTuneTargetFps = targetFps
+                            onAssign = {
+                                autoTuneDraftTargetFps = effectiveAutoTuneDraftTargetFps
                                 appProfileEnabled = true
+                                onAppProfileAssignmentChange?.invoke(null, null, null, effectiveAutoTuneDraftTargetFps)
+                                onDismissRequest()
                             },
                         )
-                    }
-                    if (stagedAutoTuneTargetFps == null) {
-                        ProfileChipSelector(
-                            state = state.copy(
-                                currentValues = stagedCustomValues,
-                                currentGpuMaxFrequencyHz = stagedGpuValue,
-                                activeDisplayProfileId = null,
-                                lastAppliedDisplayProfileId = null,
-                                selectedDisplayProfileId = stagedProfile?.id,
-                                isManualSelection = customDraft,
-                            ),
-                            onApplyProfile = { profile ->
-                                stagedProfile = profile
-                                customDraft = false
-                                stagedCustomValues = profile.maxFrequencies
-                                stagedGpuValue = profile.gpuMaxFrequencyHz ?: state.currentGpuMaxFrequencyHz
-                                if (mode == CompactOverlayMode.PROFILES) onApplyProfile(profile, appProfileEnabled)
-                            },
-                            onClearSelection = {
-                                stagedProfile = null
-                                customDraft = true
-                            },
-                            onOpenFullApp = null,
-                            stripUnderclockSuffix = true,
-                            applyingProfileId = applyingProfileId,
-                            compact = true,
-                        )
-                        PolicyEditorSection(
-                            state = state.copy(currentValues = stagedCustomValues, currentGpuMaxFrequencyHz = stagedGpuValue),
-                            displayFrequenciesAsPercent = displayFrequenciesAsPercent,
-                            onPolicyValueChange = { policy, value ->
-                                stagedCustomValues = stagedCustomValues + (policy.id to value)
-                            },
-                            onGpuValueChange = { stagedGpuValue = it },
-                            compactMode = true,
+                    } else {
+                        Text(
+                            text = "Choose a foreground app before assigning an Auto Tune target.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colorScheme.onSurfaceVariant,
                         )
                     }
                 }
@@ -776,32 +771,17 @@ fun CompactOverlayScreen(
                     TextButton(onClick = onDismissRequest) { Text("Cancel") }
                     Button(
                         onClick = {
-                            val autoTuneTargetFps = stagedAutoTuneTargetFps
-                            if (autoTuneTargetFps != null && canAssign) {
-                                onAppProfileAssignmentChange?.invoke(
-                                    null,
-                                    null,
-                                    null,
-                                    autoTuneTargetFps.coerceAtMost(maximumAutoTuneTargetFps),
-                                )
-                                onDismissRequest()
-                            } else {
-                                onApplyCurrent(
-                                    state.copy(currentValues = stagedCustomValues, currentGpuMaxFrequencyHz = stagedGpuValue),
-                                    stagedProfile.takeUnless { customDraft },
-                                    stagedCustomValues.takeIf { customDraft },
-                                    appProfileEnabled,
-                                )
-                            }
+                            onApplyCurrent(
+                                state.copy(currentValues = stagedCustomValues, currentGpuMaxFrequencyHz = stagedGpuValue),
+                                stagedProfile.takeUnless { customDraft },
+                                stagedCustomValues.takeIf { customDraft },
+                                appProfileEnabled,
+                            )
                         },
-                        enabled = if (stagedAutoTuneTargetFps != null && canAssign) {
-                            true
-                        } else {
-                            state.policies.isNotEmpty() && state.isPrivilegedHostAvailable
-                        },
+                        enabled = state.policies.isNotEmpty() && state.isPrivilegedHostAvailable,
                         modifier = Modifier.height(30.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                    ) { Text(if (stagedAutoTuneTargetFps != null && canAssign) "Save" else "Apply") }
+                    ) { Text("Apply") }
                 }
             }
         }
@@ -899,73 +879,6 @@ private fun AutoTunePickerSection(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
         ) {
             Text(if (updating) "Update Auto Tune" else "Assign Auto Tune")
-        }
-    }
-}
-
-@Composable
-private fun AutoTuneTargetSection(
-    enabled: Boolean,
-    targetFps: Int,
-    maximumTargetFps: Int,
-    onEnabledChange: (Boolean) -> Unit,
-    onTargetChange: (Int) -> Unit,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-    CtSectionCard(
-        shape = RoundedCornerShape(20.dp),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Auto Tune",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colorScheme.onSurface,
-                )
-                Text(
-                    text = if (enabled) "$targetFps FPS target" else "Set a performance floor",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colorScheme.onSurfaceVariant,
-                )
-            }
-            CtSwitch(
-                checked = enabled,
-                onCheckedChange = onEnabledChange,
-                modifier = Modifier
-                    .testTag(CompactOverlayTestTags.AUTO_TUNE_SWITCH)
-                    .semantics { contentDescription = "Auto Tune" },
-            )
-        }
-        if (enabled) {
-            AutoTuneTargetSlider(
-                targetFps = targetFps,
-                maximumTargetFps = maximumTargetFps,
-                onTargetChange = onTargetChange,
-            )
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    text = "$MIN_AUTO_TUNE_TARGET_FPS FPS",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = "$maximumTargetFps FPS · current display",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colorScheme.onSurfaceVariant,
-                )
-            }
-            Text(
-                text = "Performance floor, not an FPS limiter. Match the app's own frame-rate cap.",
-                style = MaterialTheme.typography.bodySmall,
-                color = colorScheme.onSurfaceVariant,
-            )
         }
     }
 }

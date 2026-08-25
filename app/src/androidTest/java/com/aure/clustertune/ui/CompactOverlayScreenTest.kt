@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -85,6 +86,98 @@ class CompactOverlayScreenTest {
         composeRule.runOnIdle { assertEquals(CompactOverlayMode.TUNER, mode) }
         assertSharedHeader()
         composeRule.onNodeWithText("Apply").assertExists()
+
+        composeRule.onNodeWithContentDescription("Auto Tune").performClick()
+        composeRule.runOnIdle { assertEquals(CompactOverlayMode.AUTO_TUNE, mode) }
+        assertSharedHeader()
+        composeRule.onNodeWithTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER).assertIsDisplayed()
+        composeRule.onNodeWithTag(CompactOverlayTestTags.APP_PROFILE_SWITCH).assertIsDisplayed()
+    }
+
+    @Test
+    fun inspectingAutoTune_preservesFixedSelectionAndDisabledAppProfileToggle() {
+        var mode by mutableStateOf(CompactOverlayMode.PROFILES)
+        var appliedAsAppProfile: Boolean? = null
+        var assignmentChangeCount = 0
+        composeRule.setContent {
+            MaterialTheme {
+                CompactOverlayScreen(
+                    state = state().copy(selectedDisplayProfileId = "small"),
+                    displayFrequenciesAsPercent = false,
+                    mode = mode,
+                    onModeChange = { mode = it },
+                    onApplyProfile = { _, enabled -> appliedAsAppProfile = enabled },
+                    onApplyCurrent = { _, _, _, _ -> },
+                    onDismissRequest = {},
+                    onRefreshLiveValues = {},
+                    contextPackageName = "com.example.game",
+                    contextLabel = "Example game",
+                    onAppProfileAssignmentChange = { _, _, _, _ -> assignmentChangeCount++ },
+                )
+            }
+        }
+
+        composeRule.onNodeWithTag(CompactOverlayTestTags.APP_PROFILE_SWITCH).assertIsOff()
+        composeRule.onNodeWithContentDescription("Selected").assertExists()
+        composeRule.onNodeWithContentDescription("Auto Tune").performClick()
+        composeRule.onNodeWithTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER)
+            .performSemanticsAction(SemanticsActions.SetProgress) { setProgress -> setProgress(77f) }
+        composeRule.onNodeWithContentDescription("Profiles").performClick()
+
+        composeRule.onNodeWithTag(CompactOverlayTestTags.APP_PROFILE_SWITCH).assertIsOff()
+        composeRule.onNodeWithContentDescription("Selected").assertExists()
+        composeRule.onNodeWithText("Large").performClick()
+        composeRule.runOnIdle {
+            assertEquals(false, appliedAsAppProfile)
+            assertEquals(0, assignmentChangeCount)
+        }
+    }
+
+    @Test
+    fun assigningAutoTune_replacesFixedAssignmentOnlyAfterExplicitAction() {
+        var mode by mutableStateOf(CompactOverlayMode.PROFILES)
+        var replacementTarget: Int? = null
+        var replacementCount = 0
+        composeRule.setContent {
+            MaterialTheme {
+                CompactOverlayScreen(
+                    state = state(
+                        assignment = AppProfileAssignment(
+                            packageName = "com.example.game",
+                            appLabel = "Example game",
+                            profileId = "small",
+                        ),
+                    ),
+                    displayFrequenciesAsPercent = false,
+                    mode = mode,
+                    onModeChange = { mode = it },
+                    onApplyProfile = { _, _ -> },
+                    onApplyCurrent = { _, _, _, _ -> },
+                    onDismissRequest = {},
+                    onRefreshLiveValues = {},
+                    contextPackageName = "com.example.game",
+                    contextLabel = "Example game",
+                    contextDisplayRefreshRateFps = 120,
+                    onAppProfileAssignmentChange = { profile, values, gpu, target ->
+                        assertEquals(null, profile)
+                        assertEquals(null, values)
+                        assertEquals(null, gpu)
+                        replacementCount++
+                        replacementTarget = target
+                    },
+                )
+            }
+        }
+
+        composeRule.onNodeWithContentDescription("Auto Tune").performClick()
+        composeRule.onNodeWithTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER)
+            .performSemanticsAction(SemanticsActions.SetProgress) { setProgress -> setProgress(77f) }
+        composeRule.runOnIdle { assertEquals(0, replacementCount) }
+        composeRule.onNodeWithText("Assign Auto Tune").performClick()
+        composeRule.runOnIdle {
+            assertEquals(1, replacementCount)
+            assertEquals(77, replacementTarget)
+        }
     }
 
     @Test
@@ -236,7 +329,7 @@ class CompactOverlayScreenTest {
                 CompactOverlayScreen(
                     state = state(),
                     displayFrequenciesAsPercent = false,
-                    mode = CompactOverlayMode.PROFILES,
+                    mode = CompactOverlayMode.AUTO_TUNE,
                     onModeChange = {},
                     onApplyProfile = { _, _ -> },
                     onApplyCurrent = { _, _, _, _ -> },
@@ -293,7 +386,7 @@ class CompactOverlayScreenTest {
                         ),
                     ),
                     displayFrequenciesAsPercent = false,
-                    mode = CompactOverlayMode.PROFILES,
+                    mode = CompactOverlayMode.AUTO_TUNE,
                     onModeChange = {},
                     onApplyProfile = { _, _ -> },
                     onApplyCurrent = { _, _, _, _ -> },
@@ -320,7 +413,7 @@ class CompactOverlayScreenTest {
     }
 
     @Test
-    fun tunerMode_exposesAssignedAutoTuneControlsToAccessibility() {
+    fun autoTuneMode_exposesAssignedTargetControlsToAccessibility() {
         composeRule.setContent {
             MaterialTheme {
                 CompactOverlayScreen(
@@ -332,7 +425,7 @@ class CompactOverlayScreenTest {
                         ),
                     ),
                     displayFrequenciesAsPercent = false,
-                    mode = CompactOverlayMode.TUNER,
+                    mode = CompactOverlayMode.AUTO_TUNE,
                     onModeChange = {},
                     onApplyProfile = { _, _ -> },
                     onApplyCurrent = { _, _, _, _ -> },
@@ -365,7 +458,7 @@ class CompactOverlayScreenTest {
                 CompactOverlayScreen(
                     state = state().copy(appProfileAssignments = assignments),
                     displayFrequenciesAsPercent = false,
-                    mode = CompactOverlayMode.PROFILES,
+                    mode = CompactOverlayMode.AUTO_TUNE,
                     onModeChange = {},
                     onApplyProfile = { _, _ -> },
                     onApplyCurrent = { _, _, _, _ -> },
@@ -393,7 +486,7 @@ class CompactOverlayScreenTest {
                 CompactOverlayScreen(
                     state = state(),
                     displayFrequenciesAsPercent = false,
-                    mode = CompactOverlayMode.PROFILES,
+                    mode = CompactOverlayMode.AUTO_TUNE,
                     onModeChange = {},
                     onApplyProfile = { _, _ -> },
                     onApplyCurrent = { _, _, _, _ -> },
@@ -436,7 +529,7 @@ class CompactOverlayScreenTest {
                         ),
                     ),
                     displayFrequenciesAsPercent = false,
-                    mode = CompactOverlayMode.PROFILES,
+                    mode = CompactOverlayMode.AUTO_TUNE,
                     onModeChange = {},
                     onApplyProfile = { _, _ -> },
                     onApplyCurrent = { _, _, _, _ -> },
@@ -697,6 +790,7 @@ class CompactOverlayScreenTest {
         composeRule.onNodeWithText("App profile").assertExists()
         composeRule.onNodeWithContentDescription("Profiles").assertExists()
         composeRule.onNodeWithContentDescription("Tuner").assertExists()
+        composeRule.onNodeWithContentDescription("Auto Tune").assertExists()
         composeRule.onNodeWithContentDescription("Close").assertExists()
     }
 
