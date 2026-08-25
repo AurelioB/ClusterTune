@@ -8,6 +8,16 @@ import androidx.activity.ComponentActivity
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.aure.clustertune.autotune.AdaptiveCpuPolicy
+import com.aure.clustertune.autotune.AdaptiveFrameMetrics
+import com.aure.clustertune.autotune.AdaptiveFrequencyController
+import com.aure.clustertune.autotune.AdaptiveGpuDomain
+import com.aure.clustertune.autotune.AdaptiveThermalState
+import com.aure.clustertune.autotune.AdaptiveTuneConfig
+import com.aure.clustertune.autotune.AdaptiveTuneDecision
+import com.aure.clustertune.autotune.AdaptiveTuneEnvelope
+import com.aure.clustertune.autotune.AdaptiveTuneReason
+import com.aure.clustertune.autotune.AdaptiveTuneSample
 import com.aure.clustertune.root.PServerExecutionMethod
 import com.aure.clustertune.root.PrivilegedExecutionResolver
 import com.aure.clustertune.root.RootShellExecutionMethod
@@ -77,26 +87,33 @@ class RootHostHandoffInstrumentationTest {
             safeToStopHost = true
 
             fixture = launchFrameFixture()
+            val targetFps = 30
             val started = client.startAutoSession(
                 AutoSessionRequest(
                     packageName = context.packageName,
-                    targetFps = 60,
+                    targetFps = targetFps,
                     heartbeatTimeoutMs = 15_000L,
                 ),
             ).getOrThrow()
             assertEquals(HostAutoSessionStatus.ACTIVE, started.status)
             assertEquals(snapshot.epoch, started.hostEpoch)
-            assertEquals(60, started.targetFps)
+            assertEquals(targetFps, started.targetFps)
             val handle = requireNotNull(started.handle)
             sessionHandle = handle
             val baseline = requireNotNull(started.state)
             assertStableState(snapshot.state, baseline)
+            val controller = AdaptiveFrequencyController(
+                config = AdaptiveTuneConfig(targetFps = targetFps),
+                envelope = adaptiveEnvelope(snapshot.capabilities, baseline),
+            )
 
             var afterSequence = -1L
             var firstTimestamp = -1L
             var latest: HostAutoTelemetry? = null
             var freshFrameSampleSeen = false
-            repeat(4) {
+            var controllerApply: AdaptiveTuneDecision.Apply? = null
+            var appliedState: HostState? = null
+            for (attempt in 0 until 16) {
                 Thread.sleep(400)
                 client.heartbeatAutoSession(handle).getOrThrow()
                 val sampled = client.readAutoTelemetry(handle, afterSequence).getOrThrow()
@@ -115,47 +132,26 @@ class RootHostHandoffInstrumentationTest {
                         !telemetry.frameStale &&
                         telemetry.fpsMilli != null
                 )
+                val decision = controller.step(telemetry.toAdaptiveTuneSample(snapshot.capabilities))
+                if (decision is AdaptiveTuneDecision.Apply) {
+                    val request = decision.toApplyRequest(snapshot.capabilities)
+                    val applied = client.applyAutoStep(handle, request).getOrThrow()
+                    assertEquals(HostAutoSessionStatus.ACTIVE, applied.status)
+                    appliedState = requireNotNull(applied.state)
+                    assertEquals(request.cpuMax, appliedState.cpuMax)
+                    assertEquals(request.gpuMax, appliedState.gpuMax)
+                    controllerApply = decision
+                    break
+                }
             }
             assertTrue(latest?.frameBackend?.contains("surfaceflinger") == true)
             assertTrue("no fresh SurfaceFlinger frame sample was observed", freshFrameSampleSeen)
-
-            val requestedCpu = baseline.cpuMax.toMutableList()
-            // Prefer crossing a live OEM floor when the device exposes one. The
-            // automatic path must still write only scaling_max_freq.
-            val lowerCpuStep = snapshot.capabilities.cpus.indices
-                .flatMap { index ->
-                    snapshot.capabilities.cpus[index].supportedFrequencies
-                        .filter { it in 1 until baseline.cpuMax[index] }
-                        .map { value -> Triple(index, value, value < (baseline.cpuMin.getOrNull(index) ?: 1L)) }
-                }
-                .sortedWith(compareByDescending<Triple<Int, Long, Boolean>> { it.third }.thenByDescending { it.second })
-                .firstOrNull()
-            var requestedGpu = baseline.gpuMax
-            if (lowerCpuStep != null) {
-                val (index, value) = lowerCpuStep
-                requestedCpu[index] = value
-            } else {
-                requestedGpu = snapshot.capabilities.gpu?.supportedFrequencies
-                    ?.filter { current -> baseline.gpuMax?.let { current in 1 until it } == true }
-                    ?.maxOrNull()
-                    ?: error("no safe lower CPU or GPU frequency is available for the mutation check")
+            val appliedDecision = requireNotNull(controllerApply) {
+                "Auto Tune did not make a live efficiency-trim decision"
             }
-            val applied = client.applyAutoStep(
-                handle,
-                ApplyRequest(
-                    cpuMax = requestedCpu,
-                    gpuMax = requestedGpu,
-                    resetToStock = false,
-                    cpuIds = snapshot.capabilities.cpus.map(CpuDomain::id),
-                    gpuId = snapshot.capabilities.gpu?.id,
-                    gpuMaxPath = snapshot.capabilities.gpu?.maxPath,
-                    maximumsOnly = true,
-                ),
-            ).getOrThrow()
-            assertEquals(HostAutoSessionStatus.ACTIVE, applied.status)
-            val appliedState = requireNotNull(applied.state)
-            assertEquals(requestedCpu, appliedState.cpuMax)
-            assertEquals(requestedGpu, appliedState.gpuMax)
+            assertEquals(AdaptiveTuneReason.EFFICIENCY_TRIM, appliedDecision.reason)
+            assertTrue(appliedDecision.change.toCeiling < appliedDecision.change.fromCeiling)
+            val automaticState = requireNotNull(appliedState)
 
             val stopped = stopAndRestore(client, handle)
             assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
@@ -163,7 +159,7 @@ class RootHostHandoffInstrumentationTest {
             assertTrue(stopped.restorationComplete)
             assertAutomaticCeilingsReleased(
                 baseline = snapshot.state,
-                automatic = appliedState,
+                automatic = automaticState,
                 actual = client.readSnapshot().getOrThrow().state,
             )
             sessionHandle = null
@@ -210,6 +206,73 @@ class RootHostHandoffInstrumentationTest {
         assertEquals(expected.gpuMin, actual.gpuMin)
     }
 
+    private fun adaptiveEnvelope(
+        capabilities: HostCapabilities,
+        baseline: HostState,
+    ): AdaptiveTuneEnvelope = AdaptiveTuneEnvelope(
+        cpuPolicies = capabilities.cpus.mapIndexed { index, domain ->
+            val base = baseline.cpuMax[index]
+            AdaptiveCpuPolicy(
+                policyId = domain.policyId(),
+                availableCeilingsKHz = domain.supportedFrequencies.filter { it in 1..base },
+                baseCeilingKHz = base,
+            )
+        },
+        gpu = capabilities.gpu?.let { domain ->
+            val base = requireNotNull(baseline.gpuMax)
+            AdaptiveGpuDomain(
+                id = domain.id,
+                availableCeilingsHz = domain.supportedFrequencies.filter { it in 1..base },
+                baseCeilingHz = base,
+            )
+        },
+    )
+
+    private fun HostAutoTelemetry.toAdaptiveTuneSample(
+        capabilities: HostCapabilities,
+    ): AdaptiveTuneSample {
+        val frames = fpsMilli?.takeIf { it > 0 && frameConfidencePermille >= 250 }?.let { fps ->
+            AdaptiveFrameMetrics(
+                fps = fps / 1_000.0,
+                p95FrameTimeMillis = frameTimeP95Nanos?.takeIf { it > 0L }?.div(1_000_000.0),
+                slowFrameRatio = slowFrameRatioPermille?.coerceIn(0, 1_000)?.div(1_000.0),
+                isStale = frameStale || frameConfidencePermille < 250,
+            )
+        }
+        val relevantThermal = thermal.asSequence()
+            .filter { RELEVANT_THERMAL_TYPE.containsMatchIn(it.type) }
+            .map(HostThermalReading::temperatureMilliCelsius)
+            .filter { it in -200_000L..300_000L }
+            .maxOrNull()
+        return AdaptiveTuneSample(
+            timestampNanos = timestampNanos,
+            frames = frames,
+            cpuLoad = capabilities.cpus.mapIndexed { index, domain ->
+                domain.policyId() to cpuLoadPermille.getOrNull(index)?.coerceIn(0, 1_000)?.div(1_000.0)
+            }.toMap(),
+            gpuBusy = gpuBusyPermille?.coerceIn(0, 1_000)?.div(1_000.0),
+            thermalState = when {
+                relevantThermal != null && relevantThermal >= 85_000L -> AdaptiveThermalState.SEVERE
+                relevantThermal != null && relevantThermal >= 75_000L -> AdaptiveThermalState.MODERATE
+                else -> AdaptiveThermalState.NORMAL
+            },
+        )
+    }
+
+    private fun AdaptiveTuneDecision.Apply.toApplyRequest(
+        capabilities: HostCapabilities,
+    ): ApplyRequest = ApplyRequest(
+        cpuMax = capabilities.cpus.map { domain -> ceilings.cpuKHz.getValue(domain.policyId()) },
+        gpuMax = capabilities.gpu?.let { requireNotNull(ceilings.gpuHz) },
+        resetToStock = false,
+        cpuIds = capabilities.cpus.map(CpuDomain::id),
+        gpuId = capabilities.gpu?.id,
+        gpuMaxPath = capabilities.gpu?.maxPath,
+        maximumsOnly = true,
+    )
+
+    private fun CpuDomain.policyId(): Int = id.removePrefix("policy").toInt()
+
     private fun assertAutomaticCeilingsReleased(
         baseline: HostState,
         automatic: HostState,
@@ -240,5 +303,12 @@ class RootHostHandoffInstrumentationTest {
             canvas.drawColor(if (frame % 2 == 0) Color.rgb(22, 28, 40) else Color.rgb(24, 30, 44))
             postInvalidateOnAnimation()
         }
+    }
+
+    companion object {
+        private val RELEVANT_THERMAL_TYPE = Regex(
+            "cpu|gpu|soc|ap|cluster|little|big|silver|gold",
+            RegexOption.IGNORE_CASE,
+        )
     }
 }
