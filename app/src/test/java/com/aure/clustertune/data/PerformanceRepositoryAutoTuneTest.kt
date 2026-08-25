@@ -142,7 +142,7 @@ class PerformanceRepositoryAutoTuneTest {
     }
 
     @Test
-    fun `adaptive envelope excludes choices below live minimums`() {
+    fun `adaptive envelope keeps supported max choices below live OEM minimums`() {
         val policy = cpuPolicy(id = 0, supported = listOf(200, 400, 600, 800))
         val gpuPolicy = gpuPolicy(supported = listOf(200, 400, 600, 900))
         val capabilities = HostCapabilities(
@@ -162,8 +162,66 @@ class PerformanceRepositoryAutoTuneTest {
             ),
         )
 
-        assertEquals(listOf(600L, 800L), envelope.cpuPolicies.single().availableCeilingsKHz)
-        assertEquals(listOf(600L, 900L), envelope.gpu?.availableCeilingsHz)
+        assertEquals(listOf(200L, 400L, 600L, 800L), envelope.cpuPolicies.single().availableCeilingsKHz)
+        assertEquals(listOf(200L, 400L, 600L, 900L), envelope.gpu?.availableCeilingsHz)
+    }
+
+    @Test
+    fun `adaptive baseline permits external minimum votes above the max ceiling`() {
+        val policy = cpuPolicy(id = 0, supported = listOf(200, 400, 800))
+        val gpuPolicy = gpuPolicy(supported = listOf(200, 500, 900))
+        val capabilities = HostCapabilities(
+            cpus = listOf(hostCpu("policy0", listOf(200, 400, 800))),
+            gpu = hostGpu(listOf(200, 500, 900)),
+        )
+        val state = HostState(
+            cpuMax = listOf(800),
+            cpuMin = listOf(900),
+            gpuMax = 900,
+            gpuMin = 1_000,
+        )
+
+        validateAutoSessionBaseline(
+            policies = listOf(policy),
+            gpuPolicy = gpuPolicy,
+            capabilities = capabilities,
+            hostState = state,
+            expectedCpu = mapOf(0 to 800L),
+            expectedGpu = 900L,
+        )
+
+        val envelope = buildAdaptiveEnvelope(listOf(policy), gpuPolicy, capabilities, state)
+        assertEquals(listOf(200L, 400L, 800L), envelope.cpuPolicies.single().availableCeilingsKHz)
+        assertEquals(listOf(200L, 500L, 900L), envelope.gpu?.availableCeilingsHz)
+    }
+
+    @Test
+    fun `adaptive baseline does not require readable minimum telemetry`() {
+        val policy = cpuPolicy(id = 0, supported = listOf(200, 400, 800))
+        val gpuPolicy = gpuPolicy(supported = listOf(200, 500, 900))
+        val capabilities = HostCapabilities(
+            cpus = listOf(hostCpu("policy0", listOf(200, 400, 800))),
+            gpu = hostGpu(listOf(200, 500, 900)),
+        )
+        val state = HostState(
+            cpuMax = listOf(800),
+            cpuMin = listOf(-1),
+            gpuMax = 900,
+            gpuMin = null,
+        )
+
+        validateAutoSessionBaseline(
+            policies = listOf(policy),
+            gpuPolicy = gpuPolicy,
+            capabilities = capabilities,
+            hostState = state,
+            expectedCpu = mapOf(0 to 800L),
+            expectedGpu = 900L,
+        )
+
+        val envelope = buildAdaptiveEnvelope(listOf(policy), gpuPolicy, capabilities, state)
+        assertEquals(800L, envelope.cpuPolicies.single().baseCeilingKHz)
+        assertEquals(900L, envelope.gpu?.baseCeilingHz)
     }
 
     @Test
@@ -319,6 +377,32 @@ class PerformanceRepositoryAutoTuneTest {
                 validateGlobalAutoTuneRestoration(snapshot)
             }
         }
+    }
+
+    @Test
+    fun `typed unsupported start without a session does not request global cleanup`() {
+        assertFalse(
+            autoStartSnapshotNeedsCleanup(
+                HostAutoSessionSnapshot(
+                    sessionId = null,
+                    hostEpoch = 7L,
+                    status = HostAutoSessionStatus.UNSUPPORTED,
+                    targetFps = 0,
+                    restorationComplete = true,
+                    message = "telemetry unavailable",
+                ),
+            ),
+        )
+        assertTrue(autoStartSnapshotNeedsCleanup(restorationSnapshot()))
+        assertTrue(
+            autoStartSnapshotNeedsCleanup(
+                restorationSnapshot(
+                    sessionId = null,
+                    status = HostAutoSessionStatus.RESTORE_FAILED,
+                    restorationComplete = false,
+                ),
+            ),
+        )
     }
 
     @Test

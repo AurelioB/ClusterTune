@@ -120,21 +120,23 @@ class RootHostHandoffInstrumentationTest {
             assertTrue("no fresh SurfaceFlinger frame sample was observed", freshFrameSampleSeen)
 
             val requestedCpu = baseline.cpuMax.toMutableList()
-            val lowerCpuStep = snapshot.capabilities.cpus.indices.firstNotNullOfOrNull { index ->
-                val floor = baseline.cpuMin.getOrNull(index) ?: 1L
-                snapshot.capabilities.cpus[index].supportedFrequencies
-                    .filter { it in floor until baseline.cpuMax[index] }
-                    .maxOrNull()
-                    ?.let { index to it }
-            }
+            // Prefer crossing a live OEM floor when the device exposes one. The
+            // automatic path must still write only scaling_max_freq.
+            val lowerCpuStep = snapshot.capabilities.cpus.indices
+                .flatMap { index ->
+                    snapshot.capabilities.cpus[index].supportedFrequencies
+                        .filter { it in 1 until baseline.cpuMax[index] }
+                        .map { value -> Triple(index, value, value < (baseline.cpuMin.getOrNull(index) ?: 1L)) }
+                }
+                .sortedWith(compareByDescending<Triple<Int, Long, Boolean>> { it.third }.thenByDescending { it.second })
+                .firstOrNull()
             var requestedGpu = baseline.gpuMax
             if (lowerCpuStep != null) {
                 val (index, value) = lowerCpuStep
                 requestedCpu[index] = value
             } else {
-                val gpuFloor = baseline.gpuMin ?: 1L
                 requestedGpu = snapshot.capabilities.gpu?.supportedFrequencies
-                    ?.filter { current -> baseline.gpuMax?.let { current in gpuFloor until it } == true }
+                    ?.filter { current -> baseline.gpuMax?.let { current in 1 until it } == true }
                     ?.maxOrNull()
                     ?: error("no safe lower CPU or GPU frequency is available for the mutation check")
             }
@@ -147,6 +149,7 @@ class RootHostHandoffInstrumentationTest {
                     cpuIds = snapshot.capabilities.cpus.map(CpuDomain::id),
                     gpuId = snapshot.capabilities.gpu?.id,
                     gpuMaxPath = snapshot.capabilities.gpu?.maxPath,
+                    maximumsOnly = true,
                 ),
             ).getOrThrow()
             assertEquals(HostAutoSessionStatus.ACTIVE, applied.status)
@@ -158,7 +161,11 @@ class RootHostHandoffInstrumentationTest {
             assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
             assertTrue(stopped.restorationAttempted)
             assertTrue(stopped.restorationComplete)
-            assertStableState(snapshot.state, client.readSnapshot().getOrThrow().state)
+            assertAutomaticCeilingsReleased(
+                baseline = snapshot.state,
+                automatic = appliedState,
+                actual = client.readSnapshot().getOrThrow().state,
+            )
             sessionHandle = null
         } finally {
             var cleanupFailure: Throwable? = null
@@ -201,6 +208,28 @@ class RootHostHandoffInstrumentationTest {
         assertEquals(expected.cpuMin, actual.cpuMin)
         assertEquals(expected.gpuMax, actual.gpuMax)
         assertEquals(expected.gpuMin, actual.gpuMin)
+    }
+
+    private fun assertAutomaticCeilingsReleased(
+        baseline: HostState,
+        automatic: HostState,
+        actual: HostState,
+    ) {
+        assertEquals(baseline.cpuMax.size, actual.cpuMax.size)
+        baseline.cpuMax.indices.forEach { index ->
+            if (automatic.cpuMax[index] != baseline.cpuMax[index]) {
+                assertTrue(
+                    "automatic CPU ceiling remained on policy $index",
+                    actual.cpuMax[index] == baseline.cpuMax[index] || actual.cpuMax[index] != automatic.cpuMax[index],
+                )
+            }
+        }
+        if (automatic.gpuMax != baseline.gpuMax) {
+            assertTrue(
+                "automatic GPU ceiling remained after stop",
+                actual.gpuMax == baseline.gpuMax || actual.gpuMax != automatic.gpuMax,
+            )
+        }
     }
 
     private class FrameFixtureView(context: Context) : View(context) {

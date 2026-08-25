@@ -68,14 +68,21 @@ public final class ClusterTuneHostEntry {
             synchronized (host) {
                 log("wait entered");
                 long leaseDeadline = SystemClock.elapsedRealtime() + 5000L;
-                while (!host.stopping) {
-                    if (host.lease == null && SystemClock.elapsedRealtime() >= leaseDeadline) {
-                        host.stopping = true;
+                while (!host.lifecycle.isStopping()) {
+                    long now = SystemClock.elapsedRealtime();
+                    if (host.lifecycle.initialHandoffExpired(host.lease != null, now, leaseDeadline)) {
+                        host.lifecycle.finishStopping();
                         break;
                     }
-                    long remaining = leaseDeadline - SystemClock.elapsedRealtime();
-                    if (host.lease == null && remaining <= 0L) continue;
-                    host.wait(host.lease == null ? remaining : 0L);
+                    long remaining = leaseDeadline - now;
+                    boolean awaitingInitialLease = !host.lifecycle.hasEstablishedLease() && host.lease == null;
+                    try {
+                        host.wait(awaitingInitialLease ? Math.max(1L, remaining) : 0L);
+                    } catch (InterruptedException interrupted) {
+                        // Losing the main wait thread must not discard an Auto Tune checkpoint.
+                        // Treat interrupts as wakeups and continue until a verified stop condition.
+                        log("wait interrupted; continuing host lifecycle");
+                    }
                 }
             }
         } finally {
@@ -135,13 +142,60 @@ public final class ClusterTuneHostEntry {
         }
     }
 
+    /**
+     * Pure lifecycle state used by the Binder host. The HostBinder monitor serializes access;
+     * keeping the decisions here makes the no-lease startup timeout and post-lease recovery
+     * independently testable without constructing Android Binder objects on the local JVM.
+     */
+    static final class HostProcessLifecycle {
+        private boolean stopping;
+        private boolean leaseEverEstablished;
+        private boolean stopAfterLeaseLoss;
+
+        boolean isStopping() {
+            return stopping;
+        }
+
+        boolean hasEstablishedLease() {
+            return leaseEverEstablished;
+        }
+
+        boolean initialHandoffExpired(boolean hasLease, long now, long deadline) {
+            return !stopping && !leaseEverEstablished && !hasLease && now >= deadline;
+        }
+
+        void leaseEstablished() {
+            leaseEverEstablished = true;
+            stopAfterLeaseLoss = false;
+        }
+
+        void leaseLost() {
+            if (leaseEverEstablished && !stopping) {
+                stopAfterLeaseLoss = true;
+            }
+        }
+
+        boolean isWaitingForLeaseLossRestoration(boolean hasLease) {
+            return !stopping && stopAfterLeaseLoss && !hasLease;
+        }
+
+        boolean canFinishLeaseLoss(boolean hasLease, boolean restorationComplete) {
+            return isWaitingForLeaseLossRestoration(hasLease) && restorationComplete;
+        }
+
+        void finishStopping() {
+            stopping = true;
+            stopAfterLeaseLoss = false;
+        }
+    }
+
     private static final class HostBinder extends Binder implements android.os.IInterface {
         final String name;
         final int owner;
         final long generation;
         final String method;
         final long epoch = System.nanoTime();
-        boolean stopping;
+        final HostProcessLifecycle lifecycle = new HostProcessLifecycle();
         IBinder lease;
         IBinder.DeathRecipient leaseDeath;
         final RealHostFilesystem filesystem;
@@ -162,16 +216,7 @@ public final class ClusterTuneHostEntry {
                 thread.setDaemon(true);
                 return thread;
             });
-            this.watchdog.scheduleWithFixedDelay(() -> {
-                HostAutoSessionController controller = autoController;
-                if (controller != null) {
-                    try {
-                        controller.expireIfNeeded();
-                    } catch (Throwable throwable) {
-                        log("automatic session watchdog failed: " + throwable);
-                    }
-                }
-            }, 1L, 1L, TimeUnit.SECONDS);
+            this.watchdog.scheduleWithFixedDelay(this::watchdogTick, 1L, 1L, TimeUnit.SECONDS);
             attachInterface(this, HostProtocol.DESCRIPTOR);
         }
 
@@ -231,37 +276,104 @@ public final class ClusterTuneHostEntry {
             }
         }
 
+        private boolean restorationComplete(HostAutoSessionSnapshot snapshot) {
+            return snapshot == null || snapshot.getRestorationComplete();
+        }
+
+        /** Caller holds this HostBinder's monitor. */
+        private void finishStoppingLocked() {
+            lifecycle.finishStopping();
+            remove(name, this);
+            notifyAll();
+        }
+
+        /**
+         * A dead lease is an orphaned host, but it may still own frequency ceilings. Keep the
+         * service registered until those ceilings are restored. Holding the host monitor around
+         * the attempt prevents a replacement lease from starting a new session in the middle of
+         * the old session's restoration.
+         */
+        private void onLeaseDied(IBinder candidate) {
+            synchronized (this) {
+                if (lease != candidate || lifecycle.isStopping()) return;
+                lease = null;
+                leaseDeath = null;
+                lifecycle.leaseLost();
+                try {
+                    HostAutoSessionSnapshot stopped = stopAutoForExternalApply("privileged host lease ended");
+                    if (lifecycle.canFinishLeaseLoss(false, restorationComplete(stopped))) {
+                        finishStoppingLocked();
+                    }
+                } catch (Throwable throwable) {
+                    log("automatic session restore failed after lease death: " + throwable);
+                }
+            }
+        }
+
+        private void watchdogTick() {
+            synchronized (this) {
+                if (lifecycle.isWaitingForLeaseLossRestoration(lease != null)) {
+                    try {
+                        HostAutoSessionSnapshot stopped = stopAutoForExternalApply("privileged host lease ended");
+                        if (lifecycle.canFinishLeaseLoss(lease != null, restorationComplete(stopped))) {
+                            finishStoppingLocked();
+                        }
+                    } catch (Throwable throwable) {
+                        log("automatic session watchdog restore failed after lease death: " + throwable);
+                    }
+                    return;
+                }
+            }
+
+            HostAutoSessionController controller = autoController;
+            if (controller != null) {
+                try {
+                    controller.expireIfNeeded();
+                } catch (Throwable throwable) {
+                    log("automatic session watchdog failed: " + throwable);
+                }
+            }
+        }
+
         private void closeBeforeExit() {
-            watchdog.shutdownNow();
             HostAutoSessionSnapshot stopped = null;
             Throwable stopFailure = null;
-            boolean restorationComplete = false;
-            // The process is about to discard its in-memory checkpoint, so make a few
-            // bounded attempts while it is still authoritative. This also retries a
-            // pending restoration created by a failed watchdog or earlier stop.
-            for (int attempt = 0; attempt < 3; attempt++) {
+            boolean restored = false;
+            int attempt = 0;
+            // Never discard an authoritative in-memory checkpoint merely because a small fixed
+            // retry budget was exhausted. An unexpected main-loop exit keeps the process alive
+            // and retries with a delay until restoration is verified.
+            while (!restored) {
+                attempt++;
                 try {
                     stopped = stopAutoForExternalApply("privileged host lease ended");
                     stopFailure = null;
-                    if (stopped == null || stopped.getRestorationComplete()) {
-                        restorationComplete = true;
-                        break;
-                    }
+                    restored = restorationComplete(stopped);
                 } catch (Throwable throwable) {
                     stopFailure = throwable;
                 }
-            }
-            if (!restorationComplete) {
-                if (stopped != null) {
-                    log("automatic session restore incomplete during host shutdown: " + stopped.getMessage());
-                } else if (stopFailure != null) {
-                    log("automatic session shutdown failed: " + stopFailure);
+                if (!restored) {
+                    if (attempt == 1 || attempt % 10 == 0) {
+                        if (stopped != null) {
+                            log("automatic session restore incomplete during host shutdown: " + stopped.getMessage());
+                        } else if (stopFailure != null) {
+                            log("automatic session shutdown failed: " + stopFailure);
+                        }
+                    }
+                    SystemClock.sleep(1000L);
                 }
             }
-            IBinder currentLease = lease;
-            IBinder.DeathRecipient currentDeath = leaseDeath;
-            lease = null;
-            leaseDeath = null;
+            watchdog.shutdownNow();
+            IBinder currentLease;
+            IBinder.DeathRecipient currentDeath;
+            synchronized (this) {
+                lifecycle.finishStopping();
+                remove(name, this);
+                currentLease = lease;
+                currentDeath = leaseDeath;
+                lease = null;
+                leaseDeath = null;
+            }
             if (currentLease != null && currentDeath != null) {
                 try { currentLease.unlinkToDeath(currentDeath, 0); } catch (Throwable ignored) { }
             }
@@ -303,6 +415,9 @@ public final class ClusterTuneHostEntry {
                 }
 
                 synchronized (this) {
+                    if (lifecycle.isStopping()) {
+                        throw new IllegalStateException("privileged host is stopping");
+                    }
                     switch (code) {
                         case HostProtocol.PING:
                             header(reply, true);
@@ -333,17 +448,15 @@ public final class ClusterTuneHostEntry {
                             ApplyRequest request = readApplyRequest(data, discovered);
                             HostAutoSessionSnapshot stopped = stopAutoForExternalApply("automatic session preempted by profile apply");
                             requireCompleteRestoration(stopped);
-                            engine.applyOrThrow(discovered, request);
+                            HostProfileApplyDispatcher.applyOrThrow(engine, discovered, request);
                             header(reply, true);
                             writeStatePayload(reply, discovered);
                             return true;
                         }
                         case HostProtocol.STOP: {
                             HostAutoSessionSnapshot stopped = stopAutoForExternalApply("privileged host stopped");
-                            stopping = true;
-                            remove(name, this);
-                            notifyAll();
                             requireCompleteRestoration(stopped);
+                            finishStoppingLocked();
                             header(reply, true);
                             return true;
                         }
@@ -351,25 +464,22 @@ public final class ClusterTuneHostEntry {
                             IBinder candidate = data.readStrongBinder();
                             if (candidate == null) throw new IllegalArgumentException("host lease missing");
                             if (lease == candidate && leaseDeath != null) {
+                                lifecycle.leaseEstablished();
                                 header(reply, true);
                                 return true;
                             }
                             IBinder previousLease = lease;
                             IBinder.DeathRecipient previousDeath = leaseDeath;
+                            IBinder.DeathRecipient recipient = () -> onLeaseDied(candidate);
+                            // Link first so a dead replacement cannot displace a healthy lease.
+                            candidate.linkToDeath(recipient, 0);
+                            lease = candidate;
+                            leaseDeath = recipient;
+                            lifecycle.leaseEstablished();
                             if (previousLease != null && previousDeath != null) {
                                 try { previousLease.unlinkToDeath(previousDeath, 0); } catch (Throwable ignored) { }
                             }
-                            lease = candidate;
-                            IBinder.DeathRecipient recipient = () -> {
-                                synchronized (this) {
-                                    if (lease == candidate) {
-                                        stopping = true;
-                                        notifyAll();
-                                    }
-                                }
-                            };
-                            leaseDeath = recipient;
-                            candidate.linkToDeath(recipient, 0);
+                            notifyAll();
                             header(reply, true);
                             return true;
                         case HostProtocol.READ_AUTO_CAPABILITIES:
@@ -379,8 +489,15 @@ public final class ClusterTuneHostEntry {
                             String packageName = readBoundedString(data, HostProtocol.MAX_PACKAGE_LENGTH, "target package", false);
                             int targetFps = data.readInt();
                             long heartbeatTimeoutMs = data.readLong();
+                            int hasBaseline = data.readInt();
+                            if (hasBaseline != 0 && hasBaseline != 1) {
+                                throw new IllegalArgumentException("invalid Auto Tune baseline flag");
+                            }
+                            ApplyRequest baseline = hasBaseline == 1
+                                    ? readApplyRequest(data, ensureCapabilities())
+                                    : null;
                             HostAutoSessionSnapshot snapshot = autoController().start(
-                                    new AutoSessionRequest(packageName, targetFps, heartbeatTimeoutMs));
+                                    new AutoSessionRequest(packageName, targetFps, heartbeatTimeoutMs, baseline));
                             writeAutoSnapshot(reply, snapshot);
                             return true;
                         }
@@ -578,6 +695,11 @@ public final class ClusterTuneHostEntry {
             String gpuId = data.readString();
             String gpuPath = data.readString();
             long stabilized = data.readLong();
+            int maximumsOnlyValue = data.readInt();
+            if (maximumsOnlyValue != 0 && maximumsOnlyValue != 1) {
+                throw new IllegalArgumentException("invalid maximums-only flag");
+            }
+            boolean maximumsOnly = maximumsOnlyValue == 1;
 
             for (int index = 0; index < count; index++) {
                 if (!discovered.getCpus().get(index).getId().equals(ids.get(index))) {
@@ -590,7 +712,7 @@ public final class ClusterTuneHostEntry {
             if (gpuPath != null && gpuPath.length() > HostProtocol.MAX_METADATA_LENGTH) {
                 throw new IllegalArgumentException("GPU path is too long");
             }
-            return new ApplyRequest(max, gpu, reset, ids, gpuId, gpuPath, stabilized > 0 ? stabilized : null);
+            return new ApplyRequest(max, gpu, reset, ids, gpuId, gpuPath, stabilized > 0 ? stabilized : null, maximumsOnly);
         }
 
         private void writeCapabilities(Parcel reply, HostCapabilities value) {

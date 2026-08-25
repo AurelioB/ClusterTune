@@ -340,18 +340,31 @@ class PerformanceRepository(
                 ) ?: error("Normal profile envelope is unavailable")
 
                 // A previous static or automatic app override must not become the new
-                // baseline. Reapply the persisted normal envelope before checkpointing.
-                val normalOutcome = applyValuesLocked(
+                // baseline. Send the persisted normal envelope with START so the privileged
+                // host can apply, checkpoint, and reconcile it as one owned transaction.
+                val normalValues = normalTarget.values.filterKeys { policyId ->
+                    state.policies.any { it.id == policyId }
+                }
+                check(
+                    isCompleteValidValues(
+                        normalValues,
+                        state.policies,
+                        normalTarget.isReset || allowsObservedMaxValues(normalTarget, state.policies),
+                    ),
+                ) { "Invalid normal CPU policy values" }
+                val normalGpuTarget = normalTarget.gpuValue.takeIf { state.gpuPolicy != null }
+                check(
+                    state.gpuPolicy == null || normalGpuTarget == null ||
+                        isValidGpuValue(state.gpuPolicy, normalGpuTarget),
+                ) { "Invalid normal GPU policy value" }
+                val normalBaseline = buildHostApplyRequest(
                     policies = state.policies,
-                    selectedValues = normalTarget.values,
+                    selectedValues = normalValues,
                     isReset = normalTarget.isReset,
-                    appliedDisplayProfileId = normalTarget.profileId,
-                    persistNormalState = false,
-                    allowObservedMaxValues = allowsObservedMaxValues(normalTarget, state.policies),
                     gpuPolicy = state.gpuPolicy,
-                    selectedGpuMaxFrequencyHz = normalTarget.gpuValue,
-                ).getOrThrow()
-                if (!AdaptiveTuneRuntime.isCurrent(generation)) throw AdaptiveTuneSupersededException()
+                    selectedGpuMaxFrequencyHz = normalGpuTarget,
+                    maximumsOnly = true,
+                )
 
                 val hostCapabilities = withContext(Dispatchers.IO) {
                     hostClient.readAutoCapabilities().getOrThrow()
@@ -367,11 +380,14 @@ class PerformanceRepository(
                             packageName = packageName,
                             targetFps = targetFps,
                             heartbeatTimeoutMs = AUTO_TUNE_HEARTBEAT_TIMEOUT_MS,
+                            baseline = normalBaseline,
                         ),
                     ).getOrThrow().also { snapshot ->
-                        if (snapshot.status == HostAutoSessionStatus.ACTIVE) {
-                            startedHandle = snapshot.handle
-                        }
+                        startedHandle = snapshot.handle
+                        // A typed no-session response proves START did not acquire hardware.
+                        // Preserve the conservative cleanup path only for an accepted/ambiguous
+                        // session or an incomplete restoration response.
+                        hostStartAttempted = autoStartSnapshotNeedsCleanup(snapshot)
                     }
                 }
                 if (started.status != HostAutoSessionStatus.ACTIVE) {
@@ -387,8 +403,12 @@ class PerformanceRepository(
                     gpuPolicy = state.gpuPolicy,
                     capabilities = baseline.capabilities,
                     hostState = startedState,
-                    expectedCpu = normalOutcome.actualValues.mapValues { it.value.toLong() },
-                    expectedGpu = normalOutcome.actualGpuMaxFrequencyHz?.toLong(),
+                    // START has already verified the requested baseline and captured this exact
+                    // state. The app still validates topology, paths, minima, and reply shape.
+                    expectedCpu = baseline.capabilities.cpus.mapIndexed { index, domain ->
+                        domain.autoTunePolicyId() to startedState.cpuMax[index]
+                    }.toMap(),
+                    expectedGpu = startedState.gpuMax,
                 )
                 val envelope = buildAdaptiveEnvelope(
                     policies = state.policies,
@@ -506,6 +526,7 @@ class PerformanceRepository(
                 cpuIds = context.cpuDomains.map(HostCpuDomain::id),
                 gpuId = gpuTarget?.let { context.gpuDomain?.id },
                 gpuMaxPath = gpuTarget?.let { context.gpuDomain?.maxPath },
+                maximumsOnly = true,
             )
             val snapshot = withContext(Dispatchers.IO) {
                 hostClient.applyAutoStep(
@@ -682,6 +703,7 @@ class PerformanceRepository(
         selectedGpuMaxFrequencyHz: Int? = null,
         manualRequestToken: Long? = null,
         onHardwareApplied: (suspend (ApplyOutcome) -> Unit)? = null,
+        maximumsOnly: Boolean = false,
     ): Result<ApplyOutcome> {
         // A persisted GPU value can outlive GPU support (for example after
         // importing a profile on a CPU-only device). Never let that stale
@@ -706,18 +728,13 @@ class PerformanceRepository(
             val client = hostClient
             val hostResult = withContext(Dispatchers.IO) { runCatching {
                 val appliedState = client.applyProfile(
-                    ApplyRequest(
-                        cpuMax = policies.map { filtered.getValue(it.id).toLong() },
-                        gpuMax = effectiveGpuTarget?.toLong(),
-                        resetToStock = isReset,
-                        cpuIds = policies.map { "policy${it.id}" },
-                        gpuId = effectiveGpuTarget?.let { gpuPolicy?.policyPath?.substringAfterLast('/') },
-                        gpuMaxPath = effectiveGpuTarget?.let { gpuPolicy?.maxFrequencyPath },
-                        stabilizedStockCeiling = effectiveGpuTarget?.takeIf {
-                            gpuPolicy?.let { gpu ->
-                                it == gpu.observedMaxFrequencyHz && gpu.observedMaxFrequencyHz > gpu.selectableMaxFrequencyHz
-                            } == true
-                        }?.toLong(),
+                    buildHostApplyRequest(
+                        policies = policies,
+                        selectedValues = filtered,
+                        isReset = isReset,
+                        gpuPolicy = gpuPolicy,
+                        selectedGpuMaxFrequencyHz = effectiveGpuTarget,
+                        maximumsOnly = maximumsOnly,
                     ),
                 ).getOrThrow()
                 val actual = appliedState.cpuMax.mapIndexed { index, value -> policies[index].id to value.toIntChecked() }.toMap()
@@ -749,6 +766,29 @@ class PerformanceRepository(
             Result.success(outcome)
         }
     }
+
+    private fun buildHostApplyRequest(
+        policies: List<CpuPolicyInfo>,
+        selectedValues: Map<Int, Int>,
+        isReset: Boolean,
+        gpuPolicy: GpuPolicyInfo?,
+        selectedGpuMaxFrequencyHz: Int?,
+        maximumsOnly: Boolean,
+    ) = ApplyRequest(
+        cpuMax = policies.map { selectedValues.getValue(it.id).toLong() },
+        gpuMax = selectedGpuMaxFrequencyHz?.toLong(),
+        resetToStock = isReset,
+        cpuIds = policies.map { "policy${it.id}" },
+        gpuId = selectedGpuMaxFrequencyHz?.let { gpuPolicy?.policyPath?.substringAfterLast('/') },
+        gpuMaxPath = selectedGpuMaxFrequencyHz?.let { gpuPolicy?.maxFrequencyPath },
+        stabilizedStockCeiling = selectedGpuMaxFrequencyHz?.takeIf {
+            gpuPolicy?.let { gpu ->
+                it == gpu.observedMaxFrequencyHz &&
+                    gpu.observedMaxFrequencyHz > gpu.selectableMaxFrequencyHz
+            } == true
+        }?.toLong(),
+        maximumsOnly = maximumsOnly,
+    )
 
     private suspend fun readHostSnapshot(): Triple<List<CpuPolicyInfo>, HostState, GpuPolicyInfo?>? {
         val client = hostClient
@@ -1679,6 +1719,9 @@ internal fun validateGlobalAutoTuneRestoration(snapshot: HostAutoSessionSnapshot
     }
 }
 
+internal fun autoStartSnapshotNeedsCleanup(snapshot: HostAutoSessionSnapshot): Boolean =
+    snapshot.handle != null || !snapshot.restorationComplete
+
 private fun HostCpuDomain.autoTunePolicyId(): Int =
     id.removePrefix("policy").toIntOrNull()
         ?: error("Invalid Auto Tune CPU domain id: $id")
@@ -1712,9 +1755,6 @@ internal fun validateAutoSessionBaseline(
         require(hostState.cpuMax[index] == expectedCpu[policyId]) {
             "Auto Tune CPU baseline changed before checkpointing for ${domain.id}"
         }
-        require(hostState.cpuMin[index] in 1..hostState.cpuMax[index]) {
-            "Auto Tune CPU minimum is invalid for ${domain.id}"
-        }
     }
     val hostGpu = capabilities.gpu
     require((hostGpu == null) == (gpuPolicy == null)) {
@@ -1726,11 +1766,6 @@ internal fun validateAutoSessionBaseline(
         }
         require(hostState.gpuMax != null && hostState.gpuMax == expectedGpu) {
             "Auto Tune GPU baseline changed before checkpointing"
-        }
-        if (hostGpu.minPath != null) {
-            require(hostState.gpuMin != null && hostState.gpuMin in 1..hostState.gpuMax) {
-                "Auto Tune GPU minimum is invalid"
-            }
         }
     } else {
         require(hostState.gpuMax == null && expectedGpu == null) {
@@ -1763,15 +1798,13 @@ internal fun buildAdaptiveEnvelope(
         }
         val base = hostState.cpuMax[index].takeIf { it > 0L }
             ?: error("Auto Tune CPU baseline is unavailable for policy${policy.id}")
-        val floor = hostState.cpuMin[index].takeIf { it > 0L && it <= base }
-            ?: error("Auto Tune CPU minimum is unavailable for policy${policy.id}")
         val available = domain.supportedFrequencies.ifEmpty {
             policy.supportedFrequencies.map(Int::toLong)
         }
         AdaptiveCpuPolicy(
             policyId = policy.id,
             availableCeilingsKHz = available
-                .filter { it in floor..base }
+                .filter { it > 0L && it <= base }
                 .distinct()
                 .sorted(),
             baseCeilingKHz = base,
@@ -1785,19 +1818,13 @@ internal fun buildAdaptiveEnvelope(
         }
         val base = hostState.gpuMax?.takeIf { it > 0L }
             ?: error("Auto Tune GPU baseline is unavailable")
-        val floor = if (domain.minPath != null) {
-            hostState.gpuMin?.takeIf { it > 0L && it <= base }
-                ?: error("Auto Tune GPU minimum is unavailable")
-        } else {
-            1L
-        }
         val available = domain.supportedFrequencies.ifEmpty {
             policy.supportedFrequenciesHz.map(Int::toLong)
         }
         AdaptiveGpuDomain(
             id = domain.id,
             availableCeilingsHz = available
-                .filter { it in floor..base }
+                .filter { it > 0L && it <= base }
                 .distinct()
                 .sorted(),
             baseCeilingHz = base,

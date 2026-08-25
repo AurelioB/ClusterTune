@@ -3,7 +3,7 @@ package com.aure.clustertune.root.host
 /** Private wire contract between ClusterTune and its persistent privileged host. */
 object HostProtocol {
     const val DESCRIPTOR = "com.aure.clustertune.root.host.IClusterTuneHost"
-    const val VERSION = 8
+    const val VERSION = 10
     const val SERVICE_PREFIX = "clustertune.host."
     const val PING = 1
     const val HOST_IDENTITY = 2
@@ -74,18 +74,37 @@ data class ApplyRequest(
     val gpuId: String? = null,
     val gpuMaxPath: String? = null,
     val stabilizedStockCeiling: Long? = null,
+    val maximumsOnly: Boolean = false,
 )
+
+/** Dispatches a profile transaction through the mutation policy carried on the wire. */
+object HostProfileApplyDispatcher {
+    @JvmStatic
+    fun applyOrThrow(
+        engine: HostApplyEngine,
+        capabilities: HostCapabilities,
+        request: ApplyRequest,
+    ) {
+        if (request.maximumsOnly) {
+            engine.applyMaxOnlyOrThrow(capabilities, request)
+        } else {
+            engine.applyOrThrow(capabilities, request)
+        }
+    }
+}
 
 enum class HostApplyPhase { PREFLIGHT, MUTATION, VERIFICATION, ROLLBACK }
 
 /** A privileged transaction failure with enough state for callers to decide whether retrying is safe. */
-class HostApplyFailure(
+class HostApplyFailure @JvmOverloads constructor(
     val phase: HostApplyPhase,
     val mutationStarted: Boolean,
     val rollbackComplete: Boolean,
     val indeterminate: Boolean = false,
     message: String,
     cause: Throwable? = null,
+    /** Exact fallback ceilings successfully written while rolling this transaction back. */
+    val rollbackOwnedValues: Map<String, Set<Long>> = emptyMap(),
 ) : IllegalStateException(message, cause)
 
 class HostDispatchFailure(
@@ -112,6 +131,12 @@ data class AutoSessionRequest(
     val packageName: String,
     val targetFps: Int,
     val heartbeatTimeoutMs: Long = 15_000L,
+    /**
+     * Optional persisted normal envelope to apply atomically before the host captures the
+     * automatic-session checkpoint. Keeping this inside START gives the host enough ownership
+     * evidence to reconcile an indeterminate partial apply before it returns to the client.
+     */
+    val baseline: ApplyRequest? = null,
 )
 
 data class HostAutoSessionHandle(val sessionId: String, val hostEpoch: Long)

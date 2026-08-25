@@ -4,6 +4,115 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class HostProtocolTest {
+    @Test fun `maximums-only profile dispatch preserves CPU and GPU minimum votes`() {
+        val fs = FakeFs(
+            mutableMapOf(
+                "min" to "500",
+                "max" to "1000",
+                "gmin" to "800",
+                "gmax" to "900",
+            ),
+        )
+        val cpu = CpuDomain(
+            "p0",
+            "min",
+            "max",
+            null,
+            listOf(200),
+            listOf(400, 800),
+            1000,
+            1000,
+            500,
+        )
+        val gpu = GpuDomain(
+            "g",
+            "gmin",
+            "gmax",
+            null,
+            listOf(300, 600, 900),
+            stockMax = 900,
+            selectableMax = 900,
+            observedMin = 800,
+        )
+
+        HostProfileApplyDispatcher.applyOrThrow(
+            HostApplyEngine(fs),
+            HostCapabilities(listOf(cpu), gpu),
+            ApplyRequest(
+                cpuMax = listOf(400),
+                gpuMax = 600,
+                resetToStock = false,
+                maximumsOnly = true,
+            ),
+        )
+
+        assertEquals("400", fs.read("max"))
+        assertEquals("600", fs.read("gmax"))
+        assertEquals("500", fs.read("min"))
+        assertEquals("800", fs.read("gmin"))
+        assertFalse(fs.operations.any { it.contains("min") })
+    }
+
+    @Test fun `full profile dispatch keeps minimum repair behavior`() {
+        val fs = FakeFs(mutableMapOf("min" to "500", "max" to "1000"))
+        val cpu = CpuDomain("p0", "min", "max", null, listOf(200), listOf(400, 800), 1000, 1000, 500)
+
+        HostProfileApplyDispatcher.applyOrThrow(
+            HostApplyEngine(fs),
+            HostCapabilities(listOf(cpu), null),
+            ApplyRequest(listOf(400), null, false),
+        )
+
+        assertEquals("400", fs.read("max"))
+        assertEquals("200", fs.read("min"))
+        assertTrue(fs.operations.any { it == "write:min=200" })
+    }
+
+    @Test fun `maximums-only profile does not require readable minimum nodes`() {
+        val fs = FakeFs(mutableMapOf("max" to "1000"))
+        val cpu = CpuDomain("p0", "missing-min", "max", null, emptyList(), listOf(400, 800), 1000, 1000, -1)
+
+        HostProfileApplyDispatcher.applyOrThrow(
+            HostApplyEngine(fs),
+            HostCapabilities(listOf(cpu), null),
+            ApplyRequest(listOf(400), null, false, maximumsOnly = true),
+        )
+
+        assertEquals("400", fs.read("max"))
+        assertFalse(fs.operations.any { it.contains("missing-min") })
+    }
+
+    @Test fun `maximums-only rollback preserves an external maximum and permission mode`() {
+        val fs = FakeFs(
+            values = mutableMapOf("max" to "1000"),
+            rewriteAfterWriteOnRead = ExternalRewrite("max", "700", 384),
+        )
+        fs.modes["max"] = 420
+        val cpu = CpuDomain(
+            "p0",
+            "unused-min",
+            "max",
+            null,
+            emptyList(),
+            listOf(400, 800),
+            1000,
+            1000,
+            -1,
+        )
+
+        val result = HostApplyEngine(fs).applyMaxOnly(
+            HostCapabilities(listOf(cpu), null),
+            ApplyRequest(listOf(400), null, false),
+        )
+
+        assertTrue(result.isFailure)
+        assertEquals("700", fs.read("max"))
+        assertEquals(384, fs.modes["max"])
+        val rewrite = fs.operations.indexOf("external:max=700 mode=384")
+        assertTrue(rewrite >= 0)
+        assertFalse(fs.operations.drop(rewrite + 1).any { it == "chmod:max" })
+    }
+
     @Test fun `protocol mismatch preserves remote wire version for stale stop`() {
         val mismatch = HostProtocolMismatch(7)
         assertEquals(7, mismatch.remoteVersion)
@@ -383,8 +492,10 @@ class HostProtocolTest {
         val fs = FakeFs(mutableMapOf("min" to "100", "max" to "1000", "gmax" to "900"), failChmodPath = "gmax", rejectWriteValue = "max" to "1000")
         val cpu = CpuDomain("p0", "min", "max", null, listOf(100), listOf(400, 800), 1000, 1000, 100, selectableMax = 800)
         val gpu = GpuDomain("g", null, "gmax", null, listOf(400, 600, 900), stockMax = 900, selectableMax = 900)
-        assertTrue(HostApplyEngine(fs).apply(HostCapabilities(listOf(cpu), gpu), ApplyRequest(listOf(400), 600, false)).isFailure)
+        val result = HostApplyEngine(fs).apply(HostCapabilities(listOf(cpu), gpu), ApplyRequest(listOf(400), 600, false))
+        assertTrue(result.isFailure)
         assertEquals("800", fs.read("max"))
+        assertEquals(mapOf("max" to setOf(800L)), (result.exceptionOrNull() as HostApplyFailure).rollbackOwnedValues)
     }
 
     @Test fun `hidden stock gpu rollback uses selectable fallback`() {
@@ -418,6 +529,8 @@ class HostProtocolTest {
         assertEquals(384, fs.modes["gmin"]); assertEquals(420, fs.modes["gmax"])
     }
 
+    private data class ExternalRewrite(val path: String, val value: String, val mode: Int)
+
     private class FakeFs(
         private val values: MutableMap<String, String>,
         private val failPath: String? = null,
@@ -431,12 +544,25 @@ class HostProtocolTest {
         private val noOpChmodPath: String? = null,
         private val raiseMinOnMaxWrite: Boolean = false,
         private val reRaiseMinWrites: Int = 0,
+        private val rewriteAfterWriteOnRead: ExternalRewrite? = null,
     ) : HostFilesystem {
         val operations = mutableListOf<String>()
         val orderedOperations = mutableListOf<String>()
         val chmodModes = mutableListOf<String>()
         val modes = mutableMapOf<String, Int>()
-        override fun read(path: String): String? { orderedOperations += "read:$path"; return values[path] }
+        private var externalRewriteApplied = false
+        override fun read(path: String): String? {
+            orderedOperations += "read:$path"
+            rewriteAfterWriteOnRead?.takeIf {
+                !externalRewriteApplied && it.path == path && (writeCounts[path] ?: 0) > 0
+            }?.let { rewrite ->
+                externalRewriteApplied = true
+                values[path] = rewrite.value
+                modes[path] = rewrite.mode
+                operations += "external:$path=${rewrite.value} mode=${rewrite.mode}"
+            }
+            return values[path]
+        }
         private var failed = false
         private val writeCounts = mutableMapOf<String, Int>()
         override fun write(path: String, value: String): Boolean {

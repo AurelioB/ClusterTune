@@ -210,6 +210,98 @@ class RealHostFilesystem @JvmOverloads constructor(
 
 }
 
+/** The exact ceiling values a profile transaction may leave after Stock fallbacks. */
+internal data class HostResolvedMaximumTargets(
+    val stabilizedStockCeiling: Long?,
+    val cpuStock: List<Boolean>,
+    val cpuStockCandidates: List<List<Long>>,
+    val cpuExpected: List<Long>,
+    val cpuSafetyCeilings: List<Long>,
+    val gpuStock: Boolean,
+    val gpuExpected: Long?,
+    val gpuAcceptedCeilings: List<Long>,
+) {
+    val cpuAcceptedCeilings: List<Set<Long>>
+        get() = cpuExpected.mapIndexed { index, expected ->
+            if (cpuStock[index]) cpuStockCandidates[index].toSet() else setOf(expected)
+        }
+}
+
+/**
+ * Resolves Stock aliases and hidden GPU ceilings once for both mutation and session ownership.
+ * Keeping this shared prevents startup recovery from claiming a value the apply engine could
+ * never have written (or overlooking a valid preferred-write fallback).
+ */
+internal fun resolveHostMaximumTargets(
+    capabilities: HostCapabilities,
+    request: ApplyRequest,
+): HostResolvedMaximumTargets {
+    require(request.cpuMax.size == capabilities.cpus.size)
+    require(request.gpuMax == null || capabilities.gpu != null) {
+        "GPU target requested but no GPU domain is available"
+    }
+    val stabilizedStockCeiling = request.stabilizedStockCeiling
+        ?.takeIf { capabilities.gpu?.supportedFrequencies?.isEmpty() == true }
+    stabilizedStockCeiling?.let {
+        require(it > 0L && it <= 4_000_000_000L) { "invalid stabilized GPU stock ceiling" }
+        require(request.gpuId != null && request.gpuMaxPath != null) {
+            "stabilized GPU stock ceiling requires domain identity"
+        }
+    }
+    val cpuStock = capabilities.cpus.mapIndexed { index, cpu ->
+        request.resetToStock || request.cpuMax[index] >= cpu.selectableMax
+    }
+    val cpuStockCandidates = capabilities.cpus.map { cpu ->
+        listOf(cpu.stockMax.takeIf { it > 0 } ?: cpu.selectableMax, cpu.selectableMax).distinct()
+    }
+    val cpuExpected = capabilities.cpus.mapIndexed { index, cpu ->
+        if (cpuStock[index]) cpu.stockMax.takeIf { it > 0 } ?: cpu.selectableMax else request.cpuMax[index]
+    }
+    val cpuSafetyCeilings = capabilities.cpus.mapIndexed { index, cpu ->
+        if (cpuStock[index]) cpuStockCandidates[index].minOrNull() ?: cpu.selectableMax else cpuExpected[index]
+    }
+    val gpuStock = request.gpuMax?.let { requested ->
+        val gpu = capabilities.gpu
+        request.resetToStock || (gpu != null && requested >= (stabilizedStockCeiling ?: gpu.selectableMax))
+    } ?: false
+    val gpuExpected = request.gpuMax?.let { requested ->
+        val gpu = capabilities.gpu
+        if (gpu != null && (request.resetToStock || requested >= gpu.selectableMax) &&
+            (gpuStock || stabilizedStockCeiling == null)
+        ) {
+            stabilizedStockCeiling?.takeIf { it >= gpu.selectableMax }
+                ?: gpu.selectableMax.takeIf { it > 0 }
+        } else {
+            requested
+        }
+    }
+    require(request.gpuMax == null || gpuExpected != null) {
+        "GPU target cannot be resolved to a selectable ceiling"
+    }
+    val gpuAcceptedCeilings = when {
+        gpuExpected == null -> emptyList()
+        gpuStock -> {
+            val gpu = requireNotNull(capabilities.gpu)
+            listOfNotNull(
+                stabilizedStockCeiling?.takeIf { it > 0 },
+                gpu.stockMax.takeIf { it > 0 },
+                gpu.selectableMax,
+            ).distinct()
+        }
+        else -> listOf(gpuExpected)
+    }
+    return HostResolvedMaximumTargets(
+        stabilizedStockCeiling = stabilizedStockCeiling,
+        cpuStock = cpuStock,
+        cpuStockCandidates = cpuStockCandidates,
+        cpuExpected = cpuExpected,
+        cpuSafetyCeilings = cpuSafetyCeilings,
+        gpuStock = gpuStock,
+        gpuExpected = gpuExpected,
+        gpuAcceptedCeilings = gpuAcceptedCeilings,
+    )
+}
+
 class HostApplyEngine(private val fs: HostFilesystem) {
     fun applyOrThrow(capabilities: HostCapabilities, request: ApplyRequest) {
         apply(capabilities, request).getOrElse { failure ->
@@ -218,60 +310,59 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         }
     }
 
-    @Synchronized
-    fun apply(capabilities: HostCapabilities, request: ApplyRequest): Result<Unit> = runCatching {
-        require(request.cpuMax.size == capabilities.cpus.size)
-        require(request.gpuMax == null || capabilities.gpu != null) {
-            "GPU target requested but no GPU domain is available"
+    /**
+     * Applies only maximum-frequency nodes. This is the automatic tuner's actuator path:
+     * live OEM/kernel minimum votes remain authoritative even when they exceed a requested cap.
+     */
+    fun applyMaxOnlyOrThrow(capabilities: HostCapabilities, request: ApplyRequest) {
+        applyMaxOnly(capabilities, request).getOrElse { failure ->
+            if (failure is HostApplyFailure) throw failure
+            throw HostApplyFailure(HostApplyPhase.PREFLIGHT, false, true, false, failure.message ?: "host preflight failed", failure)
         }
+    }
+
+    @Synchronized
+    fun apply(capabilities: HostCapabilities, request: ApplyRequest): Result<Unit> =
+        applyInternal(capabilities, request, repairMinimums = true)
+
+    @Synchronized
+    fun applyMaxOnly(capabilities: HostCapabilities, request: ApplyRequest): Result<Unit> =
+        applyInternal(capabilities, request, repairMinimums = false)
+
+    private fun applyInternal(
+        capabilities: HostCapabilities,
+        request: ApplyRequest,
+        repairMinimums: Boolean,
+    ): Result<Unit> = runCatching {
         request.gpuId?.let { require(capabilities.gpu?.id == it) { "GPU identity mismatch" } }
         request.gpuMaxPath?.let { require(capabilities.gpu?.maxPath == it) { "GPU path mismatch" } }
-        // The hint is only needed when the GPU does not enumerate selectable
-        // frequencies. On enumerated domains the cached selectable ceiling is
-        // authoritative; ignore the hint rather than rejecting an otherwise
-        // valid request.
-        val stabilizedStockCeiling = request.stabilizedStockCeiling
-            ?.takeIf { capabilities.gpu?.supportedFrequencies?.isEmpty() == true }
-        stabilizedStockCeiling?.let {
-            require(it > 0L && it <= 4_000_000_000L) { "invalid stabilized GPU stock ceiling" }
-            require(request.gpuId != null && request.gpuMaxPath != null) { "stabilized GPU stock ceiling requires domain identity" }
-        }
-        val cpuStock = capabilities.cpus.mapIndexed { index, cpu ->
-            request.resetToStock || request.cpuMax[index] >= cpu.selectableMax
-        }
-        val cpuStockCandidates = capabilities.cpus.map { cpu ->
-            listOf(cpu.stockMax.takeIf { it > 0 } ?: cpu.selectableMax, cpu.selectableMax).distinct()
-        }
-        val expected = capabilities.cpus.mapIndexed { index, cpu ->
-            if (cpuStock[index]) cpu.stockMax.takeIf { it > 0 } ?: cpu.selectableMax else request.cpuMax[index]
-        }
-        val safetyCeilings = capabilities.cpus.mapIndexed { index, cpu ->
-            if (cpuStock[index]) cpuStockCandidates[index].minOrNull() ?: cpu.selectableMax else expected[index]
-        }
-        val gpuStock = request.gpuMax?.let { requested ->
-            val gpu = capabilities.gpu
-            request.resetToStock || (gpu != null && requested >= (stabilizedStockCeiling ?: gpu.selectableMax))
-        } ?: false
-        val expectedGpu = request.gpuMax?.let {
-            val gpu = capabilities.gpu
-            if (gpu != null && (request.resetToStock || it >= gpu.selectableMax) && (gpuStock || stabilizedStockCeiling == null)) {
-                stabilizedStockCeiling?.takeIf { value -> value >= gpu.selectableMax } ?: gpu.selectableMax.takeIf { value -> value > 0 }
-            } else it
-        }
-        require(request.gpuMax == null || expectedGpu != null) {
-            "GPU target cannot be resolved to a selectable ceiling"
-        }
+        val resolved = resolveHostMaximumTargets(capabilities, request)
+        val stabilizedStockCeiling = resolved.stabilizedStockCeiling
+        val cpuStock = resolved.cpuStock
+        val cpuStockCandidates = resolved.cpuStockCandidates
+        val expected = resolved.cpuExpected
+        val safetyCeilings = resolved.cpuSafetyCeilings
+        val gpuStock = resolved.gpuStock
+        val expectedGpu = resolved.gpuExpected
         val original = capabilities.cpus.map {
             fs.read(it.maxPath)?.toLongOrNull() ?: error("cannot read ${it.maxPath}")
         }
-        val originalMins = capabilities.cpus.map {
-            fs.read(it.minPath)?.toLongOrNull() ?: error("cannot read ${it.minPath}")
+        val originalMins = if (repairMinimums) {
+            capabilities.cpus.map {
+                fs.read(it.minPath)?.toLongOrNull() ?: error("cannot read ${it.minPath}")
+            }
+        } else {
+            List(capabilities.cpus.size) { 0L }
         }
         val originalModes = capabilities.cpus.map {
             fs.mode(it.maxPath) ?: error("cannot read mode for ${it.maxPath}")
         }
-        val originalMinModes = capabilities.cpus.map {
-            fs.mode(it.minPath) ?: error("cannot read mode for ${it.minPath}")
+        val originalMinModes = if (repairMinimums) {
+            capabilities.cpus.map {
+                fs.mode(it.minPath) ?: error("cannot read mode for ${it.minPath}")
+            }
+        } else {
+            List(capabilities.cpus.size) { 0 }
         }
         val originalGpu = if (expectedGpu != null) {
             capabilities.gpu?.let {
@@ -280,7 +371,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         } else {
             null
         }
-        val originalGpuMin = if (expectedGpu != null) {
+        val originalGpuMin = if (repairMinimums && expectedGpu != null) {
             capabilities.gpu?.minPath?.let {
                 fs.read(it)?.toLongOrNull() ?: error("cannot read $it")
             }
@@ -294,15 +385,17 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         } else {
             null
         }
-        val originalGpuMinMode = if (expectedGpu != null) {
+        val originalGpuMinMode = if (repairMinimums && expectedGpu != null) {
             capabilities.gpu?.minPath?.let {
                 fs.mode(it) ?: error("cannot read mode for $it")
             }
         } else {
             null
         }
-        val cpuNeedsMinRepair = originalMins.mapIndexed { index, value -> value <= 0 || value > safetyCeilings[index] }
-        val gpuNeedsMinRepair = expectedGpu != null && originalGpuMin != null &&
+        val cpuNeedsMinRepair = originalMins.mapIndexed { index, value ->
+            repairMinimums && (value <= 0 || value > safetyCeilings[index])
+        }
+        val gpuNeedsMinRepair = repairMinimums && expectedGpu != null && originalGpuMin != null &&
             (originalGpuMin <= 0 || originalGpuMin > (if (gpuStock) {
                 val gpu = capabilities.gpu
                 listOfNotNull(stabilizedStockCeiling?.takeIf { it > 0 }, gpu?.stockMax?.takeIf { it > 0 }, gpu?.selectableMax).minOrNull() ?: expectedGpu
@@ -320,9 +413,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         if (expectedGpu != null) {
             val gpu = capabilities.gpu
                 ?: error("GPU target requested but no GPU domain is available")
-            val gpuAcceptedCeilings = if (gpuStock) {
-                listOfNotNull(stabilizedStockCeiling?.takeIf { it > 0 }, gpu.stockMax.takeIf { it > 0 }, gpu.selectableMax).distinct()
-            } else listOf(expectedGpu)
+            val gpuAcceptedCeilings = resolved.gpuAcceptedCeilings
             // Validation accepts any candidate the forward write may select; minimum
             // safety below is intentionally based on the *lowest* accepted ceiling.
             val allowedCeiling = gpuAcceptedCeilings.maxOrNull() ?: gpu.selectableMax
@@ -344,11 +435,23 @@ class HostApplyEngine(private val fs: HostFilesystem) {
             val isMax: Boolean,
             val pairedMaxPath: String?,
             val restoreFallbacks: List<Long> = emptyList(),
+            val ownedTargets: Set<Long> = emptySet(),
         )
         val journal = LinkedHashMap<String, JournalEntry>()
         var gpuMutationTarget: Long? = null
-        fun journalBeforeMutation(path: String, value: Long, mode: Int, isMax: Boolean, pairedMaxPath: String?, restoreFallbacks: List<Long> = emptyList()) {
-            journal.putIfAbsent(path, JournalEntry(path, value, mode, isMax, pairedMaxPath, restoreFallbacks))
+        fun journalBeforeMutation(
+            path: String,
+            value: Long,
+            mode: Int,
+            isMax: Boolean,
+            pairedMaxPath: String?,
+            restoreFallbacks: List<Long> = emptyList(),
+            ownedTargets: Set<Long> = emptySet(),
+        ) {
+            journal.putIfAbsent(
+                path,
+                JournalEntry(path, value, mode, isMax, pairedMaxPath, restoreFallbacks, ownedTargets),
+            )
         }
         var mutationStarted = false
         try {
@@ -357,14 +460,30 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                 val target = expected[index]
                 if (cpuNeedsMinRepair[index]) {
                     journalBeforeMutation(cpu.minPath, originalMins[index], originalMinModes[index], false, cpu.maxPath)
-                    journalBeforeMutation(cpu.maxPath, original[index], originalModes[index], true, null, if (original[index] > cpu.selectableMax) listOf(cpu.selectableMax) else emptyList())
+                    journalBeforeMutation(
+                        cpu.maxPath,
+                        original[index],
+                        originalModes[index],
+                        true,
+                        null,
+                        if (original[index] > cpu.selectableMax) listOf(cpu.selectableMax) else emptyList(),
+                        if (cpuStock[index]) cpuStockCandidates[index].toSet() else setOf(target),
+                    )
                     cpuMaxMutations += HostMutation.Chmod(cpu.minPath, writableMode(originalMinModes[index]))
                     cpuMaxMutations += HostMutation.WriteCandidatesNoReadback(
                         cpu.minPath,
                         cpu.minimumCandidates.filter { it > 0 && it <= safetyCeilings[index] }.distinct().sorted().map { it.toString() }
                     )
                 } else {
-                    journalBeforeMutation(cpu.maxPath, original[index], originalModes[index], true, null, if (original[index] > cpu.selectableMax) listOf(cpu.selectableMax) else emptyList())
+                    journalBeforeMutation(
+                        cpu.maxPath,
+                        original[index],
+                        originalModes[index],
+                        true,
+                        null,
+                        if (original[index] > cpu.selectableMax) listOf(cpu.selectableMax) else emptyList(),
+                        if (cpuStock[index]) cpuStockCandidates[index].toSet() else setOf(target),
+                    )
                 }
                 cpuMaxMutations += HostMutation.Chmod(cpu.maxPath, writableMode(originalModes[index]))
                 cpuMaxMutations += if (cpuStock[index]) {
@@ -380,14 +499,46 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                         val minPath = gpu.minPath
                         val minMode = originalGpuMinMode ?: error("cannot read mode for $minPath")
                         journalBeforeMutation(minPath, originalGpuMin ?: error("cannot read $minPath"), minMode, false, gpu.maxPath)
-                        journalBeforeMutation(gpu.maxPath, originalGpu ?: error("cannot read ${gpu.maxPath}"), originalGpuMode ?: error("cannot read mode for ${gpu.maxPath}"), true, null, if ((originalGpu ?: 0L) > gpu.selectableMax) listOf(gpu.selectableMax) else emptyList())
+                        journalBeforeMutation(
+                            gpu.maxPath,
+                            originalGpu ?: error("cannot read ${gpu.maxPath}"),
+                            originalGpuMode ?: error("cannot read mode for ${gpu.maxPath}"),
+                            true,
+                            null,
+                            if ((originalGpu ?: 0L) > gpu.selectableMax) listOf(gpu.selectableMax) else emptyList(),
+                            if (gpuStock) {
+                                listOfNotNull(
+                                    stabilizedStockCeiling?.takeIf { it > 0 },
+                                    gpu.stockMax.takeIf { it > 0 },
+                                    gpu.selectableMax,
+                                ).toSet()
+                            } else {
+                                setOf(target)
+                            },
+                        )
                         cpuMaxMutations += HostMutation.Chmod(minPath, writableMode(minMode))
                         cpuMaxMutations += HostMutation.WriteCandidatesNoReadback(
                             minPath,
                         (listOf(gpu.observedMin) + gpu.supportedFrequencies).filter { it > 0 && it <= (if (gpuStock) listOfNotNull(stabilizedStockCeiling?.takeIf { it > 0 }, gpu.stockMax.takeIf { it > 0 }, gpu.selectableMax).minOrNull() ?: target else target) }.distinct().sorted().map { it.toString() }
                         )
                     } else {
-                        journalBeforeMutation(gpu.maxPath, originalGpu ?: error("cannot read ${gpu.maxPath}"), originalGpuMode ?: error("cannot read mode for ${gpu.maxPath}"), true, null, if ((originalGpu ?: 0L) > gpu.selectableMax) listOf(gpu.selectableMax) else emptyList())
+                        journalBeforeMutation(
+                            gpu.maxPath,
+                            originalGpu ?: error("cannot read ${gpu.maxPath}"),
+                            originalGpuMode ?: error("cannot read mode for ${gpu.maxPath}"),
+                            true,
+                            null,
+                            if ((originalGpu ?: 0L) > gpu.selectableMax) listOf(gpu.selectableMax) else emptyList(),
+                            if (gpuStock) {
+                                listOfNotNull(
+                                    stabilizedStockCeiling?.takeIf { it > 0 },
+                                    gpu.stockMax.takeIf { it > 0 },
+                                    gpu.selectableMax,
+                                ).toSet()
+                            } else {
+                                setOf(target)
+                            },
+                        )
                     }
                     cpuMaxMutations += HostMutation.Chmod(gpu.maxPath, writableMode(originalGpuMode ?: error("cannot read mode for ${gpu.maxPath}")))
                     cpuMaxMutations += if (gpuStock) {
@@ -404,7 +555,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                 val finalMode = protectionMode(originalModes[index], cpuStock[index])
                 val accepted = if (cpuStock[index]) cpuStockCandidates[index] else listOf(target)
                 verifyMax(cpu.id, cpu.maxPath, accepted, finalMode)
-                if (fs.read(cpu.minPath)?.toLongOrNull()?.let { it > 0 && it <= safetyCeilings[index] } != true) {
+                if (repairMinimums && fs.read(cpu.minPath)?.toLongOrNull()?.let { it > 0 && it <= safetyCeilings[index] } != true) {
                     journalBeforeMutation(cpu.minPath, originalMins[index], originalMinModes[index], false, cpu.maxPath)
                     reconcileMinimum(
                         path = cpu.minPath,
@@ -428,7 +579,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                     val actualAcceptedMax = fs.read(gpu.maxPath)?.toLongOrNull()
                         ?: error("cannot read ${gpu.maxPath}")
                     gpu.minPath?.let {
-                        if (fs.read(it)?.toLongOrNull()?.let { value -> value > 0 && value <= actualAcceptedMax } != true) {
+                        if (repairMinimums && fs.read(it)?.toLongOrNull()?.let { value -> value > 0 && value <= actualAcceptedMax } != true) {
                             journalBeforeMutation(it, originalGpuMin ?: error("cannot read $it"), originalGpuMinMode ?: error("cannot read mode for $it"), false, gpu.maxPath)
                             reconcileMinimum(
                                 path = it,
@@ -443,7 +594,9 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                 }
             }
         } catch (t: Throwable) {
-            val dispatchFailure = fs.lastMutationFailure() as? HostDispatchFailure
+            // RealHostFilesystem retains the last dispatch error until the next mutation.
+            // A preflight-only failure must not inherit indeterminate state from an older call.
+            val dispatchFailure = if (mutationStarted) fs.lastMutationFailure() as? HostDispatchFailure else null
             if (dispatchFailure?.indeterminate == true) {
                 throw HostApplyFailure(
                     phase = HostApplyPhase.MUTATION,
@@ -455,6 +608,12 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                 )
             }
             val rollbackFailures = mutableListOf<String>()
+            val rollbackOwnedFallbacks = mutableMapOf<String, MutableSet<Long>>()
+            fun recordRollbackFallback(path: String, value: Long) {
+                rollbackOwnedFallbacks.getOrPut(path) { linkedSetOf() }.add(value)
+            }
+            fun rollbackOwnershipSnapshot(): Map<String, Set<Long>> =
+                rollbackOwnedFallbacks.mapValues { (_, values) -> values.toSet() }
             val maxRestored = mutableMapOf<String, Boolean>()
             // Restore ceilings before minima so a minimum whose original value is
             // above the temporary ceiling can be restored safely. This also
@@ -464,7 +623,37 @@ class HostApplyEngine(private val fs: HostFilesystem) {
             }
             rollbackEntries.forEach { entry ->
                 if (entry.isMax) {
-                    val restored = restoreNode(entry.path, entry.value, entry.mode, fallbackValues = entry.restoreFallbacks)
+                    val restored = if (repairMinimums) {
+                        restoreNode(
+                            entry.path,
+                            entry.value,
+                            entry.mode,
+                            fallbackValues = entry.restoreFallbacks,
+                            onFallbackRestored = { recordRollbackFallback(entry.path, it) },
+                        )
+                    } else {
+                        val current = fs.read(entry.path)?.toLongOrNull()
+                        when {
+                            current == null -> {
+                                // Ownership cannot be established while the node is unreadable.
+                                // Do not chmod a path that an external policy may have taken over.
+                                false
+                            }
+                            current == entry.value ->
+                                restoreNode(entry.path, entry.value, entry.mode, restoreValue = false)
+                            current in entry.ownedTargets ->
+                                restoreNode(
+                                    entry.path,
+                                    entry.value,
+                                    entry.mode,
+                                    fallbackValues = entry.restoreFallbacks,
+                                    onFallbackRestored = { recordRollbackFallback(entry.path, it) },
+                                )
+                            // A different value belongs to an external policy. Relinquish both
+                            // value and permission ownership instead of changing either one.
+                            else -> true
+                        }
+                    }
                     maxRestored[entry.path] = restored
                     if (!restored) rollbackFailures += entry.path
                 } else {
@@ -481,19 +670,31 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                     phase = HostApplyPhase.ROLLBACK,
                     mutationStarted = mutationStarted,
                     rollbackComplete = false,
-                    indeterminate = (fs.lastMutationFailure() as? HostDispatchFailure)?.indeterminate == true,
+                    indeterminate = dispatchFailure?.indeterminate == true,
                     message = "apply failed: ${t.message}; rollback incomplete for ${rollbackFailures.joinToString()}",
                     cause = t,
+                    rollbackOwnedValues = rollbackOwnershipSnapshot(),
                 )
             }
-            if (t is HostApplyFailure) throw t
+            if (t is HostApplyFailure) {
+                throw HostApplyFailure(
+                    phase = t.phase,
+                    mutationStarted = t.mutationStarted,
+                    rollbackComplete = t.rollbackComplete,
+                    indeterminate = t.indeterminate,
+                    message = t.message ?: "host apply failed",
+                    cause = t,
+                    rollbackOwnedValues = t.rollbackOwnedValues + rollbackOwnershipSnapshot(),
+                )
+            }
             throw HostApplyFailure(
                 phase = if (!mutationStarted) HostApplyPhase.PREFLIGHT else HostApplyPhase.MUTATION,
                 mutationStarted = mutationStarted,
                 rollbackComplete = true,
-                indeterminate = (fs.lastMutationFailure() as? HostDispatchFailure)?.indeterminate == true,
+                indeterminate = dispatchFailure?.indeterminate == true,
                 message = t.message ?: "host apply failed",
                 cause = t,
+                rollbackOwnedValues = rollbackOwnershipSnapshot(),
             )
         }
     }
@@ -560,7 +761,14 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         check(actualMode == mode) { "permission verification failed for $id: expected=$mode actual=$actualMode" }
     }
 
-    private fun restoreNode(path: String, value: Long, originalMode: Int?, restoreValue: Boolean = true, fallbackValues: List<Long> = emptyList()): Boolean {
+    private fun restoreNode(
+        path: String,
+        value: Long,
+        originalMode: Int?,
+        restoreValue: Boolean = true,
+        fallbackValues: List<Long> = emptyList(),
+        onFallbackRestored: (Long) -> Unit = {},
+    ): Boolean {
         var ok = true
         if (originalMode != null) ok = fs.chmod(path, writableMode(originalMode)) && ok
         if (restoreValue) {
@@ -568,6 +776,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
             if (!restored) {
                 for (fallback in fallbackValues.distinct().filter { it > 0 && it != value }) {
                     if (fs.write(path, fallback.toString()) && fs.read(path)?.toLongOrNull() == fallback) {
+                        onFallbackRestored(fallback)
                         restored = true
                         break
                     }

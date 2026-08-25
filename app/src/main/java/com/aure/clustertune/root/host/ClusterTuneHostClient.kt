@@ -186,6 +186,11 @@ class ClusterTuneHostClient(
             p.writeString(request.packageName)
             p.writeInt(request.targetFps)
             p.writeLong(request.heartbeatTimeoutMs)
+            p.writeInt(if (request.baseline != null) 1 else 0)
+            request.baseline?.let { baseline ->
+                require(baseline.maximumsOnly) { "Auto Tune baseline must be maximums-only" }
+                writeApplyRequest(p, baseline)
+            }
         }, reader = ::readAutoSnapshot)
 
     /** A null session ID addresses the current owner session. */
@@ -478,6 +483,7 @@ class ClusterTuneHostClient(
         parcel.writeString(request.gpuId)
         parcel.writeString(request.gpuMaxPath)
         parcel.writeLong(request.stabilizedStockCeiling ?: -1L)
+        parcel.writeInt(if (request.maximumsOnly) 1 else 0)
     }
 
     private fun writeSessionId(parcel: Parcel, sessionId: String?, nullable: Boolean) {
