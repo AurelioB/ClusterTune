@@ -603,10 +603,18 @@ public final class ClusterTuneHostEntry {
             if (!maxPath.isFile()) {
                 return null;
             }
-            List<Long> frequencies = readFreqs(new File(kgsl, "gpu_available_frequencies"));
+            File frequenciesPath = new File(kgsl, "gpu_available_frequencies");
+            List<Long> rawFrequencies = readRawFreqs(frequenciesPath);
+            ArrayList<Long> frequencies = new ArrayList<>();
+            add(frequencies, rawFrequencies);
             long current = readLong(maxPath);
             long stable = Math.max(current, max(frequencies, current));
             File minPath = new File(kgsl, "min_gpuclk");
+            long observedMin = minPath.isFile()
+                    ? readLong(minPath)
+                    : kgslObservedMin(
+                            rawFrequencies,
+                            readLong(new File(kgsl, "min_pwrlevel")));
             return new GpuDomain(
                     "kgsl-3d0",
                     minPath.isFile() ? minPath.getPath() : null,
@@ -615,7 +623,7 @@ public final class ClusterTuneHostEntry {
                     frequencies,
                     stable,
                     stable,
-                    readLong(minPath),
+                    observedMin,
                     frequencies.isEmpty() ? stable : max(frequencies, 0L),
                     current);
         }
@@ -776,8 +784,28 @@ public final class ClusterTuneHostEntry {
             reply.writeInt(value.getGpu() == null ? 0 : 1);
             if (value.getGpu() != null) {
                 GpuDomain gpu = value.getGpu();
-                reply.writeLong(readLong(new File(gpu.getMaxPath())));
-                reply.writeLong(gpu.getMinPath() == null ? -1 : readLong(new File(gpu.getMinPath())));
+                File gpuMaxPath = new File(gpu.getMaxPath());
+                reply.writeLong(readLong(gpuMaxPath));
+                boolean hasMinPath = gpu.getMinPath() != null;
+                long liveMinimum = hasMinPath ? readLong(new File(gpu.getMinPath())) : -1L;
+                File gpuDirectory = gpuMaxPath.getParentFile();
+                boolean pathlessKgsl = !hasMinPath
+                        && "max_gpuclk".equals(gpuMaxPath.getName())
+                        && gpuDirectory != null
+                        && gpuDirectory.getName().startsWith("kgsl-");
+                List<Long> liveKgslFrequencies = java.util.Collections.emptyList();
+                long liveKgslMinPowerLevel = -1L;
+                if (pathlessKgsl) {
+                    liveKgslFrequencies = readRawFreqs(
+                            new File(gpuDirectory, "gpu_available_frequencies"));
+                    liveKgslMinPowerLevel = readLong(new File(gpuDirectory, "min_pwrlevel"));
+                }
+                reply.writeLong(gpuSnapshotMin(
+                        hasMinPath,
+                        liveMinimum,
+                        pathlessKgsl,
+                        liveKgslFrequencies,
+                        liveKgslMinPowerLevel));
                 reply.writeLong(gpu.getCurPath() == null ? -1 : readLong(new File(gpu.getCurPath())));
             }
         }
@@ -893,6 +921,29 @@ public final class ClusterTuneHostEntry {
         return result;
     }
 
+    static long kgslObservedMin(List<Long> frequencies, long minPowerLevel) {
+        if (minPowerLevel < 0L || minPowerLevel >= frequencies.size()) {
+            return -1L;
+        }
+        Long frequency = frequencies.get((int) minPowerLevel);
+        return frequency != null && frequency > 0L ? frequency : -1L;
+    }
+
+    static long gpuSnapshotMin(
+            boolean hasMinPath,
+            long liveMinimum,
+            boolean pathlessKgsl,
+            List<Long> liveKgslFrequencies,
+            long liveKgslMinPowerLevel) {
+        if (hasMinPath) {
+            return liveMinimum;
+        }
+        if (!pathlessKgsl) {
+            return -1L;
+        }
+        return kgslObservedMin(liveKgslFrequencies, liveKgslMinPowerLevel);
+    }
+
     private static void add(List<Long> output, long value) {
         if (value > 0 && !output.contains(value)) {
             output.add(value);
@@ -931,6 +982,31 @@ public final class ClusterTuneHostEntry {
             }
         } catch (Throwable ignored) {
             // Some kernels do not expose an available-frequency list.
+        }
+        return result;
+    }
+
+    private static List<Long> readRawFreqs(File file) {
+        return parseRawFrequencies(readText(file));
+    }
+
+    static List<Long> parseRawFrequencies(String text) {
+        List<Long> result = new ArrayList<>();
+        if (text == null || text.trim().isEmpty()) {
+            return result;
+        }
+        try {
+            for (String value : text.trim().split("\\s+")) {
+                long frequency = Long.parseLong(value);
+                if (frequency <= 0L) {
+                    result.clear();
+                    return result;
+                }
+                result.add(frequency);
+            }
+        } catch (Throwable ignored) {
+            // A partial list cannot safely preserve power-level positions.
+            result.clear();
         }
         return result;
     }

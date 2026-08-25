@@ -221,6 +221,77 @@ class HostAutoSessionTest {
     }
 
     @Test
+    fun `heartbeat stops and restores when a live minimum rises during a hold`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+        fixture.fs.values["min"] = "400"
+
+        val stopped = fixture.controller.heartbeat(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertTrue(stopped.message.orEmpty().contains("minimum changed"))
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals("400", fixture.fs.values["min"])
+    }
+
+    @Test
+    fun `telemetry read stops and restores when a live minimum falls during a hold`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+        fixture.fs.values["min"] = "100"
+
+        val stopped = fixture.controller.readTelemetry(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertTrue(stopped.message.orEmpty().contains("minimum changed"))
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals("100", fixture.fs.values["min"])
+    }
+
+    @Test
+    fun `automatic apply stops before mutation when a captured live minimum becomes unreadable`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+        fixture.fs.failNextReads("min", count = 1)
+        val operationsBefore = fixture.fs.operations.size
+
+        val stopped = fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 400))
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertTrue(stopped.message.orEmpty().contains("minimum unavailable"))
+        assertFalse(fixture.fs.operations.drop(operationsBefore).any { it == "write:max=400" })
+        assertEquals("800", fixture.fs.values["max"])
+    }
+
+    @Test
+    fun `minimum change racing an automatic apply is detected and the ceiling is restored`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        // The pre-apply read returns the captured floor, then the fake OEM changes it before
+        // the maximum transaction. The post-apply floor read must catch that race.
+        fixture.fs.rewriteAfterReads("min", "400", reads = 1)
+
+        val stopped = fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 400))
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertTrue(stopped.message.orEmpty().contains("minimum changed after apply"))
+        assertTrue(fixture.fs.operations.any { it == "write:max=400" })
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals("400", fixture.fs.values["min"])
+    }
+
+    @Test
     fun `automatic steps cannot exceed checkpoint envelope`() {
         val fixture = fixture(withGpu = true)
         val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
@@ -244,34 +315,193 @@ class HostAutoSessionTest {
     }
 
     @Test
-    fun `automatic steps lower maxima below live minimums without writing minimum nodes`() {
+    fun `automatic steps reject CPU and GPU targets at or below positive live minimums before mutation`() {
         val fixture = fixture(withGpu = true, cpuMin = 600, gpuMin = 600)
         val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
         val session = requireNotNull(started.sessionId)
+        val operationsBefore = fixture.fs.operations.toList()
+        val batchesBefore = fixture.fs.batchMutations
 
-        val applied = fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 400, gpu = 300))
+        assertFails { fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600, gpu = 900)) }
+        assertFails { fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 400, gpu = 900)) }
+        assertFails { fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 800, gpu = 600)) }
+        assertFails { fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 800, gpu = 300)) }
 
-        assertEquals(HostAutoSessionStatus.ACTIVE, applied.status)
-        assertEquals("600", fixture.fs.values["min"])
-        assertEquals("600", fixture.fs.values["gmin"])
-        assertEquals("400", fixture.fs.values["max"])
-        assertEquals("300", fixture.fs.values["gmax"])
-        assertFalse(fixture.fs.operations.any { it.startsWith("write:min=") || it.startsWith("write:gmin=") })
-        assertFalse(fixture.fs.operations.any { it.startsWith("chmod:min=") || it.startsWith("chmod:gmin=") })
-
-        val stopped = fixture.controller.stop(session, started.hostEpoch)
-
-        assertTrue(stopped.restorationComplete)
-        assertEquals("600", fixture.fs.values["min"])
-        assertEquals("600", fixture.fs.values["gmin"])
+        assertEquals(operationsBefore, fixture.fs.operations)
+        assertEquals(batchesBefore, fixture.fs.batchMutations)
         assertEquals("800", fixture.fs.values["max"])
         assertEquals("900", fixture.fs.values["gmax"])
+        assertEquals(HostAutoSessionStatus.ACTIVE, fixture.controller.current().status)
+    }
+
+    @Test
+    fun `automatic steps accept the first supported OPP strictly above each live minimum`() {
+        val fixture = fixture(withGpu = true, cpuMin = 450, gpuMin = 450)
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+
+        val applied = fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600, gpu = 600))
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, applied.status)
+        assertEquals("600", fixture.fs.values["max"])
+        assertEquals("600", fixture.fs.values["gmax"])
+        assertEquals("450", fixture.fs.values["min"])
+        assertEquals("450", fixture.fs.values["gmin"])
         assertFalse(fixture.fs.operations.any { it.startsWith("write:min=") || it.startsWith("write:gmin=") })
         assertFalse(fixture.fs.operations.any { it.startsWith("chmod:min=") || it.startsWith("chmod:gmin=") })
     }
 
     @Test
-    fun `atomic baseline replaces temporary caps and stop restores persisted normal without minimum writes`() {
+    fun `empty host OPP lists accept app fallback targets strictly above live minimums`() {
+        val fs = FakeFs(
+            values = mutableMapOf("min" to "200", "max" to "800", "gmin" to "300", "gmax" to "900"),
+            modes = mutableMapOf("min" to 416, "max" to 420, "gmin" to 416, "gmax" to 420),
+        )
+        val base = capabilities(withGpu = true)
+        val capabilities = base.copy(
+            cpus = base.cpus.map { it.copy(supportedFrequencies = emptyList()) },
+            gpu = requireNotNull(base.gpu).copy(supportedFrequencies = emptyList()),
+        )
+        val controller = HostAutoSessionController(
+            capabilities,
+            fs,
+            HostApplyEngine(fs),
+            FakeTelemetry(capabilities.cpus.size, hasGpu = true),
+            hostEpoch = 42L,
+            clock = FakeClock(),
+        )
+        val started = controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+
+        val applied = controller.applyStep(session, started.hostEpoch, request(cpu = 201, gpu = 301))
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, applied.status)
+        assertEquals("201", fs.values["max"])
+        assertEquals("301", fs.values["gmax"])
+        assertEquals("200", fs.values["min"])
+        assertEquals("300", fs.values["gmin"])
+    }
+
+    @Test
+    fun `pinned domains with no supported step above the live minimum can only stay at base`() {
+        val fixture = fixture(withGpu = true, cpuMin = 800, gpuMin = 900)
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        val operationsBefore = fixture.fs.operations.toList()
+        val batchesBefore = fixture.fs.batchMutations
+
+        assertFails { fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600, gpu = 900)) }
+        assertFails { fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 800, gpu = 600)) }
+        val unchanged = fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 800, gpu = 900))
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, unchanged.status)
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals("900", fixture.fs.values["gmax"])
+        assertEquals(operationsBefore, fixture.fs.operations)
+        assertEquals(batchesBefore, fixture.fs.batchMutations)
+    }
+
+    @Test
+    fun `pathless KGSL minimum is derived dynamically from the raw positional frequency vector`() {
+        val kgsl = "/sys/class/kgsl/kgsl-3d0"
+        val gpuMaxPath = "$kgsl/max_gpuclk"
+        val fs = FakeFs(
+            values = mutableMapOf(
+                "min" to "200",
+                "max" to "800",
+                gpuMaxPath to "900",
+                "$kgsl/min_pwrlevel" to "2",
+                // Index 2 must remain 600; de-duplicating first would incorrectly select 300.
+                "$kgsl/gpu_available_frequencies" to "900 600 600 300",
+            ),
+            modes = mutableMapOf("min" to 416, "max" to 420, gpuMaxPath to 420),
+        )
+        val base = capabilities(withGpu = true)
+        val capabilities = base.copy(
+            gpu = requireNotNull(base.gpu).copy(
+                id = "kgsl-3d0",
+                minPath = null,
+                maxPath = gpuMaxPath,
+                observedMin = 300,
+            ),
+        )
+        val controller = HostAutoSessionController(
+            capabilities,
+            fs,
+            HostApplyEngine(fs),
+            FakeTelemetry(capabilities.cpus.size, hasGpu = true),
+            hostEpoch = 42L,
+            clock = FakeClock(),
+        )
+        val started = controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        val operationsBefore = fs.operations.toList()
+        val batchesBefore = fs.batchMutations
+        fun step(cpu: Long, gpu: Long) = ApplyRequest(
+            cpuMax = listOf(cpu),
+            gpuMax = gpu,
+            resetToStock = false,
+            cpuIds = listOf("policy0"),
+            gpuId = "kgsl-3d0",
+            gpuMaxPath = gpuMaxPath,
+        )
+
+        assertEquals(600L, started.state?.gpuMin)
+        assertFails { controller.applyStep(session, started.hostEpoch, step(cpu = 800, gpu = 600)) }
+        assertEquals(operationsBefore, fs.operations)
+        assertEquals(batchesBefore, fs.batchMutations)
+        assertEquals(
+            HostAutoSessionStatus.ACTIVE,
+            controller.applyStep(session, started.hostEpoch, step(cpu = 600, gpu = 900)).status,
+        )
+
+        fs.values["$kgsl/min_pwrlevel"] = "3"
+        val stopped = controller.heartbeat(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertTrue(stopped.message.orEmpty().contains("minimum changed"))
+        assertEquals("800", fs.values["max"])
+        assertEquals("900", fs.values[gpuMaxPath])
+    }
+
+    @Test
+    fun `pathless KGSL minimum rejects a raw vector containing any invalid frequency`() {
+        val kgsl = "/sys/class/kgsl/kgsl-3d0"
+        val gpuMaxPath = "$kgsl/max_gpuclk"
+        val frequenciesPath = "$kgsl/gpu_available_frequencies"
+        val fs = FakeFs(
+            values = mutableMapOf(
+                "min" to "200",
+                "max" to "800",
+                gpuMaxPath to "900",
+                "$kgsl/min_pwrlevel" to "0",
+                frequenciesPath to "900 600 300",
+            ),
+            modes = mutableMapOf("min" to 416, "max" to 420, gpuMaxPath to 420),
+        )
+        val base = capabilities(withGpu = true)
+        val capabilities = base.copy(
+            gpu = requireNotNull(base.gpu).copy(
+                id = "kgsl-3d0",
+                minPath = null,
+                maxPath = gpuMaxPath,
+            ),
+        )
+
+        listOf(
+            "900 invalid 300",
+            "900 0 300",
+            "900 -600 300",
+        ).forEach { rawFrequencies ->
+            fs.values[frequenciesPath] = rawFrequencies
+
+            assertEquals(null, HostHardwareStateReader.read(fs, capabilities).gpuMin)
+        }
+    }
+
+    @Test
+    fun `atomic baseline remains valid when live minimums make automatic domains inert`() {
         val fixture = fixture(withGpu = true, cpuMin = 700, gpuMin = 700)
         fixture.fs.values["max"] = "400"
         fixture.fs.values["gmax"] = "600"
@@ -290,12 +520,13 @@ class HostAutoSessionTest {
         assertFalse(fixture.fs.operations.any { it.startsWith("chmod:min=") || it.startsWith("chmod:gmin=") })
 
         val session = requireNotNull(started.sessionId)
-        assertEquals(
-            HostAutoSessionStatus.ACTIVE,
-            fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600, gpu = 600)).status,
-        )
-        assertEquals("600", fixture.fs.values["max"])
-        assertEquals("600", fixture.fs.values["gmax"])
+        val operationsAfterBaseline = fixture.fs.operations.toList()
+        val batchesAfterBaseline = fixture.fs.batchMutations
+        assertFails { fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600, gpu = 600)) }
+        assertEquals(operationsAfterBaseline, fixture.fs.operations)
+        assertEquals(batchesAfterBaseline, fixture.fs.batchMutations)
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals("900", fixture.fs.values["gmax"])
 
         val stopped = fixture.controller.stop(session, started.hostEpoch)
 
@@ -306,6 +537,84 @@ class HostAutoSessionTest {
         assertEquals("700", fixture.fs.values["gmin"])
         assertFalse(fixture.fs.operations.any { it.startsWith("write:min=") || it.startsWith("write:gmin=") })
         assertFalse(fixture.fs.operations.any { it.startsWith("chmod:min=") || it.startsWith("chmod:gmin=") })
+    }
+
+    @Test
+    fun `changed baseline with an unknown live minimum is rejected before mutation while an unchanged maximum passes`() {
+        val unsafe = fixture(cpuMin = 0)
+        unsafe.fs.values["max"] = "400"
+        val unsafeOperations = unsafe.fs.operations.toList()
+        val unsafeBatches = unsafe.fs.batchMutations
+
+        val rejected = unsafe.controller.start(
+            AutoSessionRequest(
+                "com.game",
+                60,
+                5_000,
+                baseline = request(cpu = 800).copy(maximumsOnly = true),
+            ),
+        )
+
+        assertEquals(HostAutoSessionStatus.STOPPED, rejected.status)
+        assertTrue(rejected.restorationComplete)
+        assertTrue(rejected.message.orEmpty().contains("without a live minimum"))
+        assertEquals("400", unsafe.fs.values["max"])
+        assertEquals(unsafeOperations, unsafe.fs.operations)
+        assertEquals(unsafeBatches, unsafe.fs.batchMutations)
+
+        val unchanged = fixture(cpuMin = 0)
+        val accepted = unchanged.controller.start(
+            AutoSessionRequest(
+                "com.game",
+                60,
+                5_000,
+                baseline = request(cpu = 800).copy(maximumsOnly = true),
+            ),
+        )
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, accepted.status)
+        assertEquals("800", unchanged.fs.values["max"])
+        assertEquals(0, unchanged.fs.batchMutations)
+    }
+
+    @Test
+    fun `changed CPU or GPU baseline at its live minimum is rejected before any mutation`() {
+        val cpuUnsafe = fixture(cpuMin = 600)
+        val cpuOperations = cpuUnsafe.fs.operations.toList()
+        val cpuBatches = cpuUnsafe.fs.batchMutations
+
+        val cpuRejected = cpuUnsafe.controller.start(
+            AutoSessionRequest(
+                "com.game",
+                60,
+                5_000,
+                baseline = request(cpu = 600).copy(maximumsOnly = true),
+            ),
+        )
+
+        assertEquals(HostAutoSessionStatus.STOPPED, cpuRejected.status)
+        assertTrue(cpuRejected.message.orEmpty().contains("not above the live minimum"))
+        assertEquals(cpuOperations, cpuUnsafe.fs.operations)
+        assertEquals(cpuBatches, cpuUnsafe.fs.batchMutations)
+        assertEquals("800", cpuUnsafe.fs.values["max"])
+
+        val gpuUnsafe = fixture(withGpu = true, gpuMin = 600)
+        val gpuOperations = gpuUnsafe.fs.operations.toList()
+        val gpuBatches = gpuUnsafe.fs.batchMutations
+        val gpuRejected = gpuUnsafe.controller.start(
+            AutoSessionRequest(
+                "com.game",
+                60,
+                5_000,
+                baseline = request(cpu = 800, gpu = 600).copy(maximumsOnly = true),
+            ),
+        )
+
+        assertEquals(HostAutoSessionStatus.STOPPED, gpuRejected.status)
+        assertTrue(gpuRejected.message.orEmpty().contains("not above the live minimum"))
+        assertEquals(gpuOperations, gpuUnsafe.fs.operations)
+        assertEquals(gpuBatches, gpuUnsafe.fs.batchMutations)
+        assertEquals("900", gpuUnsafe.fs.values["gmax"])
     }
 
     @Test
@@ -529,12 +838,82 @@ class HostAutoSessionTest {
     }
 
     @Test
+    fun `indeterminate baseline does not claim alias or mode of an exact no-op domain`() {
+        val fixture = hiddenStockFixture()
+        fixture.fs.failNextMutationIndeterminately(afterOperations = 1)
+        fixture.fs.rewriteOnNextIndeterminateMutation("max0", "800", mode = 292)
+
+        val stopped = fixture.controller.start(
+            AutoSessionRequest(
+                packageName = "com.game",
+                targetFps = 60,
+                heartbeatTimeoutMs = 5_000,
+                baseline = ApplyRequest(
+                    cpuMax = listOf(1000, 900),
+                    gpuMax = null,
+                    resetToStock = false,
+                    cpuIds = listOf("policy0", "policy4"),
+                    maximumsOnly = true,
+                ),
+            ),
+        )
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertEquals("800", fixture.fs.values["max0"])
+        assertEquals(292, fixture.fs.modes["max0"])
+        val externalRewrite = fixture.fs.operations.indexOf("external:max0=800 mode=292")
+        assertTrue(externalRewrite >= 0)
+        assertFalse(
+            fixture.fs.operations.drop(externalRewrite + 1).any {
+                it.startsWith("write:max0=") || it.startsWith("chmod:max0=")
+            },
+        )
+    }
+
+    @Test
+    fun `indeterminate baseline chmod-only domain does not claim an OEM alias value`() {
+        val fixture = hiddenStockFixture()
+        fixture.fs.modes["max0"] = 292
+        fixture.fs.failNextMutationIndeterminately(afterOperations = 2)
+        fixture.fs.rewriteOnNextIndeterminateMutation("max0", "800", mode = 384)
+
+        val stopped = fixture.controller.start(
+            AutoSessionRequest(
+                packageName = "com.game",
+                targetFps = 60,
+                heartbeatTimeoutMs = 5_000,
+                baseline = ApplyRequest(
+                    cpuMax = listOf(1000, 900),
+                    gpuMax = null,
+                    resetToStock = false,
+                    cpuIds = listOf("policy0", "policy4"),
+                    maximumsOnly = true,
+                ),
+            ),
+        )
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertEquals("800", fixture.fs.values["max0"])
+        assertEquals(384, fixture.fs.modes["max0"])
+        val externalRewrite = fixture.fs.operations.indexOf("external:max0=800 mode=384")
+        assertTrue(externalRewrite >= 0)
+        assertFalse(
+            fixture.fs.operations.drop(externalRewrite + 1).any { it.startsWith("write:max0=") },
+        )
+    }
+
+    @Test
     fun `confirmed stock CPU baseline does not claim a later external fallback`() {
         val fixture = hiddenStockFixture()
-        fixture.fs.rewriteAfterNextBatchRead(
+        fixture.fs.rewriteAfterReads(
             path = "max0",
             value = "800",
-            reads = 2,
+            // The stock baseline is now an exact max-only no-op. Trigger the OEM
+            // takeover after its verification and baseline-state reads without relying
+            // on a mutation batch that correctly never happens.
+            reads = 6,
             failNextModeAfterRewrite = true,
         )
 
@@ -564,10 +943,11 @@ class HostAutoSessionTest {
     @Test
     fun `confirmed stock GPU baseline does not claim a later external fallback`() {
         val fixture = hiddenStockGpuFixture()
-        fixture.fs.rewriteAfterNextBatchRead(
+        fixture.fs.rewriteAfterReads(
             path = "gmax",
             value = "900",
-            reads = 3,
+            // GPU verification performs one additional accepted-maximum read.
+            reads = 8,
             failNextModeAfterRewrite = true,
         )
 
@@ -627,6 +1007,132 @@ class HostAutoSessionTest {
     }
 
     @Test
+    fun `one-domain step does not claim an unchanged domain mode`() {
+        val fixture = multiDomainFixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        val oneDomainStep = ApplyRequest(
+            cpuMax = listOf(600, 1200),
+            gpuMax = 900,
+            resetToStock = false,
+            cpuIds = listOf("policy0", "policy4"),
+            gpuId = "gpu0",
+            gpuMaxPath = "gmax",
+        )
+
+        assertEquals(
+            HostAutoSessionStatus.ACTIVE,
+            fixture.controller.applyStep(session, started.hostEpoch, oneDomainStep).status,
+        )
+        fixture.fs.modes["max1"] = 292
+        val operationsBeforeStop = fixture.fs.operations.size
+
+        val stopped = fixture.controller.stop(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertEquals("800", fixture.fs.values["max0"])
+        assertEquals(420, fixture.fs.modes["max0"])
+        assertEquals("1200", fixture.fs.values["max1"])
+        assertEquals(292, fixture.fs.modes["max1"])
+        assertFalse(
+            fixture.fs.operations.drop(operationsBeforeStop).any {
+                it.startsWith("write:max1=") || it.startsWith("chmod:max1=")
+            },
+        )
+    }
+
+    @Test
+    fun `fixed efficiency step leaves unchanged envelope ceilings protected and untouched`() {
+        val fixture = multiDomainFixture()
+        val baseline = multiRequest().copy(maximumsOnly = true)
+        val started = fixture.controller.start(
+            AutoSessionRequest("com.game", 60, 5_000, baseline = baseline),
+        )
+        val session = requireNotNull(started.sessionId)
+        assertEquals(HostAutoSessionStatus.ACTIVE, started.status)
+        assertEquals(292, fixture.fs.modes["max0"])
+        assertEquals(292, fixture.fs.modes["max1"])
+        assertEquals(292, fixture.fs.modes["gmax"])
+        val operationsBeforeStep = fixture.fs.operations.size
+
+        val applied = fixture.controller.applyStep(
+            session,
+            started.hostEpoch,
+            baseline.copy(cpuMax = listOf(400, 900), maximumsOnly = false),
+        )
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, applied.status)
+        assertEquals("400", fixture.fs.values["max0"])
+        assertEquals("900", fixture.fs.values["max1"])
+        assertEquals("600", fixture.fs.values["gmax"])
+        assertEquals(292, fixture.fs.modes["max0"])
+        assertEquals(292, fixture.fs.modes["max1"])
+        assertEquals(292, fixture.fs.modes["gmax"])
+        val stepOperations = fixture.fs.operations.drop(operationsBeforeStep)
+        assertTrue(stepOperations.any { it == "write:max0=400" })
+        assertFalse(stepOperations.any { it.contains("max1") || it.contains("gmax") })
+    }
+
+    @Test
+    fun `trim on another domain preserves protected physical stock session node`() {
+        val fixture = multiDomainFixture()
+        fixture.fs.modes["max0"] = 288 // 0440, protected although policy0 is at physical Stock.
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        val operationsBeforeStep = fixture.fs.operations.size
+        val request = ApplyRequest(
+            cpuMax = listOf(800, 900),
+            gpuMax = 900,
+            resetToStock = false,
+            cpuIds = listOf("policy0", "policy4"),
+            gpuId = "gpu0",
+            gpuMaxPath = "gmax",
+        )
+
+        val applied = fixture.controller.applyStep(session, started.hostEpoch, request)
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, applied.status)
+        assertEquals("800", fixture.fs.values["max0"])
+        assertEquals(288, fixture.fs.modes["max0"])
+        assertEquals("900", fixture.fs.values["max1"])
+        val stepOperations = fixture.fs.operations.drop(operationsBeforeStep)
+        assertTrue(stepOperations.any { it == "write:max1=900" })
+        assertFalse(stepOperations.any { it.contains("max0") })
+    }
+
+    @Test
+    fun `indeterminate one-domain step does not claim an unchanged domain mode`() {
+        val fixture = multiDomainFixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        val oneDomainStep = ApplyRequest(
+            cpuMax = listOf(600, 1200),
+            gpuMax = 900,
+            resetToStock = false,
+            cpuIds = listOf("policy0", "policy4"),
+            gpuId = "gpu0",
+            gpuMaxPath = "gmax",
+        )
+        fixture.fs.failNextMutationIndeterminately(afterOperations = 1)
+        fixture.fs.rewriteOnNextIndeterminateMutation("max1", "1200", mode = 292)
+
+        val stopped = fixture.controller.applyStep(session, started.hostEpoch, oneDomainStep)
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertEquals("1200", fixture.fs.values["max1"])
+        assertEquals(292, fixture.fs.modes["max1"])
+        val externalRewrite = fixture.fs.operations.indexOf("external:max1=1200 mode=292")
+        assertTrue(externalRewrite >= 0)
+        assertFalse(
+            fixture.fs.operations.drop(externalRewrite + 1).any {
+                it.startsWith("write:max1=") || it.startsWith("chmod:max1=")
+            },
+        )
+    }
+
+    @Test
     fun `external maximum drift stops without fighting or overwriting it`() {
         val fixture = fixture()
         val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
@@ -680,6 +1186,7 @@ class HostAutoSessionTest {
         assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
         assertTrue(stopped.restorationComplete)
         assertEquals("700", fixture.fs.values["max0"])
+        assertEquals(420, fixture.fs.modes["max0"])
         assertEquals("1200", fixture.fs.values["max1"])
         assertEquals("900", fixture.fs.values["gmax"])
         val restoreOperations = fixture.fs.operations.drop(operationsBeforeStop)
@@ -984,6 +1491,57 @@ class HostAutoSessionTest {
     }
 
     @Test
+    fun `mode ownership is relinquished after mode restore while ceiling ownership remains unreadable`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+        fixture.fs.failNextReads("max", count = 2)
+
+        val failed = fixture.controller.stop(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.RESTORE_FAILED, failed.status)
+        assertFalse(failed.restorationComplete)
+        assertEquals("600", fixture.fs.values["max"])
+        assertEquals(420, fixture.fs.modes["max"])
+
+        // This mode is indistinguishable from Auto Tune's old protected mode by value alone.
+        // Since the first attempt already restored and relinquished the mode, the retry must
+        // preserve this later external choice while it restores the still-owned ceiling value.
+        fixture.fs.modes["max"] = 292
+        val restored = fixture.controller.stop(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.STOPPED, restored.status)
+        assertTrue(restored.restorationComplete)
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals(292, fixture.fs.modes["max"])
+    }
+
+    @Test
+    fun `failed final chmod keeps widened external mode latched until retry restores it`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+        fixture.fs.modes["max"] = 256 // External 0400; value restore must temporarily use 0600.
+        fixture.fs.failNextChmods("max", mode = 256, count = 1)
+
+        val failed = fixture.controller.stop(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.RESTORE_FAILED, failed.status)
+        assertFalse(failed.restorationComplete)
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals(384, fixture.fs.modes["max"])
+
+        val restored = fixture.controller.stop(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.STOPPED, restored.status)
+        assertTrue(restored.restorationComplete)
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals(256, fixture.fs.modes["max"])
+    }
+
+    @Test
     fun `unreadable ownership followed by an external ceiling never reclaims the path`() {
         val fixture = fixture()
         val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
@@ -1045,9 +1603,9 @@ class HostAutoSessionTest {
     }
 
     @Test
-    fun `session can trim and recover an exact hidden GPU checkpoint`() {
+    fun `unknown live GPU minimum keeps only that domain inert at its base ceiling`() {
         val fs = FakeFs(
-            values = mutableMapOf("min" to "200", "max" to "800", "gmin" to "300", "gmax" to "900"),
+            values = mutableMapOf("min" to "200", "max" to "800", "gmin" to "0", "gmax" to "900"),
             modes = mutableMapOf("min" to 416, "max" to 420, "gmin" to 416, "gmax" to 420),
         )
         val base = capabilities(withGpu = true)
@@ -1068,11 +1626,16 @@ class HostAutoSessionTest {
         )
         val started = controller.start(AutoSessionRequest("com.game", 60, 5_000))
         val session = requireNotNull(started.sessionId)
+        val operationsBefore = fs.operations.toList()
+        val batchesBefore = fs.batchMutations
 
-        val trimmed = controller.applyStep(session, started.hostEpoch, request(cpu = 800, gpu = 600))
+        assertEquals(0L, started.state?.gpuMin)
+        assertFails { controller.applyStep(session, started.hostEpoch, request(cpu = 800, gpu = 600)) }
+        assertEquals(operationsBefore, fs.operations)
+        assertEquals(batchesBefore, fs.batchMutations)
+
+        val trimmed = controller.applyStep(session, started.hostEpoch, request(cpu = 600, gpu = 900))
         assertEquals(trimmed.toString(), HostAutoSessionStatus.ACTIVE, trimmed.status)
-        val recovered = controller.applyStep(session, started.hostEpoch, request(cpu = 600, gpu = 900))
-        assertEquals(recovered.toString(), HostAutoSessionStatus.ACTIVE, recovered.status)
 
         assertEquals("600", fs.values["max"])
         assertEquals("900", fs.values["gmax"])
@@ -1406,8 +1969,10 @@ class HostAutoSessionTest {
         private val failedWritesRemaining = mutableMapOf<String, Int>()
         private val failedWriteValuesRemaining = mutableMapOf<Pair<String, String>, Int>()
         private val failedReadsRemaining = mutableMapOf<String, Int>()
+        private val failedChmodsRemaining = mutableMapOf<Pair<String, Int>, Int>()
         private var nextIndeterminateMutationPrefix: Int? = null
-        private var nextIndeterminateRewrite: Pair<String, String>? = null
+        private data class IndeterminateRewrite(val path: String, val value: String, val mode: Int?)
+        private var nextIndeterminateRewrite: IndeterminateRewrite? = null
         private var mutationFailure: Throwable? = null
         private data class RewriteAfterBatch(
             val path: String,
@@ -1472,6 +2037,12 @@ class HostAutoSessionTest {
         }
         override fun chmod(path: String, mode: Int): Boolean {
             operations += "chmod:$path=$mode"
+            val key = path to mode
+            val failures = failedChmodsRemaining[key] ?: 0
+            if (failures > 0) {
+                failedChmodsRemaining[key] = failures - 1
+                return false
+            }
             modes[path] = mode
             return true
         }
@@ -1483,7 +2054,12 @@ class HostAutoSessionTest {
             nextIndeterminateMutationPrefix?.let { prefixSize ->
                 nextIndeterminateMutationPrefix = null
                 super<HostFilesystem>.mutate(operations.take(prefixSize))
-                nextIndeterminateRewrite?.let { (path, value) -> values[path] = value }
+                nextIndeterminateRewrite?.let { rewrite ->
+                    values[rewrite.path] = rewrite.value
+                    rewrite.mode?.let { modes[rewrite.path] = it }
+                    this.operations += "external:${rewrite.path}=${rewrite.value}" +
+                        rewrite.mode?.let { " mode=$it" }.orEmpty()
+                }
                 nextIndeterminateRewrite = null
                 mutationFailure = HostDispatchFailure(true, "fake indeterminate transaction")
                 return false
@@ -1513,14 +2089,19 @@ class HostAutoSessionTest {
             failedReadsRemaining[path] = count
         }
 
+        fun failNextChmods(path: String, mode: Int, count: Int) {
+            require(count >= 0)
+            failedChmodsRemaining[path to mode] = count
+        }
+
         fun failNextMutationIndeterminately(afterOperations: Int) {
             require(afterOperations > 0)
             nextIndeterminateMutationPrefix = afterOperations
         }
 
-        fun rewriteOnNextIndeterminateMutation(path: String, value: String) {
+        fun rewriteOnNextIndeterminateMutation(path: String, value: String, mode: Int? = null) {
             require(path in values)
-            nextIndeterminateRewrite = path to value
+            nextIndeterminateRewrite = IndeterminateRewrite(path, value, mode)
         }
 
         fun retainMutationFailure(failure: Throwable) {
@@ -1544,10 +2125,15 @@ class HostAutoSessionTest {
             armedRewriteBefore = RewriteAfterBatch(path, value, reads)
         }
 
-        fun rewriteAfterReads(path: String, value: String, reads: Int = 1) {
+        fun rewriteAfterReads(
+            path: String,
+            value: String,
+            reads: Int = 1,
+            failNextModeAfterRewrite: Boolean = false,
+        ) {
             require(path in values)
             require(reads > 0)
-            activeRewrite = RewriteAfterBatch(path, value, reads)
+            activeRewrite = RewriteAfterBatch(path, value, reads, failNextModeAfterRewrite)
         }
     }
 }

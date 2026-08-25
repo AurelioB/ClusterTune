@@ -10,6 +10,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.aure.clustertune.autotune.AdaptiveCpuPolicy
 import com.aure.clustertune.autotune.AdaptiveFrameMetrics
+import com.aure.clustertune.autotune.AdaptiveFrequencyCeilings
 import com.aure.clustertune.autotune.AdaptiveFrequencyController
 import com.aure.clustertune.autotune.AdaptiveGpuDomain
 import com.aure.clustertune.autotune.AdaptiveTuneConfig
@@ -17,6 +18,7 @@ import com.aure.clustertune.autotune.AdaptiveTuneDecision
 import com.aure.clustertune.autotune.AdaptiveTuneEnvelope
 import com.aure.clustertune.autotune.AdaptiveTuneReason
 import com.aure.clustertune.autotune.AdaptiveTuneSample
+import com.aure.clustertune.data.adaptiveAdjustableCpuPolicyIds
 import com.aure.clustertune.root.PServerExecutionMethod
 import com.aure.clustertune.root.PrivilegedExecutionResolver
 import com.aure.clustertune.root.RootShellExecutionMethod
@@ -100,11 +102,20 @@ class RootHostHandoffInstrumentationTest {
             val handle = requireNotNull(started.handle)
             sessionHandle = handle
             val baseline = requireNotNull(started.state)
-            assertStableState(snapshot.state, baseline)
+            val envelope = adaptiveEnvelope(snapshot.capabilities, baseline)
+            val fixedCpuCeilings = envelope.cpuPolicies
+                .filterNot(AdaptiveCpuPolicy::allowsAdaptiveAdjustment)
+                .associate { it.policyId to it.baseCeilingKHz }
+            println("Auto Tune fixed CPU policy ids: ${fixedCpuCeilings.keys.sorted()}")
             val controller = AdaptiveFrequencyController(
                 config = AdaptiveTuneConfig(targetFps = targetFps),
-                envelope = adaptiveEnvelope(snapshot.capabilities, baseline),
+                envelope = envelope,
             )
+            assertEquals(
+                snapshot.capabilities.cpus.map { it.policyId() }.toSet(),
+                controller.baseCeilings.cpuKHz.keys,
+            )
+            assertFixedCpuCeilings(fixedCpuCeilings, controller.baseCeilings)
 
             var afterSequence = -1L
             var firstTimestamp = -1L
@@ -132,6 +143,11 @@ class RootHostHandoffInstrumentationTest {
                         telemetry.fpsMilli != null
                 )
                 val decision = controller.step(telemetry.toAdaptiveTuneSample(snapshot.capabilities))
+                assertEquals(
+                    snapshot.capabilities.cpus.map { it.policyId() }.toSet(),
+                    decision.ceilings.cpuKHz.keys,
+                )
+                assertFixedCpuCeilings(fixedCpuCeilings, decision.ceilings)
                 if (decision is AdaptiveTuneDecision.Apply) {
                     val request = decision.toApplyRequest(snapshot.capabilities)
                     val applied = client.applyAutoStep(handle, request).getOrThrow()
@@ -139,6 +155,15 @@ class RootHostHandoffInstrumentationTest {
                     appliedState = requireNotNull(applied.state)
                     assertEquals(request.cpuMax, appliedState.cpuMax)
                     assertEquals(request.gpuMax, appliedState.gpuMax)
+                    fixedCpuCeilings.forEach { (policyId, expectedCeiling) ->
+                        val index = snapshot.capabilities.cpus.indexOfFirst { it.policyId() == policyId }
+                        assertTrue("fixed CPU policy$policyId disappeared", index >= 0)
+                        assertEquals(
+                            "fixed CPU policy$policyId changed during Auto Tune",
+                            expectedCeiling,
+                            appliedState.cpuMax[index],
+                        )
+                    }
                     controllerApply = decision
                     break
                 }
@@ -151,13 +176,15 @@ class RootHostHandoffInstrumentationTest {
             assertEquals(AdaptiveTuneReason.EFFICIENCY_TRIM, appliedDecision.reason)
             assertTrue(appliedDecision.change.toCeiling < appliedDecision.change.fromCeiling)
             val automaticState = requireNotNull(appliedState)
+            assertEquals(baseline.cpuMin, automaticState.cpuMin)
+            assertEquals(baseline.gpuMin, automaticState.gpuMin)
 
             val stopped = stopAndRestore(client, handle)
             assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
             assertTrue(stopped.restorationAttempted)
             assertTrue(stopped.restorationComplete)
             assertAutomaticCeilingsReleased(
-                baseline = snapshot.state,
+                baseline = baseline,
                 automatic = automaticState,
                 actual = client.readSnapshot().getOrThrow().state,
             )
@@ -198,34 +225,54 @@ class RootHostHandoffInstrumentationTest {
         error("automatic session restoration remained incomplete: ${latest?.message.orEmpty()}")
     }
 
-    private fun assertStableState(expected: HostState, actual: HostState) {
-        assertEquals(expected.cpuMax, actual.cpuMax)
-        assertEquals(expected.cpuMin, actual.cpuMin)
-        assertEquals(expected.gpuMax, actual.gpuMax)
-        assertEquals(expected.gpuMin, actual.gpuMin)
-    }
-
     private fun adaptiveEnvelope(
         capabilities: HostCapabilities,
         baseline: HostState,
-    ): AdaptiveTuneEnvelope = AdaptiveTuneEnvelope(
-        cpuPolicies = capabilities.cpus.mapIndexed { index, domain ->
-            val base = baseline.cpuMax[index]
-            AdaptiveCpuPolicy(
-                policyId = domain.policyId(),
-                availableCeilingsKHz = domain.supportedFrequencies.filter { it in 1..base },
-                baseCeilingKHz = base,
+    ): AdaptiveTuneEnvelope {
+        val adjustableCpuPolicyIds = adaptiveAdjustableCpuPolicyIds(capabilities.cpus)
+        return AdaptiveTuneEnvelope(
+            cpuPolicies = capabilities.cpus.mapIndexed { index, domain ->
+                val base = baseline.cpuMax[index]
+                val floor = baseline.cpuMin[index]
+                AdaptiveCpuPolicy(
+                    policyId = domain.policyId(),
+                    availableCeilingsKHz = if (floor > 0L) {
+                        domain.supportedFrequencies.filter { it > floor && it <= base }
+                    } else {
+                        emptyList()
+                    },
+                    baseCeilingKHz = base,
+                    allowsAdaptiveAdjustment = domain.policyId() in adjustableCpuPolicyIds,
+                )
+            },
+            gpu = capabilities.gpu?.let { domain ->
+                val base = requireNotNull(baseline.gpuMax)
+                val floor = baseline.gpuMin
+                AdaptiveGpuDomain(
+                    id = domain.id,
+                    availableCeilingsHz = if (floor != null && floor > 0L) {
+                        domain.supportedFrequencies.filter { it > floor && it <= base }
+                    } else {
+                        emptyList()
+                    },
+                    baseCeilingHz = base,
+                )
+            },
+        )
+    }
+
+    private fun assertFixedCpuCeilings(
+        expected: Map<Int, Long>,
+        actual: AdaptiveFrequencyCeilings,
+    ) {
+        expected.forEach { (policyId, expectedCeiling) ->
+            assertEquals(
+                "fixed CPU policy$policyId changed in the complete controller envelope",
+                expectedCeiling,
+                actual.cpuKHz[policyId],
             )
-        },
-        gpu = capabilities.gpu?.let { domain ->
-            val base = requireNotNull(baseline.gpuMax)
-            AdaptiveGpuDomain(
-                id = domain.id,
-                availableCeilingsHz = domain.supportedFrequencies.filter { it in 1..base },
-                baseCeilingHz = base,
-            )
-        },
-    )
+        }
+    }
 
     private fun HostAutoTelemetry.toAdaptiveTuneSample(
         capabilities: HostCapabilities,

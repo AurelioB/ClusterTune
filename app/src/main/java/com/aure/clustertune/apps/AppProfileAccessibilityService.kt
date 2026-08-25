@@ -29,11 +29,18 @@ class AppProfileAccessibilityService : AccessibilityService() {
     private val packagesByAccessibilityWindow = AccessibilityWindowPackageCache()
     private var mostRecentAppIdentity: RecentAppIdentity? = null
     private val disappearanceTracker = VisibleWindowDisappearanceTracker(ABSENCE_CONFIRMATION_DELAY_MS)
+    private val pickerHandoffTracker = PickerForegroundAppHandoffTracker(
+        seedDurationMs = PICKER_HANDOFF_SEED_DURATION_MS,
+        leaseDurationMs = PICKER_FOREGROUND_LEASE_DURATION_MS,
+    )
     private val displayManager by lazy { getSystemService(DisplayManager::class.java) }
     private val refresh = Runnable { publishSnapshot() }
     private val absenceConfirmation = Runnable {
         absenceConfirmationScheduledAt = null
         publishSnapshot()
+    }
+    private val settledRefresh = Runnable {
+        if (!suspended) publishSnapshot()
     }
     private var absenceConfirmationScheduledAt: Long? = null
     private val displayListener = object : DisplayManager.DisplayListener {
@@ -48,6 +55,7 @@ class AppProfileAccessibilityService : AccessibilityService() {
                 mostRecentAppIdentity = null
             }
             disappearanceTracker.removeDisplay(displayId)
+            pickerHandoffTracker.removeDisplay(displayId)
             scheduleRefresh()
         }
     }
@@ -61,6 +69,7 @@ class AppProfileAccessibilityService : AccessibilityService() {
                 Intent.ACTION_SCREEN_ON, Intent.ACTION_USER_PRESENT -> {
                     suspended = false
                     scheduleRefresh()
+                    scheduleSettledRefreshes()
                 }
             }
         }
@@ -95,6 +104,7 @@ class AppProfileAccessibilityService : AccessibilityService() {
             ).also(AppProfileCoordinator::start)
         }
         scheduleRefresh()
+        scheduleSettledRefreshes()
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -121,6 +131,7 @@ class AppProfileAccessibilityService : AccessibilityService() {
                         fallbackPackagesByDisplay[eventDisplayId] = packageName
                         mostRecentAppIdentity = RecentAppIdentity(eventDisplayId, packageName)
                         identity?.let { packagesByAccessibilityWindow.record(it, packageName) }
+                        scheduleSettledRefreshes()
                     } else {
                         identity?.let(packagesByAccessibilityWindow::remove)
                     }
@@ -135,6 +146,7 @@ class AppProfileAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         handler.removeCallbacks(refresh)
         handler.removeCallbacks(absenceConfirmation)
+        handler.removeCallbacks(settledRefresh)
         if (receiverRegistered) {
             runCatching { unregisterReceiver(receiver) }
             receiverRegistered = false
@@ -149,6 +161,7 @@ class AppProfileAccessibilityService : AccessibilityService() {
         packagesByAccessibilityWindow.clear()
         mostRecentAppIdentity = null
         disappearanceTracker.clear()
+        pickerHandoffTracker.clear()
         VisibleAppWindowEvents.clear(isInteractive = false)
         super.onDestroy()
     }
@@ -156,6 +169,19 @@ class AppProfileAccessibilityService : AccessibilityService() {
     private fun scheduleRefresh() {
         handler.removeCallbacks(refresh)
         handler.postDelayed(refresh, COALESCE_DELAY_MS)
+    }
+
+    /**
+     * Some SurfaceView-heavy apps expose their root shortly after the first
+     * window event or service reconnect. These two bounded follow-up samples
+     * seed exact-window picker provenance without changing disappearance grace.
+     */
+    private fun scheduleSettledRefreshes() {
+        if (suspended) return
+        handler.removeCallbacks(settledRefresh)
+        SETTLED_REFRESH_DELAYS_MS.forEach { delayMs ->
+            handler.postDelayed(settledRefresh, delayMs)
+        }
     }
 
     private fun publishSnapshot() {
@@ -171,7 +197,9 @@ class AppProfileAccessibilityService : AccessibilityService() {
         for (displayIndex in 0 until allDisplays.size()) {
             val displayId = allDisplays.keyAt(displayIndex)
             allDisplays.valueAt(displayIndex).orEmpty().forEach { window ->
-                if (window.type != AccessibilityWindowInfo.TYPE_APPLICATION) return@forEach
+                if (window.type != AccessibilityWindowInfo.TYPE_APPLICATION) {
+                    return@forEach
+                }
                 val identity = window.id.takeIf { it >= 0 }?.let { windowId ->
                     AccessibilityWindowIdentity(displayId, windowId)
                 }
@@ -211,15 +239,29 @@ class AppProfileAccessibilityService : AccessibilityService() {
                 fallbackPackagesByDisplay[displayId] = packageName
             }
         }
-        val withEventFallbacks = mergeEventFallbackWindows(
-            observed = byDisplay,
-            eventFallbacks = fallbackPackagesByDisplay,
-            obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
+        val nowMs = android.os.SystemClock.uptimeMillis()
+        val verifiedPickerPackagesByDisplay = byDisplay.mapNotNull { (displayId, windows) ->
+            selectObservedFallbackPackage(
+                // Cached packages remain tied to exact TYPE_APPLICATION window
+                // identities that are present in this enumeration. Once an
+                // identity disappears, retainOnly() drops it and the fixed
+                // picker handoff begins; empty snapshots cannot renew it.
+                candidates = windows.filter { window ->
+                    isUsefulFallbackPackage(window.packageName)
+                },
+                existingPackageName = fallbackPackagesByDisplay[displayId],
+            )?.let { packageName -> displayId to packageName }
+        }.toMap()
+        val pickerHandoffs = pickerHandoffTracker.update(
+            verifiedPackageByDisplay = verifiedPickerPackagesByDisplay,
+            displayOn = ::isDisplayOn,
+            nowMs = nowMs,
         )
         val tracked = disappearanceTracker.stabilize(
-            withEventFallbacks,
-            ::isDisplayOn,
-            android.os.SystemClock.uptimeMillis(),
+            observed = byDisplay,
+            displayOn = ::isDisplayOn,
+            nowMs = nowMs,
+            obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
         )
         val normalized = tracked.windowsByDisplay.mapValues { (_, items) ->
             items.distinct().sortedWith(compareBy({ it.packageName }, { it.isFocused.not() }, { it.isActive.not() }))
@@ -233,7 +275,11 @@ class AppProfileAccessibilityService : AccessibilityService() {
             }
             .toMap()
             .toSortedMap()
-        fallbackPackagesByDisplay.keys.retainAll(normalized.keys)
+        fallbackPackagesByDisplay.entries.removeAll { (displayId, packageName) ->
+            normalized[displayId].orEmpty().none { window ->
+                window.packageName == packageName
+            }
+        }
         mostRecentAppIdentity = mostRecentAppIdentity?.takeIf { identity ->
             normalized[identity.displayId].orEmpty().any { window ->
                 window.packageName == identity.packageName
@@ -256,6 +302,7 @@ class AppProfileAccessibilityService : AccessibilityService() {
                 recentPackageByDisplay = fallbackPackagesByDisplay.filterKeys(normalized::containsKey),
                 mostRecentAppIdentity = mostRecentAppIdentity,
                 refreshRateFpsByDisplay = refreshRateFpsByDisplay,
+                pickerHandoffByDisplay = pickerHandoffs,
             ),
         )
     }
@@ -281,11 +328,13 @@ class AppProfileAccessibilityService : AccessibilityService() {
     private fun enterSuspendedState() {
         handler.removeCallbacks(refresh)
         handler.removeCallbacks(absenceConfirmation)
+        handler.removeCallbacks(settledRefresh)
         absenceConfirmationScheduledAt = null
         fallbackPackagesByDisplay.clear()
         packagesByAccessibilityWindow.clear()
         mostRecentAppIdentity = null
         disappearanceTracker.pause()
+        pickerHandoffTracker.clear()
         VisibleAppWindowEvents.clear(isInteractive = false)
     }
 
@@ -307,6 +356,8 @@ class AppProfileAccessibilityService : AccessibilityService() {
     companion object {
         private const val COALESCE_DELAY_MS = 50L
         private const val ABSENCE_CONFIRMATION_DELAY_MS = 500L
+        private val SETTLED_REFRESH_DELAYS_MS = longArrayOf(250L, 750L)
+        private const val PICKER_HANDOFF_SEED_DURATION_MS = 2_000L
     }
 }
 

@@ -105,12 +105,18 @@ class HostApplyFailure @JvmOverloads constructor(
     cause: Throwable? = null,
     /** Exact fallback ceilings successfully written while rolling this transaction back. */
     val rollbackOwnedValues: Map<String, Set<Long>> = emptyMap(),
+    /** Maximum nodes whose dispatched permission operation could have run. */
+    val attemptedMaximumModePaths: Set<String> = emptySet(),
+    /** Maximum nodes whose dispatched value operation could have run. */
+    val attemptedMaximumValuePaths: Set<String> = emptySet(),
 ) : IllegalStateException(message, cause)
 
-class HostDispatchFailure(
+class HostDispatchFailure @JvmOverloads constructor(
     val indeterminate: Boolean,
     message: String,
     cause: Throwable? = null,
+    /** Zero-based index of the first operation known to have failed, when dispatch reported one. */
+    val firstFailedOperationIndex: Int? = null,
 ) : IllegalStateException(message, cause)
 
 /** Host-side telemetry support. Frame telemetry is required to begin an automatic session. */

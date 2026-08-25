@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.Display
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -54,9 +55,13 @@ import com.aure.clustertune.MainActivity
 import com.aure.clustertune.R
 import com.aure.clustertune.apps.ForegroundAppInfo
 import com.aure.clustertune.apps.ForegroundAppResolver
+import com.aure.clustertune.apps.PICKER_FOREGROUND_LEASE_DURATION_MS
 import com.aure.clustertune.apps.TRANSIENT_APP_WINDOW_PACKAGES
 import com.aure.clustertune.apps.VENDOR_GAME_ASSISTANT_PACKAGES
+import com.aure.clustertune.apps.VisibleAppSnapshot
+import com.aure.clustertune.apps.VisibleAppWindow
 import com.aure.clustertune.apps.VisibleAppWindowEvents
+import com.aure.clustertune.apps.selectVisibleAppWindow
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.AppSettings
 import com.aure.clustertune.model.PerformanceProfile
@@ -76,12 +81,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 private data class EdgeHandleAppearance(
     val heightDp: Int,
@@ -95,16 +103,200 @@ internal const val SYSTEM_UI_PACKAGE = "com.android.systemui"
 internal fun compactProfilePickerExcludedPackages(ownPackageName: String): Set<String> =
     TRANSIENT_APP_WINDOW_PACKAGES + VENDOR_GAME_ASSISTANT_PACKAGES + ownPackageName
 
+internal fun hasFilteredCompactProfilePickerWindow(
+    snapshot: VisibleAppSnapshot,
+    targetDisplayId: Int,
+    filteredPackages: Set<String>,
+): Boolean = snapshot.windowsByDisplay[targetDisplayId]
+    .orEmpty()
+    .any { window -> window.packageName in filteredPackages }
+
+internal data class CompactProfilePickerTargetSnapshot(
+    val snapshot: VisibleAppSnapshot,
+    val leaseExpiresAtUptimeMs: Long?,
+)
+
+/**
+ * Resolves a real visible app, or consumes a still-fresh picker-only handoff.
+ * The synthetic window exists only in this returned copy and is never published
+ * to the app-profile coordinator.
+ */
+internal fun compactProfilePickerTargetSnapshot(
+    snapshot: VisibleAppSnapshot,
+    targetDisplayId: Int,
+    excludedPackages: Set<String>,
+    nowUptimeMs: Long,
+): CompactProfilePickerTargetSnapshot? {
+    if (!snapshot.isInteractive) return null
+    val selected = selectVisibleAppWindow(snapshot, targetDisplayId, excludedPackages)
+    val handoff = snapshot.pickerHandoffByDisplay[targetDisplayId]
+    val selectedIsHandoffBacked = selected?.packageName == handoff?.packageName
+    if (selected != null && !selectedIsHandoffBacked) {
+        return CompactProfilePickerTargetSnapshot(snapshot, leaseExpiresAtUptimeMs = null)
+    }
+    val validHandoff = handoff?.takeIf { candidate ->
+        candidate.packageName.isNotBlank() &&
+            candidate.packageName !in excludedPackages &&
+            targetDisplayId in snapshot.refreshRateFpsByDisplay &&
+            nowUptimeMs < candidate.seedExpiresAtUptimeMs &&
+            nowUptimeMs < candidate.leaseExpiresAtUptimeMs
+    } ?: return null
+    if (selectedIsHandoffBacked) {
+        return CompactProfilePickerTargetSnapshot(
+            snapshot = snapshot,
+            leaseExpiresAtUptimeMs = validHandoff.leaseExpiresAtUptimeMs,
+        )
+    }
+    val syntheticWindow = VisibleAppWindow(
+        packageName = validHandoff.packageName,
+        displayId = targetDisplayId,
+        isActive = true,
+    )
+    return CompactProfilePickerTargetSnapshot(
+        snapshot = snapshot.copy(
+            windowsByDisplay = snapshot.windowsByDisplay +
+                (targetDisplayId to (snapshot.windowsByDisplay[targetDisplayId].orEmpty() + syntheticWindow)),
+        ),
+        leaseExpiresAtUptimeMs = validHandoff.leaseExpiresAtUptimeMs,
+    )
+}
+
+internal suspend fun awaitCompactProfilePickerTargetSnapshot(
+    snapshots: StateFlow<VisibleAppSnapshot>,
+    targetDisplayId: Int,
+    excludedPackages: Set<String>,
+    timeoutMs: Long,
+    nowUptimeMs: () -> Long,
+): CompactProfilePickerTargetSnapshot? {
+    compactProfilePickerTargetSnapshot(
+        snapshot = snapshots.value,
+        targetDisplayId = targetDisplayId,
+        excludedPackages = excludedPackages,
+        nowUptimeMs = nowUptimeMs(),
+    )?.let { return it }
+    return withTimeoutOrNull(timeoutMs) {
+        var target: CompactProfilePickerTargetSnapshot? = null
+        snapshots.first { snapshot ->
+            target = compactProfilePickerTargetSnapshot(
+                snapshot = snapshot,
+                targetDisplayId = targetDisplayId,
+                excludedPackages = excludedPackages,
+                nowUptimeMs = nowUptimeMs(),
+            )
+            target != null
+        }
+        target
+    }
+}
+
+internal data class CompactProfilePickerSnapshotObservation(
+    val verifiedPackageName: String?,
+    val isObscured: Boolean,
+)
+
+internal fun observeCompactProfilePickerSnapshot(
+    snapshot: VisibleAppSnapshot,
+    targetDisplayId: Int,
+    excludedPackages: Set<String>,
+    pickerShowing: Boolean,
+    preferredPackageName: String? = null,
+): CompactProfilePickerSnapshotObservation {
+    val selectedPackageName = selectVisibleAppWindow(
+        snapshot = snapshot,
+        targetDisplayId = targetDisplayId,
+        excludedPackages = excludedPackages,
+        preferredPackageName = preferredPackageName,
+    )?.packageName
+    val selectedIsHandoffBacked = selectedPackageName != null &&
+        selectedPackageName == snapshot.pickerHandoffByDisplay[targetDisplayId]?.packageName
+    val targetWindows = snapshot.windowsByDisplay[targetDisplayId].orEmpty()
+    val emptyExistingDisplay = targetWindows.isEmpty() &&
+        targetDisplayId in snapshot.refreshRateFpsByDisplay
+    val hasFilteredWindow = hasFilteredCompactProfilePickerWindow(
+        snapshot = snapshot,
+        targetDisplayId = targetDisplayId,
+        filteredPackages = excludedPackages,
+    )
+    return CompactProfilePickerSnapshotObservation(
+        verifiedPackageName = selectedPackageName.takeUnless { selectedIsHandoffBacked },
+        isObscured = pickerShowing && snapshot.isInteractive &&
+            (selectedIsHandoffBacked || hasFilteredWindow || emptyExistingDisplay),
+    )
+}
+
+internal data class CompactProfilePickerForegroundLease(
+    val foreground: ForegroundAppInfo?,
+    val expiresAtUptimeMs: Long?,
+)
+
 internal fun updateCompactProfilePickerForeground(
-    current: ForegroundAppInfo?,
+    current: CompactProfilePickerForegroundLease,
     detected: ForegroundAppInfo?,
     ignoredPackages: Set<String> = emptySet(),
-): ForegroundAppInfo? {
-    if (detected != null && detected.packageName in ignoredPackages) {
+    hasFilteredVisibleWindow: Boolean = false,
+    nowUptimeMs: Long,
+    leaseDurationMs: Long,
+    detectedLeaseExpiresAtUptimeMs: Long? = null,
+): CompactProfilePickerForegroundLease {
+    val verified = detected?.takeUnless { it.packageName in ignoredPackages }
+    if (verified != null) {
+        val expiresAt = detectedLeaseExpiresAtUptimeMs
+            ?.let { sourceDeadline -> minOf(nowUptimeMs + leaseDurationMs, sourceDeadline) }
+            ?: (nowUptimeMs + leaseDurationMs)
+        if (nowUptimeMs >= expiresAt) return CompactProfilePickerForegroundLease(null, null)
+        return CompactProfilePickerForegroundLease(
+            foreground = verified,
+            expiresAtUptimeMs = expiresAt,
+        )
+    }
+    val filteredOnly = hasFilteredVisibleWindow || detected != null
+    if (
+        filteredOnly &&
+        current.foreground != null &&
+        current.expiresAtUptimeMs?.let { nowUptimeMs < it } == true
+    ) {
         return current
     }
-    return detected
+    return CompactProfilePickerForegroundLease(null, null)
 }
+
+internal fun isCompactProfilePickerMutationContextCurrent(
+    capturedPackageName: String?,
+    currentPackageName: String?,
+    capturedSessionToken: Long,
+    currentSessionToken: Long,
+    currentLeaseExpiresAtUptimeMs: Long?,
+    nowUptimeMs: Long,
+): Boolean = capturedPackageName != null &&
+    capturedPackageName == currentPackageName &&
+    capturedSessionToken == currentSessionToken &&
+    currentLeaseExpiresAtUptimeMs?.let { nowUptimeMs < it } == true
+
+internal fun compactProfilePickerRequiresForeground(requestedMode: CompactOverlayMode): Boolean =
+    requestedMode == CompactOverlayMode.PROFILES
+
+internal fun shouldDismissCompactProfilePickerAfterTargetLoss(
+    requestedMode: CompactOverlayMode,
+    previousForeground: ForegroundAppInfo?,
+    updatedForeground: ForegroundAppInfo?,
+): Boolean = compactProfilePickerRequiresForeground(requestedMode) &&
+    previousForeground != null &&
+    updatedForeground == null
+
+internal suspend fun runCompactProfilePickerMutationIfCurrent(
+    capturedForeground: ForegroundAppInfo?,
+    ensureCurrent: () -> Boolean,
+    mutation: suspend () -> Unit,
+): Boolean {
+    if (capturedForeground != null && !ensureCurrent()) return false
+    mutation()
+    return true
+}
+
+private data class CompactProfilePickerInitialTarget(
+    val foreground: ForegroundAppInfo,
+    val leaseExpiresAtUptimeMs: Long?,
+)
 
 internal fun initialCompactOverlayMode(
     requestedMode: CompactOverlayMode,
@@ -162,6 +354,9 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
     private var keepEdgeHandle = false
     private val foregroundAppResolver by lazy { ForegroundAppResolver(this) }
     private var compactProfilePickerSessionJob: Job? = null
+    private var compactProfilePickerForegroundLeaseExpiryJob: Job? = null
+    private var compactProfilePickerForegroundLeaseExpiresAtUptimeMs: Long? = null
+    private var compactProfilePickerSessionToken = 0L
     private var compactAssignmentMutationJob: Job? = null
     private var compactOverlayModeChangedByUser = false
     private val compactOverlayMode = MutableStateFlow(CompactOverlayMode.PROFILES)
@@ -310,8 +505,14 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                             contextDisplayRefreshRateFps = currentForegroundApp?.currentRefreshRateFps,
                             onAppProfileAssignmentChange = currentForegroundApp?.let { app ->
                                 { profile, customValues, customGpuMaxFrequencyHz, autoTuneTargetFps ->
+                                    val sessionToken = compactProfilePickerSessionToken
                                     compactAssignmentMutationJob?.cancel()
                                     compactAssignmentMutationJob = lifecycleScope.launch {
+                                        if (!ensureCurrentCompactProfilePickerTarget(app, sessionToken)) {
+                                            compactAssignmentMutationJob = null
+                                            stopIfIdle()
+                                            return@launch
+                                        }
                                         if (profile == null && customValues == null && customGpuMaxFrequencyHz == null &&
                                             autoTuneTargetFps == null
                                         ) {
@@ -479,6 +680,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
 
     private fun startCompactProfilePickerSession(mode: CompactOverlayMode) {
         cancelCompactProfilePickerSession()
+        val sessionToken = compactProfilePickerSessionToken
         compactOverlayModeChangedByUser = false
         compactOverlayMode.value = mode
         compactProfilePickerSessionJob = lifecycleScope.launch {
@@ -487,11 +689,21 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                     val settings = async { container.settingsStorage.settings.first() }
                     val storedAssignments = async { container.profileStorage.appProfileAssignments.first() }
                     val foreground = async(Dispatchers.Default) {
-                        val snapshot = VisibleAppWindowEvents.snapshots.value
-                        foregroundAppResolver.resolve(
-                            snapshot = snapshot,
+                        val target = awaitCompactProfilePickerTargetSnapshot(
+                            snapshots = VisibleAppWindowEvents.snapshots,
                             targetDisplayId = overlayDisplayId,
                             excludedPackages = foregroundExcludedPackages,
+                            timeoutMs = COMPACT_PICKER_QS_BRIDGE_WAIT_MS,
+                            nowUptimeMs = { android.os.SystemClock.uptimeMillis() },
+                        ) ?: return@async null
+                        val resolved = foregroundAppResolver.resolve(
+                            snapshot = target.snapshot,
+                            targetDisplayId = overlayDisplayId,
+                            excludedPackages = foregroundExcludedPackages,
+                        ) ?: return@async null
+                        CompactProfilePickerInitialTarget(
+                            foreground = resolved,
+                            leaseExpiresAtUptimeMs = target.leaseExpiresAtUptimeMs,
                         )
                     }
                     Triple(settings.await(), foreground.await(), storedAssignments.await())
@@ -502,57 +714,185 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                 dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
                 return@launch
             }
-            compactOverlayMode.value = initialCompactOverlayMode(
+            if (compactProfilePickerRequiresForeground(mode) && initial == null) {
+                SingleToast.show(
+                    applicationContext,
+                    "No foreground app found. Open the picker from a game and try again.",
+                    Toast.LENGTH_SHORT,
+                )
+                dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                return@launch
+            }
+            applyCompactProfilePickerForegroundDetection(
+                detected = initial?.foreground,
+                hasFilteredVisibleWindow = false,
+                nowUptimeMs = android.os.SystemClock.uptimeMillis(),
                 requestedMode = mode,
-                foregroundPackageName = initial?.packageName,
                 assignments = assignments,
+                sessionToken = sessionToken,
+                detectedLeaseExpiresAtUptimeMs = initial?.leaseExpiresAtUptimeMs,
             )
-            if (!showCompactProfilePickerOverlay(initial, initialSettings)) {
+            if (!showCompactProfilePickerOverlay(initial?.foreground, initialSettings)) {
                 dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
                 return@launch
             }
             VisibleAppWindowEvents.snapshots
                 .distinctUntilChangedBy { snapshot ->
                     val preferredPackageName = compactProfilePickerForeground.value?.packageName
-                    val selectedPackageName = foregroundAppResolver.selectPackageName(
+                    val observation = observeCompactProfilePickerSnapshot(
                         snapshot = snapshot,
                         targetDisplayId = overlayDisplayId,
                         excludedPackages = foregroundExcludedPackages,
+                        pickerShowing = windowController.isShowing(OverlayType.COMPACT_PROFILE_PICKER),
                         preferredPackageName = preferredPackageName,
                     )
-                    selectedPackageName to snapshot.refreshRateFpsByDisplay[overlayDisplayId]
+                    Triple(
+                        observation.verifiedPackageName,
+                        observation.isObscured,
+                        snapshot.refreshRateFpsByDisplay[overlayDisplayId],
+                    )
                 }
                 .collect { snapshot ->
                     if (!windowController.isShowing(OverlayType.COMPACT_PROFILE_PICKER)) return@collect
                     val preferredPackageName = compactProfilePickerForeground.value?.packageName
-                    val detected = withContext(Dispatchers.Default) {
-                        foregroundAppResolver.resolve(
-                            snapshot = snapshot,
-                            targetDisplayId = overlayDisplayId,
-                            excludedPackages = foregroundExcludedPackages,
-                            preferredPackageName = preferredPackageName,
-                        )
-                    }
-                    val updated = updateCompactProfilePickerForeground(
-                        compactProfilePickerForeground.value,
-                        detected,
-                        foregroundIgnoredPackages,
+                    val observation = observeCompactProfilePickerSnapshot(
+                        snapshot = snapshot,
+                        targetDisplayId = overlayDisplayId,
+                        excludedPackages = foregroundExcludedPackages,
+                        pickerShowing = true,
+                        preferredPackageName = preferredPackageName,
                     )
-                    compactProfilePickerForeground.value = updated
-                    compactOverlayMode.value = correctedCompactOverlayMode(
+                    val detected = if (observation.verifiedPackageName == null) {
+                        null
+                    } else {
+                        withContext(Dispatchers.Default) {
+                            foregroundAppResolver.resolve(
+                                snapshot = snapshot,
+                                targetDisplayId = overlayDisplayId,
+                                excludedPackages = foregroundExcludedPackages,
+                                preferredPackageName = preferredPackageName,
+                            )
+                        }
+                    }
+                    applyCompactProfilePickerForegroundDetection(
+                        detected = detected,
+                        hasFilteredVisibleWindow = observation.isObscured,
+                        nowUptimeMs = android.os.SystemClock.uptimeMillis(),
                         requestedMode = mode,
-                        currentMode = compactOverlayMode.value,
-                        foregroundPackageName = updated?.packageName,
                         assignments = assignments,
-                        modeChangedByUser = compactOverlayModeChangedByUser,
+                        sessionToken = sessionToken,
                     )
                 }
         }
     }
 
+    private fun applyCompactProfilePickerForegroundDetection(
+        detected: ForegroundAppInfo?,
+        hasFilteredVisibleWindow: Boolean,
+        nowUptimeMs: Long,
+        requestedMode: CompactOverlayMode,
+        assignments: List<AppProfileAssignment>,
+        sessionToken: Long,
+        detectedLeaseExpiresAtUptimeMs: Long? = null,
+    ) {
+        if (sessionToken != compactProfilePickerSessionToken) return
+        val previousForeground = compactProfilePickerForeground.value
+        val updated = updateCompactProfilePickerForeground(
+            current = CompactProfilePickerForegroundLease(
+                foreground = compactProfilePickerForeground.value,
+                expiresAtUptimeMs = compactProfilePickerForegroundLeaseExpiresAtUptimeMs,
+            ),
+            detected = detected,
+            ignoredPackages = foregroundIgnoredPackages,
+            hasFilteredVisibleWindow = hasFilteredVisibleWindow,
+            nowUptimeMs = nowUptimeMs,
+            leaseDurationMs = PICKER_FOREGROUND_LEASE_DURATION_MS,
+            detectedLeaseExpiresAtUptimeMs = detectedLeaseExpiresAtUptimeMs,
+        )
+        compactProfilePickerForeground.value = updated.foreground
+        compactProfilePickerForegroundLeaseExpiresAtUptimeMs = updated.expiresAtUptimeMs
+        val shouldDismiss = shouldDismissCompactProfilePickerAfterTargetLoss(
+            requestedMode = requestedMode,
+            previousForeground = previousForeground,
+            updatedForeground = updated.foreground,
+        )
+        if (shouldDismiss) {
+            SingleToast.show(
+                applicationContext,
+                "Foreground app changed. Reopen the picker and try again.",
+                Toast.LENGTH_SHORT,
+            )
+            dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+            return
+        }
+        compactOverlayMode.value = correctedCompactOverlayMode(
+            requestedMode = requestedMode,
+            currentMode = compactOverlayMode.value,
+            foregroundPackageName = updated.foreground?.packageName,
+            assignments = assignments,
+            modeChangedByUser = compactOverlayModeChangedByUser,
+        )
+        compactProfilePickerForegroundLeaseExpiryJob?.cancel()
+        compactProfilePickerForegroundLeaseExpiryJob = updated.expiresAtUptimeMs?.let { expiresAt ->
+            lifecycleScope.launch {
+                delay((expiresAt - android.os.SystemClock.uptimeMillis()).coerceAtLeast(1L))
+                if (
+                    sessionToken != compactProfilePickerSessionToken ||
+                    compactProfilePickerForegroundLeaseExpiresAtUptimeMs != expiresAt
+                ) {
+                    return@launch
+                }
+                compactProfilePickerForegroundLeaseExpiryJob = null
+                // This deadline is anchored to the last genuinely emitted foreground
+                // observation. Re-reading StateFlow.value here could renew from the exact same
+                // stale snapshot forever; only the live collector may establish a newer lease.
+                applyCompactProfilePickerForegroundDetection(
+                    detected = null,
+                    hasFilteredVisibleWindow = false,
+                    nowUptimeMs = android.os.SystemClock.uptimeMillis(),
+                    requestedMode = requestedMode,
+                    assignments = assignments,
+                    sessionToken = sessionToken,
+                )
+            }
+        }
+    }
+
     private fun cancelCompactProfilePickerSession() {
+        compactProfilePickerSessionToken += 1L
         compactProfilePickerSessionJob?.cancel()
         compactProfilePickerSessionJob = null
+        compactProfilePickerForegroundLeaseExpiryJob?.cancel()
+        compactProfilePickerForegroundLeaseExpiryJob = null
+        compactProfilePickerForegroundLeaseExpiresAtUptimeMs = null
+        compactProfilePickerForeground.value = null
+    }
+
+    private fun ensureCurrentCompactProfilePickerTarget(
+        captured: ForegroundAppInfo,
+        sessionToken: Long,
+    ): Boolean {
+        if (
+            isCompactProfilePickerMutationContextCurrent(
+                capturedPackageName = captured.packageName,
+                currentPackageName = compactProfilePickerForeground.value?.packageName,
+                capturedSessionToken = sessionToken,
+                currentSessionToken = compactProfilePickerSessionToken,
+                currentLeaseExpiresAtUptimeMs = compactProfilePickerForegroundLeaseExpiresAtUptimeMs,
+                nowUptimeMs = android.os.SystemClock.uptimeMillis(),
+            )
+        ) {
+            return true
+        }
+        if (sessionToken == compactProfilePickerSessionToken) {
+            SingleToast.show(
+                applicationContext,
+                "Foreground app changed. Reopen the picker and try again.",
+                Toast.LENGTH_SHORT,
+            )
+            dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+        }
+        return false
     }
 
     private fun hideEdgeHandle() {
@@ -568,36 +908,50 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         appProfileEnabled: Boolean,
         foregroundApp: ForegroundAppInfo?,
     ) {
+        val sessionToken = compactProfilePickerSessionToken
         lifecycleScope.launch {
-            val applyingToken = assignmentProfile?.let { viewModel.beginApplyingProfile(it.id) }
-            try {
-                if (foregroundApp != null && appProfileEnabled) {
-                    viewModel.saveAppProfileAssignmentAwait(
-                        foregroundApp.packageName,
-                        foregroundApp.label,
-                        assignmentProfile?.id,
-                        customMaxFrequencies ?: emptyMap(),
-                        state.currentGpuMaxFrequencyHz.takeIf { assignmentProfile == null },
-                    )
-                    // The accessibility coordinator is the sole app-profile
-                    // writer. Saving the assignment wakes it immediately and
-                    // lets it combine this target with apps on other displays.
-                    dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
-                    return@launch
-                }
-                val handler = QuickTunerApplyHandler(
-                    repository = PerformanceQuickTunerApplyRepository(container.repository),
-                    showToast = { message, duration -> SingleToast.show(applicationContext, message, duration) },
-                    refreshTile = { QuickSettingsTileRefresher.requestUpdate(applicationContext) },
-                )
-                handler.applyCurrent(state).onSuccess {
-                    foregroundApp?.let { app ->
-                        viewModel.deleteAppProfileAssignmentAwait(app.packageName)
+            runCompactProfilePickerMutationIfCurrent(
+                capturedForeground = foregroundApp,
+                ensureCurrent = {
+                    foregroundApp == null ||
+                        ensureCurrentCompactProfilePickerTarget(foregroundApp, sessionToken)
+                },
+            ) {
+                val applyingToken = assignmentProfile?.let { viewModel.beginApplyingProfile(it.id) }
+                try {
+                    if (foregroundApp != null && appProfileEnabled) {
+                        viewModel.saveAppProfileAssignmentAwait(
+                            foregroundApp.packageName,
+                            foregroundApp.label,
+                            assignmentProfile?.id,
+                            customMaxFrequencies ?: emptyMap(),
+                            state.currentGpuMaxFrequencyHz.takeIf { assignmentProfile == null },
+                        )
+                        // The accessibility coordinator is the sole app-profile
+                        // writer. Saving the assignment wakes it immediately and
+                        // lets it combine this target with apps on other displays.
+                        dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                        return@runCompactProfilePickerMutationIfCurrent
                     }
-                    dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                    val handler = QuickTunerApplyHandler(
+                        repository = PerformanceQuickTunerApplyRepository(container.repository),
+                        showToast = { message, duration ->
+                            SingleToast.show(applicationContext, message, duration)
+                        },
+                        refreshTile = { QuickSettingsTileRefresher.requestUpdate(applicationContext) },
+                    )
+                    handler.applyCurrent(state).onSuccess {
+                        foregroundApp?.let { app ->
+                            if (!ensureCurrentCompactProfilePickerTarget(app, sessionToken)) {
+                                return@onSuccess
+                            }
+                            viewModel.deleteAppProfileAssignmentAwait(app.packageName)
+                        }
+                        dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                    }
+                } finally {
+                    applyingToken?.let(viewModel::finishApplyingProfile)
                 }
-            } finally {
-                applyingToken?.let(viewModel::finishApplyingProfile)
             }
         }
     }
@@ -608,37 +962,51 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         foregroundApp: ForegroundAppInfo?,
         appProfileEnabled: Boolean,
     ) {
+        val sessionToken = compactProfilePickerSessionToken
         lifecycleScope.launch {
-            val applyingToken = viewModel.beginApplyingProfile(profile.id)
-            try {
-                if (foregroundApp != null && appProfileEnabled) {
-                    viewModel.saveAppProfileAssignmentAwait(
-                        foregroundApp.packageName,
-                        foregroundApp.label,
-                        profile.id,
-                    )
-                    // Applying is delegated to the event coordinator so
-                    // multi-display assignments produce one combined write.
-                    dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
-                    return@launch
-                }
-                val handler = QuickTunerApplyHandler(
-                    repository = PerformanceQuickTunerApplyRepository(container.repository),
-                    showToast = { message, duration -> SingleToast.show(applicationContext, message, duration) },
-                    refreshTile = { QuickSettingsTileRefresher.requestUpdate(applicationContext) },
-                )
-                handler.applyProfile(state, profile).onSuccess {
-                    foregroundApp?.let { app ->
-                        if (appProfileEnabled) {
-                            viewModel.saveAppProfileAssignmentAwait(app.packageName, app.label, profile.id)
-                        } else {
-                            viewModel.deleteAppProfileAssignmentAwait(app.packageName)
-                        }
+            runCompactProfilePickerMutationIfCurrent(
+                capturedForeground = foregroundApp,
+                ensureCurrent = {
+                    foregroundApp == null ||
+                        ensureCurrentCompactProfilePickerTarget(foregroundApp, sessionToken)
+                },
+            ) {
+                val applyingToken = viewModel.beginApplyingProfile(profile.id)
+                try {
+                    if (foregroundApp != null && appProfileEnabled) {
+                        viewModel.saveAppProfileAssignmentAwait(
+                            foregroundApp.packageName,
+                            foregroundApp.label,
+                            profile.id,
+                        )
+                        // Applying is delegated to the event coordinator so
+                        // multi-display assignments produce one combined write.
+                        dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                        return@runCompactProfilePickerMutationIfCurrent
                     }
-                    dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                    val handler = QuickTunerApplyHandler(
+                        repository = PerformanceQuickTunerApplyRepository(container.repository),
+                        showToast = { message, duration ->
+                            SingleToast.show(applicationContext, message, duration)
+                        },
+                        refreshTile = { QuickSettingsTileRefresher.requestUpdate(applicationContext) },
+                    )
+                    handler.applyProfile(state, profile).onSuccess {
+                        foregroundApp?.let { app ->
+                            if (!ensureCurrentCompactProfilePickerTarget(app, sessionToken)) {
+                                return@onSuccess
+                            }
+                            if (appProfileEnabled) {
+                                viewModel.saveAppProfileAssignmentAwait(app.packageName, app.label, profile.id)
+                            } else {
+                                viewModel.deleteAppProfileAssignmentAwait(app.packageName)
+                            }
+                        }
+                        dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)
+                    }
+                } finally {
+                    viewModel.finishApplyingProfile(applyingToken)
                 }
-            } finally {
-                viewModel.finishApplyingProfile(applyingToken)
             }
         }
     }
@@ -745,6 +1113,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         private const val EXTRA_EDGE_HANDLE_VERTICAL_POSITION_PERCENT = "edge_handle_vertical_position_percent"
         private const val EXTRA_EDGE_HANDLE_OPACITY_PERCENT = "edge_handle_opacity_percent"
         private const val EDGE_SWIPE_THRESHOLD_DP = 48
+        private const val COMPACT_PICKER_QS_BRIDGE_WAIT_MS = 1_000L
 
         fun showCompactTuner(context: Context) {
             ContextCompat.startForegroundService(

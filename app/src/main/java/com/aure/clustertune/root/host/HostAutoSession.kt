@@ -23,6 +23,13 @@ internal data class HostCeilingRestorePlan(
     val unresolvedCandidates: MutableMap<String, Set<Long>>,
     /** Ceiling permission modes that Auto Tune may have changed and still owns. */
     val ownedModePaths: MutableSet<String>,
+    /** Exact temporary modes introduced while a value restore was in progress. */
+    val pendingModeRestores: MutableMap<String, HostPendingModeRestore> = mutableMapOf(),
+)
+
+internal data class HostPendingModeRestore(
+    val ownedMode: Int,
+    val targetMode: Int,
 )
 
 object HostHardwareStateReader {
@@ -36,12 +43,34 @@ object HostHardwareStateReader {
             cpuMin = cpuMin,
             cpuCurrent = cpuCurrent,
             gpuMax = gpu?.let { readLong(fs, it.maxPath) },
-            gpuMin = gpu?.minPath?.let { readLong(fs, it) }?.takeUnless { it == -1L },
+            gpuMin = gpu?.let { domain ->
+                domain.minPath?.let { readLong(fs, it).takeIf { value -> value >= 0L } }
+                    ?: readPathlessKgslMinimum(fs, domain)
+            },
             gpuCurrent = gpu?.curPath?.let { readLong(fs, it) }?.takeUnless { it == -1L },
         )
     }
 
     private fun readLong(fs: HostFilesystem, path: String): Long = fs.read(path)?.toLongOrNull() ?: -1L
+
+    /** KGSL power levels index the raw frequency vector, whose duplicate positions matter. */
+    private fun readPathlessKgslMinimum(fs: HostFilesystem, gpu: GpuDomain): Long? {
+        if (gpu.minPath != null || gpu.maxPath.substringAfterLast('/') != "max_gpuclk") return null
+        val directory = gpu.maxPath.substringBeforeLast('/', missingDelimiterValue = "")
+        if (!directory.substringAfterLast('/').startsWith("kgsl-")) return null
+        val powerLevel = fs.read("$directory/min_pwrlevel")?.trim()?.toLongOrNull()
+            ?.takeIf { it >= 0L && it <= Int.MAX_VALUE.toLong() }
+            ?: return null
+        val rawFrequencies = fs.read("$directory/gpu_available_frequencies") ?: return null
+        val rawTokens = rawFrequencies.trim()
+            .takeIf(String::isNotEmpty)
+            ?.split(Regex("\\s+"))
+            ?: return null
+        val positionalFrequencies = rawTokens.map { token ->
+            token.toLongOrNull()?.takeIf { it > 0L } ?: return null
+        }
+        return positionalFrequencies.getOrNull(powerLevel.toInt())
+    }
 }
 
 /** Captures and restores only the domains discovered by the host; callers cannot provide paths. */
@@ -124,6 +153,8 @@ class HostCheckpointEngine(
             plan.ownedValues.keys.any { it !in checkpointPaths } ||
             plan.unresolvedCandidates.keys.any { it !in checkpointPaths } ||
             plan.ownedModePaths.any { it !in checkpointPaths } ||
+            plan.pendingModeRestores.keys.any { it !in checkpointPaths } ||
+            plan.pendingModeRestores.keys.any { it in plan.ownedModePaths } ||
             plan.ownedValues.keys.any { it in plan.unresolvedCandidates } ||
             plan.unresolvedCandidates.values.any { candidates -> candidates.isEmpty() || candidates.any { it <= 0L } }
         ) {
@@ -134,7 +165,7 @@ class HostCheckpointEngine(
         checkpoint.nodes.asReversed().forEach { node ->
             val expectedOwned = plan.ownedValues[node.path]
             val unresolvedCandidates = plan.unresolvedCandidates[node.path]
-            val ownsMode = node.path in plan.ownedModePaths
+            val ownsMode = node.path in plan.ownedModePaths || node.path in plan.pendingModeRestores
             if (expectedOwned == null && unresolvedCandidates == null && !ownsMode) {
                 return@forEach
             }
@@ -142,7 +173,9 @@ class HostCheckpointEngine(
             val restored = runCatching {
                 when {
                     current == null -> {
-                        val modeRestored = !ownsMode || restoreOwnedModeOnly(node)
+                        // Value and mode ownership are independent. Once the original mode is
+                        // back, relinquish it even while value ownership remains unresolved.
+                        val modeRestored = !ownsMode || restoreOwnedModeOnly(node, plan)
                         if (expectedOwned != null || unresolvedCandidates != null) false else modeRestored
                     }
                     expectedOwned != null && current == node.value -> {
@@ -150,10 +183,10 @@ class HostCheckpointEngine(
                         // even if restoring its permission mode fails; a later retry must only
                         // retry the mode and never reclaim a value an external writer selected.
                         plan.ownedValues.remove(node.path)
-                        !ownsMode || restoreOwnedModeOnly(node)
+                        !ownsMode || restoreOwnedModeOnly(node, plan)
                     }
                     expectedOwned != null && current == expectedOwned -> {
-                        val restoredValue = restoreOwnedValueAndMode(node, restoreCheckpointMode = ownsMode)
+                        val restoredValue = restoreOwnedValueAndMode(node, plan)
                         // A write can reach the checkpoint while a subsequent mode/readback
                         // operation fails. Reconcile before deciding whether to retain ownership.
                         if (fs.read(node.path)?.toLongOrNull() == node.value) {
@@ -165,28 +198,27 @@ class HostCheckpointEngine(
                         // Another writer changed this node after the stop plan was captured.
                         // Resolve it as external permanently so a retry cannot later reclaim it.
                         plan.ownedValues.remove(node.path)
-                        !ownsMode || restoreOwnedModeOnly(node)
+                        !ownsMode || restoreOwnedModeOnly(node, plan)
                     }
                     unresolvedCandidates != null -> {
                         plan.unresolvedCandidates.remove(node.path)
                         when {
-                            current == node.value -> !ownsMode || restoreOwnedModeOnly(node)
+                            current == node.value -> !ownsMode || restoreOwnedModeOnly(node, plan)
                             current in unresolvedCandidates -> {
                                 plan.ownedValues[node.path] = current
-                                val restoredValue = restoreOwnedValueAndMode(node, restoreCheckpointMode = ownsMode)
+                                val restoredValue = restoreOwnedValueAndMode(node, plan)
                                 if (fs.read(node.path)?.toLongOrNull() == node.value) {
                                     plan.ownedValues.remove(node.path)
                                 }
                                 restoredValue
                             }
-                            else -> !ownsMode || restoreOwnedModeOnly(node)
+                            else -> !ownsMode || restoreOwnedModeOnly(node, plan)
                         }
                     }
-                    ownsMode -> restoreOwnedModeOnly(node)
+                    ownsMode -> restoreOwnedModeOnly(node, plan)
                     else -> true
                 }
             }.getOrDefault(false)
-            if (restored) plan.ownedModePaths.remove(node.path)
             if (!restored) {
                 failures += if (current == null && (expectedOwned != null || unresolvedCandidates != null)) {
                     "${node.path} (ownership unreadable)"
@@ -221,25 +253,107 @@ class HostCheckpointEngine(
      * Auto Tune may leave a maximum at the checkpoint, writable, or protected mode. Restore
      * only those known modes; a different mode is treated as an external actor's state.
      */
-    private fun restoreOwnedModeOnly(node: HostCheckpointNode): Boolean {
-        val currentMode = fs.mode(node.path) ?: return false
-        if (currentMode !in autoOwnedModes(node)) return true
-        return currentMode == node.mode || (fs.chmod(node.path, node.mode) && fs.mode(node.path) == node.mode)
-    }
-
-    /** Restore an Auto-owned value while preserving a newer external permission mode. */
-    private fun restoreOwnedValueAndMode(
+    private fun restoreOwnedModeOnly(
         node: HostCheckpointNode,
-        restoreCheckpointMode: Boolean,
+        plan: HostCeilingRestorePlan,
     ): Boolean {
         val currentMode = fs.mode(node.path) ?: return false
-        val finalMode = if (restoreCheckpointMode && currentMode in autoOwnedModes(node)) node.mode else currentMode
-        var ok = fs.chmod(node.path, writableMode(finalMode))
-        ok = fs.write(node.path, node.value.toString()) && ok
-        ok = (fs.read(node.path)?.toLongOrNull() == node.value) && ok
-        ok = fs.chmod(node.path, finalMode) && ok
-        ok = (fs.mode(node.path) == finalMode) && ok
-        return ok
+        plan.pendingModeRestores[node.path]?.let { pending ->
+            return when (currentMode) {
+                pending.targetMode -> true
+                pending.ownedMode -> {
+                    fs.chmod(node.path, pending.targetMode)
+                    val restoredMode = fs.mode(node.path)
+                    restoredMode == pending.targetMode || restoredMode != null && restoredMode != pending.ownedMode
+                }
+                else -> true // A different mode is a newer external choice.
+            }.also { resolved ->
+                if (resolved) plan.pendingModeRestores.remove(node.path)
+            }
+        }
+        if (currentMode !in autoOwnedModes(node)) {
+            plan.ownedModePaths.remove(node.path)
+            return true
+        }
+        val restored = currentMode == node.mode || run {
+            fs.chmod(node.path, node.mode)
+            val restoredMode = fs.mode(node.path)
+            restoredMode == node.mode || restoredMode != null && restoredMode !in autoOwnedModes(node)
+        }
+        if (restored) plan.ownedModePaths.remove(node.path)
+        return restored
+    }
+
+    /**
+     * Restores an Auto-owned value while preserving a newer external permission mode. Any
+     * temporary widening is recorded before chmod, so an exception or failed final chmod leaves
+     * exact ownership evidence for the retry instead of being mistaken for an external mode.
+     */
+    private fun restoreOwnedValueAndMode(
+        node: HostCheckpointNode,
+        plan: HostCeilingRestorePlan,
+    ): Boolean {
+        val currentMode = fs.mode(node.path) ?: return false
+        val pendingMode = plan.pendingModeRestores[node.path]
+        val finalMode = when {
+            pendingMode != null && currentMode == pendingMode.ownedMode -> pendingMode.targetMode
+            pendingMode != null && currentMode == pendingMode.targetMode -> currentMode
+            pendingMode != null -> currentMode // A different mode is a newer external choice.
+            node.path in plan.ownedModePaths && currentMode in autoOwnedModes(node) -> node.mode
+            else -> currentMode
+        }
+        plan.pendingModeRestores.remove(node.path)
+
+        val temporaryMode = writableMode(finalMode)
+        if (temporaryMode != finalMode) {
+            // Transition broad Auto Tune mode ownership to the exact temporary mode that this
+            // restore may create. If chmod did not take effect, the old mode is already the
+            // desired final mode; if it did, the retry can safely recognize the widened mode.
+            plan.ownedModePaths.remove(node.path)
+            plan.pendingModeRestores[node.path] = HostPendingModeRestore(temporaryMode, finalMode)
+        }
+        if (currentMode != temporaryMode) {
+            // Record the possible post-chmod state first: filesystem implementations may throw
+            // after dispatching the mutation, leaving its result otherwise unknowable.
+            fs.chmod(node.path, temporaryMode)
+        }
+
+        fs.write(node.path, node.value.toString())
+        val valueRestored = fs.read(node.path)?.toLongOrNull() == node.value
+        val modeRestored = finishPendingValueRestoreMode(node, finalMode, temporaryMode, plan)
+        return valueRestored && modeRestored
+    }
+
+    private fun finishPendingValueRestoreMode(
+        node: HostCheckpointNode,
+        finalMode: Int,
+        temporaryMode: Int,
+        plan: HostCeilingRestorePlan,
+    ): Boolean {
+        val path = node.path
+        val beforeRestore = fs.mode(path) ?: return false
+        if (temporaryMode == finalMode) {
+            val restored = beforeRestore == finalMode ||
+                path in plan.ownedModePaths && beforeRestore !in autoOwnedModes(node) ||
+                path !in plan.ownedModePaths
+            if (restored) plan.ownedModePaths.remove(path)
+            return restored
+        }
+        if (beforeRestore != temporaryMode) {
+            // The intended mode is already restored, or a newer external mode took over.
+            plan.pendingModeRestores.remove(path)
+            plan.ownedModePaths.remove(path)
+            return true
+        }
+
+        fs.chmod(path, finalMode)
+        val afterRestore = fs.mode(path) ?: return false
+        val restored = afterRestore == finalMode || afterRestore != temporaryMode
+        if (restored) {
+            plan.pendingModeRestores.remove(path)
+            plan.ownedModePaths.remove(path)
+        }
+        return restored
     }
 
     private fun autoOwnedModes(node: HostCheckpointNode): Set<Int> = setOf(
@@ -268,8 +382,10 @@ class HostAutoSessionController(
         val checkpoint: HostHardwareCheckpoint,
         val cpuLowerEnvelope: List<Long>,
         val cpuCeilingEnvelope: List<Long>,
+        val capturedCpuFloors: List<Long?>,
         val gpuLowerEnvelope: Long?,
         val gpuCeilingEnvelope: Long?,
+        val capturedGpuFloor: Long?,
         var deadlineNanos: Long,
         var sequence: Long = 0L,
         var latestTelemetry: HostAutoTelemetry? = null,
@@ -382,12 +498,31 @@ class HostAutoSessionController(
 
         val resolved = resolveHostMaximumTargets(hostCapabilities, baseline)
         var baselineApplySucceeded = false
+        var baselineModeMutationPaths = emptySet<String>()
+        var baselineValueMutationPaths = emptySet<String>()
         var confirmedBaselineState: HostState? = null
         return try {
-            applyEngine.applyMaxOnlyOrThrow(hostCapabilities, baseline)
+            val stateBeforeBaselineApply = HostHardwareStateReader.read(fs, hostCapabilities)
+            check(checkpointMatchesState(preBaselineCheckpoint, stateBeforeBaselineApply)) {
+                "frequency ceilings changed before the Auto Tune baseline was applied"
+            }
+            requireFloorsUnchanged(
+                expected = stateAfterTelemetryStart,
+                actual = stateBeforeBaselineApply,
+                context = "before the Auto Tune baseline was applied",
+            )
+            requireSafeBaselineMaximums(stateBeforeBaselineApply, baseline, resolved)
+            val mutationReceipt = applyEngine.applyMaxOnlyTrackedOrThrow(hostCapabilities, baseline)
+            baselineModeMutationPaths = mutationReceipt.modePaths
+            baselineValueMutationPaths = mutationReceipt.valuePaths
             baselineApplySucceeded = true
 
             val baselineState = HostHardwareStateReader.read(fs, hostCapabilities)
+            requireFloorsUnchanged(
+                expected = stateBeforeBaselineApply,
+                actual = baselineState,
+                context = "while the Auto Tune baseline was applied",
+            )
             requireBaselineStateMatches(
                 before = preBaselineState,
                 after = baselineState,
@@ -405,6 +540,11 @@ class HostAutoSessionController(
             check(checkpointMatchesState(baselineCheckpoint, verifiedState)) {
                 "frequency ceilings changed while the Auto Tune baseline was checkpointed"
             }
+            requireFloorsUnchanged(
+                expected = stateBeforeBaselineApply,
+                actual = verifiedState,
+                context = "while the Auto Tune baseline was checkpointed",
+            )
             requireBaselineStateMatches(
                 before = preBaselineState,
                 after = verifiedState,
@@ -425,6 +565,16 @@ class HostAutoSessionController(
             val requestedValuesMayRemain = baselineApplySucceeded || applyFailure?.let {
                 it.mutationStarted && (it.indeterminate || !it.rollbackComplete)
             } == true
+            val possibleModeMutationPaths = when {
+                baselineApplySucceeded -> baselineModeMutationPaths
+                requestedValuesMayRemain -> applyFailure?.attemptedMaximumModePaths.orEmpty()
+                else -> emptySet()
+            }
+            val possibleValueMutationPaths = when {
+                baselineApplySucceeded -> baselineValueMutationPaths
+                requestedValuesMayRemain -> applyFailure?.attemptedMaximumValuePaths.orEmpty()
+                else -> emptySet()
+            }
             stopLocked(
                 session = provisional,
                 requestedStatus = HostAutoSessionStatus.STOPPED,
@@ -437,8 +587,9 @@ class HostAutoSessionController(
                     confirmedState = confirmedBaselineState,
                     includeAcceptedCandidates = requestedValuesMayRemain && confirmedBaselineState == null,
                     rollbackOwnedValues = applyFailure?.rollbackOwnedValues.orEmpty(),
+                    possibleValueMutationPaths = possibleValueMutationPaths,
                 ),
-                modeOwnershipCandidates = if (requestedValuesMayRemain) requestMaximumPaths(baseline) else emptySet(),
+                modeOwnershipCandidates = possibleModeMutationPaths,
             )
         }
     }
@@ -449,6 +600,14 @@ class HostAutoSessionController(
         expireLocked()
         val session = resolveActive(sessionId, expectedHostEpoch) ?: return staleOrTerminal(sessionId, expectedHostEpoch)
         val current = HostHardwareStateReader.read(fs, hostCapabilities)
+        externalFloorDrift(session, current)?.let { detail ->
+            return stopLocked(
+                session,
+                HostAutoSessionStatus.STOPPED,
+                "automatic session stopped: live minimum changed ($detail)",
+                observedState = current,
+            )
+        }
         externalCeilingDrift(session, current)?.let { detail ->
             return stopLocked(
                 session,
@@ -510,9 +669,15 @@ class HostAutoSessionController(
         expireLocked()
         val session = resolveActive(sessionId, expectedHostEpoch) ?: return staleOrTerminal(sessionId, expectedHostEpoch)
         validateRequestIdentity(request)
-        validateWithinEnvelope(session, request)
-        touch(session)
         val current = HostHardwareStateReader.read(fs, hostCapabilities)
+        externalFloorDrift(session, current)?.let { detail ->
+            return stopLocked(
+                session,
+                HostAutoSessionStatus.STOPPED,
+                "automatic session stopped: live minimum changed ($detail)",
+                observedState = current,
+            )
+        }
         externalCeilingDrift(session, current)?.let { detail ->
             return stopLocked(
                 session,
@@ -521,26 +686,62 @@ class HostAutoSessionController(
                 observedState = current,
             )
         }
+        validateWithinEnvelope(session, request)
+        touch(session)
         val alreadyApplied = requestMatchesState(request, current)
         val appliedState = if (!alreadyApplied) {
             val previousCpuMax = session.lastOwnedCpuMax
             val previousGpuMax = session.lastOwnedGpuMax
             val sessionCapabilities = capabilitiesWithinEnvelope(session)
-            val resolvedStep = resolveHostMaximumTargets(sessionCapabilities, request)
-            try {
-                applyEngine.applyMaxOnlyOrThrow(sessionCapabilities, request)
+            // Accepted aliases are resolved against the bounded session envelope, but the
+            // permission policy must retain the physical-domain meaning of Stock. A fixed
+            // efficiency ceiling remains protected even when it is the top of the session.
+            val resolvedStepMode = resolveHostMaximumTargets(hostCapabilities, request)
+            val stockModeOverrides = buildMap {
+                hostCapabilities.cpus.forEachIndexed { index, cpu ->
+                    put(cpu.maxPath, resolvedStepMode.cpuStock[index])
+                }
+                if (request.gpuMax != null) hostCapabilities.gpu?.let { gpu ->
+                    put(gpu.maxPath, resolvedStepMode.gpuStock)
+                }
+            }
+            val preserveModePaths = buildSet {
+                hostCapabilities.cpus.forEachIndexed { index, cpu ->
+                    if (request.cpuMax[index] == current.cpuMax[index]) add(cpu.maxPath)
+                }
+                if (request.gpuMax != null && request.gpuMax == current.gpuMax) {
+                    hostCapabilities.gpu?.let { add(it.maxPath) }
+                }
+            }
+            val mutationReceipt = try {
+                applyEngine.applyMaxOnlyTrackedOrThrow(
+                    sessionCapabilities,
+                    request,
+                    stockModeOverrides = stockModeOverrides,
+                    preserveModePaths = preserveModePaths,
+                )
             } catch (failure: Throwable) {
                 val applyFailure = failure as? HostApplyFailure
                 val requestedValuesMayRemain = applyFailure?.let {
                     it.mutationStarted && (it.indeterminate || !it.rollbackComplete)
                 } == true
+                val possibleModeMutationPaths = if (requestedValuesMayRemain) {
+                    applyFailure?.attemptedMaximumModePaths.orEmpty()
+                } else {
+                    emptySet()
+                }
+                val possibleValueMutationPaths = if (requestedValuesMayRemain) {
+                    applyFailure?.attemptedMaximumValuePaths.orEmpty()
+                } else {
+                    emptySet()
+                }
                 val ownershipCandidates = buildMap<String, Set<Long>> {
                     hostCapabilities.cpus.forEachIndexed { index, cpu ->
                         put(
                             cpu.maxPath,
                             buildSet {
                                 add(previousCpuMax[index])
-                                if (requestedValuesMayRemain) add(request.cpuMax[index])
+                                if (cpu.maxPath in possibleValueMutationPaths) add(request.cpuMax[index])
                                 addAll(applyFailure?.rollbackOwnedValues?.get(cpu.maxPath).orEmpty())
                             },
                         )
@@ -550,7 +751,7 @@ class HostAutoSessionController(
                             gpu.maxPath,
                             buildSet {
                                 previousGpuMax?.let(::add)
-                                if (requestedValuesMayRemain) request.gpuMax?.let(::add)
+                                if (gpu.maxPath in possibleValueMutationPaths) request.gpuMax?.let(::add)
                                 addAll(applyFailure?.rollbackOwnedValues?.get(gpu.maxPath).orEmpty())
                             },
                         )
@@ -562,11 +763,7 @@ class HostAutoSessionController(
                     message = "automatic session stopped after apply failure: ${failure.message.orEmpty().take(128)}",
                     observedState = HostHardwareStateReader.read(fs, hostCapabilities),
                     ownershipCandidates = ownershipCandidates,
-                    modeOwnershipCandidates = if (requestedValuesMayRemain) {
-                        requestMaximumPaths(request)
-                    } else {
-                        emptySet()
-                    },
+                    modeOwnershipCandidates = possibleModeMutationPaths,
                 )
             }
             // The request, rather than a later readback, defines what this session wrote. If an
@@ -575,22 +772,31 @@ class HostAutoSessionController(
             session.lastOwnedCpuMax = request.cpuMax
             session.lastOwnedGpuMax = request.gpuMax
             hostCapabilities.cpus.forEachIndexed { index, cpu ->
+                if (cpu.maxPath !in mutationReceipt.modePaths) return@forEachIndexed
                 session.lastOwnedMaxModes[cpu.maxPath] = autoAppliedMode(
                     session.lastOwnedMaxModes.getValue(cpu.maxPath),
-                    stock = resolvedStep.cpuStock[index],
+                    stock = resolvedStepMode.cpuStock[index],
                 )
                 session.ownedModePaths += cpu.maxPath
             }
-            if (request.gpuMax != null) hostCapabilities.gpu?.let { gpu ->
+            if (request.gpuMax != null) hostCapabilities.gpu?.takeIf { it.maxPath in mutationReceipt.modePaths }?.let { gpu ->
                 session.lastOwnedMaxModes[gpu.maxPath] = autoAppliedMode(
                     session.lastOwnedMaxModes.getValue(gpu.maxPath),
-                    stock = resolvedStep.gpuStock,
+                    stock = resolvedStepMode.gpuStock,
                 )
                 session.ownedModePaths += gpu.maxPath
             }
             HostHardwareStateReader.read(fs, hostCapabilities)
         } else {
             current
+        }
+        externalFloorDrift(session, appliedState)?.let { detail ->
+            return stopLocked(
+                session,
+                HostAutoSessionStatus.STOPPED,
+                "automatic session stopped: live minimum changed after apply ($detail)",
+                observedState = appliedState,
+            )
         }
         externalCeilingDrift(session, appliedState)?.let { detail ->
             return stopLocked(
@@ -608,6 +814,14 @@ class HostAutoSessionController(
         expireLocked()
         val session = resolveActive(sessionId, expectedHostEpoch) ?: return staleOrTerminal(sessionId, expectedHostEpoch)
         val current = HostHardwareStateReader.read(fs, hostCapabilities)
+        externalFloorDrift(session, current)?.let { detail ->
+            return stopLocked(
+                session,
+                HostAutoSessionStatus.STOPPED,
+                "automatic session stopped: live minimum changed ($detail)",
+                observedState = current,
+            )
+        }
         externalCeilingDrift(session, current)?.let { detail ->
             return stopLocked(
                 session,
@@ -731,6 +945,10 @@ class HostAutoSessionController(
         }
         val cpuCeilings = hostCapabilities.cpus.map { cpu -> checkpoint.valueFor(cpu.maxPath) }
         val gpuCeiling = hostCapabilities.gpu?.let { gpu -> checkpoint.valueFor(gpu.maxPath) }
+        val cpuFloors = List(hostCapabilities.cpus.size) { index ->
+            state.cpuMin.getOrNull(index).positiveFloorOrNull()
+        }
+        val gpuFloor = state.gpuMin.positiveFloorOrNull()
         val timeoutNanos = request.heartbeatTimeoutMs * 1_000_000L
         return ActiveSession(
             id = id,
@@ -738,13 +956,23 @@ class HostAutoSessionController(
             timeoutNanos = timeoutNanos,
             checkpoint = checkpoint,
             cpuLowerEnvelope = hostCapabilities.cpus.mapIndexed { index, cpu ->
-                lowestCpuCeiling(cpu, cpuCeilings[index]) ?: state.cpuMax[index]
+                lowestCpuCeiling(
+                    cpu = cpu,
+                    sessionCeiling = cpuCeilings[index],
+                    liveMinimum = cpuFloors[index],
+                )
             },
             cpuCeilingEnvelope = cpuCeilings,
+            capturedCpuFloors = cpuFloors,
             gpuLowerEnvelope = hostCapabilities.gpu?.let { gpu ->
-                lowestGpuCeiling(gpu, checkpoint.valueFor(gpu.maxPath))
+                lowestGpuCeiling(
+                    gpu = gpu,
+                    sessionCeiling = checkpoint.valueFor(gpu.maxPath),
+                    liveMinimum = gpuFloor,
+                )
             },
             gpuCeilingEnvelope = gpuCeiling,
+            capturedGpuFloor = gpuFloor,
             deadlineNanos = deadline(now, timeoutNanos),
             lastOwnedCpuMax = state.cpuMax,
             lastOwnedGpuMax = state.gpuMax,
@@ -782,6 +1010,56 @@ class HostAutoSessionController(
         resolveHostMaximumTargets(hostCapabilities, request)
     }
 
+    /** A max-only baseline may leave an already accepted ceiling alone regardless of its floor. */
+    private fun requireSafeBaselineMaximums(
+        state: HostState,
+        request: ApplyRequest,
+        resolved: HostResolvedMaximumTargets,
+    ) {
+        require(state.cpuMax.size == hostCapabilities.cpus.size) {
+            "Auto Tune baseline CPU state is incomplete"
+        }
+        resolved.cpuAcceptedCeilings.forEachIndexed { index, accepted ->
+            if (state.cpuMax[index] in accepted) return@forEachIndexed
+            val floor = state.cpuMin.getOrNull(index).positiveFloorOrNull()
+            require(floor != null) {
+                "Auto Tune baseline cannot change ${hostCapabilities.cpus[index].id} without a live minimum"
+            }
+            require(accepted.isNotEmpty() && accepted.all { it > floor }) {
+                "Auto Tune baseline target is not above the live minimum for ${hostCapabilities.cpus[index].id}"
+            }
+        }
+        if (request.gpuMax != null) {
+            val gpu = hostCapabilities.gpu
+                ?: throw IllegalArgumentException("GPU target requested without a GPU domain")
+            val accepted = resolved.gpuAcceptedCeilings
+            if (state.gpuMax !in accepted) {
+                val floor = state.gpuMin.positiveFloorOrNull()
+                require(floor != null) {
+                    "Auto Tune baseline cannot change ${gpu.id} without a live minimum"
+                }
+                require(accepted.isNotEmpty() && accepted.all { it > floor }) {
+                    "Auto Tune baseline target is not above the live minimum for ${gpu.id}"
+                }
+            }
+        }
+    }
+
+    private fun requireFloorsUnchanged(
+        expected: HostState,
+        actual: HostState,
+        context: String,
+    ) {
+        val detail = floorDrift(
+            capturedCpuFloors = List(hostCapabilities.cpus.size) { index ->
+                expected.cpuMin.getOrNull(index).positiveFloorOrNull()
+            },
+            capturedGpuFloor = expected.gpuMin.positiveFloorOrNull(),
+            state = actual,
+        )
+        require(detail == null) { "frequency minimum changed $context ($detail)" }
+    }
+
     private fun requireBaselineStateMatches(
         before: HostState,
         after: HostState,
@@ -815,6 +1093,7 @@ class HostAutoSessionController(
         confirmedState: HostState?,
         includeAcceptedCandidates: Boolean,
         rollbackOwnedValues: Map<String, Set<Long>>,
+        possibleValueMutationPaths: Set<String>,
     ): Map<String, Set<Long>> = buildMap {
         hostCapabilities.cpus.forEachIndexed { index, cpu ->
             put(
@@ -822,7 +1101,7 @@ class HostAutoSessionController(
                 buildSet {
                     before.cpuMax.getOrNull(index)?.takeIf { it > 0L }?.let(::add)
                     confirmedState?.cpuMax?.getOrNull(index)?.takeIf { it > 0L }?.let(::add)
-                    if (includeAcceptedCandidates) {
+                    if (includeAcceptedCandidates && cpu.maxPath in possibleValueMutationPaths) {
                         addAll(resolved.cpuAcceptedCeilings[index].filter { it > 0L })
                     }
                     addAll(rollbackOwnedValues[cpu.maxPath].orEmpty().filter { it > 0L })
@@ -836,7 +1115,7 @@ class HostAutoSessionController(
                     if (request.gpuMax != null) {
                         before.gpuMax?.takeIf { it > 0L }?.let(::add)
                         confirmedState?.gpuMax?.takeIf { it > 0L }?.let(::add)
-                        if (includeAcceptedCandidates) {
+                        if (includeAcceptedCandidates && gpu.maxPath in possibleValueMutationPaths) {
                             addAll(resolved.gpuAcceptedCeilings.filter { it > 0L })
                         }
                         addAll(rollbackOwnedValues[gpu.maxPath].orEmpty().filter { it > 0L })
@@ -844,11 +1123,6 @@ class HostAutoSessionController(
                 },
             )
         }
-    }
-
-    private fun requestMaximumPaths(request: ApplyRequest): Set<String> = buildSet {
-        hostCapabilities.cpus.forEach { add(it.maxPath) }
-        if (request.gpuMax != null) hostCapabilities.gpu?.let { add(it.maxPath) }
     }
 
     private fun autoAppliedMode(mode: Int, stock: Boolean): Int =
@@ -916,6 +1190,38 @@ class HostAutoSessionController(
     private fun requestMatchesState(request: ApplyRequest, state: HostState): Boolean {
         if (request.resetToStock || request.cpuMax != state.cpuMax) return false
         return request.gpuMax == null || request.gpuMax == state.gpuMax
+    }
+
+    private fun externalFloorDrift(session: ActiveSession, state: HostState): String? =
+        floorDrift(session.capturedCpuFloors, session.capturedGpuFloor, state)
+
+    private fun floorDrift(
+        capturedCpuFloors: List<Long?>,
+        capturedGpuFloor: Long?,
+        state: HostState,
+    ): String? {
+        if (state.cpuMin.size != capturedCpuFloors.size) return "CPU minimum topology"
+        capturedCpuFloors.forEachIndexed { index, captured ->
+            val current = state.cpuMin[index].positiveFloorOrNull()
+            if (current != captured) {
+                return if (current == null) {
+                    "${hostCapabilities.cpus[index].id} minimum unavailable"
+                } else {
+                    "${hostCapabilities.cpus[index].id} minimum changed"
+                }
+            }
+        }
+        if (hostCapabilities.gpu != null) {
+            val current = state.gpuMin.positiveFloorOrNull()
+            if (current != capturedGpuFloor) {
+                return if (current == null) {
+                    "${hostCapabilities.gpu.id} minimum unavailable"
+                } else {
+                    "${hostCapabilities.gpu.id} minimum changed"
+                }
+            }
+        }
+        return null
     }
 
     private fun externalCeilingDrift(
@@ -1051,17 +1357,36 @@ class HostAutoSessionController(
     private fun boundedNullableLongs(values: List<Long?>, expected: Int): List<Long?> =
         List(expected.coerceIn(0, 64)) { index -> values.getOrNull(index)?.takeIf { it >= 0L } }
 
-    private fun lowestCpuCeiling(cpu: CpuDomain, sessionCeiling: Long): Long? =
-        (cpu.supportedFrequencies.asSequence() + cpu.minimumCandidates.asSequence())
-            .filter { it > 0L && it <= sessionCeiling }
+    private fun lowestCpuCeiling(
+        cpu: CpuDomain,
+        sessionCeiling: Long,
+        liveMinimum: Long?,
+    ): Long {
+        val floor = liveMinimum ?: return sessionCeiling
+        return cpu.supportedFrequencies.asSequence()
+            .filter { it > floor && it <= sessionCeiling }
             .minOrNull()
-
-    private fun lowestGpuCeiling(gpu: GpuDomain, sessionCeiling: Long): Long =
-        gpu.supportedFrequencies.asSequence()
-            .filter { it > 0L && it <= sessionCeiling }
-            .minOrNull()
-            ?: gpu.observedMin.takeIf { it > 0L && it <= sessionCeiling }
+            ?: if (cpu.supportedFrequencies.isEmpty()) numericLowerBoundAbove(floor, sessionCeiling) else null
             ?: sessionCeiling
+    }
+
+    private fun lowestGpuCeiling(
+        gpu: GpuDomain,
+        sessionCeiling: Long,
+        liveMinimum: Long?,
+    ): Long {
+        val floor = liveMinimum ?: return sessionCeiling
+        return gpu.supportedFrequencies.asSequence()
+            .filter { it > floor && it <= sessionCeiling }
+            .minOrNull()
+            ?: if (gpu.supportedFrequencies.isEmpty()) numericLowerBoundAbove(floor, sessionCeiling) else null
+            ?: sessionCeiling
+    }
+
+    private fun numericLowerBoundAbove(floor: Long, sessionCeiling: Long): Long =
+        if (floor < sessionCeiling && floor < Long.MAX_VALUE) floor + 1L else sessionCeiling
+
+    private fun Long?.positiveFloorOrNull(): Long? = this?.takeIf { it > 0L }
 
     private fun HostHardwareCheckpoint.valueFor(path: String): Long =
         nodes.firstOrNull { it.path == path }?.value ?: error("checkpoint is missing $path")

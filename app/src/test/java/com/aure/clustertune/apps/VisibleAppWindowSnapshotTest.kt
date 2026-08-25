@@ -1,5 +1,6 @@
 package com.aure.clustertune.apps
 
+import com.aure.clustertune.model.AppProfileAssignment
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -112,46 +113,206 @@ class VisibleAppWindowSnapshotTest {
     }
 
     @Test
-    fun vendorAssistantOnlySnapshotRetainsLastRealWindowEvent() {
-        val merged = mergeEventFallbackWindows(
-            observed = mapOf(
-                0 to listOf(
-                    VisibleAppWindow(
-                        "com.ayn.gameassistant",
-                        0,
-                        isFocused = true,
-                        isActive = true,
-                    ),
+    fun pickerHandoffIsFixedExpiryMetadataAndNeverAnAutomationWindow() {
+        val tracker = PickerForegroundAppHandoffTracker(
+            seedDurationMs = 2_000L,
+            leaseDurationMs = 30_000L,
+        )
+        assertTrue(
+            tracker.update(
+                verifiedPackageByDisplay = mapOf(0 to "com.example.game"),
+                displayOn = { true },
+                nowMs = 0L,
+            ).isEmpty(),
+        )
+
+        val firstMissing = tracker.update(emptyMap(), { true }, nowMs = 100L)
+        val repeatedMissing = tracker.update(emptyMap(), { true }, nowMs = 1_500L)
+        val handoff = firstMissing.getValue(0)
+        val handoffOnlySnapshot = VisibleAppSnapshot(
+            windowsByDisplay = emptyMap(),
+            isInteractive = true,
+            refreshRateFpsByDisplay = mapOf(0 to 60),
+            pickerHandoffByDisplay = firstMissing,
+        )
+        val automationPlan = resolveAppAutomationPlan(
+            snapshot = handoffOnlySnapshot,
+            assignments = listOf(
+                AppProfileAssignment(
+                    packageName = "com.example.game",
+                    appLabel = "Game",
+                    autoTuneTargetFps = 60,
                 ),
             ),
-            eventFallbacks = mapOf(0 to "com.example.game"),
+        )
+
+        assertEquals("com.example.game", handoff.packageName)
+        assertEquals(2_100L, handoff.seedExpiresAtUptimeMs)
+        assertEquals(30_100L, handoff.leaseExpiresAtUptimeMs)
+        assertEquals(firstMissing, repeatedMissing)
+        assertTrue(handoffOnlySnapshot.windowsByDisplay.isEmpty())
+        assertTrue(handoffOnlySnapshot.packages.isEmpty())
+        assertNull(automationPlan.foregroundPackageName)
+        assertNull(automationPlan.autoTuneAssignment)
+        assertTrue(tracker.update(emptyMap(), { true }, nowMs = 30_100L).isEmpty())
+        assertTrue(tracker.update(emptyMap(), { true }, nowMs = 30_101L).isEmpty())
+    }
+
+    @Test
+    fun pickerHandoffIsClearedByRealReplacementDisplayOffAndTeardown() {
+        val tracker = PickerForegroundAppHandoffTracker(
+            seedDurationMs = 2_000L,
+            leaseDurationMs = 30_000L,
+        )
+        tracker.update(mapOf(0 to "com.example.game"), { true }, nowMs = 0L)
+        assertEquals(
+            "com.example.game",
+            tracker.update(emptyMap(), { true }, nowMs = 100L).getValue(0).packageName,
+        )
+
+        assertTrue(
+            tracker.update(
+                verifiedPackageByDisplay = mapOf(0 to "com.example.launcher"),
+                displayOn = { true },
+                nowMs = 200L,
+            ).isEmpty(),
+        )
+        assertEquals(
+            "com.example.launcher",
+            tracker.update(emptyMap(), { true }, nowMs = 300L).getValue(0).packageName,
+        )
+        assertTrue(tracker.update(emptyMap(), { false }, nowMs = 400L).isEmpty())
+        assertTrue(tracker.update(emptyMap(), { true }, nowMs = 500L).isEmpty())
+
+        tracker.update(mapOf(0 to "com.example.game"), { true }, nowMs = 600L)
+        tracker.clear()
+        assertTrue(tracker.update(emptyMap(), { true }, nowMs = 700L).isEmpty())
+    }
+
+    @Test
+    fun rootlessExactWindowMaintainsProvenanceUntilItsIdentityDisappears() {
+        val cache = AccessibilityWindowPackageCache()
+        val identity = AccessibilityWindowIdentity(displayId = 0, windowId = 42)
+        val tracker = PickerForegroundAppHandoffTracker(
+            seedDurationMs = 2_000L,
+            leaseDurationMs = 30_000L,
+        )
+        cache.record(identity, "com.example.game")
+        tracker.update(mapOf(0 to "com.example.game"), { true }, nowMs = 0L)
+
+        val rootlessPackage = cache.resolvePackage(identity, resolvedPackageName = null)
+        val firstRootless = tracker.update(
+            verifiedPackageByDisplay = mapOf(0 to requireNotNull(rootlessPackage)),
+            displayOn = { true },
+            nowMs = 100L,
+        )
+        val repeatedRootless = tracker.update(
+            verifiedPackageByDisplay = mapOf(0 to requireNotNull(rootlessPackage)),
+            displayOn = { true },
+            nowMs = 2_100L,
+        )
+        cache.retainOnly(emptySet())
+        val firstMissing = tracker.update(emptyMap(), { true }, nowMs = 3_000L)
+        val repeatedMissing = tracker.update(emptyMap(), { true }, nowMs = 5_000L)
+
+        assertEquals("com.example.game", rootlessPackage)
+        assertTrue(firstRootless.isEmpty())
+        assertTrue(repeatedRootless.isEmpty())
+        assertNull(cache.resolvePackage(identity, resolvedPackageName = null))
+        assertEquals(firstMissing, repeatedMissing)
+        assertEquals(5_000L, firstMissing.getValue(0).seedExpiresAtUptimeMs)
+        assertEquals(33_000L, firstMissing.getValue(0).leaseExpiresAtUptimeMs)
+    }
+
+    @Test
+    fun repeatedVendorAssistantOnlySnapshotsExpireThePriorGameAfterOneGracePeriod() {
+        val tracker = VisibleWindowDisappearanceTracker(graceMs = 300)
+        val assistantOnly = mapOf(
+            0 to listOf(
+                VisibleAppWindow(
+                    "com.ayn.gameassistant",
+                    0,
+                    isFocused = true,
+                    isActive = true,
+                ),
+            ),
+        )
+        tracker.stabilize(
+            observed = mapOf(
+                0 to listOf(VisibleAppWindow("com.example.game", 0, isFocused = true)),
+            ),
+            displayOn = { true },
+            nowMs = 0,
+            obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
+        )
+
+        val firstAssistantOnly = tracker.stabilize(
+            observed = assistantOnly,
+            displayOn = { true },
+            nowMs = 100,
+            obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
+        )
+        val repeatedAssistantOnly = tracker.stabilize(
+            observed = assistantOnly,
+            displayOn = { true },
+            nowMs = 250,
+            obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
+        )
+        val expired = tracker.stabilize(
+            observed = assistantOnly,
+            displayOn = { true },
+            nowMs = 400,
             obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
         )
 
         assertEquals(
             setOf("com.ayn.gameassistant", "com.example.game"),
-            merged.getValue(0).mapTo(mutableSetOf()) { it.packageName },
+            firstAssistantOnly.windowsByDisplay.getValue(0).mapTo(mutableSetOf()) { it.packageName },
         )
-    }
-
-    @Test
-    fun unresolvedApplicationWindowDoesNotSynthesizeARealFallbackWindow() {
-        val merged = mergeEventFallbackWindows(
-            observed = mapOf(0 to emptyList()),
-            eventFallbacks = mapOf(0 to "com.example.game"),
-            obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
+        assertEquals(400L, firstAssistantOnly.nextDeadlineMs)
+        assertEquals(
+            setOf("com.ayn.gameassistant", "com.example.game"),
+            repeatedAssistantOnly.windowsByDisplay
+                .getValue(0)
+                .mapTo(mutableSetOf()) { it.packageName },
         )
-
-        assertTrue(merged.getValue(0).isEmpty())
+        assertEquals(400L, repeatedAssistantOnly.nextDeadlineMs)
+        assertEquals(
+            setOf("com.ayn.gameassistant"),
+            expired.windowsByDisplay.getValue(0).mapTo(mutableSetOf()) { it.packageName },
+        )
+        assertNull(expired.nextDeadlineMs)
     }
 
     @Test
     fun sameWindowIdRetainsPackageAcrossTemporaryRootLoss() {
         val cache = AccessibilityWindowPackageCache()
+        val tracker = VisibleWindowDisappearanceTracker(graceMs = 300)
         val identity = AccessibilityWindowIdentity(displayId = 0, windowId = 42)
         cache.record(identity, "com.example.game")
+        tracker.stabilize(
+            observed = mapOf(
+                0 to listOf(VisibleAppWindow("com.example.game", 0, isFocused = true)),
+            ),
+            displayOn = { true },
+            nowMs = 0,
+        )
 
-        assertEquals("com.example.game", cache.resolvePackage(identity, resolvedPackageName = null))
+        val rootlessPackage = requireNotNull(
+            cache.resolvePackage(identity, resolvedPackageName = null),
+        )
+        val stillObserved = tracker.stabilize(
+            observed = mapOf(
+                0 to listOf(VisibleAppWindow(rootlessPackage, 0)),
+            ),
+            displayOn = { true },
+            nowMs = 1_000,
+            obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
+        )
+
+        assertEquals("com.example.game", rootlessPackage)
+        assertEquals("com.example.game", stillObserved.windowsByDisplay.getValue(0).single().packageName)
+        assertNull(stillObserved.nextDeadlineMs)
     }
 
     @Test
@@ -264,21 +425,31 @@ class VisibleAppWindowSnapshotTest {
 
     @Test
     fun realObservedWindowWinsWithoutAddingStaleFallback() {
-        val merged = mergeEventFallbackWindows(
+        val tracker = VisibleWindowDisappearanceTracker(graceMs = 300)
+        tracker.stabilize(
+            observed = mapOf(
+                0 to listOf(VisibleAppWindow("com.example.oldgame", 0, isFocused = true)),
+            ),
+            displayOn = { true },
+            nowMs = 0,
+        )
+        val replacement = tracker.stabilize(
             observed = mapOf(
                 0 to listOf(
                     VisibleAppWindow("com.example.launcher", 0, isFocused = true, isActive = true),
                     VisibleAppWindow("com.rp.gameassistant", 0),
                 ),
             ),
-            eventFallbacks = mapOf(0 to "com.example.oldgame"),
+            displayOn = { true },
+            nowMs = 100,
             obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
         )
 
         assertEquals(
             setOf("com.example.launcher", "com.rp.gameassistant"),
-            merged.getValue(0).mapTo(mutableSetOf()) { it.packageName },
+            replacement.windowsByDisplay.getValue(0).mapTo(mutableSetOf()) { it.packageName },
         )
+        assertNull(replacement.nextDeadlineMs)
     }
 
     @Test
@@ -291,15 +462,9 @@ class VisibleAppWindowSnapshotTest {
             displayOn = { true },
             nowMs = 0,
         )
-        val absent = mergeEventFallbackWindows(
-            observed = emptyMap(),
-            eventFallbacks = mapOf(0 to "com.example.closedgame"),
-            obscuringPackages = VENDOR_GAME_ASSISTANT_PACKAGES,
-        )
-        val retainedDuringGrace = tracker.stabilize(absent, { true }, nowMs = 100)
-        val expired = tracker.stabilize(absent, { true }, nowMs = 400)
+        val retainedDuringGrace = tracker.stabilize(emptyMap(), { true }, nowMs = 100)
+        val expired = tracker.stabilize(emptyMap(), { true }, nowMs = 400)
 
-        assertTrue(absent.isEmpty())
         assertEquals(
             "com.example.closedgame",
             retainedDuringGrace.windowsByDisplay.getValue(0).single().packageName,

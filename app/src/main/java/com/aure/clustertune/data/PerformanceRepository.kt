@@ -1721,6 +1721,28 @@ private fun HostCpuDomain.autoTunePolicyId(): Int =
     id.removePrefix("policy").toIntOrNull()
         ?: error("Invalid Auto Tune CPU domain id: $id")
 
+/**
+ * Leaves a confidently identified efficiency cluster at its assigned baseline. Policy ids and
+ * current profile caps are not topology signals, so only a unique lowest stable hardware/observed
+ * maximum in a 3+ policy device narrows the adaptive scope.
+ */
+internal fun adaptiveAdjustableCpuPolicyIds(domains: List<HostCpuDomain>): Set<Int> {
+    val policyIds = domains.map(HostCpuDomain::autoTunePolicyId)
+    val allPolicyIds = policyIds.toSet()
+    if (domains.size < 3 || allPolicyIds.size != domains.size) return allPolicyIds
+
+    val stableMaxima = domains.mapIndexed { index, domain ->
+        val stableMax = maxOf(domain.stockMax, domain.observedMax).takeIf { it > 0L }
+            ?: return allPolicyIds
+        policyIds[index] to stableMax
+    }
+    val lowestMaximum = stableMaxima.minOf { (_, maximum) -> maximum }
+    val lowestPolicies = stableMaxima.filter { (_, maximum) -> maximum == lowestMaximum }
+    if (lowestPolicies.size != 1) return allPolicyIds
+
+    return allPolicyIds - lowestPolicies.single().first
+}
+
 internal fun validateAutoSessionBaseline(
     policies: List<CpuPolicyInfo>,
     gpuPolicy: GpuPolicyInfo?,
@@ -1784,6 +1806,7 @@ internal fun buildAdaptiveEnvelope(
     }
     val policiesById = policies.associateBy(CpuPolicyInfo::id)
     require(policiesById.size == policies.size) { "Auto Tune CPU policy ids are duplicated" }
+    val adjustablePolicyIds = adaptiveAdjustableCpuPolicyIds(capabilities.cpus)
     val cpu = capabilities.cpus.mapIndexed { index, domain ->
         val policyId = domain.autoTunePolicyId()
         val policy = policiesById[policyId]
@@ -1793,16 +1816,23 @@ internal fun buildAdaptiveEnvelope(
         }
         val base = hostState.cpuMax[index].takeIf { it > 0L }
             ?: error("Auto Tune CPU baseline is unavailable for policy${policy.id}")
+        val liveMinimum = hostState.cpuMin[index].takeIf { it > 0L }
         val available = domain.supportedFrequencies.ifEmpty {
             policy.supportedFrequencies.map(Int::toLong)
         }
         AdaptiveCpuPolicy(
             policyId = policy.id,
             availableCeilingsKHz = available
-                .filter { it > 0L && it <= base }
+                .filter { ceiling ->
+                    ceiling > 0L &&
+                        ceiling <= base &&
+                        liveMinimum != null &&
+                        ceiling > liveMinimum
+                }
                 .distinct()
                 .sorted(),
             baseCeilingKHz = base,
+            allowsAdaptiveAdjustment = policy.id in adjustablePolicyIds,
         )
     }
     val gpu = capabilities.gpu?.let { domain ->
@@ -1813,13 +1843,19 @@ internal fun buildAdaptiveEnvelope(
         }
         val base = hostState.gpuMax?.takeIf { it > 0L }
             ?: error("Auto Tune GPU baseline is unavailable")
+        val liveMinimum = hostState.gpuMin?.takeIf { it > 0L }
         val available = domain.supportedFrequencies.ifEmpty {
             policy.supportedFrequenciesHz.map(Int::toLong)
         }
         AdaptiveGpuDomain(
             id = domain.id,
             availableCeilingsHz = available
-                .filter { it > 0L && it <= base }
+                .filter { ceiling ->
+                    ceiling > 0L &&
+                        ceiling <= base &&
+                        liveMinimum != null &&
+                        ceiling > liveMinimum
+                }
                 .distinct()
                 .sorted(),
             baseCeilingHz = base,
@@ -1843,6 +1879,9 @@ internal fun validateAdaptiveCeilings(
         val allowed = (policy.availableCeilingsKHz + policy.baseCeilingKHz).toSet()
         require(value in allowed && value <= policy.baseCeilingKHz) {
             "Auto Tune CPU ceiling exceeds or is outside the base envelope"
+        }
+        require(policy.allowsAdaptiveAdjustment || value == policy.baseCeilingKHz) {
+            "Auto Tune cannot adjust the fixed efficiency CPU policy"
         }
     }
     val gpu = envelope.gpu

@@ -270,11 +270,11 @@ internal fun AdaptiveTuneReason.userMessage(): String = when (this) {
     AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY -> "Raising a CPU ceiling"
     AdaptiveTuneReason.GPU_BOTTLENECK_RECOVERY -> "Raising the GPU ceiling"
     AdaptiveTuneReason.RECOVERY_AT_BASE -> "Target needs the full configured envelope"
-    AdaptiveTuneReason.RECOVERY_FROZEN -> "Recovery candidate is temporarily frozen"
+    AdaptiveTuneReason.RECOVERY_FROZEN -> "Recovery candidates are temporarily deprioritized"
     AdaptiveTuneReason.EFFICIENCY_TRIM -> "Testing a lower frequency ceiling"
     AdaptiveTuneReason.TRIAL_WATCH -> "Watching the last ceiling change"
     AdaptiveTuneReason.TRIAL_ACCEPTED -> "Last ceiling change is stable"
     AdaptiveTuneReason.TRIAL_REGRESSION -> "Reverted a ceiling that hurt frame pacing"
-    AdaptiveTuneReason.TRIAL_NO_GAIN -> "Reverted a ceiling that did not improve performance"
+    AdaptiveTuneReason.TRIAL_NO_GAIN -> "Keeping the raised ceiling and continuing targeted recovery"
     AdaptiveTuneReason.REQUESTED_STOP -> "Auto Tune stopped"
 }

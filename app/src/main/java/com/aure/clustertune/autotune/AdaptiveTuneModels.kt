@@ -47,6 +47,8 @@ data class AdaptiveCpuPolicy(
     val policyId: Int,
     val availableCeilingsKHz: List<Long>,
     val baseCeilingKHz: Long,
+    /** Whether the controller may select this policy for trim or recovery moves. */
+    val allowsAdaptiveAdjustment: Boolean = true,
 ) {
     init {
         require(baseCeilingKHz > 0L) { "CPU base ceiling must be positive" }

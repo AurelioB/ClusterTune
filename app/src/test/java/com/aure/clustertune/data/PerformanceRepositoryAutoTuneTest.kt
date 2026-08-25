@@ -2,7 +2,9 @@ package com.aure.clustertune.data
 
 import com.aure.clustertune.autotune.AdaptiveCpuPolicy
 import com.aure.clustertune.autotune.AdaptiveFrequencyCeilings
+import com.aure.clustertune.autotune.AdaptiveFrequencyController
 import com.aure.clustertune.autotune.AdaptiveGpuDomain
+import com.aure.clustertune.autotune.AdaptiveTuneConfig
 import com.aure.clustertune.autotune.AdaptiveTuneEnvelope
 import com.aure.clustertune.model.CpuPolicyInfo
 import com.aure.clustertune.model.EffectiveProfileSource
@@ -28,7 +30,7 @@ import org.junit.Test
 
 class PerformanceRepositoryAutoTuneTest {
     @Test
-    fun `adaptive envelope uses live base caps and only choices at or below them`() {
+    fun `adaptive envelope uses live base caps and choices strictly above live minimums`() {
         val policies = listOf(
             cpuPolicy(id = 0, supported = listOf(300, 600, 900, 1_200)),
             cpuPolicy(id = 4, supported = listOf(400, 800, 1_600)),
@@ -55,11 +57,11 @@ class PerformanceRepositoryAutoTuneTest {
         )
 
         assertEquals(1_000L, envelope.cpuPolicies[0].baseCeilingKHz)
-        assertEquals(listOf(200L, 600L, 1_000L), envelope.cpuPolicies[0].availableCeilingsKHz)
+        assertEquals(listOf(600L, 1_000L), envelope.cpuPolicies[0].availableCeilingsKHz)
         assertEquals(1_500L, envelope.cpuPolicies[1].baseCeilingKHz)
-        assertEquals(listOf(400L, 900L), envelope.cpuPolicies[1].availableCeilingsKHz)
+        assertEquals(listOf(900L), envelope.cpuPolicies[1].availableCeilingsKHz)
         assertEquals(700L, envelope.gpu?.baseCeilingHz)
-        assertEquals(listOf(200L, 500L), envelope.gpu?.availableCeilingsHz)
+        assertEquals(listOf(500L), envelope.gpu?.availableCeilingsHz)
     }
 
     @Test
@@ -109,7 +111,79 @@ class PerformanceRepositoryAutoTuneTest {
         val envelope = buildAdaptiveEnvelope(listOf(policy0, policy4), null, capabilities, state)
 
         assertEquals(listOf(4, 0), envelope.cpuPolicies.map { it.policyId })
-        assertEquals(listOf(300L, 600L), envelope.cpuPolicies[1].availableCeilingsKHz)
+        assertEquals(listOf(600L), envelope.cpuPolicies[1].availableCeilingsKHz)
+    }
+
+    @Test
+    fun `three-policy scope fixes the unique lowest hardware max independent of ids order and live caps`() {
+        val policies = listOf(
+            cpuPolicy(id = 2, supported = listOf(300, 600, 1_200), observedMax = 2_600),
+            cpuPolicy(id = 8, supported = listOf(300, 600, 1_200), observedMax = 1_800),
+            cpuPolicy(id = 9, supported = listOf(300, 600, 1_200), observedMax = 3_200),
+        )
+        val capabilities = HostCapabilities(
+            cpus = listOf(
+                hostCpu("policy9", listOf(300, 600, 1_200), stockMax = 3_200, observedMax = 3_200),
+                hostCpu("policy8", listOf(300, 600, 1_200), stockMax = 1_800, observedMax = 1_800),
+                hostCpu("policy2", listOf(300, 600, 1_200), stockMax = 2_600, observedMax = 2_600),
+            ),
+            gpu = null,
+        )
+
+        val envelope = buildAdaptiveEnvelope(
+            policies = policies,
+            gpuPolicy = null,
+            capabilities = capabilities,
+            hostState = HostState(
+                cpuMax = listOf(1_200, 1_200, 1_200),
+                cpuMin = listOf(300, 300, 300),
+                gpuMax = null,
+            ),
+        )
+
+        assertEquals(listOf(9, 8, 2), envelope.cpuPolicies.map { it.policyId })
+        assertEquals(listOf(true, false, true), envelope.cpuPolicies.map { it.allowsAdaptiveAdjustment })
+        assertEquals(
+            mapOf(2 to 1_200L, 8 to 1_200L, 9 to 1_200L),
+            AdaptiveFrequencyController(AdaptiveTuneConfig(targetFps = 60), envelope).baseCeilings.cpuKHz,
+        )
+        assertEquals(listOf(600L, 1_200L), envelope.cpuPolicies.single { it.policyId == 8 }.availableCeilingsKHz)
+    }
+
+    @Test
+    fun `one and two policy topologies keep every CPU adjustable`() {
+        val onePolicy = listOf(
+            hostCpu("policy7", listOf(300, 1_800), stockMax = 1_800, observedMax = 1_800),
+        )
+        val twoPolicies = listOf(
+            hostCpu("policy9", listOf(300, 3_200), stockMax = 3_200, observedMax = 3_200),
+            hostCpu("policy7", listOf(300, 1_800), stockMax = 1_800, observedMax = 1_800),
+        )
+
+        assertEquals(setOf(7), adaptiveAdjustableCpuPolicyIds(onePolicy))
+        assertEquals(setOf(9, 7), adaptiveAdjustableCpuPolicyIds(twoPolicies))
+    }
+
+    @Test
+    fun `tied lowest hardware maxima fail open to every CPU policy`() {
+        val domains = listOf(
+            hostCpu("policy9", listOf(300, 3_200), stockMax = 3_200, observedMax = 3_200),
+            hostCpu("policy2", listOf(300, 1_800), stockMax = 1_800, observedMax = 1_800),
+            hostCpu("policy8", listOf(300, 1_800), stockMax = 1_800, observedMax = 1_800),
+        )
+
+        assertEquals(setOf(9, 2, 8), adaptiveAdjustableCpuPolicyIds(domains))
+    }
+
+    @Test
+    fun `unknown hardware and observed maximum fails open without guessing a policy id`() {
+        val domains = listOf(
+            hostCpu("policy9", listOf(300, 3_200), stockMax = 3_200, observedMax = 3_200),
+            hostCpu("policy42", listOf(300, 1_800), stockMax = 0, observedMax = -1),
+            hostCpu("policy2", listOf(300, 2_600), stockMax = 2_600, observedMax = 2_600),
+        )
+
+        assertEquals(setOf(9, 42, 2), adaptiveAdjustableCpuPolicyIds(domains))
     }
 
     @Test
@@ -141,12 +215,12 @@ class PerformanceRepositoryAutoTuneTest {
     }
 
     @Test
-    fun `adaptive envelope keeps supported max choices below live OEM minimums`() {
-        val policy = cpuPolicy(id = 0, supported = listOf(200, 400, 600, 800))
-        val gpuPolicy = gpuPolicy(supported = listOf(200, 400, 600, 900))
+    fun `adaptive envelope excludes ceilings below or equal to positive live minimums`() {
+        val policy = cpuPolicy(id = 0, supported = listOf(200, 400, 600, 700, 800))
+        val gpuPolicy = gpuPolicy(supported = listOf(200, 400, 600, 700, 900))
         val capabilities = HostCapabilities(
-            cpus = listOf(hostCpu("policy0", listOf(200, 400, 600, 800))),
-            gpu = hostGpu(listOf(200, 400, 600, 900)),
+            cpus = listOf(hostCpu("policy0", listOf(200, 400, 600, 700, 800))),
+            gpu = hostGpu(listOf(200, 400, 600, 700, 900)),
         )
 
         val envelope = buildAdaptiveEnvelope(
@@ -161,8 +235,62 @@ class PerformanceRepositoryAutoTuneTest {
             ),
         )
 
-        assertEquals(listOf(200L, 400L, 600L, 800L), envelope.cpuPolicies.single().availableCeilingsKHz)
-        assertEquals(listOf(200L, 400L, 600L, 900L), envelope.gpu?.availableCeilingsHz)
+        assertEquals(listOf(700L, 800L), envelope.cpuPolicies.single().availableCeilingsKHz)
+        assertEquals(listOf(700L, 900L), envelope.gpu?.availableCeilingsHz)
+    }
+
+    @Test
+    fun `adaptive envelope leaves domains inert at base when no step clears live minimum`() {
+        val policy = cpuPolicy(id = 0, supported = listOf(200, 400, 800))
+        val gpuPolicy = gpuPolicy(supported = listOf(200, 500, 900))
+        val capabilities = HostCapabilities(
+            cpus = listOf(hostCpu("policy0", listOf(200, 400, 800))),
+            gpu = hostGpu(listOf(200, 500, 900)),
+        )
+
+        val envelope = buildAdaptiveEnvelope(
+            policies = listOf(policy),
+            gpuPolicy = gpuPolicy,
+            capabilities = capabilities,
+            hostState = HostState(
+                cpuMax = listOf(800),
+                cpuMin = listOf(800),
+                gpuMax = 900,
+                gpuMin = 1_000,
+            ),
+        )
+
+        assertTrue(envelope.cpuPolicies.single().availableCeilingsKHz.isEmpty())
+        assertTrue(envelope.gpu?.availableCeilingsHz?.isEmpty() == true)
+        assertEquals(
+            AdaptiveFrequencyCeilings(cpuKHz = mapOf(0 to 800L), gpuHz = 900L),
+            AdaptiveFrequencyController(AdaptiveTuneConfig(targetFps = 60), envelope).baseCeilings,
+        )
+    }
+
+    @Test
+    fun `adaptive envelope retains every valid step above live minimum`() {
+        val policy = cpuPolicy(id = 0, supported = listOf(300, 500, 600, 700, 800))
+        val gpuPolicy = gpuPolicy(supported = listOf(300, 500, 600, 700, 900))
+        val capabilities = HostCapabilities(
+            cpus = listOf(hostCpu("policy0", listOf(300, 500, 600, 700, 800))),
+            gpu = hostGpu(listOf(300, 500, 600, 700, 900)),
+        )
+
+        val envelope = buildAdaptiveEnvelope(
+            policies = listOf(policy),
+            gpuPolicy = gpuPolicy,
+            capabilities = capabilities,
+            hostState = HostState(
+                cpuMax = listOf(800),
+                cpuMin = listOf(500),
+                gpuMax = 900,
+                gpuMin = 500,
+            ),
+        )
+
+        assertEquals(listOf(600L, 700L, 800L), envelope.cpuPolicies.single().availableCeilingsKHz)
+        assertEquals(listOf(600L, 700L, 900L), envelope.gpu?.availableCeilingsHz)
     }
 
     @Test
@@ -190,37 +318,59 @@ class PerformanceRepositoryAutoTuneTest {
         )
 
         val envelope = buildAdaptiveEnvelope(listOf(policy), gpuPolicy, capabilities, state)
-        assertEquals(listOf(200L, 400L, 800L), envelope.cpuPolicies.single().availableCeilingsKHz)
-        assertEquals(listOf(200L, 500L, 900L), envelope.gpu?.availableCeilingsHz)
+        assertTrue(envelope.cpuPolicies.single().availableCeilingsKHz.isEmpty())
+        assertTrue(envelope.gpu?.availableCeilingsHz?.isEmpty() == true)
     }
 
     @Test
-    fun `adaptive baseline does not require readable minimum telemetry`() {
+    fun `unknown or nonpositive minimum leaves only the affected domain inert`() {
         val policy = cpuPolicy(id = 0, supported = listOf(200, 400, 800))
         val gpuPolicy = gpuPolicy(supported = listOf(200, 500, 900))
         val capabilities = HostCapabilities(
             cpus = listOf(hostCpu("policy0", listOf(200, 400, 800))),
             gpu = hostGpu(listOf(200, 500, 900)),
         )
-        val state = HostState(
+        val unknownCpuState = HostState(
             cpuMax = listOf(800),
             cpuMin = listOf(-1),
             gpuMax = 900,
-            gpuMin = null,
+            gpuMin = 500,
         )
 
         validateAutoSessionBaseline(
             policies = listOf(policy),
             gpuPolicy = gpuPolicy,
             capabilities = capabilities,
-            hostState = state,
+            hostState = unknownCpuState,
             expectedCpu = mapOf(0 to 800L),
             expectedGpu = 900L,
         )
 
-        val envelope = buildAdaptiveEnvelope(listOf(policy), gpuPolicy, capabilities, state)
-        assertEquals(800L, envelope.cpuPolicies.single().baseCeilingKHz)
-        assertEquals(900L, envelope.gpu?.baseCeilingHz)
+        val unknownCpu = buildAdaptiveEnvelope(listOf(policy), gpuPolicy, capabilities, unknownCpuState)
+        assertTrue(unknownCpu.cpuPolicies.single().availableCeilingsKHz.isEmpty())
+        assertEquals(listOf(900L), unknownCpu.gpu?.availableCeilingsHz)
+
+        val unknownGpu = buildAdaptiveEnvelope(
+            listOf(policy),
+            gpuPolicy,
+            capabilities,
+            unknownCpuState.copy(cpuMin = listOf(400), gpuMin = null),
+        )
+        assertEquals(listOf(800L), unknownGpu.cpuPolicies.single().availableCeilingsKHz)
+        assertTrue(unknownGpu.gpu?.availableCeilingsHz?.isEmpty() == true)
+
+        val zeroMinimums = buildAdaptiveEnvelope(
+            listOf(policy),
+            gpuPolicy,
+            capabilities,
+            unknownCpuState.copy(cpuMin = listOf(0), gpuMin = 0),
+        )
+        assertTrue(zeroMinimums.cpuPolicies.single().availableCeilingsKHz.isEmpty())
+        assertTrue(zeroMinimums.gpu?.availableCeilingsHz?.isEmpty() == true)
+        assertEquals(
+            AdaptiveFrequencyCeilings(cpuKHz = mapOf(0 to 800L), gpuHz = 900L),
+            AdaptiveFrequencyController(AdaptiveTuneConfig(targetFps = 60), zeroMinimums).baseCeilings,
+        )
     }
 
     @Test
@@ -248,6 +398,42 @@ class PerformanceRepositoryAutoTuneTest {
         }
         assertThrows(IllegalArgumentException::class.java) {
             validateAdaptiveCeilings(AdaptiveFrequencyCeilings(mapOf(0 to 1_000L, 4 to 400L), 700L), envelope)
+        }
+    }
+
+    @Test
+    fun `adaptive ceiling validation requires complete fixed efficiency policy at its base`() {
+        val envelope = AdaptiveTuneEnvelope(
+            cpuPolicies = listOf(
+                AdaptiveCpuPolicy(
+                    policyId = 8,
+                    availableCeilingsKHz = listOf(300, 600, 900),
+                    baseCeilingKHz = 900,
+                    allowsAdaptiveAdjustment = false,
+                ),
+                AdaptiveCpuPolicy(
+                    policyId = 9,
+                    availableCeilingsKHz = listOf(600, 1_200),
+                    baseCeilingKHz = 1_200,
+                ),
+            ),
+        )
+
+        validateAdaptiveCeilings(
+            AdaptiveFrequencyCeilings(cpuKHz = mapOf(8 to 900L, 9 to 600L)),
+            envelope,
+        )
+        assertThrows(IllegalArgumentException::class.java) {
+            validateAdaptiveCeilings(
+                AdaptiveFrequencyCeilings(cpuKHz = mapOf(8 to 600L, 9 to 600L)),
+                envelope,
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            validateAdaptiveCeilings(
+                AdaptiveFrequencyCeilings(cpuKHz = mapOf(9 to 600L)),
+                envelope,
+            )
         }
     }
 
@@ -438,13 +624,17 @@ class PerformanceRepositoryAutoTuneTest {
         ),
     )
 
-    private fun cpuPolicy(id: Int, supported: List<Int> = listOf(300, 600, 800)) = CpuPolicyInfo(
+    private fun cpuPolicy(
+        id: Int,
+        supported: List<Int> = listOf(300, 600, 800),
+        observedMax: Int = supported.last(),
+    ) = CpuPolicyInfo(
         id = id,
         policyPath = "/sys/policy$id",
         scalingMaxPath = "/sys/policy$id/max",
         currentMaxFreq = supported.last(),
         selectableMaxFreq = supported.last(),
-        observedMaxFreq = supported.last(),
+        observedMaxFreq = observedMax,
         minFreq = supported.first(),
         supportedFrequencies = supported,
         scalingMinPath = "/sys/policy$id/min",
@@ -459,15 +649,20 @@ class PerformanceRepositoryAutoTuneTest {
         supportedFrequenciesHz = supported,
     )
 
-    private fun hostCpu(id: String, supported: List<Long>) = CpuDomain(
+    private fun hostCpu(
+        id: String,
+        supported: List<Long>,
+        stockMax: Long = supported.last(),
+        observedMax: Long = stockMax,
+    ) = CpuDomain(
         id = id,
         minPath = "/sys/$id/min",
         maxPath = "/sys/$id/max",
         curPath = null,
         minimumCandidates = listOf(supported.first()),
         supportedFrequencies = supported,
-        stockMax = supported.last(),
-        observedMax = supported.last(),
+        stockMax = stockMax,
+        observedMax = observedMax,
         observedMin = supported.first(),
     )
 
