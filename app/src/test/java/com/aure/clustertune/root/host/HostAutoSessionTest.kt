@@ -1133,7 +1133,7 @@ class HostAutoSessionTest {
     }
 
     @Test
-    fun `external maximum drift stops without fighting or overwriting it`() {
+    fun `heartbeat tolerates an exact Stock reset without writing and reports the live state`() {
         val fixture = fixture()
         val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
         val session = requireNotNull(started.sessionId)
@@ -1141,17 +1141,369 @@ class HostAutoSessionTest {
         fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
         val mutationsAfterFirst = fixture.fs.batchMutations
         fixture.fs.values["max"] = "800"
+        val operationsBeforeHeartbeat = fixture.fs.operations.size
+
+        val held = fixture.controller.heartbeat(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, held.status)
+        assertEquals(listOf(800L), requireNotNull(held.state).cpuMax)
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals(mutationsAfterFirst, fixture.fs.batchMutations)
+        assertEquals(operationsBeforeHeartbeat, fixture.fs.operations.size)
+    }
+
+    @Test
+    fun `telemetry polling tolerates an exact Stock reset without writing`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+        fixture.fs.values["max"] = "800"
+        val mutationsBeforePoll = fixture.fs.batchMutations
+        val operationsBeforePoll = fixture.fs.operations.size
+
+        val held = fixture.controller.readTelemetry(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, held.status)
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals(mutationsBeforePoll, fixture.fs.batchMutations)
+        assertEquals(operationsBeforePoll, fixture.fs.operations.size)
+    }
+
+    @Test
+    fun `both physical Stock aliases are tolerated while an intermediate upward value is external`() {
+        listOf(1_000L, 800L).forEach { stockAlias ->
+            val fixture = hiddenStockFixture()
+            val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+            val session = requireNotNull(started.sessionId)
+            val trimmed = ApplyRequest(
+                cpuMax = listOf(400, 900),
+                gpuMax = null,
+                resetToStock = false,
+                cpuIds = listOf("policy0", "policy4"),
+            )
+            assertEquals(
+                HostAutoSessionStatus.ACTIVE,
+                fixture.controller.applyStep(session, started.hostEpoch, trimmed).status,
+            )
+            fixture.fs.values["max0"] = stockAlias.toString()
+            val mutationsBeforePoll = fixture.fs.batchMutations
+
+            val held = fixture.controller.heartbeat(session, started.hostEpoch)
+
+            assertEquals(HostAutoSessionStatus.ACTIVE, held.status)
+            assertEquals(stockAlias, requireNotNull(held.state).cpuMax[0])
+            assertEquals(mutationsBeforePoll, fixture.fs.batchMutations)
+        }
+
+        val fixture = hiddenStockFixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.controller.applyStep(
+            session,
+            started.hostEpoch,
+            ApplyRequest(
+                cpuMax = listOf(400, 900),
+                gpuMax = null,
+                resetToStock = false,
+                cpuIds = listOf("policy0", "policy4"),
+            ),
+        )
+        fixture.fs.values["max0"] = "700"
+
+        val stopped = fixture.controller.heartbeat(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertEquals("700", fixture.fs.values["max0"])
+    }
+
+    @Test
+    fun `next automatic step reapplies its complete map after a tolerated Stock reset without touching minimums`() {
+        val fixture = multiDomainFixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.controller.applyStep(session, started.hostEpoch, multiRequest())
+        fixture.fs.values["max0"] = "800"
+        val minimumValues = listOf("min0", "min1", "gmin").associateWith { fixture.fs.values[it] }
+        val minimumModes = listOf("min0", "min1", "gmin").associateWith { fixture.fs.modes[it] }
+        val operationsBeforeStep = fixture.fs.operations.size
+        val mutationsBeforeStep = fixture.fs.batchMutations
+        val next = ApplyRequest(
+            cpuMax = listOf(400, 1200),
+            gpuMax = 900,
+            resetToStock = false,
+            cpuIds = listOf("policy0", "policy4"),
+            gpuId = "gpu0",
+            gpuMaxPath = "gmax",
+        )
+
+        val reapplied = fixture.controller.applyStep(session, started.hostEpoch, next)
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, reapplied.status)
+        assertEquals(listOf(400L, 1200L), requireNotNull(reapplied.state).cpuMax)
+        assertEquals(900L, reapplied.state?.gpuMax)
+        assertEquals("400", fixture.fs.values["max0"])
+        assertEquals("1200", fixture.fs.values["max1"])
+        assertEquals("900", fixture.fs.values["gmax"])
+        assertEquals(mutationsBeforeStep + 1, fixture.fs.batchMutations)
+        val stepOperations = fixture.fs.operations.drop(operationsBeforeStep)
+        assertTrue(stepOperations.contains("write:max0=400"))
+        assertTrue(stepOperations.contains("write:max1=1200"))
+        assertTrue(stepOperations.contains("write:gmax=900"))
+        assertFalse(stepOperations.any { it.contains("min0") || it.contains("min1") || it.contains("gmin") })
+        assertEquals(minimumValues, listOf("min0", "min1", "gmin").associateWith { fixture.fs.values[it] })
+        assertEquals(minimumModes, listOf("min0", "min1", "gmin").associateWith { fixture.fs.modes[it] })
+    }
+
+    @Test
+    fun `a Stock reset in one domain cannot mask a lower external cap in another`() {
+        val fixture = multiDomainFixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.controller.applyStep(session, started.hostEpoch, multiRequest())
+        fixture.fs.values["max0"] = "800"
+        fixture.fs.values["max1"] = "700"
+        val operationsBeforePoll = fixture.fs.operations.size
+
+        val stopped = fixture.controller.heartbeat(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertTrue(stopped.message.orEmpty().contains("policy4: 900->700"))
+        assertEquals("800", fixture.fs.values["max0"])
+        assertEquals("700", fixture.fs.values["max1"])
+        assertEquals("900", fixture.fs.values["gmax"])
+        val stopOperations = fixture.fs.operations.drop(operationsBeforePoll)
+        assertFalse(stopOperations.any { it.startsWith("write:max0=") || it.startsWith("write:max1=") })
+        assertTrue(stopOperations.contains("write:gmax=900"))
+        assertFalse(stopOperations.any { it.contains("min") })
+    }
+
+    @Test
+    fun `a Stock reset repeated during the next apply stays active after one bounded max-only write`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+        fixture.fs.values["max"] = "800"
+        fixture.fs.rewriteAfterNextBatchRead("max", "800")
+        val operationsBeforeStep = fixture.fs.operations.size
+        val mutationsBeforeStep = fixture.fs.batchMutations
+
+        val applied = fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, applied.status)
+        assertEquals(listOf(600L), requireNotNull(applied.state).cpuMax)
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals(292, fixture.fs.modes["max"])
+        assertEquals(mutationsBeforeStep + 1, fixture.fs.batchMutations)
+        val stepOperations = fixture.fs.operations.drop(operationsBeforeStep)
+        assertEquals(listOf("write:max=600"), stepOperations.filter { it.startsWith("write:max=") })
+        assertFalse(stepOperations.any { it.contains("min") })
+
+        val held = fixture.controller.heartbeat(session, started.hostEpoch)
+        assertEquals(HostAutoSessionStatus.ACTIVE, held.status)
+        assertEquals(listOf(800L), requireNotNull(held.state).cpuMax)
+        assertEquals(mutationsBeforeStep + 1, fixture.fs.batchMutations)
+    }
+
+    @Test
+    fun `a Stock reset during authoritative post-batch verification stays active after one max-only write`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.fs.rewriteBeforeNextBatchRead("max", "800")
+        val operationsBeforeStep = fixture.fs.operations.size
+
+        val applied = fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, applied.status)
+        assertEquals(listOf(800L), requireNotNull(applied.state).cpuMax)
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals(292, fixture.fs.modes["max"])
+        val stepOperations = fixture.fs.operations.drop(operationsBeforeStep)
+        assertEquals(listOf("write:max=600"), stepOperations.filter { it.startsWith("write:max=") })
+        assertFalse(stepOperations.any { it.contains("min") })
+    }
+
+    @Test
+    fun `a no-write Stock takeover during apply is relinquished instead of stopped`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        assertEquals(
+            HostAutoSessionStatus.ACTIVE,
+            fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 400)).status,
+        )
+        // The controller sees 400. Before HostApplyEngine snapshots the node, the OEM selects
+        // physical Stock 800, so the engine correctly emits no value write for this request.
+        fixture.fs.rewriteAfterReads("max", "800", reads = 1)
+        val operationsBeforeStep = fixture.fs.operations.size
+
+        val held = fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 800))
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, held.status)
+        assertEquals(listOf(800L), requireNotNull(held.state).cpuMax)
+        assertEquals("800", fixture.fs.values["max"])
+        assertFalse(
+            fixture.fs.operations.drop(operationsBeforeStep).any { it.startsWith("write:max=") },
+        )
+        val operationsBeforeStop = fixture.fs.operations.size
+        val stopped = fixture.controller.stop(session, started.hostEpoch)
+        assertTrue(stopped.restorationComplete)
+        assertEquals("800", fixture.fs.values["max"])
+        assertFalse(
+            fixture.fs.operations.drop(operationsBeforeStop).any { it.startsWith("write:max=") },
+        )
+    }
+
+    @Test
+    fun `a non-Stock post-write mismatch stops and remains externally owned`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        assertEquals(
+            HostAutoSessionStatus.ACTIVE,
+            fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600)).status,
+        )
+        fixture.fs.rewriteBeforeNextBatchRead("max", "600")
+        val operationsBeforeStep = fixture.fs.operations.size
+
+        val stopped = fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 400))
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertTrue(stopped.message.orEmpty().contains("400->600"))
+        assertEquals("600", fixture.fs.values["max"])
+        assertFalse(
+            fixture.fs.operations.drop(operationsBeforeStep).any { it == "write:max=800" },
+        )
+    }
+
+    @Test
+    fun `a request-matching OEM Stock alias remains unowned when another domain changes`() {
+        val fixture = hiddenStockFixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        val first = ApplyRequest(
+            cpuMax = listOf(400, 900),
+            gpuMax = null,
+            resetToStock = false,
+            cpuIds = listOf("policy0", "policy4"),
+        )
+        assertEquals(
+            HostAutoSessionStatus.ACTIVE,
+            fixture.controller.applyStep(session, started.hostEpoch, first).status,
+        )
+        fixture.fs.values["max0"] = "800"
+        val operationsBeforeSecondStep = fixture.fs.operations.size
+        val second = first.copy(cpuMax = listOf(800, 1200))
+
+        val applied = fixture.controller.applyStep(session, started.hostEpoch, second)
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, applied.status)
+        assertEquals(listOf(800L, 1200L), requireNotNull(applied.state).cpuMax)
+        val secondStepOperations = fixture.fs.operations.drop(operationsBeforeSecondStep)
+        assertFalse(secondStepOperations.any { it.startsWith("write:max0=") })
+        assertTrue(secondStepOperations.contains("write:max1=1200"))
         val operationsBeforeStop = fixture.fs.operations.size
 
-        val stopped = fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+        val stopped = fixture.controller.stop(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertEquals("800", fixture.fs.values["max0"])
+        assertEquals(420, fixture.fs.modes["max0"])
+        assertFalse(
+            fixture.fs.operations.drop(operationsBeforeStop).any { it.startsWith("write:max0=") },
+        )
+    }
+
+    @Test
+    fun `an exact Stock reset cannot hide live minimum or maximum mode drift`() {
+        run {
+            val fixture = fixture()
+            val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+            val session = requireNotNull(started.sessionId)
+            fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+            fixture.fs.values["max"] = "800"
+            fixture.fs.values["min"] = "400"
+            val operationsBeforePoll = fixture.fs.operations.size
+
+            val stopped = fixture.controller.heartbeat(session, started.hostEpoch)
+
+            assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+            assertTrue(stopped.message.orEmpty().contains("minimum changed"))
+            assertEquals("800", fixture.fs.values["max"])
+            assertEquals("400", fixture.fs.values["min"])
+            assertFalse(fixture.fs.operations.drop(operationsBeforePoll).any { it.startsWith("write:") })
+        }
+
+        run {
+            val fixture = fixture()
+            val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+            val session = requireNotNull(started.sessionId)
+            fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+            fixture.fs.values["max"] = "800"
+            fixture.fs.modes["max"] = 384
+            val operationsBeforePoll = fixture.fs.operations.size
+
+            val stopped = fixture.controller.heartbeat(session, started.hostEpoch)
+
+            assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+            assertTrue(stopped.message.orEmpty().contains("mode"))
+            assertEquals("800", fixture.fs.values["max"])
+            assertEquals(384, fixture.fs.modes["max"])
+            assertEquals(operationsBeforePoll, fixture.fs.operations.size)
+        }
+    }
+
+    @Test
+    fun `tolerated CPU and GPU Stock resets cannot hide a lower drift in another domain`() {
+        val fixture = multiDomainFixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.controller.applyStep(session, started.hostEpoch, multiRequest())
+        fixture.fs.values["max0"] = "800"
+        fixture.fs.values["gmax"] = "900"
+
+        val held = fixture.controller.heartbeat(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, held.status)
+        assertEquals(listOf(800L, 900L), requireNotNull(held.state).cpuMax)
+        assertEquals(900L, held.state?.gpuMax)
+
+        fixture.fs.values["max1"] = "700"
+        val operationsBeforeStop = fixture.fs.operations.size
+        val stopped = fixture.controller.heartbeat(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertEquals("800", fixture.fs.values["max0"])
+        assertEquals("700", fixture.fs.values["max1"])
+        assertEquals("900", fixture.fs.values["gmax"])
+        assertFalse(
+            fixture.fs.operations.drop(operationsBeforeStop).any {
+                it.startsWith("write:max0=") || it.startsWith("write:max1=") || it.startsWith("write:gmax=")
+            },
+        )
+    }
+
+    @Test
+    fun `an unreadable maximum is never treated as a tolerated reset`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
+        fixture.fs.failNextReads("max", count = 1)
+
+        val stopped = fixture.controller.heartbeat(session, started.hostEpoch)
 
         assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
         assertTrue(stopped.restorationComplete)
         assertTrue(stopped.message.orEmpty().contains("external maximum changed"))
         assertEquals("800", fixture.fs.values["max"])
-        assertEquals(420, fixture.fs.modes["max"])
-        assertEquals(mutationsAfterFirst, fixture.fs.batchMutations)
-        assertFalse(fixture.fs.operations.drop(operationsBeforeStop).any { it.startsWith("write:max=") })
     }
 
     @Test
@@ -1193,6 +1545,105 @@ class HostAutoSessionTest {
         assertFalse(restoreOperations.any { it.startsWith("write:max0=") })
         assertTrue(restoreOperations.contains("write:max1=1200"))
         assertTrue(restoreOperations.contains("write:gmax=900"))
+    }
+
+    @Test
+    fun `explicit stop preserves a tolerated physical Stock reset when no later apply reclaimed it`() {
+        val fixture = fixture()
+        val baseline = request(cpu = 600).copy(maximumsOnly = true)
+        val started = fixture.controller.start(
+            AutoSessionRequest("com.game", 60, 5_000, baseline = baseline),
+        )
+        val session = requireNotNull(started.sessionId)
+        assertEquals(
+            HostAutoSessionStatus.ACTIVE,
+            fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 400)).status,
+        )
+        fixture.fs.values["max"] = "800"
+        val operationsBeforeHeartbeat = fixture.fs.operations.size
+
+        val held = fixture.controller.heartbeat(session, started.hostEpoch)
+        val stopped = fixture.controller.stop(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, held.status)
+        assertEquals(listOf(800L), requireNotNull(held.state).cpuMax)
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        // The session checkpoint is 600. Since the OEM reset remained live, stop must not
+        // reclaim it merely because 800 is a recognized physical Stock alias.
+        assertEquals("800", fixture.fs.values["max"])
+        assertEquals(292, fixture.fs.modes["max"])
+        assertEquals("200", fixture.fs.values["min"])
+        val stopOperations = fixture.fs.operations.drop(operationsBeforeHeartbeat)
+        assertFalse(stopOperations.any { it.startsWith("write:max=") })
+        assertFalse(stopOperations.any { it.contains("min") })
+    }
+
+    @Test
+    fun `a relinquished Stock reset cannot be reclaimed by numeric ABA`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        assertEquals(
+            HostAutoSessionStatus.ACTIVE,
+            fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600)).status,
+        )
+        fixture.fs.values["max"] = "800"
+        assertEquals(
+            HostAutoSessionStatus.ACTIVE,
+            fixture.controller.heartbeat(session, started.hostEpoch).status,
+        )
+
+        // The OEM later happens to select Auto Tune's former numeric value. Since no later
+        // ClusterTune write reclaimed this path, the value remains externally owned.
+        fixture.fs.values["max"] = "600"
+        val operationsBeforeStop = fixture.fs.operations.size
+        val stopped = fixture.controller.heartbeat(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertEquals("600", fixture.fs.values["max"])
+        assertEquals(420, fixture.fs.modes["max"])
+        assertFalse(
+            fixture.fs.operations.drop(operationsBeforeStop).any { it.startsWith("write:max=") },
+        )
+    }
+
+    @Test
+    fun `an apply failure cannot reclaim a previously relinquished Stock reset`() {
+        val fixture = hiddenStockFixture()
+        val baseline = ApplyRequest(
+            cpuMax = listOf(800, 1200),
+            gpuMax = null,
+            resetToStock = false,
+            cpuIds = listOf("policy0", "policy4"),
+            maximumsOnly = true,
+        )
+        val started = fixture.controller.start(
+            AutoSessionRequest("com.game", 60, 5_000, baseline = baseline),
+        )
+        val session = requireNotNull(started.sessionId)
+        val trimmed = baseline.copy(cpuMax = listOf(400, 1200), maximumsOnly = false)
+        assertEquals(
+            HostAutoSessionStatus.ACTIVE,
+            fixture.controller.applyStep(session, started.hostEpoch, trimmed).status,
+        )
+        fixture.fs.values["max0"] = "1000"
+        assertEquals(
+            HostAutoSessionStatus.ACTIVE,
+            fixture.controller.heartbeat(session, started.hostEpoch).status,
+        )
+        fixture.fs.failNextChmods("max0", 420, count = 1)
+        val operationsBeforeFailure = fixture.fs.operations.size
+
+        val stopped = fixture.controller.applyStep(session, started.hostEpoch, baseline.copy(maximumsOnly = false))
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertEquals("1000", fixture.fs.values["max0"])
+        assertFalse(
+            fixture.fs.operations.drop(operationsBeforeFailure).any { it.startsWith("write:max0=") },
+        )
     }
 
     @Test
@@ -1331,7 +1782,7 @@ class HostAutoSessionTest {
         val fixture = multiDomainFixture()
         val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
         val session = requireNotNull(started.sessionId)
-        fixture.fs.rewriteAfterNextBatchRead("max0", "700")
+        fixture.fs.rewriteBeforeNextBatchRead("max0", "700")
 
         val stopped = fixture.controller.applyStep(session, started.hostEpoch, multiRequest())
 
@@ -1341,6 +1792,36 @@ class HostAutoSessionTest {
         assertEquals("700", fixture.fs.values["max0"])
         assertEquals("1200", fixture.fs.values["max1"])
         assertEquals("900", fixture.fs.values["gmax"])
+    }
+
+    @Test
+    fun `post-apply Stock reset stays external while stop restores other owned domains and mode`() {
+        val fixture = multiDomainFixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.fs.rewriteBeforeNextBatchRead("max0", "800")
+
+        val applied = fixture.controller.applyStep(session, started.hostEpoch, multiRequest())
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, applied.status)
+        assertEquals(listOf(800L, 900L), requireNotNull(applied.state).cpuMax)
+        assertEquals(600L, applied.state?.gpuMax)
+        assertEquals(292, fixture.fs.modes["max0"])
+        val operationsBeforeStop = fixture.fs.operations.size
+
+        val stopped = fixture.controller.stop(session, started.hostEpoch)
+
+        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
+        assertTrue(stopped.restorationComplete)
+        assertEquals("800", fixture.fs.values["max0"])
+        assertEquals("1200", fixture.fs.values["max1"])
+        assertEquals("900", fixture.fs.values["gmax"])
+        assertEquals(420, fixture.fs.modes["max0"])
+        val stopOperations = fixture.fs.operations.drop(operationsBeforeStop)
+        assertFalse(stopOperations.any { it.startsWith("write:max0=") })
+        assertTrue(stopOperations.contains("write:max1=1200"))
+        assertTrue(stopOperations.contains("write:gmax=900"))
+        assertTrue(stopOperations.contains("chmod:max0=420"))
     }
 
     @Test

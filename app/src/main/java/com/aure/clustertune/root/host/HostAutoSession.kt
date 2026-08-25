@@ -391,6 +391,7 @@ class HostAutoSessionController(
         var latestTelemetry: HostAutoTelemetry? = null,
         var lastOwnedCpuMax: List<Long>,
         var lastOwnedGpuMax: Long?,
+        val ownedValuePaths: MutableSet<String>,
         val lastOwnedMaxModes: MutableMap<String, Int>,
         val ownedModePaths: MutableSet<String>,
     )
@@ -500,6 +501,7 @@ class HostAutoSessionController(
         var baselineApplySucceeded = false
         var baselineModeMutationPaths = emptySet<String>()
         var baselineValueMutationPaths = emptySet<String>()
+        var baselineVerifiedValues = emptyMap<String, Long>()
         var confirmedBaselineState: HostState? = null
         return try {
             val stateBeforeBaselineApply = HostHardwareStateReader.read(fs, hostCapabilities)
@@ -515,9 +517,11 @@ class HostAutoSessionController(
             val mutationReceipt = applyEngine.applyMaxOnlyTrackedOrThrow(hostCapabilities, baseline)
             baselineModeMutationPaths = mutationReceipt.modePaths
             baselineValueMutationPaths = mutationReceipt.valuePaths
+            baselineVerifiedValues = mutationReceipt.verifiedValues
             baselineApplySucceeded = true
 
             val baselineState = HostHardwareStateReader.read(fs, hostCapabilities)
+            confirmedBaselineState = baselineState
             requireFloorsUnchanged(
                 expected = stateBeforeBaselineApply,
                 actual = baselineState,
@@ -527,9 +531,8 @@ class HostAutoSessionController(
                 before = preBaselineState,
                 after = baselineState,
                 request = baseline,
-                resolved = resolved,
+                committedValues = baselineVerifiedValues,
             )
-            confirmedBaselineState = baselineState
             // Until the final checkpoint is captured, the provisional owner must recognize
             // every value the successful profile transaction was allowed to leave behind.
             provisional.lastOwnedCpuMax = baselineState.cpuMax
@@ -537,6 +540,7 @@ class HostAutoSessionController(
 
             val baselineCheckpoint = HostCheckpointEngine(fs, hostCapabilities).captureCeilings().getOrThrow()
             val verifiedState = HostHardwareStateReader.read(fs, hostCapabilities)
+            confirmedBaselineState = verifiedState
             check(checkpointMatchesState(baselineCheckpoint, verifiedState)) {
                 "frequency ceilings changed while the Auto Tune baseline was checkpointed"
             }
@@ -549,7 +553,7 @@ class HostAutoSessionController(
                 before = preBaselineState,
                 after = verifiedState,
                 request = baseline,
-                resolved = resolved,
+                committedValues = baselineVerifiedValues,
             )
             val session = createSession(
                 request = request,
@@ -588,6 +592,8 @@ class HostAutoSessionController(
                     includeAcceptedCandidates = requestedValuesMayRemain && confirmedBaselineState == null,
                     rollbackOwnedValues = applyFailure?.rollbackOwnedValues.orEmpty(),
                     possibleValueMutationPaths = possibleValueMutationPaths,
+                    committedValues = baselineVerifiedValues,
+                    relinquishedValuePaths = applyFailure?.relinquishedMaximumValuePaths.orEmpty(),
                 ),
                 modeOwnershipCandidates = possibleModeMutationPaths,
             )
@@ -608,7 +614,7 @@ class HostAutoSessionController(
                 observedState = current,
             )
         }
-        externalCeilingDrift(session, current)?.let { detail ->
+        externalCeilingDrift(session, current, tolerateUpwardStockReset = true)?.let { detail ->
             return stopLocked(
                 session,
                 HostAutoSessionStatus.STOPPED,
@@ -678,7 +684,7 @@ class HostAutoSessionController(
                 observedState = current,
             )
         }
-        externalCeilingDrift(session, current)?.let { detail ->
+        externalCeilingDrift(session, current, tolerateUpwardStockReset = true)?.let { detail ->
             return stopLocked(
                 session,
                 HostAutoSessionStatus.STOPPED,
@@ -692,6 +698,7 @@ class HostAutoSessionController(
         val appliedState = if (!alreadyApplied) {
             val previousCpuMax = session.lastOwnedCpuMax
             val previousGpuMax = session.lastOwnedGpuMax
+            val previousOwnedValuePaths = session.ownedValuePaths.toSet()
             val sessionCapabilities = capabilitiesWithinEnvelope(session)
             // Accepted aliases are resolved against the bounded session envelope, but the
             // permission policy must retain the physical-domain meaning of Stock. A fixed
@@ -719,6 +726,7 @@ class HostAutoSessionController(
                     request,
                     stockModeOverrides = stockModeOverrides,
                     preserveModePaths = preserveModePaths,
+                    deferMaximumVerification = true,
                 )
             } catch (failure: Throwable) {
                 val applyFailure = failure as? HostApplyFailure
@@ -735,26 +743,33 @@ class HostAutoSessionController(
                 } else {
                     emptySet()
                 }
+                val relinquishedValuePaths = applyFailure?.relinquishedMaximumValuePaths.orEmpty()
                 val ownershipCandidates = buildMap<String, Set<Long>> {
                     hostCapabilities.cpus.forEachIndexed { index, cpu ->
-                        put(
-                            cpu.maxPath,
-                            buildSet {
+                        val candidates = buildSet {
+                            if (cpu.maxPath in previousOwnedValuePaths) {
                                 add(previousCpuMax[index])
-                                if (cpu.maxPath in possibleValueMutationPaths) add(request.cpuMax[index])
-                                addAll(applyFailure?.rollbackOwnedValues?.get(cpu.maxPath).orEmpty())
-                            },
-                        )
+                            }
+                            if (cpu.maxPath in possibleValueMutationPaths) add(request.cpuMax[index])
+                            addAll(applyFailure?.rollbackOwnedValues?.get(cpu.maxPath).orEmpty())
+                        }
+                        if (cpu.maxPath in relinquishedValuePaths) {
+                            put(cpu.maxPath, emptySet())
+                        } else if (candidates.isNotEmpty()) {
+                            put(cpu.maxPath, candidates)
+                        }
                     }
                     hostCapabilities.gpu?.let { gpu ->
-                        put(
-                            gpu.maxPath,
-                            buildSet {
-                                previousGpuMax?.let(::add)
-                                if (gpu.maxPath in possibleValueMutationPaths) request.gpuMax?.let(::add)
-                                addAll(applyFailure?.rollbackOwnedValues?.get(gpu.maxPath).orEmpty())
-                            },
-                        )
+                        val candidates = buildSet {
+                            if (gpu.maxPath in previousOwnedValuePaths) previousGpuMax?.let(::add)
+                            if (gpu.maxPath in possibleValueMutationPaths) request.gpuMax?.let(::add)
+                            addAll(applyFailure?.rollbackOwnedValues?.get(gpu.maxPath).orEmpty())
+                        }
+                        if (gpu.maxPath in relinquishedValuePaths) {
+                            put(gpu.maxPath, emptySet())
+                        } else if (candidates.isNotEmpty()) {
+                            put(gpu.maxPath, candidates)
+                        }
                     }
                 }
                 return stopLocked(
@@ -766,11 +781,6 @@ class HostAutoSessionController(
                     modeOwnershipCandidates = possibleModeMutationPaths,
                 )
             }
-            // The request, rather than a later readback, defines what this session wrote. If an
-            // OEM worker races the verification read, matching domains remain ours to restore
-            // while mismatched domains are preserved as external changes.
-            session.lastOwnedCpuMax = request.cpuMax
-            session.lastOwnedGpuMax = request.gpuMax
             hostCapabilities.cpus.forEachIndexed { index, cpu ->
                 if (cpu.maxPath !in mutationReceipt.modePaths) return@forEachIndexed
                 session.lastOwnedMaxModes[cpu.maxPath] = autoAppliedMode(
@@ -786,7 +796,66 @@ class HostAutoSessionController(
                 )
                 session.ownedModePaths += gpu.maxPath
             }
-            HostHardwareStateReader.read(fs, hostCapabilities)
+            // This is the single authoritative post-batch value observation. Requested
+            // values written by this batch become owned; exact upward physical-Stock resets
+            // are handed to the OEM immediately. Any other value remains unowned and the
+            // strict drift check below stops the session without reclaiming it.
+            val verifiedState = HostHardwareStateReader.read(fs, hostCapabilities)
+            session.lastOwnedCpuMax = previousCpuMax.mapIndexed { index, previous ->
+                val cpu = hostCapabilities.cpus[index]
+                val requested = request.cpuMax[index]
+                val actual = verifiedState.cpuMax.getOrNull(index) ?: -1L
+                when {
+                    actual == requested && cpu.maxPath in mutationReceipt.valuePaths -> {
+                        session.ownedValuePaths += cpu.maxPath
+                        requested
+                    }
+                    actual == requested && cpu.isUpwardStockReset(previous, actual) -> {
+                        session.ownedValuePaths.remove(cpu.maxPath)
+                        actual
+                    }
+                    actual == requested -> previous
+                    cpu.isUpwardStockReset(requested, actual) -> {
+                        session.ownedValuePaths.remove(cpu.maxPath)
+                        actual
+                    }
+                    else -> {
+                        session.ownedValuePaths.remove(cpu.maxPath)
+                        requested
+                    }
+                }
+            }
+            session.lastOwnedGpuMax = hostCapabilities.gpu?.let { gpu ->
+                val requested = request.gpuMax
+                val actual = verifiedState.gpuMax
+                when {
+                    requested != null && actual == requested && gpu.maxPath in mutationReceipt.valuePaths -> {
+                        session.ownedValuePaths += gpu.maxPath
+                        requested
+                    }
+                    requested != null && actual == requested && previousGpuMax != null &&
+                        gpu.isUpwardStockReset(previousGpuMax, actual) -> {
+                        session.ownedValuePaths.remove(gpu.maxPath)
+                        actual
+                    }
+                    requested != null && actual == requested -> previousGpuMax
+                    requested != null && actual != null && gpu.isUpwardStockReset(requested, actual) -> {
+                        session.ownedValuePaths.remove(gpu.maxPath)
+                        actual
+                    }
+                    requested != null -> {
+                        session.ownedValuePaths.remove(gpu.maxPath)
+                        requested
+                    }
+                    previousGpuMax != null && actual != null &&
+                        gpu.isUpwardStockReset(previousGpuMax, actual) -> {
+                        session.ownedValuePaths.remove(gpu.maxPath)
+                        actual
+                    }
+                    else -> previousGpuMax
+                }
+            }
+            verifiedState
         } else {
             current
         }
@@ -822,7 +891,7 @@ class HostAutoSessionController(
                 observedState = current,
             )
         }
-        externalCeilingDrift(session, current)?.let { detail ->
+        externalCeilingDrift(session, current, tolerateUpwardStockReset = true)?.let { detail ->
             return stopLocked(
                 session,
                 HostAutoSessionStatus.STOPPED,
@@ -831,7 +900,7 @@ class HostAutoSessionController(
             )
         }
         touch(session)
-        return activeSnapshot(session, telemetry = session.latestTelemetry)
+        return activeSnapshot(session, telemetry = session.latestTelemetry, state = current)
     }
 
     /** A null ID deliberately preempts whichever owner session is current. */
@@ -976,6 +1045,7 @@ class HostAutoSessionController(
             deadlineNanos = deadline(now, timeoutNanos),
             lastOwnedCpuMax = state.cpuMax,
             lastOwnedGpuMax = state.gpuMax,
+            ownedValuePaths = mutableSetOf(),
             lastOwnedMaxModes = checkpoint.nodes.associate { it.path to it.mode }.toMutableMap(),
             ownedModePaths = mutableSetOf(),
         )
@@ -1064,14 +1134,15 @@ class HostAutoSessionController(
         before: HostState,
         after: HostState,
         request: ApplyRequest,
-        resolved: HostResolvedMaximumTargets,
+        committedValues: Map<String, Long>,
     ) {
         require(after.cpuMax.size == hostCapabilities.cpus.size) {
             "Auto Tune baseline CPU state is incomplete"
         }
-        resolved.cpuAcceptedCeilings.forEachIndexed { index, accepted ->
-            require(after.cpuMax[index] in accepted) {
-                "Auto Tune baseline changed externally for ${hostCapabilities.cpus[index].id}"
+        hostCapabilities.cpus.forEachIndexed { index, cpu ->
+            val expected = committedValues[cpu.maxPath] ?: before.cpuMax.getOrNull(index)
+            require(expected != null && after.cpuMax[index] == expected) {
+                "Auto Tune baseline changed externally for ${cpu.id}"
             }
         }
         val gpu = hostCapabilities.gpu
@@ -1080,7 +1151,7 @@ class HostAutoSessionController(
         } else if (request.gpuMax == null) {
             require(after.gpuMax == before.gpuMax) { "Auto Tune baseline GPU changed externally" }
         } else {
-            require(after.gpuMax in resolved.gpuAcceptedCeilings) {
+            require(after.gpuMax == committedValues[gpu.maxPath]) {
                 "Auto Tune baseline changed externally for ${gpu.id}"
             }
         }
@@ -1094,14 +1165,34 @@ class HostAutoSessionController(
         includeAcceptedCandidates: Boolean,
         rollbackOwnedValues: Map<String, Set<Long>>,
         possibleValueMutationPaths: Set<String>,
+        committedValues: Map<String, Long>,
+        relinquishedValuePaths: Set<String>,
     ): Map<String, Set<Long>> = buildMap {
         hostCapabilities.cpus.forEachIndexed { index, cpu ->
+            if (cpu.maxPath in relinquishedValuePaths) {
+                put(cpu.maxPath, emptySet())
+                return@forEachIndexed
+            }
+            val beforeValue = before.cpuMax.getOrNull(index)?.takeIf { it > 0L }
+            val committedValue = committedValues[cpu.maxPath]
+                ?.takeIf { it > 0L && cpu.maxPath in possibleValueMutationPaths }
+            val confirmedValue = confirmedState?.cpuMax?.getOrNull(index)?.takeIf { it > 0L }
+            val expectedObservedValue = committedValue ?: beforeValue
+            if (confirmedValue != null && confirmedValue != expectedObservedValue) {
+                // A later observation supersedes the baseline transaction, even if the value
+                // subsequently returns to one of our numeric candidates before cleanup.
+                put(cpu.maxPath, emptySet())
+                return@forEachIndexed
+            }
             put(
                 cpu.maxPath,
                 buildSet {
-                    before.cpuMax.getOrNull(index)?.takeIf { it > 0L }?.let(::add)
-                    confirmedState?.cpuMax?.getOrNull(index)?.takeIf { it > 0L }?.let(::add)
-                    if (includeAcceptedCandidates && cpu.maxPath in possibleValueMutationPaths) {
+                    beforeValue?.let(::add)
+                    committedValue?.let(::add)
+                    confirmedValue?.let(::add)
+                    if (includeAcceptedCandidates && committedValue == null &&
+                        cpu.maxPath in possibleValueMutationPaths
+                    ) {
                         addAll(resolved.cpuAcceptedCeilings[index].filter { it > 0L })
                     }
                     addAll(rollbackOwnedValues[cpu.maxPath].orEmpty().filter { it > 0L })
@@ -1109,13 +1200,29 @@ class HostAutoSessionController(
             )
         }
         hostCapabilities.gpu?.let { gpu ->
+            if (gpu.maxPath in relinquishedValuePaths) {
+                put(gpu.maxPath, emptySet())
+                return@let
+            }
+            val beforeValue = before.gpuMax?.takeIf { it > 0L }
+            val committedValue = committedValues[gpu.maxPath]
+                ?.takeIf { it > 0L && gpu.maxPath in possibleValueMutationPaths }
+            val confirmedValue = confirmedState?.gpuMax?.takeIf { it > 0L }
+            val expectedObservedValue = committedValue ?: beforeValue
+            if (request.gpuMax != null && confirmedValue != null && confirmedValue != expectedObservedValue) {
+                put(gpu.maxPath, emptySet())
+                return@let
+            }
             put(
                 gpu.maxPath,
                 buildSet {
                     if (request.gpuMax != null) {
-                        before.gpuMax?.takeIf { it > 0L }?.let(::add)
-                        confirmedState?.gpuMax?.takeIf { it > 0L }?.let(::add)
-                        if (includeAcceptedCandidates && gpu.maxPath in possibleValueMutationPaths) {
+                        beforeValue?.let(::add)
+                        committedValue?.let(::add)
+                        confirmedValue?.let(::add)
+                        if (includeAcceptedCandidates && committedValue == null &&
+                            gpu.maxPath in possibleValueMutationPaths
+                        ) {
                             addAll(resolved.gpuAcceptedCeilings.filter { it > 0L })
                         }
                         addAll(rollbackOwnedValues[gpu.maxPath].orEmpty().filter { it > 0L })
@@ -1224,17 +1331,43 @@ class HostAutoSessionController(
         return null
     }
 
+    /**
+     * OEM policy workers may reset a trimmed maximum to one of the physical Stock aliases.
+     * Observation callers tolerate that exact upward reset without writing. An ordinary apply
+     * still submits its complete requested map once, and post-apply verification tolerates a
+     * repeated exact Stock reset instead of starting an in-host repair loop.
+     */
     private fun externalCeilingDrift(
         session: ActiveSession,
         state: HostState = HostHardwareStateReader.read(fs, hostCapabilities),
+        tolerateUpwardStockReset: Boolean = false,
     ): String? {
         if (state.cpuMax.size != session.lastOwnedCpuMax.size) return "CPU topology"
         state.cpuMax.forEachIndexed { index, actual ->
             val expected = session.lastOwnedCpuMax[index]
-            if (actual != expected) return "${hostCapabilities.cpus[index].id}: $expected->$actual"
+            val cpu = hostCapabilities.cpus[index]
+            if (actual != expected) {
+                if (tolerateUpwardStockReset && cpu.isUpwardStockReset(expected, actual)) {
+                    session.lastOwnedCpuMax = session.lastOwnedCpuMax.toMutableList().apply {
+                        this[index] = actual
+                    }
+                    session.ownedValuePaths.remove(cpu.maxPath)
+                } else {
+                    return "${cpu.id}: $expected->$actual"
+                }
+            }
         }
         if (state.gpuMax != session.lastOwnedGpuMax) {
-            return "${hostCapabilities.gpu?.id ?: "GPU"}: ${session.lastOwnedGpuMax}->${state.gpuMax}"
+            val expected = session.lastOwnedGpuMax
+            val actual = state.gpuMax
+            val gpu = hostCapabilities.gpu
+            if (!tolerateUpwardStockReset || gpu == null || expected == null || actual == null ||
+                !gpu.isUpwardStockReset(expected, actual)
+            ) {
+                return "${gpu?.id ?: "GPU"}: $expected->$actual"
+            }
+            session.lastOwnedGpuMax = actual
+            session.ownedValuePaths.remove(gpu.maxPath)
         }
         session.lastOwnedMaxModes.forEach { (path, expected) ->
             val actual = fs.mode(path)
@@ -1242,6 +1375,14 @@ class HostAutoSessionController(
         }
         return null
     }
+
+    private fun CpuDomain.isUpwardStockReset(expected: Long, actual: Long): Boolean =
+        actual > expected && actual > 0L &&
+            (actual == stockMax && stockMax > 0L || actual == selectableMax && selectableMax > 0L)
+
+    private fun GpuDomain.isUpwardStockReset(expected: Long, actual: Long): Boolean =
+        actual > expected && actual > 0L &&
+            (actual == stockMax && stockMax > 0L || actual == selectableMax && selectableMax > 0L)
 
     private fun selectOwnedCeilings(
         session: ActiveSession,
@@ -1255,10 +1396,11 @@ class HostAutoSessionController(
             modeOwnershipOverrides?.let(::addAll)
         }
         hostCapabilities.cpus.forEachIndexed { index, cpu ->
-            val candidates = if (candidateOverrides?.containsKey(cpu.maxPath) == true) {
-                candidateOverrides.getValue(cpu.maxPath)
-            } else {
-                setOfNotNull(session.lastOwnedCpuMax.getOrNull(index))
+            val hasOverride = candidateOverrides?.containsKey(cpu.maxPath) == true
+            val candidates = when {
+                hasOverride -> candidateOverrides.orEmpty().getValue(cpu.maxPath)
+                cpu.maxPath in session.ownedValuePaths -> setOfNotNull(session.lastOwnedCpuMax.getOrNull(index))
+                else -> emptySet()
             }
             val actual = state.cpuMax.getOrNull(index)
             when {
@@ -1267,10 +1409,11 @@ class HostAutoSessionController(
             }
         }
         hostCapabilities.gpu?.let { gpu ->
-            val candidates = if (candidateOverrides?.containsKey(gpu.maxPath) == true) {
-                candidateOverrides.getValue(gpu.maxPath)
-            } else {
-                setOfNotNull(session.lastOwnedGpuMax)
+            val hasOverride = candidateOverrides?.containsKey(gpu.maxPath) == true
+            val candidates = when {
+                hasOverride -> candidateOverrides.orEmpty().getValue(gpu.maxPath)
+                gpu.maxPath in session.ownedValuePaths -> setOfNotNull(session.lastOwnedGpuMax)
+                else -> emptySet()
             }
             val actual = state.gpuMax
             when {

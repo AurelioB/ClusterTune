@@ -15,6 +15,7 @@ import com.aure.clustertune.autotune.AdaptiveTuneReason
 import com.aure.clustertune.autotune.AdaptiveTuneSample
 import com.aure.clustertune.data.ProfileStorage
 import com.aure.clustertune.data.adaptiveAdjustableCpuPolicyIds
+import com.aure.clustertune.data.autoTuneApplyStateIsAccepted
 import com.aure.clustertune.root.PrivilegedExecutionResolver
 import java.io.File
 import kotlinx.coroutines.flow.first
@@ -165,6 +166,11 @@ class ExternalGameAutoTuneTraceTest {
                 var maxConsecutiveUnhealthySamples = 0
                 var consecutiveUnhealthyWithHeadroomSamples = 0
                 var maxConsecutiveUnhealthyWithHeadroomSamples = 0
+                var upwardResetSamples = 0
+                var upwardResetEvents = 0
+                var upwardResetReassertions = 0
+                var postApplyUpwardResetEvents = 0
+                var previousUpwardResetDomains = emptySet<String>()
                 val reasons = linkedMapOf<String, Int>()
 
                 for (index in 0 until sampleCount + MAX_TRIAL_SETTLE_SAMPLES) {
@@ -173,6 +179,34 @@ class ExternalGameAutoTuneTraceTest {
                     check(heartbeat.status == HostAutoSessionStatus.ACTIVE) {
                         "automatic session stopped during heartbeat: ${heartbeat.status}: ${heartbeat.message}"
                     }
+                    val observedState = requireNotNull(heartbeat.state) {
+                        "automatic-session heartbeat returned no hardware state"
+                    }
+                    check(observedState.cpuMin == baseline.cpuMin && observedState.gpuMin == baseline.gpuMin) {
+                        "a live minimum changed before sampling: " +
+                            "cpu=${observedState.cpuMin} gpu=${observedState.gpuMin}"
+                    }
+                    val intendedBeforeSample = controller.currentCeilings()
+                    val upwardResetDomains = buildSet {
+                        snapshot.capabilities.cpus.forEachIndexed { cpuIndex, domain ->
+                            val intended = intendedBeforeSample.cpuKHz.getValue(domain.policyId())
+                            val actual = observedState.cpuMax[cpuIndex]
+                            check(actual >= intended) {
+                                "an external lower CPU ceiling remained active for ${domain.id}: $intended->$actual"
+                            }
+                            if (actual > intended) add(domain.id)
+                        }
+                        snapshot.capabilities.gpu?.let { domain ->
+                            val intended = requireNotNull(intendedBeforeSample.gpuHz)
+                            val actual = requireNotNull(observedState.gpuMax)
+                            check(actual >= intended) {
+                                "an external lower GPU ceiling remained active for ${domain.id}: $intended->$actual"
+                            }
+                            if (actual > intended) add(domain.id)
+                        }
+                    }
+                    if (upwardResetDomains.isNotEmpty()) upwardResetSamples++
+                    if (upwardResetDomains.any { it !in previousUpwardResetDomains }) upwardResetEvents++
                     val sampled = client.readAutoTelemetry(sessionHandle, afterSequence).getOrThrow()
                     check(sampled.status == HostAutoSessionStatus.ACTIVE) {
                         "automatic session stopped during telemetry: ${sampled.status}: ${sampled.message}"
@@ -230,6 +264,8 @@ class ExternalGameAutoTuneTraceTest {
                     }
 
                     var appliedState: HostState? = null
+                    var postApplyUpwardResetDomains = emptySet<String>()
+                    var reappliedUpwardResetDomains = emptySet<String>()
                     if (decision is AdaptiveTuneDecision.Apply) {
                         val request = decision.toApplyRequest(snapshot.capabilities)
                         val applied = client.applyAutoStep(sessionHandle, request).getOrThrow()
@@ -237,16 +273,57 @@ class ExternalGameAutoTuneTraceTest {
                             "automatic session stopped during apply: ${applied.status}: ${applied.message}"
                         }
                         appliedState = requireNotNull(applied.state)
-                        assertEquals(request.cpuMax, appliedState.cpuMax)
-                        assertEquals(request.gpuMax, appliedState.gpuMax)
+                        check(
+                            autoTuneApplyStateIsAccepted(
+                                request = request,
+                                state = appliedState,
+                                cpuDomains = snapshot.capabilities.cpus,
+                                gpuDomain = snapshot.capabilities.gpu,
+                            ),
+                        ) {
+                            "privileged host returned an unrecognized maximum after apply: " +
+                                "requested=${request.cpuMax}/${request.gpuMax} " +
+                                "actual=${appliedState.cpuMax}/${appliedState.gpuMax}"
+                        }
+                        postApplyUpwardResetDomains = buildSet {
+                            snapshot.capabilities.cpus.forEachIndexed { cpuIndex, domain ->
+                                if (request.cpuMax[cpuIndex] != appliedState.cpuMax[cpuIndex]) add(domain.id)
+                            }
+                            snapshot.capabilities.gpu?.let { domain ->
+                                if (request.gpuMax != appliedState.gpuMax) add(domain.id)
+                            }
+                        }
+                        if (postApplyUpwardResetDomains.isNotEmpty()) postApplyUpwardResetEvents++
+                        reappliedUpwardResetDomains = buildSet {
+                            snapshot.capabilities.cpus.forEachIndexed { cpuIndex, domain ->
+                                if (
+                                    domain.id in upwardResetDomains &&
+                                    observedState.cpuMax[cpuIndex] != request.cpuMax[cpuIndex] &&
+                                    appliedState.cpuMax[cpuIndex] == request.cpuMax[cpuIndex]
+                                ) {
+                                    add(domain.id)
+                                }
+                            }
+                            snapshot.capabilities.gpu?.let { domain ->
+                                if (
+                                    domain.id in upwardResetDomains &&
+                                    observedState.gpuMax != request.gpuMax &&
+                                    appliedState.gpuMax == request.gpuMax
+                                ) {
+                                    add(domain.id)
+                                }
+                            }
+                        }
                         fixedCpuCeilings.forEach { (policyId, expectedCeiling) ->
                             val index = snapshot.capabilities.cpus.indexOfFirst { it.policyId() == policyId }
                             assertTrue("fixed CPU policy$policyId disappeared", index >= 0)
-                            assertEquals(
-                                "fixed CPU policy$policyId changed during Auto Tune",
-                                expectedCeiling,
-                                appliedState.cpuMax[index],
-                            )
+                            if (snapshot.capabilities.cpus[index].id !in postApplyUpwardResetDomains) {
+                                assertEquals(
+                                    "fixed CPU policy$policyId changed during Auto Tune",
+                                    expectedCeiling,
+                                    appliedState.cpuMax[index],
+                                )
+                            }
                         }
                         if (appliedState.cpuMin != baseline.cpuMin || appliedState.gpuMin != baseline.gpuMin) {
                             minimumClampSamples++
@@ -254,6 +331,9 @@ class ExternalGameAutoTuneTraceTest {
                                 "a live minimum changed during the automatic session: " +
                                     "cpu=${appliedState.cpuMin} gpu=${appliedState.gpuMin}",
                             )
+                        }
+                        if (reappliedUpwardResetDomains.isNotEmpty()) {
+                            upwardResetReassertions++
                         }
                         if (decision.reason == AdaptiveTuneReason.EFFICIENCY_TRIM) {
                             trimCount++
@@ -280,7 +360,10 @@ class ExternalGameAutoTuneTraceTest {
                     ) {
                         pendingTrialReason = null
                     }
-                    if (decision.reason == AdaptiveTuneReason.HEALTHY_AT_FLOOR) floorCount++
+                    val reachedPhysicalHealthyFloor =
+                        decision.reason == AdaptiveTuneReason.HEALTHY_AT_FLOOR &&
+                            upwardResetDomains.isEmpty()
+                    if (reachedPhysicalHealthyFloor) floorCount++
                     if (regressionCount > 0) samplesAfterFirstRegression++
 
                     emit(
@@ -289,6 +372,17 @@ class ExternalGameAutoTuneTraceTest {
                             .put("index", index + 1)
                             .put("wallTimeMillis", System.currentTimeMillis())
                             .put("telemetry", telemetry.toJson())
+                            .put("observedState", observedState.toJson())
+                            .put("intendedCeilingsBeforeSample", intendedBeforeSample.toJson())
+                            .put("upwardResetDomains", JSONArray(upwardResetDomains.toList()))
+                            .put(
+                                "postApplyUpwardResetDomains",
+                                JSONArray(postApplyUpwardResetDomains.toList()),
+                            )
+                            .put(
+                                "reappliedUpwardResetDomains",
+                                JSONArray(reappliedUpwardResetDomains.toList()),
+                            )
                             .put("decision", decision.toJson())
                             .putNullable("appliedState", appliedState?.toJson()),
                         flush = decision is AdaptiveTuneDecision.Apply || (index + 1) % 10 == 0,
@@ -297,6 +391,9 @@ class ExternalGameAutoTuneTraceTest {
                     if (decision is AdaptiveTuneDecision.Stop) {
                         error("controller requested stop: ${decision.reason}")
                     }
+                    if (reachedPhysicalHealthyFloor && pendingTrialReason == null) {
+                        break
+                    }
                     if (
                         regressionCount > 0 &&
                         samplesAfterFirstRegression >= stopAfterRegressionSamples &&
@@ -304,19 +401,41 @@ class ExternalGameAutoTuneTraceTest {
                     ) {
                         break
                     }
+                    previousUpwardResetDomains = if (appliedState != null) {
+                        postApplyUpwardResetDomains
+                    } else {
+                        upwardResetDomains
+                    }
                     if (index + 1 >= sampleCount && pendingTrialReason == null) break
                 }
 
                 val stopped = stopAndRestore(client, sessionHandle)
                 val stoppedState = requireNotNull(stopped.state)
-                assertEquals(baseline.cpuMax, stoppedState.cpuMax)
+                val baselineRequest = ApplyRequest(
+                    cpuMax = baseline.cpuMax,
+                    gpuMax = baseline.gpuMax,
+                    resetToStock = false,
+                )
+                assertTrue(
+                    "stopped state did not preserve the checkpoint or a recognized OEM Stock reset",
+                    restoredStateMatchesCheckpointOrPhysicalStock(
+                        baseline = baselineRequest,
+                        state = stoppedState,
+                        capabilities = snapshot.capabilities,
+                    ),
+                )
                 assertEquals(baseline.cpuMin, stoppedState.cpuMin)
-                assertEquals(baseline.gpuMax, stoppedState.gpuMax)
                 assertEquals(baseline.gpuMin, stoppedState.gpuMin)
                 val restored = client.readSnapshot().getOrThrow().state
-                assertEquals(baseline.cpuMax, restored.cpuMax)
+                assertTrue(
+                    "live state did not preserve the checkpoint or a recognized OEM Stock reset",
+                    restoredStateMatchesCheckpointOrPhysicalStock(
+                        baseline = baselineRequest,
+                        state = restored,
+                        capabilities = snapshot.capabilities,
+                    ),
+                )
                 assertEquals(baseline.cpuMin, restored.cpuMin)
-                assertEquals(baseline.gpuMax, restored.gpuMax)
                 assertEquals(baseline.gpuMin, restored.gpuMin)
                 assertTrue("no usable frame samples were recorded", freshSamples > 0)
                 assertTrue("Auto Tune never attempted an efficiency trim", trimCount > 0)
@@ -355,6 +474,10 @@ class ExternalGameAutoTuneTraceTest {
                         .put("unhealthySamples", unhealthySamples)
                         .put("unhealthyAtBaseSamples", unhealthyAtBaseSamples)
                         .put("maxConsecutiveUnhealthySamples", maxConsecutiveUnhealthySamples)
+                        .put("upwardResetSamples", upwardResetSamples)
+                        .put("upwardResetEvents", upwardResetEvents)
+                        .put("upwardResetReassertions", upwardResetReassertions)
+                        .put("postApplyUpwardResetEvents", postApplyUpwardResetEvents)
                         .put(
                             "maxConsecutiveUnhealthyWithHeadroomSamples",
                             maxConsecutiveUnhealthyWithHeadroomSamples,
@@ -576,6 +699,32 @@ class ExternalGameAutoTuneTraceTest {
         .putNullable("gpuMax", gpuMax)
         .putNullable("gpuMin", gpuMin)
         .putNullable("gpuCurrent", gpuCurrent)
+
+    private fun restoredStateMatchesCheckpointOrPhysicalStock(
+        baseline: ApplyRequest,
+        state: HostState,
+        capabilities: HostCapabilities,
+    ): Boolean {
+        if (baseline.cpuMax.size != capabilities.cpus.size || state.cpuMax.size != capabilities.cpus.size) {
+            return false
+        }
+        val cpuAccepted = capabilities.cpus.indices.all { index ->
+            val actual = state.cpuMax[index]
+            val checkpoint = baseline.cpuMax[index]
+            val domain = capabilities.cpus[index]
+            actual == checkpoint || actual > 0L &&
+                (actual == domain.stockMax && domain.stockMax > 0L ||
+                    actual == domain.selectableMax && domain.selectableMax > 0L)
+        }
+        if (!cpuAccepted) return false
+        val checkpointGpu = baseline.gpuMax
+        val actualGpu = state.gpuMax
+        val gpu = capabilities.gpu
+        if (checkpointGpu == null || actualGpu == null || gpu == null) return checkpointGpu == actualGpu
+        return actualGpu == checkpointGpu || actualGpu > 0L &&
+            (actualGpu == gpu.stockMax && gpu.stockMax > 0L ||
+                actualGpu == gpu.selectableMax && gpu.selectableMax > 0L)
+    }
 
     private fun HostAutoTelemetry.toJson(): JSONObject = JSONObject()
         .put("sequence", sequence)

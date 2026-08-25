@@ -109,6 +109,8 @@ class HostApplyFailure @JvmOverloads constructor(
     val attemptedMaximumModePaths: Set<String> = emptySet(),
     /** Maximum nodes whose dispatched value operation could have run. */
     val attemptedMaximumValuePaths: Set<String> = emptySet(),
+    /** Maximum nodes whose rollback read proved a different external value. */
+    val relinquishedMaximumValuePaths: Set<String> = emptySet(),
 ) : IllegalStateException(message, cause)
 
 class HostDispatchFailure @JvmOverloads constructor(

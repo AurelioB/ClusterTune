@@ -535,8 +535,15 @@ class PerformanceRepository(
             }
             requireActiveAutoTuneSnapshot(snapshot.status, snapshot.message)
             val appliedState = snapshot.state ?: error("Privileged host returned no Auto Tune apply state")
-            check(appliedState.cpuMax == request.cpuMax && appliedState.gpuMax == request.gpuMax) {
-                "Privileged host applied a different Auto Tune ceiling"
+            check(
+                autoTuneApplyStateIsAccepted(
+                    request = request,
+                    state = appliedState,
+                    cpuDomains = context.cpuDomains,
+                    gpuDomain = context.gpuDomain,
+                ),
+            ) {
+                "Privileged host applied a different or unrecognized Auto Tune ceiling"
             }
             if (!AdaptiveTuneRuntime.isCurrent(session.generation)) {
                 val stopped = withContext(Dispatchers.IO) {
@@ -1683,6 +1690,51 @@ private fun requireActiveAutoTuneSnapshot(status: HostAutoSessionStatus, message
         message ?: "Auto Tune host session is $status"
     }
 }
+
+/**
+ * Qualcomm/AYN policy workers can restore a maximum to an exact physical Stock alias between
+ * ClusterTune's write and readback. Keep the controller's normal cadence in that narrow case;
+ * it may submit the complete envelope again on a later decision, but this check never retries.
+ */
+internal fun autoTuneApplyStateIsAccepted(
+    request: ApplyRequest,
+    state: HostState,
+    cpuDomains: List<HostCpuDomain>,
+    gpuDomain: HostGpuDomain?,
+): Boolean {
+    if (request.cpuMax.size != cpuDomains.size || state.cpuMax.size != cpuDomains.size) return false
+    if (request.cpuMax.indices.any { index ->
+            !maximumMatchesRequestOrUpwardStockReset(
+                requested = request.cpuMax[index],
+                actual = state.cpuMax[index],
+                stockMax = cpuDomains[index].stockMax,
+                selectableMax = cpuDomains[index].selectableMax,
+            )
+        }
+    ) {
+        return false
+    }
+    val requestedGpu = request.gpuMax
+    val actualGpu = state.gpuMax
+    if (requestedGpu == null || actualGpu == null || gpuDomain == null) {
+        return requestedGpu == actualGpu
+    }
+    return maximumMatchesRequestOrUpwardStockReset(
+        requested = requestedGpu,
+        actual = actualGpu,
+        stockMax = gpuDomain.stockMax,
+        selectableMax = gpuDomain.selectableMax,
+    )
+}
+
+private fun maximumMatchesRequestOrUpwardStockReset(
+    requested: Long,
+    actual: Long,
+    stockMax: Long,
+    selectableMax: Long,
+): Boolean = actual == requested ||
+    actual > requested && actual > 0L &&
+    (actual == stockMax && stockMax > 0L || actual == selectableMax && selectableMax > 0L)
 
 internal fun validateAutoTuneRestoration(
     snapshot: HostAutoSessionSnapshot,

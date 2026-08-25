@@ -513,6 +513,52 @@ class PerformanceRepositoryAutoTuneTest {
     }
 
     @Test
+    fun `Auto Tune apply accepts exact upward physical Stock aliases only`() {
+        val cpuDomains = listOf(
+            hostCpu("policy0", listOf(200, 400, 800, 1_000)).copy(
+                stockMax = 1_000,
+                selectableMax = 800,
+            ),
+            hostCpu("policy4", listOf(300, 600, 900, 1_200)),
+        )
+        val gpuDomain = hostGpu(listOf(300, 600, 900, 1_000)).copy(
+            stockMax = 1_000,
+            selectableMax = 900,
+        )
+        val request = com.aure.clustertune.root.host.ApplyRequest(
+            cpuMax = listOf(400, 900),
+            gpuMax = 600,
+            resetToStock = false,
+        )
+
+        assertTrue(
+            autoTuneApplyStateIsAccepted(
+                request,
+                HostState(cpuMax = listOf(400, 900), gpuMax = 600),
+                cpuDomains,
+                gpuDomain,
+            ),
+        )
+        assertTrue(
+            autoTuneApplyStateIsAccepted(
+                request,
+                HostState(cpuMax = listOf(800, 1_200), gpuMax = 1_000),
+                cpuDomains,
+                gpuDomain,
+            ),
+        )
+        listOf(
+            HostState(cpuMax = listOf(700, 900), gpuMax = 600),
+            HostState(cpuMax = listOf(300, 900), gpuMax = 600),
+            HostState(cpuMax = listOf(-1, 900), gpuMax = 600),
+            HostState(cpuMax = listOf(400, 900), gpuMax = 800),
+            HostState(cpuMax = listOf(400), gpuMax = 600),
+        ).forEach { state ->
+            assertFalse(autoTuneApplyStateIsAccepted(request, state, cpuDomains, gpuDomain))
+        }
+    }
+
+    @Test
     fun `known restoration requires exact terminal identity and completed attempt`() {
         validateAutoTuneRestoration(
             restorationSnapshot(),

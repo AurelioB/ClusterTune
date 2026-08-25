@@ -356,6 +356,8 @@ internal fun resolveHostMaximumTargets(
 internal data class HostMaximumMutationReceipt(
     val modePaths: Set<String>,
     val valuePaths: Set<String>,
+    /** Exact values observed by the engine's normal (non-deferred) verification. */
+    val verifiedValues: Map<String, Long> = emptyMap(),
 )
 
 class HostApplyEngine(private val fs: HostFilesystem) {
@@ -374,12 +376,18 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         applyMaxOnlyTrackedOrThrow(capabilities, request)
     }
 
+    /**
+     * When [deferMaximumVerification] is true, the caller must perform one immediate full-state
+     * value-and-mode verification. This removes the duplicate sysfs read window used by the
+     * automatic session while preserving normal exact verification for every other caller.
+     */
     @Synchronized
     internal fun applyMaxOnlyTrackedOrThrow(
         capabilities: HostCapabilities,
         request: ApplyRequest,
         stockModeOverrides: Map<String, Boolean> = emptyMap(),
         preserveModePaths: Set<String> = emptySet(),
+        deferMaximumVerification: Boolean = false,
     ): HostMaximumMutationReceipt {
         return applyInternal(
             capabilities,
@@ -387,6 +395,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
             repairMinimums = false,
             stockModeOverrides = stockModeOverrides,
             preserveModePaths = preserveModePaths,
+            deferMaximumVerification = deferMaximumVerification,
         ).getOrElse { failure ->
             if (failure is HostApplyFailure) throw failure
             throw HostApplyFailure(HostApplyPhase.PREFLIGHT, false, true, false, failure.message ?: "host preflight failed", failure)
@@ -407,6 +416,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         repairMinimums: Boolean,
         stockModeOverrides: Map<String, Boolean> = emptyMap(),
         preserveModePaths: Set<String> = emptySet(),
+        deferMaximumVerification: Boolean = false,
     ): Result<HostMaximumMutationReceipt> = runCatching {
         request.gpuId?.let { require(capabilities.gpu?.id == it) { "GPU identity mismatch" } }
         request.gpuMaxPath?.let { require(capabilities.gpu?.maxPath == it) { "GPU path mismatch" } }
@@ -414,8 +424,12 @@ class HostApplyEngine(private val fs: HostFilesystem) {
             capabilities.cpus.forEach { add(it.maxPath) }
             capabilities.gpu?.let { add(it.maxPath) }
         }
-        require(stockModeOverrides.keys.all { it in maximumPaths } && preserveModePaths.all { it in maximumPaths }) {
-            "mode intent does not match discovered maximum domains"
+        require(
+            stockModeOverrides.keys.all { it in maximumPaths } &&
+                preserveModePaths.all { it in maximumPaths } &&
+                (!deferMaximumVerification || !repairMinimums),
+        ) {
+            "maximum mutation intent does not match discovered domains"
         }
         val resolved = resolveHostMaximumTargets(capabilities, request)
         val stabilizedStockCeiling = resolved.stabilizedStockCeiling
@@ -523,6 +537,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         val maximumModeMutationPaths = linkedSetOf<String>()
         val maximumValueMutationPaths = linkedSetOf<String>()
         val maximumMutations = mutableListOf<HostMutation>()
+        val verifiedMaximums = linkedMapOf<String, Long>()
         var gpuMutationTarget: Long? = null
         fun journalBeforeMutation(
             path: String,
@@ -582,10 +597,21 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                         maximumMutations += HostMutation.Chmod(cpu.maxPath, finalMode)
                     } else {
                         maximumMutations += HostMutation.Chmod(cpu.maxPath, writableMode(originalModes[index]))
-                        maximumMutations += if (cpuStock[index]) {
+                        maximumMutations += if (deferMaximumVerification) {
+                            // Auto Tune performs one authoritative verification after the
+                            // complete batch. Avoid a second in-shell read/retry window while
+                            // an OEM worker may legitimately reset this ceiling to Stock.
+                            HostMutation.WriteCandidatesNoReadback(cpu.maxPath, listOf(target.toString()))
+                        } else if (cpuStock[index]) {
                             val candidates = cpuStockCandidates[index]
-                            HostMutation.WritePreferred(cpu.maxPath, candidates.first().toString(), candidates.last().toString())
-                        } else HostMutation.Write(cpu.maxPath, target.toString())
+                            HostMutation.WritePreferred(
+                                cpu.maxPath,
+                                candidates.first().toString(),
+                                candidates.last().toString(),
+                            )
+                        } else {
+                            HostMutation.Write(cpu.maxPath, target.toString())
+                        }
                         maximumMutations += HostMutation.Chmod(cpu.maxPath, finalMode)
                     }
                 }
@@ -640,9 +666,15 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                             maximumMutations += HostMutation.Chmod(gpu.maxPath, finalMode)
                         } else {
                             maximumMutations += HostMutation.Chmod(gpu.maxPath, writableMode(gpuMode))
-                            maximumMutations += if (gpuStock) {
+                            maximumMutations += if (deferMaximumVerification) {
+                                HostMutation.WriteCandidatesNoReadback(gpu.maxPath, listOf(target.toString()))
+                            } else if (gpuStock) {
                                 val preferred = stabilizedStockCeiling?.takeIf { it > 0 } ?: gpu.stockMax.takeIf { it > 0 } ?: gpu.selectableMax
-                                HostMutation.WritePreferred(gpu.maxPath, preferred.toString(), gpu.selectableMax.toString())
+                                HostMutation.WritePreferred(
+                                    gpu.maxPath,
+                                    preferred.toString(),
+                                    gpu.selectableMax.toString(),
+                                )
                             } else {
                                 HostMutation.Write(gpu.maxPath, target.toString())
                             }
@@ -665,8 +697,10 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                 } else {
                     protectionMode(originalModes[index], stockMode)
                 }
-                val accepted = if (cpuStock[index]) cpuStockCandidates[index] else listOf(target)
-                verifyMax(cpu.id, cpu.maxPath, accepted, finalMode)
+                if (!deferMaximumVerification) {
+                    val accepted = if (cpuStock[index]) cpuStockCandidates[index] else listOf(target)
+                    verifiedMaximums[cpu.maxPath] = verifyMax(cpu.id, cpu.maxPath, accepted, finalMode)
+                }
                 if (repairMinimums && fs.read(cpu.minPath)?.toLongOrNull()?.let { it > 0 && it <= safetyCeilings[index] } != true) {
                     journalBeforeMutation(cpu.minPath, originalMins[index], originalMinModes[index], false, cpu.maxPath)
                     reconcileMinimum(
@@ -692,10 +726,23 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                     } else {
                         protectionMode(gpuMode, stockMode)
                     }
-                    val accepted = if (gpuStock) listOfNotNull(stabilizedStockCeiling?.takeIf { it > 0 }, gpu.stockMax.takeIf { it > 0 }, gpu.selectableMax).distinct() else listOf(requested)
-                    verifyMax(gpu.id, gpu.maxPath, accepted, finalMode)
-                    val actualAcceptedMax = fs.read(gpu.maxPath)?.toLongOrNull()
-                        ?: error("cannot read ${gpu.maxPath}")
+                    if (!deferMaximumVerification) {
+                        val accepted = if (gpuStock) {
+                            listOfNotNull(
+                                stabilizedStockCeiling?.takeIf { it > 0 },
+                                gpu.stockMax.takeIf { it > 0 },
+                                gpu.selectableMax,
+                            ).distinct()
+                        } else {
+                            listOf(requested)
+                        }
+                        verifiedMaximums[gpu.maxPath] = verifyMax(gpu.id, gpu.maxPath, accepted, finalMode)
+                    }
+                    val actualAcceptedMax = if (repairMinimums) {
+                        fs.read(gpu.maxPath)?.toLongOrNull() ?: error("cannot read ${gpu.maxPath}")
+                    } else {
+                        requested
+                    }
                     gpu.minPath?.let {
                         if (repairMinimums && fs.read(it)?.toLongOrNull()?.let { value -> value > 0 && value <= actualAcceptedMax } != true) {
                             journalBeforeMutation(it, originalGpuMin ?: error("cannot read $it"), originalGpuMinMode ?: error("cannot read mode for $it"), false, gpu.maxPath)
@@ -776,6 +823,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
             }
             val rollbackFailures = mutableListOf<String>()
             val rollbackOwnedFallbacks = mutableMapOf<String, MutableSet<Long>>()
+            val rollbackRelinquishedMaximumPaths = linkedSetOf<String>()
             fun recordRollbackFallback(path: String, value: Long) {
                 rollbackOwnedFallbacks.getOrPut(path) { linkedSetOf() }.add(value)
             }
@@ -806,6 +854,8 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                         )
                     } else {
                         val current = fs.read(entry.path)?.toLongOrNull()
+                        val exactVerifiedTarget = verifiedMaximums[entry.path]
+                        val ownedTargets = exactVerifiedTarget?.let(::setOf) ?: entry.ownedTargets
                         when {
                             current == null -> {
                                 // Value ownership is unresolved, but a mode left by this
@@ -813,8 +863,13 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                                 restoreOwnedMaximumMode(entry)
                                 false
                             }
-                            current == entry.value -> restoreOwnedMaximumMode(entry)
-                            current in entry.ownedTargets ->
+                            current == entry.value -> {
+                                if (entry.path in attemptedMaximumValuePaths) {
+                                    rollbackRelinquishedMaximumPaths += entry.path
+                                }
+                                restoreOwnedMaximumMode(entry)
+                            }
+                            current in ownedTargets ->
                                 restoreNode(
                                     entry.path,
                                     entry.value,
@@ -825,7 +880,10 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                             // A different value belongs to an external policy. Relinquish only
                             // value ownership; an Auto-owned protection mode must still return
                             // to the original mode without touching the external value.
-                            else -> restoreOwnedMaximumMode(entry)
+                            else -> {
+                                rollbackRelinquishedMaximumPaths += entry.path
+                                restoreOwnedMaximumMode(entry)
+                            }
                         }
                     }
                     maxRestored[entry.path] = restored
@@ -850,6 +908,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                     rollbackOwnedValues = rollbackOwnershipSnapshot(),
                     attemptedMaximumModePaths = attemptedMaximumModePaths,
                     attemptedMaximumValuePaths = attemptedMaximumValuePaths,
+                    relinquishedMaximumValuePaths = rollbackRelinquishedMaximumPaths,
                 )
             }
             if (t is HostApplyFailure) {
@@ -863,6 +922,8 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                     rollbackOwnedValues = t.rollbackOwnedValues + rollbackOwnershipSnapshot(),
                     attemptedMaximumModePaths = t.attemptedMaximumModePaths + attemptedMaximumModePaths,
                     attemptedMaximumValuePaths = t.attemptedMaximumValuePaths + attemptedMaximumValuePaths,
+                    relinquishedMaximumValuePaths =
+                        t.relinquishedMaximumValuePaths + rollbackRelinquishedMaximumPaths,
                 )
             }
             throw HostApplyFailure(
@@ -875,11 +936,13 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                 rollbackOwnedValues = rollbackOwnershipSnapshot(),
                 attemptedMaximumModePaths = attemptedMaximumModePaths,
                 attemptedMaximumValuePaths = attemptedMaximumValuePaths,
+                relinquishedMaximumValuePaths = rollbackRelinquishedMaximumPaths,
             )
         }
         HostMaximumMutationReceipt(
             modePaths = maximumModeMutationPaths.toSet(),
             valuePaths = maximumValueMutationPaths.toSet(),
+            verifiedValues = verifiedMaximums.toMap(),
         )
     }
 
@@ -938,11 +1001,12 @@ class HostApplyEngine(private val fs: HostFilesystem) {
     private fun protectionMode(mode: Int, stock: Boolean): Int =
         if (stock) mode or 0x080 else mode and 0x16d
 
-    private fun verifyMax(id: String, path: String, targets: List<Long>, mode: Int) {
+    private fun verifyMax(id: String, path: String, targets: List<Long>, mode: Int): Long {
         val actual = fs.read(path)?.toLongOrNull()
         check(actual != null && actual in targets) { "verification failed for $id: expected=${targets.joinToString("/")} actual=$actual" }
         val actualMode = fs.mode(path)
         check(actualMode == mode) { "permission verification failed for $id: expected=$mode actual=$actualMode" }
+        return actual
     }
 
     private fun restoreNode(

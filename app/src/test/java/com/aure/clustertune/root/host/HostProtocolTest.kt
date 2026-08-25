@@ -366,6 +366,10 @@ class HostProtocolTest {
         )
 
         assertTrue(result.isFailure)
+        assertEquals(
+            setOf("max"),
+            (result.exceptionOrNull() as HostApplyFailure).relinquishedMaximumValuePaths,
+        )
         assertEquals("700", fs.read("max"))
         assertEquals(384, fs.modes["max"])
         val rewrite = fs.operations.indexOf("external:max=700 mode=384")
