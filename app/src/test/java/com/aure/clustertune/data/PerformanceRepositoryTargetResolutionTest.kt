@@ -4,6 +4,7 @@ import com.aure.clustertune.model.CpuPolicyInfo
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileSource
 import com.aure.clustertune.model.ProfileStateResolver
+import com.aure.clustertune.model.TunerState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -26,6 +27,45 @@ class PerformanceRepositoryTargetResolutionTest {
         val profile = profile("quiet", mapOf(0 to 800))
         val result = resolvePersistedTarget(listOf(policy), listOf(profile), "quiet", mapOf(0 to 1_000))
         assertEquals(ResolvedPerformanceTarget(mapOf(0 to 800), "quiet", false), result)
+    }
+
+    @Test
+    fun `boot restore keeps Medium identity when hardware starts at Stock`() {
+        val medium = PerformanceProfile(
+            id = "bundled_cq8725s_medium",
+            name = "Medium Underclock",
+            maxFrequencies = mapOf(0 to 800),
+            source = ProfileSource.BUNDLED,
+        )
+
+        // A reboot resets the live hardware ceiling to Stock. The persisted
+        // profile id must still select Medium as the restore target.
+        val target = resolvePersistedTarget(
+            policies = listOf(policy.copy(currentMaxFreq = 1_000)),
+            profiles = listOf(medium),
+            profileId = medium.id,
+            values = mapOf(0 to 1_000),
+        )
+
+        assertEquals(ResolvedPerformanceTarget(mapOf(0 to 800), medium.id, false), target)
+
+        // Once the boot transaction succeeds, the normal resolver must expose
+        // Medium as both the selected and active profile instead of Stock.
+        val restored = ProfileStateResolver.resolve(
+            TunerState(
+                isLoading = false,
+                policies = listOf(policy.copy(currentMaxFreq = 800)),
+                actualValues = target!!.values,
+                currentValues = target.values,
+                bundledProfiles = listOf(medium),
+                displayProfiles = listOf(medium),
+                selectedProfileId = medium.id,
+                lastAppliedDisplayProfileId = medium.id,
+            ),
+        )
+        assertEquals(medium.id, restored.selectedDisplayProfileId)
+        assertEquals(medium.id, restored.activeDisplayProfileId)
+        assertEquals("Medium Underclock", restored.activeDisplayProfileName)
     }
 
     @Test
