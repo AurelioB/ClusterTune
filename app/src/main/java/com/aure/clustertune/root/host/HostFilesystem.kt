@@ -66,14 +66,15 @@ class RealHostFilesystem @JvmOverloads constructor(
         }
         val script = buildString {
             append("set -e; ")
-            operations.forEach { operation ->
+            operations.forEachIndexed { index, operation ->
+                append("if { ")
                 when (operation) {
                     is HostMutation.Chmod -> {
                         append("chmod ")
                             .append(shellQuote(Integer.toOctalString(operation.mode and 0x1ff)))
                             .append(' ')
                             .append(shellQuote(operation.path))
-                            .append("; ")
+                            .append(" 2>/dev/null; ")
                     }
 
                     is HostMutation.Write -> {
@@ -132,21 +133,24 @@ class RealHostFilesystem @JvmOverloads constructor(
                             .append(quotedPath)
                             .append(" 2>/dev/null)\" = ")
                             .append(shellQuote(operation.fallback))
-                            .append(" ] || exit 1; fi; ")
+                            .append(" ]; fi; ")
                     }
                 }
+                append("}; then :; else status=\$?; printf '%s\\n' ")
+                    .append(shellQuote("$MUTATION_FAILURE_MARKER${index + 1}"))
+                    .append(" >&2; exit \"\$status\"; fi; ")
             }
         }
         if (script.length > 8192) {
             mutationError = "script too long"
             return false
         }
-        return dispatchLocalScript(script)
+        return dispatchLocalScript(script, operations)
     }
 
     private fun shellQuote(value: String): String = "'${value.replace("'", "'\"'\"'")}'"
 
-    private fun dispatchLocalScript(command: String): Boolean {
+    private fun dispatchLocalScript(command: String, operations: List<HostMutation>): Boolean {
         val process = try {
             ProcessBuilder(shellPath, "-c", command)
                 .redirectErrorStream(true)
@@ -187,7 +191,24 @@ class RealHostFilesystem @JvmOverloads constructor(
             } else {
                 drain.join()
                 if (process.exitValue() != 0) {
-                    mutationError = "status=${process.exitValue()} output=${output.toByteArray().toString(Charsets.UTF_8).take(512)}"
+                    val rawOutput = output.toByteArray().toString(Charsets.UTF_8)
+                    val failedOperation = MUTATION_FAILURE_PATTERN.findAll(rawOutput)
+                        .lastOrNull()
+                        ?.groupValues
+                        ?.getOrNull(1)
+                        ?.toIntOrNull()
+                        ?.minus(1)
+                        ?.takeIf { it in operations.indices }
+                    mutationError = failedOperation?.let { operationIndex ->
+                        val operation = operations[operationIndex]
+                        "status=${process.exitValue()} operation=${operationIndex + 1}/${operations.size} " +
+                            "kind=${operation.diagnosticKind()} path=${diagnosticPath(operation.diagnosticPath())}"
+                    } ?: "status=${process.exitValue()} operation=unknown"
+                    mutationFailure = HostDispatchFailure(
+                        indeterminate = false,
+                        message = mutationError!!,
+                        firstFailedOperationIndex = failedOperation,
+                    )
                     false
                 } else {
                     true
@@ -208,7 +229,136 @@ class RealHostFilesystem @JvmOverloads constructor(
         }
     }
 
+    private fun HostMutation.diagnosticPath(): String = when (this) {
+        is HostMutation.Chmod -> path
+        is HostMutation.Write -> path
+        is HostMutation.WriteCandidatesNoReadback -> path
+        is HostMutation.WritePreferred -> path
+    }
+
+    private fun HostMutation.diagnosticKind(): String = when (this) {
+        is HostMutation.Chmod -> "chmod"
+        is HostMutation.Write -> "write"
+        is HostMutation.WriteCandidatesNoReadback -> "write-candidates"
+        is HostMutation.WritePreferred -> "write-preferred"
+    }
+
+    private fun diagnosticPath(path: String): String {
+        val sanitized = buildString(path.length.coerceAtMost(MAX_DIAGNOSTIC_PATH_LENGTH)) {
+            path.take(MAX_DIAGNOSTIC_PATH_LENGTH).forEach { character ->
+                append(if (character.code in 0x21..0x7e) character else '?')
+            }
+        }
+        return if (path.length > MAX_DIAGNOSTIC_PATH_LENGTH) "$sanitized..." else sanitized
+    }
+
+    private companion object {
+        const val MUTATION_FAILURE_MARKER = "__CLUSTERTUNE_MUTATION_FAILED__="
+        const val MAX_DIAGNOSTIC_PATH_LENGTH = 240
+        val MUTATION_FAILURE_PATTERN = Regex("(?:^|\\n)${MUTATION_FAILURE_MARKER}(\\d+)(?:\\r?\\n|$)")
+    }
+
 }
+
+/** The exact ceiling values a profile transaction may leave after Stock fallbacks. */
+internal data class HostResolvedMaximumTargets(
+    val stabilizedStockCeiling: Long?,
+    val cpuStock: List<Boolean>,
+    val cpuStockCandidates: List<List<Long>>,
+    val cpuExpected: List<Long>,
+    val cpuSafetyCeilings: List<Long>,
+    val gpuStock: Boolean,
+    val gpuExpected: Long?,
+    val gpuAcceptedCeilings: List<Long>,
+) {
+    val cpuAcceptedCeilings: List<Set<Long>>
+        get() = cpuExpected.mapIndexed { index, expected ->
+            if (cpuStock[index]) cpuStockCandidates[index].toSet() else setOf(expected)
+        }
+}
+
+/**
+ * Resolves Stock aliases and hidden GPU ceilings once for both mutation and session ownership.
+ * Keeping this shared prevents startup recovery from claiming a value the apply engine could
+ * never have written (or overlooking a valid preferred-write fallback).
+ */
+internal fun resolveHostMaximumTargets(
+    capabilities: HostCapabilities,
+    request: ApplyRequest,
+): HostResolvedMaximumTargets {
+    require(request.cpuMax.size == capabilities.cpus.size)
+    require(request.gpuMax == null || capabilities.gpu != null) {
+        "GPU target requested but no GPU domain is available"
+    }
+    val stabilizedStockCeiling = request.stabilizedStockCeiling
+        ?.takeIf { capabilities.gpu?.supportedFrequencies?.isEmpty() == true }
+    stabilizedStockCeiling?.let {
+        require(it > 0L && it <= 4_000_000_000L) { "invalid stabilized GPU stock ceiling" }
+        require(request.gpuId != null && request.gpuMaxPath != null) {
+            "stabilized GPU stock ceiling requires domain identity"
+        }
+    }
+    val cpuStock = capabilities.cpus.mapIndexed { index, cpu ->
+        request.resetToStock || request.cpuMax[index] >= cpu.selectableMax
+    }
+    val cpuStockCandidates = capabilities.cpus.map { cpu ->
+        listOf(cpu.stockMax.takeIf { it > 0 } ?: cpu.selectableMax, cpu.selectableMax).distinct()
+    }
+    val cpuExpected = capabilities.cpus.mapIndexed { index, cpu ->
+        if (cpuStock[index]) cpu.stockMax.takeIf { it > 0 } ?: cpu.selectableMax else request.cpuMax[index]
+    }
+    val cpuSafetyCeilings = capabilities.cpus.mapIndexed { index, cpu ->
+        if (cpuStock[index]) cpuStockCandidates[index].minOrNull() ?: cpu.selectableMax else cpuExpected[index]
+    }
+    val gpuStock = request.gpuMax?.let { requested ->
+        val gpu = capabilities.gpu
+        request.resetToStock || (gpu != null && requested >= (stabilizedStockCeiling ?: gpu.selectableMax))
+    } ?: false
+    val gpuExpected = request.gpuMax?.let { requested ->
+        val gpu = capabilities.gpu
+        if (gpu != null && (request.resetToStock || requested >= gpu.selectableMax) &&
+            (gpuStock || stabilizedStockCeiling == null)
+        ) {
+            stabilizedStockCeiling?.takeIf { it >= gpu.selectableMax }
+                ?: gpu.selectableMax.takeIf { it > 0 }
+        } else {
+            requested
+        }
+    }
+    require(request.gpuMax == null || gpuExpected != null) {
+        "GPU target cannot be resolved to a selectable ceiling"
+    }
+    val gpuAcceptedCeilings = when {
+        gpuExpected == null -> emptyList()
+        gpuStock -> {
+            val gpu = requireNotNull(capabilities.gpu)
+            listOfNotNull(
+                stabilizedStockCeiling?.takeIf { it > 0 },
+                gpu.stockMax.takeIf { it > 0 },
+                gpu.selectableMax,
+            ).distinct()
+        }
+        else -> listOf(gpuExpected)
+    }
+    return HostResolvedMaximumTargets(
+        stabilizedStockCeiling = stabilizedStockCeiling,
+        cpuStock = cpuStock,
+        cpuStockCandidates = cpuStockCandidates,
+        cpuExpected = cpuExpected,
+        cpuSafetyCeilings = cpuSafetyCeilings,
+        gpuStock = gpuStock,
+        gpuExpected = gpuExpected,
+        gpuAcceptedCeilings = gpuAcceptedCeilings,
+    )
+}
+
+/** Exact maximum nodes whose mode or value operations were dispatched by a max-only apply. */
+internal data class HostMaximumMutationReceipt(
+    val modePaths: Set<String>,
+    val valuePaths: Set<String>,
+    /** Exact values observed by the engine's normal (non-deferred) verification. */
+    val verifiedValues: Map<String, Long> = emptyMap(),
+)
 
 class HostApplyEngine(private val fs: HostFilesystem) {
     fun applyOrThrow(capabilities: HostCapabilities, request: ApplyRequest) {
@@ -218,60 +368,121 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         }
     }
 
+    /**
+     * Applies only maximum-frequency nodes. This is the automatic tuner's actuator path:
+     * live OEM/kernel minimum votes remain authoritative even when they exceed a requested cap.
+     */
+    fun applyMaxOnlyOrThrow(capabilities: HostCapabilities, request: ApplyRequest) {
+        applyMaxOnlyTrackedOrThrow(capabilities, request)
+    }
+
+    /**
+     * When [deferMaximumVerification] is true, the caller must perform one immediate full-state
+     * value-and-mode verification. This removes the duplicate sysfs read window used by the
+     * automatic session while preserving normal exact verification for every other caller.
+     */
     @Synchronized
-    fun apply(capabilities: HostCapabilities, request: ApplyRequest): Result<Unit> = runCatching {
-        require(request.cpuMax.size == capabilities.cpus.size)
-        require(request.gpuMax == null || capabilities.gpu != null) {
-            "GPU target requested but no GPU domain is available"
+    internal fun applyMaxOnlyTrackedOrThrow(
+        capabilities: HostCapabilities,
+        request: ApplyRequest,
+        stockModeOverrides: Map<String, Boolean> = emptyMap(),
+        preserveModePaths: Set<String> = emptySet(),
+        deferMaximumVerification: Boolean = false,
+    ): HostMaximumMutationReceipt {
+        return applyInternal(
+            capabilities,
+            request,
+            repairMinimums = false,
+            stockModeOverrides = stockModeOverrides,
+            preserveModePaths = preserveModePaths,
+            deferMaximumVerification = deferMaximumVerification,
+        ).getOrElse { failure ->
+            if (failure is HostApplyFailure) throw failure
+            throw HostApplyFailure(HostApplyPhase.PREFLIGHT, false, true, false, failure.message ?: "host preflight failed", failure)
         }
+    }
+
+    @Synchronized
+    fun apply(capabilities: HostCapabilities, request: ApplyRequest): Result<Unit> =
+        applyInternal(capabilities, request, repairMinimums = true).map { Unit }
+
+    @Synchronized
+    fun applyMaxOnly(capabilities: HostCapabilities, request: ApplyRequest): Result<Unit> =
+        applyInternal(capabilities, request, repairMinimums = false).map { Unit }
+
+    @Synchronized
+    internal fun applyWithManagedCpuMinimumsOrThrow(
+        capabilities: HostCapabilities,
+        request: ApplyRequest,
+        managedMinimums: Set<String>,
+    ) {
+        applyInternal(capabilities, request, repairMinimums = true, managedCpuMinimums = managedMinimums)
+            .getOrThrow()
+    }
+
+    internal fun validateProfileTargets(capabilities: HostCapabilities, request: ApplyRequest): HostResolvedMaximumTargets {
         request.gpuId?.let { require(capabilities.gpu?.id == it) { "GPU identity mismatch" } }
         request.gpuMaxPath?.let { require(capabilities.gpu?.maxPath == it) { "GPU path mismatch" } }
-        // The hint is only needed when the GPU does not enumerate selectable
-        // frequencies. On enumerated domains the cached selectable ceiling is
-        // authoritative; ignore the hint rather than rejecting an otherwise
-        // valid request.
-        val stabilizedStockCeiling = request.stabilizedStockCeiling
-            ?.takeIf { capabilities.gpu?.supportedFrequencies?.isEmpty() == true }
-        stabilizedStockCeiling?.let {
-            require(it > 0L && it <= 4_000_000_000L) { "invalid stabilized GPU stock ceiling" }
-            require(request.gpuId != null && request.gpuMaxPath != null) { "stabilized GPU stock ceiling requires domain identity" }
+        val resolved = resolveHostMaximumTargets(capabilities, request)
+        capabilities.cpus.forEachIndexed { index, cpu ->
+            validateCpuTarget(cpu, resolved.cpuExpected[index], resolved.cpuStock[index])
         }
-        val cpuStock = capabilities.cpus.mapIndexed { index, cpu ->
-            request.resetToStock || request.cpuMax[index] >= cpu.selectableMax
+        resolved.gpuExpected?.let { target ->
+            val gpu = capabilities.gpu ?: error("GPU target requested but no GPU domain is available")
+            validateGpuTarget(gpu, target, resolved.gpuAcceptedCeilings.maxOrNull() ?: gpu.selectableMax)
         }
-        val cpuStockCandidates = capabilities.cpus.map { cpu ->
-            listOf(cpu.stockMax.takeIf { it > 0 } ?: cpu.selectableMax, cpu.selectableMax).distinct()
+        return resolved
+    }
+
+    private fun applyInternal(
+        capabilities: HostCapabilities,
+        request: ApplyRequest,
+        repairMinimums: Boolean,
+        stockModeOverrides: Map<String, Boolean> = emptyMap(),
+        preserveModePaths: Set<String> = emptySet(),
+        deferMaximumVerification: Boolean = false,
+        managedCpuMinimums: Set<String> = emptySet(),
+    ): Result<HostMaximumMutationReceipt> = runCatching {
+        request.gpuId?.let { require(capabilities.gpu?.id == it) { "GPU identity mismatch" } }
+        request.gpuMaxPath?.let { require(capabilities.gpu?.maxPath == it) { "GPU path mismatch" } }
+        val maximumPaths = buildSet {
+            capabilities.cpus.forEach { add(it.maxPath) }
+            capabilities.gpu?.let { add(it.maxPath) }
         }
-        val expected = capabilities.cpus.mapIndexed { index, cpu ->
-            if (cpuStock[index]) cpu.stockMax.takeIf { it > 0 } ?: cpu.selectableMax else request.cpuMax[index]
+        require(
+            stockModeOverrides.keys.all { it in maximumPaths } &&
+                preserveModePaths.all { it in maximumPaths } &&
+                (!deferMaximumVerification || !repairMinimums),
+        ) {
+            "maximum mutation intent does not match discovered domains"
         }
-        val safetyCeilings = capabilities.cpus.mapIndexed { index, cpu ->
-            if (cpuStock[index]) cpuStockCandidates[index].minOrNull() ?: cpu.selectableMax else expected[index]
-        }
-        val gpuStock = request.gpuMax?.let { requested ->
-            val gpu = capabilities.gpu
-            request.resetToStock || (gpu != null && requested >= (stabilizedStockCeiling ?: gpu.selectableMax))
-        } ?: false
-        val expectedGpu = request.gpuMax?.let {
-            val gpu = capabilities.gpu
-            if (gpu != null && (request.resetToStock || it >= gpu.selectableMax) && (gpuStock || stabilizedStockCeiling == null)) {
-                stabilizedStockCeiling?.takeIf { value -> value >= gpu.selectableMax } ?: gpu.selectableMax.takeIf { value -> value > 0 }
-            } else it
-        }
-        require(request.gpuMax == null || expectedGpu != null) {
-            "GPU target cannot be resolved to a selectable ceiling"
-        }
+        val resolved = validateProfileTargets(capabilities, request)
+        val stabilizedStockCeiling = resolved.stabilizedStockCeiling
+        val cpuStock = resolved.cpuStock
+        val cpuStockCandidates = resolved.cpuStockCandidates
+        val expected = resolved.cpuExpected
+        val safetyCeilings = resolved.cpuSafetyCeilings
+        val gpuStock = resolved.gpuStock
+        val expectedGpu = resolved.gpuExpected
         val original = capabilities.cpus.map {
             fs.read(it.maxPath)?.toLongOrNull() ?: error("cannot read ${it.maxPath}")
         }
-        val originalMins = capabilities.cpus.map {
-            fs.read(it.minPath)?.toLongOrNull() ?: error("cannot read ${it.minPath}")
+        val originalMins = if (repairMinimums) {
+            capabilities.cpus.map {
+                fs.read(it.minPath)?.toLongOrNull() ?: error("cannot read ${it.minPath}")
+            }
+        } else {
+            List(capabilities.cpus.size) { 0L }
         }
         val originalModes = capabilities.cpus.map {
             fs.mode(it.maxPath) ?: error("cannot read mode for ${it.maxPath}")
         }
-        val originalMinModes = capabilities.cpus.map {
-            fs.mode(it.minPath) ?: error("cannot read mode for ${it.minPath}")
+        val originalMinModes = if (repairMinimums) {
+            capabilities.cpus.map {
+                fs.mode(it.minPath) ?: error("cannot read mode for ${it.minPath}")
+            }
+        } else {
+            List(capabilities.cpus.size) { 0 }
         }
         val originalGpu = if (expectedGpu != null) {
             capabilities.gpu?.let {
@@ -280,7 +491,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         } else {
             null
         }
-        val originalGpuMin = if (expectedGpu != null) {
+        val originalGpuMin = if (repairMinimums && expectedGpu != null) {
             capabilities.gpu?.minPath?.let {
                 fs.read(it)?.toLongOrNull() ?: error("cannot read $it")
             }
@@ -294,15 +505,18 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         } else {
             null
         }
-        val originalGpuMinMode = if (expectedGpu != null) {
+        val originalGpuMinMode = if (repairMinimums && expectedGpu != null) {
             capabilities.gpu?.minPath?.let {
                 fs.mode(it) ?: error("cannot read mode for $it")
             }
         } else {
             null
         }
-        val cpuNeedsMinRepair = originalMins.mapIndexed { index, value -> value <= 0 || value > safetyCeilings[index] }
-        val gpuNeedsMinRepair = expectedGpu != null && originalGpuMin != null &&
+        val cpuNeedsMinRepair = originalMins.mapIndexed { index, value ->
+            repairMinimums && capabilities.cpus[index].id !in managedCpuMinimums &&
+                (value <= 0 || value > safetyCeilings[index])
+        }
+        val gpuNeedsMinRepair = repairMinimums && expectedGpu != null && originalGpuMin != null &&
             (originalGpuMin <= 0 || originalGpuMin > (if (gpuStock) {
                 val gpu = capabilities.gpu
                 listOfNotNull(stabilizedStockCeiling?.takeIf { it > 0 }, gpu?.stockMax?.takeIf { it > 0 }, gpu?.selectableMax).minOrNull() ?: expectedGpu
@@ -312,7 +526,6 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         // This keeps malformed multi-domain requests fail-closed instead of partially applying
         // an earlier CPU domain and relying on rollback for an avoidable validation error.
         capabilities.cpus.forEachIndexed { index, cpu ->
-            validateCpuTarget(cpu, expected[index], cpuStock[index])
             require(!cpuNeedsMinRepair[index] || cpu.minimumCandidates.any { it > 0 && it <= safetyCeilings[index] }) {
                 "no safe minimum candidate for ${cpu.minPath}"
             }
@@ -320,13 +533,6 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         if (expectedGpu != null) {
             val gpu = capabilities.gpu
                 ?: error("GPU target requested but no GPU domain is available")
-            val gpuAcceptedCeilings = if (gpuStock) {
-                listOfNotNull(stabilizedStockCeiling?.takeIf { it > 0 }, gpu.stockMax.takeIf { it > 0 }, gpu.selectableMax).distinct()
-            } else listOf(expectedGpu)
-            // Validation accepts any candidate the forward write may select; minimum
-            // safety below is intentionally based on the *lowest* accepted ceiling.
-            val allowedCeiling = gpuAcceptedCeilings.maxOrNull() ?: gpu.selectableMax
-            validateGpuTarget(gpu, expectedGpu, allowedCeiling)
             if (gpu.minPath != null && gpuNeedsMinRepair) {
                 val minimumCeiling = if (gpuStock) {
                     listOfNotNull(stabilizedStockCeiling?.takeIf { it > 0 }, gpu.stockMax.takeIf { it > 0 }, gpu.selectableMax).minOrNull() ?: expectedGpu
@@ -344,67 +550,179 @@ class HostApplyEngine(private val fs: HostFilesystem) {
             val isMax: Boolean,
             val pairedMaxPath: String?,
             val restoreFallbacks: List<Long> = emptyList(),
+            val ownedTargets: Set<Long> = emptySet(),
+            val ownedModes: Set<Int> = emptySet(),
         )
         val journal = LinkedHashMap<String, JournalEntry>()
+        val maximumModeMutationPaths = linkedSetOf<String>()
+        val maximumValueMutationPaths = linkedSetOf<String>()
+        val maximumMutations = mutableListOf<HostMutation>()
+        val verifiedMaximums = linkedMapOf<String, Long>()
         var gpuMutationTarget: Long? = null
-        fun journalBeforeMutation(path: String, value: Long, mode: Int, isMax: Boolean, pairedMaxPath: String?, restoreFallbacks: List<Long> = emptyList()) {
-            journal.putIfAbsent(path, JournalEntry(path, value, mode, isMax, pairedMaxPath, restoreFallbacks))
+        fun journalBeforeMutation(
+            path: String,
+            value: Long,
+            mode: Int,
+            isMax: Boolean,
+            pairedMaxPath: String?,
+            restoreFallbacks: List<Long> = emptyList(),
+            ownedTargets: Set<Long> = emptySet(),
+            ownedModes: Set<Int> = emptySet(),
+        ) {
+            journal.putIfAbsent(
+                path,
+                JournalEntry(path, value, mode, isMax, pairedMaxPath, restoreFallbacks, ownedTargets, ownedModes),
+            )
         }
         var mutationStarted = false
+        var maximumDispatchFailed = false
         try {
-            val cpuMaxMutations = mutableListOf<HostMutation>()
             capabilities.cpus.forEachIndexed { index, cpu ->
                 val target = expected[index]
+                val acceptedTargets = if (cpuStock[index]) cpuStockCandidates[index] else listOf(target)
+                val stockMode = stockModeOverrides[cpu.maxPath] ?: cpuStock[index]
+                val finalMode = if (!repairMinimums && cpu.maxPath in preserveModePaths) {
+                    originalModes[index]
+                } else {
+                    protectionMode(originalModes[index], stockMode)
+                }
+                val valueAlreadyAccepted = original[index] in acceptedTargets
+                val shouldMutateMaximum = repairMinimums || !valueAlreadyAccepted || originalModes[index] != finalMode
                 if (cpuNeedsMinRepair[index]) {
                     journalBeforeMutation(cpu.minPath, originalMins[index], originalMinModes[index], false, cpu.maxPath)
-                    journalBeforeMutation(cpu.maxPath, original[index], originalModes[index], true, null, if (original[index] > cpu.selectableMax) listOf(cpu.selectableMax) else emptyList())
-                    cpuMaxMutations += HostMutation.Chmod(cpu.minPath, writableMode(originalMinModes[index]))
-                    cpuMaxMutations += HostMutation.WriteCandidatesNoReadback(
+                    maximumMutations += HostMutation.Chmod(cpu.minPath, writableMode(originalMinModes[index]))
+                    maximumMutations += HostMutation.WriteCandidatesNoReadback(
                         cpu.minPath,
                         cpu.minimumCandidates.filter { it > 0 && it <= safetyCeilings[index] }.distinct().sorted().map { it.toString() }
                     )
-                } else {
-                    journalBeforeMutation(cpu.maxPath, original[index], originalModes[index], true, null, if (original[index] > cpu.selectableMax) listOf(cpu.selectableMax) else emptyList())
                 }
-                cpuMaxMutations += HostMutation.Chmod(cpu.maxPath, writableMode(originalModes[index]))
-                cpuMaxMutations += if (cpuStock[index]) {
-                    val candidates = cpuStockCandidates[index]
-                    HostMutation.WritePreferred(cpu.maxPath, candidates.first().toString(), candidates.last().toString())
-                } else HostMutation.Write(cpu.maxPath, target.toString())
-                cpuMaxMutations += HostMutation.Chmod(cpu.maxPath, protectionMode(originalModes[index], cpuStock[index]))
+                if (shouldMutateMaximum) {
+                    maximumModeMutationPaths += cpu.maxPath
+                    if (repairMinimums || !valueAlreadyAccepted) {
+                        maximumValueMutationPaths += cpu.maxPath
+                    }
+                    journalBeforeMutation(
+                        cpu.maxPath,
+                        original[index],
+                        originalModes[index],
+                        true,
+                        null,
+                        if (original[index] > cpu.selectableMax) listOf(cpu.selectableMax) else emptyList(),
+                        if (!repairMinimums && valueAlreadyAccepted) emptySet() else acceptedTargets.toSet(),
+                        setOf(writableMode(originalModes[index]), finalMode),
+                    )
+                    if (!repairMinimums && valueAlreadyAccepted) {
+                        // The maximum already has an accepted value; only its protection mode
+                        // needs repair. Avoid a needless sysfs write on the live Auto Tune path.
+                        maximumMutations += HostMutation.Chmod(cpu.maxPath, finalMode)
+                    } else {
+                        maximumMutations += HostMutation.Chmod(cpu.maxPath, writableMode(originalModes[index]))
+                        maximumMutations += if (deferMaximumVerification) {
+                            // Auto Tune performs one authoritative verification after the
+                            // complete batch. Avoid a second in-shell read/retry window while
+                            // an OEM worker may legitimately reset this ceiling to Stock.
+                            HostMutation.WriteCandidatesNoReadback(cpu.maxPath, listOf(target.toString()))
+                        } else if (cpuStock[index]) {
+                            val candidates = cpuStockCandidates[index]
+                            HostMutation.WritePreferred(
+                                cpu.maxPath,
+                                candidates.first().toString(),
+                                candidates.last().toString(),
+                            )
+                        } else {
+                            HostMutation.Write(cpu.maxPath, target.toString())
+                        }
+                        maximumMutations += HostMutation.Chmod(cpu.maxPath, finalMode)
+                    }
+                }
             }
             gpuMutationTarget = expectedGpu
             capabilities.gpu?.let { gpu ->
                 gpuMutationTarget?.let { target ->
+                    val acceptedTargets = if (gpuStock) {
+                        listOfNotNull(
+                            stabilizedStockCeiling?.takeIf { it > 0 },
+                            gpu.stockMax.takeIf { it > 0 },
+                            gpu.selectableMax,
+                        ).distinct()
+                    } else {
+                        listOf(target)
+                    }
+                    val gpuMode = originalGpuMode ?: error("cannot read mode for ${gpu.maxPath}")
+                    val stockMode = stockModeOverrides[gpu.maxPath] ?: gpuStock
+                    val finalMode = if (!repairMinimums && gpu.maxPath in preserveModePaths) {
+                        gpuMode
+                    } else {
+                        protectionMode(gpuMode, stockMode)
+                    }
+                    val valueAlreadyAccepted = originalGpu != null && originalGpu in acceptedTargets
+                    val shouldMutateMaximum = repairMinimums || !valueAlreadyAccepted || gpuMode != finalMode
                     if (gpu.minPath != null && gpuNeedsMinRepair) {
                         val minPath = gpu.minPath
                         val minMode = originalGpuMinMode ?: error("cannot read mode for $minPath")
                         journalBeforeMutation(minPath, originalGpuMin ?: error("cannot read $minPath"), minMode, false, gpu.maxPath)
-                        journalBeforeMutation(gpu.maxPath, originalGpu ?: error("cannot read ${gpu.maxPath}"), originalGpuMode ?: error("cannot read mode for ${gpu.maxPath}"), true, null, if ((originalGpu ?: 0L) > gpu.selectableMax) listOf(gpu.selectableMax) else emptyList())
-                        cpuMaxMutations += HostMutation.Chmod(minPath, writableMode(minMode))
-                        cpuMaxMutations += HostMutation.WriteCandidatesNoReadback(
+                        maximumMutations += HostMutation.Chmod(minPath, writableMode(minMode))
+                        maximumMutations += HostMutation.WriteCandidatesNoReadback(
                             minPath,
                         (listOf(gpu.observedMin) + gpu.supportedFrequencies).filter { it > 0 && it <= (if (gpuStock) listOfNotNull(stabilizedStockCeiling?.takeIf { it > 0 }, gpu.stockMax.takeIf { it > 0 }, gpu.selectableMax).minOrNull() ?: target else target) }.distinct().sorted().map { it.toString() }
                         )
-                    } else {
-                        journalBeforeMutation(gpu.maxPath, originalGpu ?: error("cannot read ${gpu.maxPath}"), originalGpuMode ?: error("cannot read mode for ${gpu.maxPath}"), true, null, if ((originalGpu ?: 0L) > gpu.selectableMax) listOf(gpu.selectableMax) else emptyList())
                     }
-                    cpuMaxMutations += HostMutation.Chmod(gpu.maxPath, writableMode(originalGpuMode ?: error("cannot read mode for ${gpu.maxPath}")))
-                    cpuMaxMutations += if (gpuStock) {
-                        val preferred = stabilizedStockCeiling?.takeIf { it > 0 } ?: gpu.stockMax.takeIf { it > 0 } ?: gpu.selectableMax
-                        HostMutation.WritePreferred(gpu.maxPath, preferred.toString(), gpu.selectableMax.toString())
-                    } else HostMutation.Write(gpu.maxPath, target.toString())
-                    cpuMaxMutations += HostMutation.Chmod(gpu.maxPath, protectionMode(originalGpuMode ?: error("cannot read mode for ${gpu.maxPath}"), gpuStock))
+                    if (shouldMutateMaximum) {
+                        maximumModeMutationPaths += gpu.maxPath
+                        if (repairMinimums || !valueAlreadyAccepted) {
+                            maximumValueMutationPaths += gpu.maxPath
+                        }
+                        journalBeforeMutation(
+                            gpu.maxPath,
+                            originalGpu ?: error("cannot read ${gpu.maxPath}"),
+                            gpuMode,
+                            true,
+                            null,
+                            if ((originalGpu ?: 0L) > gpu.selectableMax) listOf(gpu.selectableMax) else emptyList(),
+                            if (!repairMinimums && valueAlreadyAccepted) emptySet() else acceptedTargets.toSet(),
+                            setOf(writableMode(gpuMode), finalMode),
+                        )
+                        if (!repairMinimums && valueAlreadyAccepted) {
+                            maximumMutations += HostMutation.Chmod(gpu.maxPath, finalMode)
+                        } else {
+                            maximumMutations += HostMutation.Chmod(gpu.maxPath, writableMode(gpuMode))
+                            maximumMutations += if (deferMaximumVerification) {
+                                HostMutation.WriteCandidatesNoReadback(gpu.maxPath, listOf(target.toString()))
+                            } else if (gpuStock) {
+                                val preferred = stabilizedStockCeiling?.takeIf { it > 0 } ?: gpu.stockMax.takeIf { it > 0 } ?: gpu.selectableMax
+                                HostMutation.WritePreferred(
+                                    gpu.maxPath,
+                                    preferred.toString(),
+                                    gpu.selectableMax.toString(),
+                                )
+                            } else {
+                                HostMutation.Write(gpu.maxPath, target.toString())
+                            }
+                            maximumMutations += HostMutation.Chmod(gpu.maxPath, finalMode)
+                        }
+                    }
                 }
             }
-            mutationStarted = true
-            check(fs.mutate(cpuMaxMutations)) { "cannot apply CPU maximum mutations: ${fs.lastMutationError() ?: "unknown failure"}" }
+            if (maximumMutations.isNotEmpty()) {
+                mutationStarted = true
+                val applied = fs.mutate(maximumMutations)
+                maximumDispatchFailed = !applied
+                check(applied) { "cannot apply maximum mutations: ${fs.lastMutationError() ?: "unknown failure"}" }
+            }
             capabilities.cpus.forEachIndexed { index, cpu ->
                 val target = expected[index]
-                val finalMode = protectionMode(originalModes[index], cpuStock[index])
-                val accepted = if (cpuStock[index]) cpuStockCandidates[index] else listOf(target)
-                verifyMax(cpu.id, cpu.maxPath, accepted, finalMode)
-                if (fs.read(cpu.minPath)?.toLongOrNull()?.let { it > 0 && it <= safetyCeilings[index] } != true) {
+                val stockMode = stockModeOverrides[cpu.maxPath] ?: cpuStock[index]
+                val finalMode = if (!repairMinimums && cpu.maxPath in preserveModePaths) {
+                    originalModes[index]
+                } else {
+                    protectionMode(originalModes[index], stockMode)
+                }
+                if (!deferMaximumVerification) {
+                    val accepted = if (cpuStock[index]) cpuStockCandidates[index] else listOf(target)
+                    verifiedMaximums[cpu.maxPath] = verifyMax(cpu.id, cpu.maxPath, accepted, finalMode)
+                }
+                if (repairMinimums && cpu.id !in managedCpuMinimums &&
+                    fs.read(cpu.minPath)?.toLongOrNull()?.let { it > 0 && it <= safetyCeilings[index] } != true) {
                     journalBeforeMutation(cpu.minPath, originalMins[index], originalMinModes[index], false, cpu.maxPath)
                     reconcileMinimum(
                         path = cpu.minPath,
@@ -422,13 +740,32 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                 // CPU-only profiles and callers.
                 val target = gpuMutationTarget
                 target?.let { requested: Long ->
-                    val finalMode = protectionMode(originalGpuMode ?: error("cannot read mode for ${gpu.maxPath}"), gpuStock)
-                    val accepted = if (gpuStock) listOfNotNull(stabilizedStockCeiling?.takeIf { it > 0 }, gpu.stockMax.takeIf { it > 0 }, gpu.selectableMax).distinct() else listOf(requested)
-                    verifyMax(gpu.id, gpu.maxPath, accepted, finalMode)
-                    val actualAcceptedMax = fs.read(gpu.maxPath)?.toLongOrNull()
-                        ?: error("cannot read ${gpu.maxPath}")
+                    val stockMode = stockModeOverrides[gpu.maxPath] ?: gpuStock
+                    val gpuMode = originalGpuMode ?: error("cannot read mode for ${gpu.maxPath}")
+                    val finalMode = if (!repairMinimums && gpu.maxPath in preserveModePaths) {
+                        gpuMode
+                    } else {
+                        protectionMode(gpuMode, stockMode)
+                    }
+                    if (!deferMaximumVerification) {
+                        val accepted = if (gpuStock) {
+                            listOfNotNull(
+                                stabilizedStockCeiling?.takeIf { it > 0 },
+                                gpu.stockMax.takeIf { it > 0 },
+                                gpu.selectableMax,
+                            ).distinct()
+                        } else {
+                            listOf(requested)
+                        }
+                        verifiedMaximums[gpu.maxPath] = verifyMax(gpu.id, gpu.maxPath, accepted, finalMode)
+                    }
+                    val actualAcceptedMax = if (repairMinimums) {
+                        fs.read(gpu.maxPath)?.toLongOrNull() ?: error("cannot read ${gpu.maxPath}")
+                    } else {
+                        requested
+                    }
                     gpu.minPath?.let {
-                        if (fs.read(it)?.toLongOrNull()?.let { value -> value > 0 && value <= actualAcceptedMax } != true) {
+                        if (repairMinimums && fs.read(it)?.toLongOrNull()?.let { value -> value > 0 && value <= actualAcceptedMax } != true) {
                             journalBeforeMutation(it, originalGpuMin ?: error("cannot read $it"), originalGpuMinMode ?: error("cannot read mode for $it"), false, gpu.maxPath)
                             reconcileMinimum(
                                 path = it,
@@ -443,7 +780,56 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                 }
             }
         } catch (t: Throwable) {
-            val dispatchFailure = fs.lastMutationFailure() as? HostDispatchFailure
+            // RealHostFilesystem retains the last dispatch error until the next mutation.
+            // A preflight-only failure must not inherit indeterminate state from an older call.
+            val dispatchFailure = if (mutationStarted) fs.lastMutationFailure() as? HostDispatchFailure else null
+            fun HostMutation.path(): String = when (this) {
+                is HostMutation.Chmod -> path
+                is HostMutation.Write -> path
+                is HostMutation.WriteCandidatesNoReadback -> path
+                is HostMutation.WritePreferred -> path
+            }
+            val attemptedPrefix = dispatchFailure
+                ?.takeIf { maximumDispatchFailed && !it.indeterminate }
+                ?.firstFailedOperationIndex
+                ?.takeIf { it in maximumMutations.indices }
+                ?.let { failedIndex -> maximumMutations.take(failedIndex + 1) }
+            val attemptedMutationPaths = attemptedPrefix?.mapTo(linkedSetOf()) { it.path() }
+            val attemptedValueMutationPaths = attemptedPrefix
+                ?.filterNot { it is HostMutation.Chmod }
+                ?.mapTo(linkedSetOf()) { it.path() }
+            val attemptedModes = attemptedPrefix
+                ?.filterIsInstance<HostMutation.Chmod>()
+                ?.groupBy(HostMutation.Chmod::path, HostMutation.Chmod::mode)
+                ?.mapValues { (_, modes) -> modes.toSet() }
+            val attemptedMaximumModePaths = attemptedPrefix?.asSequence()
+                ?.filterIsInstance<HostMutation.Chmod>()
+                ?.map { it.path }
+                ?.filter { it in maximumModeMutationPaths }
+                ?.toSet()
+                ?: maximumModeMutationPaths.toSet()
+            val attemptedMaximumValuePaths = attemptedPrefix?.asSequence()
+                ?.filterNot { it is HostMutation.Chmod }
+                ?.map { it.path() }
+                ?.filter { it in maximumValueMutationPaths }
+                ?.toSet()
+                ?: maximumValueMutationPaths.toSet()
+            val rollbackJournalEntries = journal.values.mapNotNull { entry ->
+                if (attemptedMutationPaths == null) {
+                    entry
+                } else {
+                    entry.takeIf { it.path in attemptedMutationPaths }?.let {
+                        it.copy(
+                            ownedTargets = if (it.path in attemptedValueMutationPaths.orEmpty()) {
+                                it.ownedTargets
+                            } else {
+                                emptySet()
+                            },
+                            ownedModes = attemptedModes?.get(it.path).orEmpty(),
+                        )
+                    }
+                }
+            }
             if (dispatchFailure?.indeterminate == true) {
                 throw HostApplyFailure(
                     phase = HostApplyPhase.MUTATION,
@@ -452,19 +838,75 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                     indeterminate = true,
                     message = "apply completion is indeterminate; state left untouched for reconciliation",
                     cause = t,
+                    attemptedMaximumModePaths = attemptedMaximumModePaths,
+                    attemptedMaximumValuePaths = attemptedMaximumValuePaths,
                 )
             }
             val rollbackFailures = mutableListOf<String>()
+            val rollbackOwnedFallbacks = mutableMapOf<String, MutableSet<Long>>()
+            val rollbackRelinquishedMaximumPaths = linkedSetOf<String>()
+            fun recordRollbackFallback(path: String, value: Long) {
+                rollbackOwnedFallbacks.getOrPut(path) { linkedSetOf() }.add(value)
+            }
+            fun rollbackOwnershipSnapshot(): Map<String, Set<Long>> =
+                rollbackOwnedFallbacks.mapValues { (_, values) -> values.toSet() }
+            fun restoreOwnedMaximumMode(entry: JournalEntry): Boolean {
+                val currentMode = fs.mode(entry.path) ?: return false
+                if (currentMode == entry.mode || currentMode !in entry.ownedModes) return true
+                fs.chmod(entry.path, entry.mode)
+                return fs.mode(entry.path) == entry.mode
+            }
             val maxRestored = mutableMapOf<String, Boolean>()
             // Restore ceilings before minima so a minimum whose original value is
             // above the temporary ceiling can be restored safely. This also
             // covers minima discovered as invalid after the max batch.
-            val rollbackEntries = journal.values.toList().let { entries ->
+            val rollbackEntries = rollbackJournalEntries.let { entries ->
                 entries.filter { it.isMax }.asReversed() + entries.filterNot { it.isMax }.asReversed()
             }
             rollbackEntries.forEach { entry ->
                 if (entry.isMax) {
-                    val restored = restoreNode(entry.path, entry.value, entry.mode, fallbackValues = entry.restoreFallbacks)
+                    val restored = if (repairMinimums) {
+                        restoreNode(
+                            entry.path,
+                            entry.value,
+                            entry.mode,
+                            fallbackValues = entry.restoreFallbacks,
+                            onFallbackRestored = { recordRollbackFallback(entry.path, it) },
+                        )
+                    } else {
+                        val current = fs.read(entry.path)?.toLongOrNull()
+                        val exactVerifiedTarget = verifiedMaximums[entry.path]
+                        val ownedTargets = exactVerifiedTarget?.let(::setOf) ?: entry.ownedTargets
+                        when {
+                            current == null -> {
+                                // Value ownership is unresolved, but a mode left by this
+                                // transaction can still be restored independently.
+                                restoreOwnedMaximumMode(entry)
+                                false
+                            }
+                            current == entry.value -> {
+                                if (entry.path in attemptedMaximumValuePaths) {
+                                    rollbackRelinquishedMaximumPaths += entry.path
+                                }
+                                restoreOwnedMaximumMode(entry)
+                            }
+                            current in ownedTargets ->
+                                restoreNode(
+                                    entry.path,
+                                    entry.value,
+                                    entry.mode,
+                                    fallbackValues = entry.restoreFallbacks,
+                                    onFallbackRestored = { recordRollbackFallback(entry.path, it) },
+                                )
+                            // A different value belongs to an external policy. Relinquish only
+                            // value ownership; an Auto-owned protection mode must still return
+                            // to the original mode without touching the external value.
+                            else -> {
+                                rollbackRelinquishedMaximumPaths += entry.path
+                                restoreOwnedMaximumMode(entry)
+                            }
+                        }
+                    }
                     maxRestored[entry.path] = restored
                     if (!restored) rollbackFailures += entry.path
                 } else {
@@ -481,21 +923,48 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                     phase = HostApplyPhase.ROLLBACK,
                     mutationStarted = mutationStarted,
                     rollbackComplete = false,
-                    indeterminate = (fs.lastMutationFailure() as? HostDispatchFailure)?.indeterminate == true,
+                    indeterminate = dispatchFailure?.indeterminate == true,
                     message = "apply failed: ${t.message}; rollback incomplete for ${rollbackFailures.joinToString()}",
                     cause = t,
+                    rollbackOwnedValues = rollbackOwnershipSnapshot(),
+                    attemptedMaximumModePaths = attemptedMaximumModePaths,
+                    attemptedMaximumValuePaths = attemptedMaximumValuePaths,
+                    relinquishedMaximumValuePaths = rollbackRelinquishedMaximumPaths,
                 )
             }
-            if (t is HostApplyFailure) throw t
+            if (t is HostApplyFailure) {
+                throw HostApplyFailure(
+                    phase = t.phase,
+                    mutationStarted = t.mutationStarted,
+                    rollbackComplete = t.rollbackComplete,
+                    indeterminate = t.indeterminate,
+                    message = t.message ?: "host apply failed",
+                    cause = t,
+                    rollbackOwnedValues = t.rollbackOwnedValues + rollbackOwnershipSnapshot(),
+                    attemptedMaximumModePaths = t.attemptedMaximumModePaths + attemptedMaximumModePaths,
+                    attemptedMaximumValuePaths = t.attemptedMaximumValuePaths + attemptedMaximumValuePaths,
+                    relinquishedMaximumValuePaths =
+                        t.relinquishedMaximumValuePaths + rollbackRelinquishedMaximumPaths,
+                )
+            }
             throw HostApplyFailure(
                 phase = if (!mutationStarted) HostApplyPhase.PREFLIGHT else HostApplyPhase.MUTATION,
                 mutationStarted = mutationStarted,
                 rollbackComplete = true,
-                indeterminate = (fs.lastMutationFailure() as? HostDispatchFailure)?.indeterminate == true,
+                indeterminate = dispatchFailure?.indeterminate == true,
                 message = t.message ?: "host apply failed",
                 cause = t,
+                rollbackOwnedValues = rollbackOwnershipSnapshot(),
+                attemptedMaximumModePaths = attemptedMaximumModePaths,
+                attemptedMaximumValuePaths = attemptedMaximumValuePaths,
+                relinquishedMaximumValuePaths = rollbackRelinquishedMaximumPaths,
             )
         }
+        HostMaximumMutationReceipt(
+            modePaths = maximumModeMutationPaths.toSet(),
+            valuePaths = maximumValueMutationPaths.toSet(),
+            verifiedValues = verifiedMaximums.toMap(),
+        )
     }
 
     private fun validateCpuTarget(cpu: CpuDomain, target: Long, stock: Boolean = false) {
@@ -553,14 +1022,22 @@ class HostApplyEngine(private val fs: HostFilesystem) {
     private fun protectionMode(mode: Int, stock: Boolean): Int =
         if (stock) mode or 0x080 else mode and 0x16d
 
-    private fun verifyMax(id: String, path: String, targets: List<Long>, mode: Int) {
+    private fun verifyMax(id: String, path: String, targets: List<Long>, mode: Int): Long {
         val actual = fs.read(path)?.toLongOrNull()
         check(actual != null && actual in targets) { "verification failed for $id: expected=${targets.joinToString("/")} actual=$actual" }
         val actualMode = fs.mode(path)
         check(actualMode == mode) { "permission verification failed for $id: expected=$mode actual=$actualMode" }
+        return actual
     }
 
-    private fun restoreNode(path: String, value: Long, originalMode: Int?, restoreValue: Boolean = true, fallbackValues: List<Long> = emptyList()): Boolean {
+    private fun restoreNode(
+        path: String,
+        value: Long,
+        originalMode: Int?,
+        restoreValue: Boolean = true,
+        fallbackValues: List<Long> = emptyList(),
+        onFallbackRestored: (Long) -> Unit = {},
+    ): Boolean {
         var ok = true
         if (originalMode != null) ok = fs.chmod(path, writableMode(originalMode)) && ok
         if (restoreValue) {
@@ -568,6 +1045,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
             if (!restored) {
                 for (fallback in fallbackValues.distinct().filter { it > 0 && it != value }) {
                     if (fs.write(path, fallback.toString()) && fs.read(path)?.toLongOrNull() == fallback) {
+                        onFallbackRestored(fallback)
                         restored = true
                         break
                     }

@@ -67,7 +67,7 @@ class ClusterTuneHostClient(
 ) {
     /** The lifecycle method currently selected for starting the host. */
     val selectedMethodId: String?
-        get() = attachedMethod ?: resolver.configuredMethodIdSnapshot
+        get() = attachedMethod ?: resolver.selectedMethodId
 
     private val lock = START_LOCKS.computeIfAbsent(Process.myUid()) { Any() }
     private val serviceName = HostProtocol.SERVICE_PREFIX + Process.myUid()
@@ -77,84 +77,90 @@ class ClusterTuneHostClient(
     private var death: IBinder.DeathRecipient? = null
 
     fun ensureStarted(timeoutMs: Long = 3000): Result<Unit> = synchronized(lock) {
-        runCatching {
-            val configuredMethod = resolver.configuredMethodIdSnapshot
-            binder?.takeIf { it.isBinderAlive && (configuredMethod == null || attachedMethod == configuredMethod) }?.let {
-                return@runCatching
-            }
-            detach()
-            (HostRendezvous.lookup(serviceName) ?: service())?.let { existing ->
-                val legacyService = HostRendezvous.lookup(serviceName) == null
-                val pingAttempt = runCatching { ping(existing, configuredMethod) }
-                val pingFailure = pingAttempt.exceptionOrNull()
-                if (pingAttempt.isSuccess) {
-                    if (!legacyService) sendLease(existing)
-                    attach(existing, pingAttempt.getOrThrow().method, requireLegacyService = legacyService)
+        resolver.withStableSelection { selection ->
+            runCatching {
+                val method = selection.methodId ?: error("no privileged execution method")
+                binder?.takeIf { it.isBinderAlive && selection.matchesHostMethod(attachedMethod) }?.let {
                     return@runCatching
                 }
-                val remoteVersion = (pingFailure as? HostProtocolMismatch)?.remoteVersion
-                if (remoteVersion != null || pingFailure is HostIdentityMismatch) {
-                    runCatching { transact(existing, HostProtocol.STOP, wireVersion = remoteVersion ?: HostProtocol.VERSION, expectedVersion = remoteVersion ?: HostProtocol.VERSION) { } }
-                    detach(existing)
-                    check(waitForServiceReplacement(existing, timeoutMs)) { "previous privileged host is still registered" }
-                } else if (existing.isBinderAlive) {
-                    error("existing privileged host did not respond")
-                } else {
-                    detach(existing)
+                detach()
+                (HostRendezvous.lookup(serviceName) ?: service())?.let { existing ->
+                    val legacyService = HostRendezvous.lookup(serviceName) == null
+                    val pingAttempt = runCatching { ping(existing, selection) }
+                    val pingFailure = pingAttempt.exceptionOrNull()
+                    if (pingAttempt.isSuccess) {
+                        if (!legacyService) sendLease(existing)
+                        attach(existing, pingAttempt.getOrThrow().method, requireLegacyService = legacyService)
+                        return@runCatching
+                    }
+                    val remoteVersion = (pingFailure as? HostProtocolMismatch)?.remoteVersion
+                    if (remoteVersion != null || pingFailure is HostIdentityMismatch) {
+                        runCatching { transact(existing, HostProtocol.STOP, wireVersion = remoteVersion ?: HostProtocol.VERSION, expectedVersion = remoteVersion ?: HostProtocol.VERSION) { } }
+                        detach(existing)
+                        check(waitForServiceReplacement(existing, timeoutMs)) { "previous privileged host is still registered" }
+                    } else if (existing.isBinderAlive) {
+                        error("existing privileged host did not respond")
+                    } else {
+                        detach(existing)
+                    }
                 }
-            }
-            val selection = resolver.selectionSnapshot()
-            val method = selection.methodId ?: error("no privileged execution method")
-            val dex = HostDexRuntime(context).extract(generation)
-            // Keep the classpath as a raw colon-delimited value. The launcher quotes the
-            // complete assignment once; quoting each entry here would produce literal quote
-            // characters in CLASSPATH and prevent app_process from loading the host.
-            val classpath = dex.joinToString(":") { it.absolutePath }
-            val dexDirectory = dex.first().parentFile!!.absolutePath
-            val handoffNonce = HostRendezvous.prepare(context, serviceName, generation, method)
-            File(dexDirectory, "host-startup.log").apply { writeText("") }
-            val launcher = File(dexDirectory, "launch-host-${System.nanoTime().toString(16)}.sh")
-            launcher.writeText("#!/system/bin/sh\nCT_HOST_LOG='./host-startup.log' CLASSPATH='${classpath.replace("'", "'\\''")}' /system/bin/app_process /system/bin ${ClusterTuneHostEntry::class.java.name} '${serviceName.replace("'", "'\\''")}' ${Process.myUid()} $generation '${method.replace("'", "'\\''")}' '${context.packageName.replace("'", "'\\''")}' '${handoffNonce.replace("'", "'\\''")}' >'./host-startup.log' 2>&1 </dev/null &\n")
-            launcher.setExecutable(true, false)
-            launcher.setWritable(false, false)
-            try {
-                resolver.launchHost(
-                    selection,
-                    HostLaunchRequest(
-                        workingDirectory = dexDirectory,
-                        launcherScript = launcher.name,
+                val dex = HostDexRuntime(context).extract(generation)
+                // Keep the classpath as a raw colon-delimited value. The launcher quotes the
+                // complete assignment once; quoting each entry here would produce literal quote
+                // characters in CLASSPATH and prevent app_process from loading the host.
+                val classpath = dex.joinToString(":") { it.absolutePath }
+                val dexDirectory = dex.first().parentFile!!.absolutePath
+                val handoffNonce = HostRendezvous.prepare(context, serviceName, generation, method)
+                File(dexDirectory, "host-startup.log").apply { writeText("") }
+                val launcher = File(dexDirectory, "launch-host-${System.nanoTime().toString(16)}.sh")
+                launcher.writeText(hostLaunchScript(
+                    arguments = listOf(
+                        ClusterTuneHostEntry::class.java.name, serviceName, Process.myUid().toString(),
+                        generation.toString(), method, context.packageName, handoffNonce,
                     ),
-                ).getOrThrow()
-                val deadline = System.currentTimeMillis() + timeoutMs
-                while (System.currentTimeMillis() < deadline) {
-                    val local = HostRendezvous.lookup(serviceName)
-                    local?.let { found ->
-                        val legacyService = false
-                        val pingAttempt = runCatching { ping(found, method) }
-                        val pingFailure = pingAttempt.exceptionOrNull()
-                        if (pingAttempt.isSuccess) {
-                            sendLease(found)
-                            attach(found, pingAttempt.getOrThrow().method, requireLegacyService = legacyService)
-                            return@runCatching
-                        } else if (pingFailure is HostProtocolMismatch || pingFailure is HostIdentityMismatch) {
-                            runCatching {
-                                transact(
-                                    found,
-                                    HostProtocol.STOP,
-                                wireVersion = (pingFailure as? HostProtocolMismatch)?.remoteVersion ?: HostProtocol.VERSION,
-                                expectedVersion = (pingFailure as? HostProtocolMismatch)?.remoteVersion ?: HostProtocol.VERSION,
-                                ) { }
+                    classpath = classpath,
+                ))
+                launcher.setExecutable(true, false)
+                launcher.setWritable(false, false)
+                try {
+                    resolver.launchHost(
+                        selection,
+                        HostLaunchRequest(
+                            workingDirectory = dexDirectory,
+                            launcherScript = launcher.name,
+                        ),
+                    ).getOrThrow()
+                    val deadline = System.currentTimeMillis() + timeoutMs
+                    while (System.currentTimeMillis() < deadline) {
+                        val local = HostRendezvous.lookup(serviceName)
+                        local?.let { found ->
+                            val legacyService = false
+                            val pingAttempt = runCatching { ping(found, selection) }
+                            val pingFailure = pingAttempt.exceptionOrNull()
+                            if (pingAttempt.isSuccess) {
+                                sendLease(found)
+                                attach(found, pingAttempt.getOrThrow().method, requireLegacyService = legacyService)
+                                return@runCatching
+                            } else if (pingFailure is HostProtocolMismatch || pingFailure is HostIdentityMismatch) {
+                                runCatching {
+                                    transact(
+                                        found,
+                                        HostProtocol.STOP,
+                                        wireVersion = (pingFailure as? HostProtocolMismatch)?.remoteVersion ?: HostProtocol.VERSION,
+                                        expectedVersion = (pingFailure as? HostProtocolMismatch)?.remoteVersion ?: HostProtocol.VERSION,
+                                    ) { }
+                                }
                             }
                         }
+                        Thread.sleep(40)
                     }
-                    Thread.sleep(40)
+                    val startup = File(dexDirectory, "host-startup.log").takeIf { it.isFile }
+                        ?.runCatching { readText().takeLast(4096) }?.getOrNull().orEmpty()
+                    error("privileged host registration failed${startup.takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""}")
+                } finally {
+                    launcher.delete()
+                    HostRendezvous.clearPending(serviceName, handoffNonce)
                 }
-                val startup = File(dexDirectory, "host-startup.log").takeIf { it.isFile }
-                    ?.runCatching { readText().takeLast(4096) }?.getOrNull().orEmpty()
-                error("privileged host registration failed${startup.takeIf { it.isNotBlank() }?.let { ": $it" } ?: ""}")
-            } finally {
-                launcher.delete()
-                HostRendezvous.clearPending(serviceName, handoffNonce)
             }
         }
     }
@@ -165,6 +171,123 @@ class ClusterTuneHostClient(
         val state = readStatePayload(p)
         HostSnapshot(capabilities, state, epoch)
     }
+
+    fun readAutoCapabilities(): Result<HostAutoCapabilities> = call(HostProtocol.READ_AUTO_CAPABILITIES) { p ->
+        HostAutoCapabilities(
+            frameStats = readBoolean(p, "frame statistics capability"),
+            cpuLoad = readBoolean(p, "CPU load capability"),
+            cpuClocks = readBoolean(p, "CPU clock capability"),
+            gpuBusy = readBoolean(p, "GPU busy capability"),
+            gpuClock = readBoolean(p, "GPU clock capability"),
+            thermal = readBoolean(p, "thermal capability"),
+            frameBackend = readBoundedOptionalString(p, "frame backend"),
+            unsupportedReason = readBoundedOptionalString(p, "unsupported reason"),
+        )
+    }
+
+    fun startAutoSession(request: AutoSessionRequest): Result<HostAutoSessionSnapshot> =
+        call(HostProtocol.START_AUTO_SESSION, writer = { p ->
+            require(HostTelemetryParsers.isValidPackageName(request.packageName)) { "invalid target package" }
+            require(request.targetFps > 0) { "invalid target FPS" }
+            p.writeString(request.packageName)
+            p.writeInt(request.targetFps)
+            p.writeLong(request.heartbeatTimeoutMs)
+            p.writeInt(if (request.baseline != null) 1 else 0)
+            request.baseline?.let { baseline ->
+                require(baseline.maximumsOnly) { "Auto Tune baseline must be maximums-only" }
+                writeApplyRequest(p, baseline)
+            }
+        }, reader = ::readAutoSnapshot)
+
+    /** A null session ID addresses the current owner session. */
+    fun readAutoTelemetry(
+        sessionId: String? = null,
+        hostEpoch: Long? = null,
+        afterSequence: Long = -1L,
+    ): Result<HostAutoSessionSnapshot> =
+        call(HostProtocol.READ_AUTO_TELEMETRY, writer = { p ->
+            writeSessionId(p, sessionId, nullable = true)
+            writeExpectedEpoch(p, hostEpoch)
+            require(afterSequence >= -1L) { "invalid telemetry sequence" }
+            p.writeLong(afterSequence)
+        }, reader = ::readAutoSnapshot)
+
+    fun readAutoTelemetry(handle: HostAutoSessionHandle, afterSequence: Long = -1L): Result<HostAutoSessionSnapshot> =
+        readAutoTelemetry(handle.sessionId, handle.hostEpoch, afterSequence)
+
+    fun applyAutoStep(sessionId: String, hostEpoch: Long, request: ApplyRequest): Result<HostAutoSessionSnapshot> =
+        call(HostProtocol.APPLY_AUTO_STEP, writer = { p ->
+            writeSessionId(p, sessionId, nullable = false)
+            writeExpectedEpoch(p, hostEpoch)
+            writeApplyRequest(p, request)
+        }, reader = ::readAutoSnapshot)
+
+    fun applyAutoStep(handle: HostAutoSessionHandle, request: ApplyRequest): Result<HostAutoSessionSnapshot> =
+        applyAutoStep(handle.sessionId, handle.hostEpoch, request)
+
+    fun heartbeatAutoSession(sessionId: String, hostEpoch: Long): Result<HostAutoSessionSnapshot> =
+        call(HostProtocol.HEARTBEAT_AUTO_SESSION, writer = { p ->
+            writeSessionId(p, sessionId, nullable = false)
+            writeExpectedEpoch(p, hostEpoch)
+        }, reader = ::readAutoSnapshot)
+
+    fun heartbeatAutoSession(handle: HostAutoSessionHandle): Result<HostAutoSessionSnapshot> =
+        heartbeatAutoSession(handle.sessionId, handle.hostEpoch)
+
+    /** A null ID preempts whichever automatic session is active in this host. */
+    fun stopAutoSession(sessionId: String? = null, hostEpoch: Long? = null): Result<HostAutoSessionSnapshot> =
+        call(HostProtocol.STOP_AUTO_SESSION, writer = { p ->
+            writeSessionId(p, sessionId, nullable = true)
+            writeExpectedEpoch(p, hostEpoch)
+        }, reader = ::readAutoSnapshot)
+
+    fun stopAutoSession(handle: HostAutoSessionHandle): Result<HostAutoSessionSnapshot> =
+        stopAutoSession(handle.sessionId, handle.hostEpoch)
+
+    fun startTelemetrySession(request: TelemetrySessionRequest): Result<HostTelemetrySessionSnapshot> =
+        call(HostProtocol.START_TELEMETRY_SESSION, writer = { p ->
+            val targetPackage = request.packageName?.takeUnless(String::isBlank)
+            if (targetPackage == null) {
+                require(request.targetFps == 0) { "device-only telemetry requires a zero target FPS" }
+            } else {
+                require(HostTelemetryParsers.isValidPackageName(targetPackage)) { "invalid target package" }
+                require(request.targetFps > 0) { "frame telemetry requires a positive target FPS" }
+            }
+            p.writeString(targetPackage)
+            p.writeInt(request.targetFps)
+            p.writeLong(request.heartbeatTimeoutMs)
+        }, reader = ::readTelemetrySessionSnapshot)
+
+    fun readTelemetrySession(
+        sessionId: String,
+        hostEpoch: Long,
+        afterSequence: Long = -1L,
+    ): Result<HostTelemetrySessionSnapshot> =
+        call(HostProtocol.READ_TELEMETRY_SESSION, writer = { p ->
+            writeSessionId(p, sessionId, nullable = false)
+            writeExpectedEpoch(p, hostEpoch)
+            require(afterSequence >= -1L) { "invalid telemetry sequence" }
+            p.writeLong(afterSequence)
+        }, reader = ::readTelemetrySessionSnapshot)
+
+    fun readTelemetrySession(
+        handle: HostTelemetrySessionHandle,
+        afterSequence: Long = -1L,
+    ): Result<HostTelemetrySessionSnapshot> =
+        readTelemetrySession(handle.sessionId, handle.hostEpoch, afterSequence)
+
+    fun stopTelemetrySession(
+        sessionId: String,
+        hostEpoch: Long,
+    ): Result<HostTelemetrySessionSnapshot> =
+        call(HostProtocol.STOP_TELEMETRY_SESSION, writer = { p ->
+            writeSessionId(p, sessionId, nullable = false)
+            writeExpectedEpoch(p, hostEpoch)
+        }, reader = ::readTelemetrySessionSnapshot)
+
+    fun stopTelemetrySession(handle: HostTelemetrySessionHandle): Result<HostTelemetrySessionSnapshot> =
+        stopTelemetrySession(handle.sessionId, handle.hostEpoch)
+
     private fun readCapabilitiesPayload(p: Parcel): HostCapabilities {
         val count = readCount(p, 64, "CPU domains")
         require(count > 0) { "host returned no CPU domains" }
@@ -219,11 +342,11 @@ class ClusterTuneHostClient(
         val gpuCur = if (gpuFlag == 1) decodeOptionalHostValue(p.readLong()) else null
         return HostState(cpus, mins, currents, gpu, gpuMin, gpuCur)
     }
-    fun applyProfile(request: ApplyRequest): Result<HostState> = call(HostProtocol.APPLY_PROFILE, writer = { p ->
-        p.writeInt(request.cpuMax.size); request.cpuMax.forEachIndexed { i, value -> p.writeString(request.cpuIds.getOrNull(i).orEmpty()); p.writeLong(value) }
-        p.writeInt(if(request.gpuMax!=null)1 else 0); request.gpuMax?.let(p::writeLong); p.writeInt(if(request.resetToStock)1 else 0)
-        p.writeString(request.gpuId); p.writeString(request.gpuMaxPath); p.writeLong(request.stabilizedStockCeiling ?: -1L)
-    }, reader = { p -> readStatePayload(p) })
+    fun applyProfile(request: ApplyRequest): Result<HostState> = call(
+        HostProtocol.APPLY_PROFILE,
+        writer = { p -> writeApplyRequest(p, request) },
+        reader = ::readStatePayload,
+    )
     fun stop(): Result<Unit> = call(HostProtocol.STOP) { Unit }.also { if (it.isSuccess) detach() }
     private fun <T> call(code: Int, reader: (Parcel) -> T): Result<T> = call(code, {}, reader)
     private fun <T> call(
@@ -250,6 +373,16 @@ class ClusterTuneHostClient(
                 indeterminate = true,
                 message = "privileged host transport lost during mutation",
             )
+        }
+        if (code in AUTO_SESSION_MUTATIONS) {
+            throw RemoteHostSessionFailure(
+                requestCode = code,
+                indeterminate = code != HostProtocol.HEARTBEAT_AUTO_SESSION,
+                message = "privileged host transport lost during automatic session mutation",
+            )
+        }
+        if (code == HostProtocol.STOP) {
+            throw HostDispatchFailure(true, "privileged host transport lost during shutdown")
         }
         detach()
         ensureStarted().getOrThrow()
@@ -296,7 +429,11 @@ class ClusterTuneHostClient(
 
     private data class PingInfo(val method: String)
 
-    private fun ping(target: IBinder, expectedMethod: String?): PingInfo {
+    private fun ping(
+        target: IBinder,
+        selection: PrivilegedExecutionResolver.SelectionSnapshot,
+    ): PingInfo {
+        val expectedMethod = selection.methodId ?: error("no privileged execution method")
         return transact(target, HostProtocol.PING, reader = { parcel ->
             val remoteGeneration = parcel.readLong()
             val remoteMethod = parcel.readString().orEmpty()
@@ -307,7 +444,7 @@ class ClusterTuneHostClient(
             if (hostUid != 0 && hostUid != 1000) {
                 throw HostIdentityMismatch("unprivileged host")
             }
-            if (expectedMethod != null && remoteMethod != expectedMethod) {
+            if (remoteMethod != expectedMethod) {
                 throw HostIdentityMismatch("execution method mismatch")
             }
             PingInfo(remoteMethod)
@@ -379,6 +516,168 @@ class ClusterTuneHostClient(
             .invoke(null, serviceName) as? IBinder
     }.getOrNull()
 
+    private fun writeApplyRequest(parcel: Parcel, request: ApplyRequest) {
+        require(request.cpuMax.size in 1..64) { "invalid CPU domain count" }
+        require(request.cpuIds.size == request.cpuMax.size) { "CPU domain IDs are required" }
+        parcel.writeInt(request.cpuMax.size)
+        request.cpuMax.forEachIndexed { index, value ->
+            val id = request.cpuIds[index]
+            require(id.length <= HostProtocol.MAX_METADATA_LENGTH) { "CPU domain ID is too long" }
+            parcel.writeString(id)
+            parcel.writeLong(value)
+        }
+        parcel.writeInt(if (request.gpuMax != null) 1 else 0)
+        request.gpuMax?.let(parcel::writeLong)
+        parcel.writeInt(if (request.resetToStock) 1 else 0)
+        request.gpuId?.let { require(it.length <= HostProtocol.MAX_METADATA_LENGTH) }
+        request.gpuMaxPath?.let { require(it.length <= HostProtocol.MAX_METADATA_LENGTH) }
+        parcel.writeString(request.gpuId)
+        parcel.writeString(request.gpuMaxPath)
+        parcel.writeLong(request.stabilizedStockCeiling ?: -1L)
+        parcel.writeInt(if (request.maximumsOnly) 1 else 0)
+    }
+
+    private fun writeSessionId(parcel: Parcel, sessionId: String?, nullable: Boolean) {
+        require(nullable || !sessionId.isNullOrEmpty()) { "session ID is required" }
+        sessionId?.let {
+            require(it.length <= HostProtocol.MAX_SESSION_ID_LENGTH && '\u0000' !in it) { "invalid session ID" }
+        }
+        parcel.writeString(sessionId)
+    }
+
+    private fun writeExpectedEpoch(parcel: Parcel, hostEpoch: Long?) {
+        parcel.writeLong(hostEpoch ?: Long.MIN_VALUE)
+    }
+
+    private fun readAutoSnapshot(parcel: Parcel): HostAutoSessionSnapshot {
+        val sessionId = readBoundedOptionalString(parcel, "session ID", HostProtocol.MAX_SESSION_ID_LENGTH)
+        val epoch = parcel.readLong()
+        val statusOrdinal = parcel.readInt()
+        val status = HostAutoSessionStatus.values().getOrNull(statusOrdinal)
+            ?: error("invalid automatic session status: $statusOrdinal")
+        val targetFps = parcel.readInt()
+        require(targetFps >= 0 && (status != HostAutoSessionStatus.ACTIVE || targetFps > 0)) {
+            "invalid target FPS"
+        }
+        val telemetry = if (readBoolean(parcel, "telemetry presence")) readAutoTelemetryPayload(parcel) else null
+        val state = if (readBoolean(parcel, "state presence")) readStatePayload(parcel) else null
+        val restorationAttempted = readBoolean(parcel, "restoration attempted")
+        val restorationComplete = readBoolean(parcel, "restoration complete")
+        val message = readBoundedOptionalString(parcel, "session message")
+        return HostAutoSessionSnapshot(
+            sessionId = sessionId,
+            hostEpoch = epoch,
+            status = status,
+            targetFps = targetFps,
+            telemetry = telemetry,
+            state = state,
+            restorationAttempted = restorationAttempted,
+            restorationComplete = restorationComplete,
+            message = message,
+        )
+    }
+
+    private fun readTelemetrySessionSnapshot(parcel: Parcel): HostTelemetrySessionSnapshot {
+        val sessionId = readBoundedOptionalString(parcel, "session ID", HostProtocol.MAX_SESSION_ID_LENGTH)
+        val epoch = parcel.readLong()
+        val statusOrdinal = parcel.readInt()
+        val status = HostTelemetrySessionStatus.values().getOrNull(statusOrdinal)
+            ?: error("invalid telemetry session status: $statusOrdinal")
+        val targetFps = parcel.readInt()
+        require(targetFps >= 0) { "invalid target FPS" }
+        val telemetry = if (readBoolean(parcel, "telemetry presence")) readAutoTelemetryPayload(parcel) else null
+        val message = readBoundedOptionalString(parcel, "session message")
+        return HostTelemetrySessionSnapshot(
+            sessionId = sessionId,
+            hostEpoch = epoch,
+            status = status,
+            targetFps = targetFps,
+            telemetry = telemetry,
+            message = message,
+        )
+    }
+
+    private fun readAutoTelemetryPayload(parcel: Parcel): HostAutoTelemetry {
+        val sequence = parcel.readLong()
+        require(sequence >= 0L) { "invalid telemetry sequence" }
+        val timestamp = parcel.readLong()
+        val backend = readBoundedOptionalString(parcel, "frame backend")
+        val confidence = parcel.readInt()
+        require(confidence in 0..1000) { "invalid frame confidence" }
+        val layer = readBoundedOptionalString(parcel, "frame layer")
+        val frameCount = parcel.readInt()
+        require(frameCount in 0..100_000) { "invalid frame count" }
+        val fps = readOptionalInt(parcel, "frame rate")?.also { require(it in 0..1_000_000) }
+        val p95 = readOptionalLong(parcel, "p95 frame time")?.also { require(it >= 0L) }
+        val slow = readOptionalInt(parcel, "slow-frame ratio")?.also { require(it in 0..1000) }
+        val stale = readBoolean(parcel, "frame staleness")
+        val cpuLoads = readOptionalIntList(parcel, 64, "CPU load").onEach { value ->
+            if (value != null) require(value in 0..1000) { "invalid CPU load" }
+        }
+        val cpuClocks = readOptionalLongList(parcel, 64, "CPU clocks").onEach { value ->
+            if (value != null) require(value >= 0L) { "invalid CPU clock" }
+        }
+        val gpuBusy = readOptionalInt(parcel, "GPU busy")?.also { require(it in 0..1000) }
+        val gpuClock = readOptionalLong(parcel, "GPU clock")?.also { require(it >= 0L) }
+        val thermalCount = readCount(parcel, HostProtocol.MAX_THERMAL_READINGS, "thermal readings")
+        val thermal = List(thermalCount) {
+            HostThermalReading(
+                type = readRequiredString(parcel, "thermal type").also { require(it.length <= 64) },
+                temperatureMilliCelsius = parcel.readLong().also { require(it in -200_000L..300_000L) },
+            )
+        }
+        val unsupportedCount = readCount(parcel, HostProtocol.MAX_UNSUPPORTED_METRICS, "unsupported metrics")
+        val unsupported = List(unsupportedCount) { readRequiredString(parcel, "unsupported metric") }
+        return HostAutoTelemetry(
+            sequence = sequence,
+            timestampNanos = timestamp,
+            frameBackend = backend,
+            frameConfidencePermille = confidence,
+            frameLayer = layer,
+            frameCount = frameCount,
+            fpsMilli = fps,
+            frameTimeP95Nanos = p95,
+            slowFrameRatioPermille = slow,
+            frameStale = stale,
+            cpuLoadPermille = cpuLoads,
+            cpuClockKHz = cpuClocks,
+            gpuBusyPermille = gpuBusy,
+            gpuClockHz = gpuClock,
+            thermal = thermal,
+            unsupportedMetrics = unsupported,
+        )
+    }
+
+    private fun readBoolean(parcel: Parcel, label: String): Boolean {
+        val value = parcel.readInt()
+        require(value == 0 || value == 1) { "invalid $label flag" }
+        return value == 1
+    }
+
+    private fun readOptionalInt(parcel: Parcel, label: String): Int? =
+        if (readBoolean(parcel, "$label presence")) parcel.readInt() else null
+
+    private fun readOptionalLong(parcel: Parcel, label: String): Long? =
+        if (readBoolean(parcel, "$label presence")) parcel.readLong() else null
+
+    private fun readOptionalIntList(parcel: Parcel, maximum: Int, label: String): List<Int?> {
+        val count = readCount(parcel, maximum, label)
+        return List(count) { readOptionalInt(parcel, "$label value") }
+    }
+
+    private fun readOptionalLongList(parcel: Parcel, maximum: Int, label: String): List<Long?> {
+        val count = readCount(parcel, maximum, label)
+        return List(count) { readOptionalLong(parcel, "$label value") }
+    }
+
+    private fun readBoundedOptionalString(
+        parcel: Parcel,
+        label: String,
+        maximum: Int = HostProtocol.MAX_METADATA_LENGTH,
+    ): String? = parcel.readString()?.also {
+        require(it.length <= maximum && '\u0000' !in it) { "$label is invalid" }
+    }
+
     private fun readCount(parcel: Parcel, maximum: Int, label: String): Int {
         val count = parcel.readInt()
         require(count in 0..maximum) { "invalid $label count: $count" }
@@ -394,11 +693,23 @@ class ClusterTuneHostClient(
     private fun readRequiredString(parcel: Parcel, label: String): String =
         parcel.readString()?.also { require(it.length <= 512) { "$label is too long" } }
             ?: error("missing $label")
-    companion object { private val START_LOCKS=ConcurrentHashMap<Int,Any>() }
+    companion object {
+        private val START_LOCKS = ConcurrentHashMap<Int, Any>()
+        private val AUTO_SESSION_MUTATIONS = setOf(
+            HostProtocol.START_AUTO_SESSION,
+            HostProtocol.APPLY_AUTO_STEP,
+            HostProtocol.HEARTBEAT_AUTO_SESSION,
+            HostProtocol.STOP_AUTO_SESSION,
+        )
+    }
 }
 
 /** Host protocol uses -1 as the wire sentinel for an unavailable optional node. */
 internal fun decodeOptionalHostValue(value: Long): Long? = value.takeUnless { it == -1L }
+
+/** Host identity follows the resolved method, which may differ from persisted configuration. */
+internal fun PrivilegedExecutionResolver.SelectionSnapshot.matchesHostMethod(methodId: String?): Boolean =
+    methodId != null && methodId == this.methodId
 
 internal class HostProtocolMismatch(val remoteVersion: Int) : IllegalStateException(
     "host protocol mismatch (remote=$remoteVersion, local=${HostProtocol.VERSION})",

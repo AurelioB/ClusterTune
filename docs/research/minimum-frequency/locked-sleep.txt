@@ -1,0 +1,13 @@
+PHASE before_sleep screen=2
+policy0 min=307200 max=1459200 mode=444 governor=walt
+policy3 min=499200 max=1785600 mode=444 governor=walt
+policy7 min=595200 max=1843200 mode=444 governor=walt
+PHASE asleep screen=1
+policy0 min=307200 max=1459200 mode=444 governor=walt
+policy3 min=499200 max=1785600 mode=444 governor=walt
+policy7 min=595200 max=1843200 mode=444 governor=walt
+PHASE after_wake screen=2
+policy0 min=307200 max=1459200 mode=444 governor=walt
+policy3 min=499200 max=1785600 mode=444 governor=walt
+policy7 min=595200 max=1843200 mode=444 governor=walt
+RESTORED

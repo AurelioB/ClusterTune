@@ -1,5 +1,6 @@
 package com.aure.clustertune.tile
 
+import com.aure.clustertune.autotune.AdaptiveTuneRuntimeState
 import com.aure.clustertune.model.EffectiveProfileSource
 import com.aure.clustertune.model.EffectiveProfileState
 import com.aure.clustertune.model.PerformanceProfile
@@ -7,9 +8,76 @@ import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.model.ProfileSource
 import com.aure.clustertune.model.TileInteractionBehavior
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PerformanceTileStateTest {
+
+    @Test
+    fun `active auto tune shows its target rather than the stored stock baseline`() {
+        val stock = EffectiveProfileState("stock", "Stock", EffectiveProfileSource.STOCK)
+        val resolved = resolveEffectiveTileState(
+            stock,
+            emptyList(),
+            stock.id,
+            AdaptiveTuneRuntimeState(active = true, targetFps = 45),
+        )
+
+        assertEquals("Auto Tune · 45 FPS", resolved?.name)
+        assertTrue(isTileProfileActive(resolved))
+    }
+
+    @Test
+    fun `starting auto tune replaces a fixed app profile and target changes update the tile`() {
+        val fixed = EffectiveProfileState("small", "Small Underclock", EffectiveProfileSource.APP)
+        val starting = AdaptiveTuneRuntimeState(active = true, targetFps = 30)
+
+        assertEquals(
+            "Auto Tune · 30 FPS",
+            resolveEffectiveTileState(fixed, emptyList(), fixed.id, starting)?.name,
+        )
+        assertEquals(
+            "Auto Tune · 60 FPS",
+            resolveEffectiveTileState(fixed, emptyList(), fixed.id, starting.copy(targetFps = 60))?.name,
+        )
+    }
+
+    @Test
+    fun `inactive auto tune does not hide the selected fixed profile`() {
+        val selected = EffectiveProfileState("small", "Small Underclock", EffectiveProfileSource.NORMAL)
+        val resolved = resolveEffectiveTileState(
+            selected,
+            emptyList(),
+            selected.id,
+            AdaptiveTuneRuntimeState(active = false, targetFps = 60),
+        )
+
+        assertEquals(selected, resolved)
+        assertTrue(isTileProfileActive(resolved))
+        assertFalse(isTileProfileActive(null))
+        assertFalse(isTileProfileActive(EffectiveProfileState("stock", "Stock", EffectiveProfileSource.STOCK)))
+    }
+
+    @Test
+    fun `persisted auto tune identity is inactive after process restart or session stop`() {
+        val persisted = EffectiveProfileState("auto:45", "Auto Tune · 45 FPS", EffectiveProfileSource.APP)
+
+        for (runtime in listOf(
+            AdaptiveTuneRuntimeState(),
+            AdaptiveTuneRuntimeState(active = false, targetFps = 45),
+        )) {
+            val resolved = resolveEffectiveTileState(persisted, emptyList(), persisted.id, runtime)
+
+            assertEquals(null, resolved)
+            assertFalse(isTileProfileActive(resolved))
+        }
+    }
+
+    @Test
+    fun `a custom profile named Stock remains active`() {
+        assertTrue(isTileProfileActive(EffectiveProfileState("custom", "Stock", EffectiveProfileSource.NORMAL)))
+    }
 
     @Test
     fun `persisted effective app profile wins over the normal fallback`() {
@@ -57,12 +125,20 @@ class PerformanceTileStateTest {
             resolveTileTapAction(TileInteractionBehavior.SHOW_PROFILE_PICKER, true),
         )
         assertEquals(
+            TileTapAction.TOGGLE_PERFORMANCE_HUD,
+            resolveTileTapAction(TileInteractionBehavior.TOGGLE_PERFORMANCE_HUD, true),
+        )
+        assertEquals(
             TileTapAction.REQUEST_OVERLAY_PERMISSION,
             resolveTileTapAction(TileInteractionBehavior.SHOW_DIALOG, false),
         )
         assertEquals(
             TileTapAction.REQUEST_OVERLAY_PERMISSION,
             resolveTileTapAction(TileInteractionBehavior.SHOW_PROFILE_PICKER, false),
+        )
+        assertEquals(
+            TileTapAction.REQUEST_OVERLAY_PERMISSION,
+            resolveTileTapAction(TileInteractionBehavior.TOGGLE_PERFORMANCE_HUD, false),
         )
         assertEquals(
             TileTapAction.OPEN_APP,

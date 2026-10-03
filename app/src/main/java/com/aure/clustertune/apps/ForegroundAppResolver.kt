@@ -9,6 +9,8 @@ data class ForegroundAppInfo(
     val packageName: String,
     val label: String,
     val icon: Drawable? = null,
+    val displayId: Int? = null,
+    val currentRefreshRateFps: Int? = null,
 )
 
 class ForegroundAppResolver(context: Context) {
@@ -18,11 +20,15 @@ class ForegroundAppResolver(context: Context) {
     fun resolve(
         snapshot: VisibleAppSnapshot = VisibleAppWindowEvents.snapshots.value,
         targetDisplayId: Int? = null,
+        excludedPackages: Set<String> = emptySet(),
+        preferredPackageName: String? = null,
     ): ForegroundAppInfo? {
-        // Keep ignored packages as explicit candidates. The overlay uses these
-        // transient samples to distinguish a shade transition from a real app
-        // change, rather than treating the transition as an unknown/null app.
-        val window = selectVisibleAppWindow(snapshot, targetDisplayId) ?: return null
+        val window = selectVisibleAppWindow(
+            snapshot = snapshot,
+            targetDisplayId = targetDisplayId,
+            excludedPackages = excludedPackages,
+            preferredPackageName = preferredPackageName,
+        ) ?: return null
         val packageName = window.packageName
         val applicationInfo = applicationInfo(packageName)
         return ForegroundAppInfo(
@@ -35,12 +41,23 @@ class ForegroundAppResolver(context: Context) {
             icon = applicationInfo?.let {
                 runCatching { it.loadIcon(packageManager) }.getOrNull()
             },
+            displayId = window.displayId,
+            currentRefreshRateFps = snapshot.refreshRateFpsByDisplay[window.displayId],
         )
     }
 
     /** Select the same deterministic candidate used by [resolve]. */
-    fun selectPackageName(snapshot: VisibleAppSnapshot, targetDisplayId: Int? = null): String? =
-        selectVisibleAppWindow(snapshot, targetDisplayId)?.packageName
+    fun selectPackageName(
+        snapshot: VisibleAppSnapshot,
+        targetDisplayId: Int? = null,
+        excludedPackages: Set<String> = emptySet(),
+        preferredPackageName: String? = null,
+    ): String? = selectVisibleAppWindow(
+        snapshot = snapshot,
+        targetDisplayId = targetDisplayId,
+        excludedPackages = excludedPackages,
+        preferredPackageName = preferredPackageName,
+    )?.packageName
 
     private fun applicationInfo(packageName: String) = runCatching {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -58,16 +75,56 @@ class ForegroundAppResolver(context: Context) {
 internal fun selectVisibleAppWindow(
     snapshot: VisibleAppSnapshot,
     targetDisplayId: Int? = null,
+    excludedPackages: Set<String> = emptySet(),
+    preferredPackageName: String? = null,
 ): VisibleAppWindow? {
-    val windows = if (targetDisplayId != null) {
-        snapshot.windowsByDisplay[targetDisplayId].orEmpty()
-    } else {
-        snapshot.windowsByDisplay.values.asSequence().flatten().toList()
-    }
-    return windows.sortedWith(
-        compareByDescending<VisibleAppWindow> { it.isFocused }
-            .thenByDescending { it.isActive }
-            .thenBy { it.displayId }
-            .thenBy { it.packageName },
-    ).firstOrNull()
+    return snapshot.visibleWindows(targetDisplayId)
+        .filterNot { it.packageName in excludedPackages }
+        .sortedWith(snapshot.visibleWindowComparator(preferredPackageName))
+        .firstOrNull()
 }
+
+/** Selects the strongest visible window for one package, optionally on one display. */
+internal fun selectVisibleAppWindowForPackage(
+    snapshot: VisibleAppSnapshot,
+    packageName: String,
+    targetDisplayId: Int? = null,
+): VisibleAppWindow? = snapshot.visibleWindows(targetDisplayId)
+    .filter { it.packageName == packageName }
+    .sortedWith(snapshot.visibleWindowComparator())
+    .firstOrNull()
+
+private fun VisibleAppSnapshot.visibleWindows(targetDisplayId: Int?): Sequence<VisibleAppWindow> =
+    if (targetDisplayId != null) {
+        windowsByDisplay[targetDisplayId].orEmpty().asSequence()
+    } else {
+        windowsByDisplay.values.asSequence().flatten()
+    }
+
+private fun VisibleAppSnapshot.visibleWindowComparator(
+    preferredPackageName: String? = null,
+): Comparator<VisibleAppWindow> =
+    compareByDescending<VisibleAppWindow> { it.isFocused }
+        .thenByDescending { it.isActive }
+        .thenByDescending { window ->
+            mostRecentAppIdentity?.let { recent ->
+                recent.displayId == window.displayId && recent.packageName == window.packageName
+            } == true
+        }
+        .thenByDescending { recentPackageByDisplay[it.displayId] == it.packageName }
+        // Keep an established picker context only after focus, activity, and the latest
+        // real window event are tied. This prevents a still-visible old app from masking
+        // a genuine foreground transition on OEMs that report ambiguous window flags.
+        .thenByDescending {
+            preferredPackageName != null && it.packageName == preferredPackageName
+        }
+        .thenBy { it.displayId }
+        .thenBy { it.packageName }
+
+/** Vendor performance overlays that remain visible above the actual game window. */
+internal val VENDOR_GAME_ASSISTANT_PACKAGES = setOf(
+    "com.odin.gameassistant",
+    "com.ayn.gameassistant",
+    "com.rp.gameassistant",
+    "com.retroidpocket.gameassistant",
+)

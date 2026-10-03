@@ -45,6 +45,7 @@ class SettingsStorage(private val context: Context) {
 
     private val tileTapBehaviorKey = stringPreferencesKey("tile_tap_behavior")
     private val applyLastProfileOnBootKey = booleanPreferencesKey("apply_last_profile_on_boot")
+    private val autoTuneEnabledKey = booleanPreferencesKey("auto_tune_enabled")
     private val sleepProfileEnabledKey = booleanPreferencesKey("sleep_profile_enabled")
     private val sleepProfileIdKey = stringPreferencesKey("sleep_profile_id")
     private val quickSettingsTilePromptShownKey = booleanPreferencesKey("quick_settings_tile_prompt_shown")
@@ -81,6 +82,7 @@ class SettingsStorage(private val context: Context) {
                 ?: TileInteractionBehavior.SHOW_DIALOG,
             applyLastProfileOnBoot = preferences[applyLastProfileOnBootKey] ?: false,
             sleepProfileEnabled = preferences[sleepProfileEnabledKey] ?: false,
+            autoTuneEnabled = preferences[autoTuneEnabledKey] ?: false,
             sleepProfileId = preferences[sleepProfileIdKey],
             hasPromptedQuickSettingsTile = preferences[quickSettingsTilePromptShownKey] ?: false,
             isQuickSettingsTileAdded = preferences[quickSettingsTileAddedKey] ?: false,
@@ -113,6 +115,10 @@ class SettingsStorage(private val context: Context) {
                 preferences[privilegedExecutionMethodIdKey],
             ),
         )
+    }
+
+    suspend fun persistAutoTuneEnabled(enabled: Boolean) {
+        context.settingsDataStore.edit { it[autoTuneEnabledKey] = enabled }
     }
 
     suspend fun persistTileTapBehavior(behavior: TileInteractionBehavior) {

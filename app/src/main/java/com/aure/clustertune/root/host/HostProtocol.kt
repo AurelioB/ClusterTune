@@ -3,7 +3,7 @@ package com.aure.clustertune.root.host
 /** Private wire contract between ClusterTune and its persistent privileged host. */
 object HostProtocol {
     const val DESCRIPTOR = "com.aure.clustertune.root.host.IClusterTuneHost"
-    const val VERSION = 6
+    const val VERSION = 13
     const val SERVICE_PREFIX = "clustertune.host."
     const val PING = 1
     const val HOST_IDENTITY = 2
@@ -13,6 +13,21 @@ object HostProtocol {
     const val STOP = 7
     const val READ_SNAPSHOT = 9
     const val LEASE = 10
+    const val READ_AUTO_CAPABILITIES = 11
+    const val START_AUTO_SESSION = 12
+    const val READ_AUTO_TELEMETRY = 13
+    const val APPLY_AUTO_STEP = 14
+    const val HEARTBEAT_AUTO_SESSION = 15
+    const val STOP_AUTO_SESSION = 16
+    const val START_TELEMETRY_SESSION = 17
+    const val READ_TELEMETRY_SESSION = 18
+    const val STOP_TELEMETRY_SESSION = 19
+
+    const val MAX_PACKAGE_LENGTH = 255
+    const val MAX_SESSION_ID_LENGTH = 64
+    const val MAX_METADATA_LENGTH = 512
+    const val MAX_THERMAL_READINGS = 32
+    const val MAX_UNSUPPORTED_METRICS = 16
 }
 
 data class CpuDomain(
@@ -62,22 +77,176 @@ data class ApplyRequest(
     val gpuId: String? = null,
     val gpuMaxPath: String? = null,
     val stabilizedStockCeiling: Long? = null,
+    val maximumsOnly: Boolean = false,
 )
+
+/** Dispatches a profile transaction through the mutation policy carried on the wire. */
+object HostProfileApplyDispatcher {
+    @JvmStatic
+    fun applyOrThrow(
+        engine: HostApplyEngine,
+        capabilities: HostCapabilities,
+        request: ApplyRequest,
+    ) {
+        if (request.maximumsOnly) {
+            engine.applyMaxOnlyOrThrow(capabilities, request)
+        } else {
+            engine.applyOrThrow(capabilities, request)
+        }
+    }
+}
 
 enum class HostApplyPhase { PREFLIGHT, MUTATION, VERIFICATION, ROLLBACK }
 
 /** A privileged transaction failure with enough state for callers to decide whether retrying is safe. */
-class HostApplyFailure(
+class HostApplyFailure @JvmOverloads constructor(
     val phase: HostApplyPhase,
     val mutationStarted: Boolean,
     val rollbackComplete: Boolean,
     val indeterminate: Boolean = false,
     message: String,
     cause: Throwable? = null,
+    /** Exact fallback ceilings successfully written while rolling this transaction back. */
+    val rollbackOwnedValues: Map<String, Set<Long>> = emptyMap(),
+    /** Maximum nodes whose dispatched permission operation could have run. */
+    val attemptedMaximumModePaths: Set<String> = emptySet(),
+    /** Maximum nodes whose dispatched value operation could have run. */
+    val attemptedMaximumValuePaths: Set<String> = emptySet(),
+    /** Maximum nodes whose rollback read proved a different external value. */
+    val relinquishedMaximumValuePaths: Set<String> = emptySet(),
 ) : IllegalStateException(message, cause)
 
-class HostDispatchFailure(
+class HostDispatchFailure @JvmOverloads constructor(
     val indeterminate: Boolean,
     message: String,
     cause: Throwable? = null,
+    /** Zero-based index of the first operation known to have failed, when dispatch reported one. */
+    val firstFailedOperationIndex: Int? = null,
 ) : IllegalStateException(message, cause)
+
+/** Host-side telemetry support. Frame telemetry is required to begin an automatic session. */
+data class HostAutoCapabilities(
+    val frameStats: Boolean,
+    val cpuLoad: Boolean,
+    val cpuClocks: Boolean,
+    val gpuBusy: Boolean,
+    val gpuClock: Boolean,
+    val thermal: Boolean,
+    val frameBackend: String? = null,
+    val unsupportedReason: String? = null,
+) {
+    val autoSessionSupported: Boolean get() = frameStats
+}
+
+data class AutoSessionRequest(
+    val packageName: String,
+    val targetFps: Int,
+    val heartbeatTimeoutMs: Long = 15_000L,
+    /**
+     * Optional persisted normal envelope to apply atomically before the host captures the
+     * automatic-session checkpoint. Keeping this inside START gives the host enough ownership
+     * evidence to reconcile an indeterminate partial apply before it returns to the client.
+     */
+    val baseline: ApplyRequest? = null,
+)
+
+data class HostAutoSessionHandle(val sessionId: String, val hostEpoch: Long)
+
+/** A read-only performance-monitor session. It never owns or changes hardware state. */
+data class TelemetrySessionRequest(
+    val packageName: String? = null,
+    val targetFps: Int = 0,
+    val heartbeatTimeoutMs: Long = 15_000L,
+)
+
+data class HostTelemetrySessionHandle(val sessionId: String, val hostEpoch: Long)
+
+enum class HostTelemetrySessionStatus {
+    ACTIVE,
+    STOPPED,
+    EXPIRED,
+    STALE,
+    UNAVAILABLE,
+}
+
+enum class HostAutoSessionStatus {
+    ACTIVE,
+    STOPPED,
+    EXPIRED,
+    STALE,
+    UNSUPPORTED,
+    RESTORE_FAILED,
+}
+
+data class HostThermalReading(
+    val type: String,
+    val temperatureMilliCelsius: Long,
+)
+
+/** One bounded telemetry sample. Nullable metrics are explicitly unavailable on this device. */
+data class HostAutoTelemetry(
+    val sequence: Long,
+    val timestampNanos: Long,
+    val frameBackend: String?,
+    val frameConfidencePermille: Int,
+    val frameLayer: String?,
+    val frameCount: Int,
+    val fpsMilli: Int?,
+    val frameTimeP95Nanos: Long?,
+    val slowFrameRatioPermille: Int?,
+    val frameStale: Boolean,
+    val cpuLoadPermille: List<Int?>,
+    val cpuClockKHz: List<Long?>,
+    val gpuBusyPermille: Int?,
+    val gpuClockHz: Long?,
+    val thermal: List<HostThermalReading>,
+    val unsupportedMetrics: List<String> = emptyList(),
+)
+
+/** Returned by every session command so stale IDs and unsupported devices remain typed. */
+data class HostAutoSessionSnapshot(
+    val sessionId: String?,
+    val hostEpoch: Long,
+    val status: HostAutoSessionStatus,
+    val targetFps: Int,
+    val telemetry: HostAutoTelemetry? = null,
+    val state: HostState? = null,
+    val restorationAttempted: Boolean = false,
+    val restorationComplete: Boolean = false,
+    val message: String? = null,
+) {
+    init {
+        require(targetFps >= 0 && (status != HostAutoSessionStatus.ACTIVE || targetFps > 0)) {
+            "invalid target FPS"
+        }
+    }
+
+    val handle: HostAutoSessionHandle?
+        get() = sessionId?.let { HostAutoSessionHandle(it, hostEpoch) }
+}
+
+/** Typed state returned by every read-only telemetry-session operation. */
+data class HostTelemetrySessionSnapshot(
+    val sessionId: String?,
+    val hostEpoch: Long,
+    val status: HostTelemetrySessionStatus,
+    val targetFps: Int,
+    val telemetry: HostAutoTelemetry? = null,
+    val message: String? = null,
+) {
+    init {
+        require(targetFps >= 0) { "invalid target FPS" }
+        require(status != HostTelemetrySessionStatus.ACTIVE || sessionId != null) {
+            "active telemetry session requires a handle"
+        }
+    }
+
+    val handle: HostTelemetrySessionHandle?
+        get() = sessionId?.let { HostTelemetrySessionHandle(it, hostEpoch) }
+}
+
+class RemoteHostSessionFailure(
+    val requestCode: Int,
+    val indeterminate: Boolean,
+    message: String,
+) : IllegalStateException(message)

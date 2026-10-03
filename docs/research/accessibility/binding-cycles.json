@@ -1,0 +1,23 @@
+[
+  {
+    "cycle": 1,
+    "disconnected_and_reconnected": true,
+    "bound_after_sleep_wake": true,
+    "app_pid": "32533",
+    "enabled_services_preserved": true
+  },
+  {
+    "cycle": 2,
+    "disconnected_and_reconnected": true,
+    "bound_after_sleep_wake": true,
+    "app_pid": "32533",
+    "enabled_services_preserved": true
+  },
+  {
+    "cycle": 3,
+    "disconnected_and_reconnected": true,
+    "bound_after_sleep_wake": true,
+    "app_pid": "32533",
+    "enabled_services_preserved": true
+  }
+]

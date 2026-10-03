@@ -1,0 +1,29 @@
+initial=HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[902400, 1651200, 1843200], cpuCurrent=[1017600, 1785600, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000); modes=[432, 432, 432]
+protected 0: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1459200, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 1: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1113600, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 2: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1017600, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 3: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[787200, 614400, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 4: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1344000, 499200, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 5: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[307200, 499200, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 6: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1017600, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 7: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1113600, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 8: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1017600, 940800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 9: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1017600, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 10: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1344000, 499200, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 11: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[787200, 614400, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 12: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1113600, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 13: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1017600, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 14: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1017600, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 15: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1017600, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 16: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1017600, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 17: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1459200, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 18: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1017600, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 19: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[787200, 729600, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 20: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[556800, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 21: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1017600, 1536000, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 22: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[441600, 1536000, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+protected 23: HostState(cpuMax=[1459200, 1785600, 1843200], cpuMin=[307200, 499200, 595200], cpuCurrent=[1017600, 844800, 1843200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000)
+stock=HostState(cpuMax=[2016000, 2803200, 3187200], cpuMin=[902400, 1651200, 1843200], cpuCurrent=[902400, 1651200, 3187200], gpuMax=680000000, gpuMin=401000000, gpuCurrent=401000000); modes=[432, 432, 432]
+stop restored modes
+replacement host recovered modes; epoch=154224455570748
+cleanup restored initial ceilings and minimum permissions

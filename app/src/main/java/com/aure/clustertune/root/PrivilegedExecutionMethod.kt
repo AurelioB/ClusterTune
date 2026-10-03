@@ -56,6 +56,11 @@ class PrivilegedExecutionResolver(
         SelectionSnapshot(selectedMethodLocked(false)?.id, generation)
     }
 
+    /** Keep configuration changes from invalidating a host handoff after it has begun. */
+    internal fun <T> withStableSelection(block: (SelectionSnapshot) -> T): T = synchronized(lock) {
+        block(SelectionSnapshot(selectedMethodLocked(false)?.id, generation))
+    }
+
     fun selectedMethod(forceReprobe: Boolean = false): PrivilegedExecutionMethod? = synchronized(lock) {
         selectedMethodLocked(forceReprobe)
     }
@@ -115,8 +120,14 @@ internal class PServerExecutionMethod(
         else ExecutionProbeResult(false, "PServerBinder not available")
     }
 
-    override fun launchHost(request: HostLaunchRequest): Result<Unit> =
-        rootExec.launchHost(hostLauncher(request))
+    override fun launchHost(request: HostLaunchRequest): Result<Unit> {
+        val command = hostLauncher(request)
+        // PServer silently truncates commands at 255 bytes, including multi-byte paths.
+        if (command.toByteArray(Charsets.UTF_8).size > 255) {
+            return Result.failure(IllegalArgumentException("PServer host launcher exceeds 255 bytes"))
+        }
+        return rootExec.launchHost(command)
+    }
 }
 
 internal class RootShellExecutionMethod(

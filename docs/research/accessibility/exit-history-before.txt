@@ -1,0 +1,68 @@
+ACTIVITY MANAGER PROCESS EXIT INFO (dumpsys activity exit-info)
+Last Timestamp of Persistence Into Persistent Storage: 2026-10-02 16:27:43.517
+  package: com.aure.clustertune
+    Historical Process Exit for uid=10319
+        ApplicationExitInfo #0:
+          timestamp=2026-10-02 10:59:25.424 pid=14400 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=125 pss=206MB rss=400MB description=stop com.aure.clustertune due to finished inst state=empty trace=null
+        ApplicationExitInfo #1:
+          timestamp=2026-10-02 10:56:46.009 pid=14232 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=125 pss=0.00 rss=0.00 description=stop com.aure.clustertune due to finished inst state=empty trace=null
+        ApplicationExitInfo #2:
+          timestamp=2026-10-02 10:56:16.442 pid=13967 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=125 pss=0.00 rss=0.00 description=stop com.aure.clustertune due to finished inst state=empty trace=null
+        ApplicationExitInfo #3:
+          timestamp=2026-10-02 10:54:57.206 pid=13768 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=125 pss=0.00 rss=0.00 description=stop com.aure.clustertune due to finished inst state=empty trace=null
+        ApplicationExitInfo #4:
+          timestamp=2026-10-02 10:52:18.374 pid=12367 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=125 pss=95MB rss=255MB description=stop com.aure.clustertune due to finished inst state=empty trace=null
+        ApplicationExitInfo #5:
+          timestamp=2026-10-02 10:51:24.117 pid=12157 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=125 pss=0.00 rss=0.00 description=stop com.aure.clustertune due to start instr state=empty trace=null
+        ApplicationExitInfo #6:
+          timestamp=2026-10-02 10:51:01.202 pid=8732 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=200 pss=80MB rss=174MB description=stop com.aure.clustertune due to installPackageLI state=empty trace=null
+        ApplicationExitInfo #7:
+          timestamp=2026-10-02 09:07:33.295 pid=18965 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=13 (OTHER KILLS BY SYSTEM) subreason=3 (TOO MANY EMPTY PROCS) status=0
+          importance=400 pss=82MB rss=169MB description=too many empty state=empty trace=null
+        ApplicationExitInfo #8:
+          timestamp=2026-10-02 01:19:22.216 pid=18825 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=125 pss=0.00 rss=0.00 description=stop com.aure.clustertune due to finished inst state=empty trace=null
+        ApplicationExitInfo #9:
+          timestamp=2026-10-02 01:19:21.266 pid=18742 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=125 pss=0.00 rss=0.00 description=stop com.aure.clustertune due to finished inst state=empty trace=null
+        ApplicationExitInfo #10:
+          timestamp=2026-10-02 01:18:09.947 pid=18575 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=125 pss=0.00 rss=0.00 description=stop com.aure.clustertune due to finished inst state=empty trace=null
+        ApplicationExitInfo #11:
+          timestamp=2026-10-02 01:18:08.843 pid=18509 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=125 pss=0.00 rss=0.00 description=stop com.aure.clustertune due to finished inst state=empty trace=null
+        ApplicationExitInfo #12:
+          timestamp=2026-10-02 01:17:38.279 pid=17973 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=125 pss=0.00 rss=0.00 description=stop com.aure.clustertune due to finished inst state=empty trace=null
+        ApplicationExitInfo #13:
+          timestamp=2026-10-02 01:17:29.743 pid=17911 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=125 pss=0.00 rss=0.00 description=stop com.aure.clustertune due to finished inst state=empty trace=null
+        ApplicationExitInfo #14:
+          timestamp=2026-10-02 01:16:24.668 pid=17754 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=125 pss=0.00 rss=0.00 description=stop com.aure.clustertune due to finished inst state=empty trace=null
+        ApplicationExitInfo #15:
+          timestamp=2026-10-02 01:16:23.907 pid=17240 realUid=10319 packageUid=10319 definingUid=10319 user=0
+          process=com.aure.clustertune reason=10 (USER REQUESTED) subreason=21 (FORCE STOP) status=0
+          importance=100 pss=202MB rss=317MB description=stop com.aure.clustertune due to start instr state=empty trace=null

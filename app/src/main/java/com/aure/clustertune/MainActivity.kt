@@ -3,9 +3,12 @@ package com.aure.clustertune
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.database.ContentObserver
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -32,6 +35,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.aure.clustertune.apps.VisibleAppWindowEvents
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.overlay.OverlayHostService
 import com.aure.clustertune.overlay.OverlayPermission
@@ -40,6 +44,7 @@ import com.aure.clustertune.permissions.AppAccessStatus
 import com.aure.clustertune.permissions.AppProfileAccessibilityAccess
 import com.aure.clustertune.permissions.UsageStatsAccess
 import com.aure.clustertune.permissions.missingAppAccess
+import com.aure.clustertune.permissions.accessibilityServiceNeedsRestart
 import com.aure.clustertune.sleep.SleepProfileMonitorService
 import com.aure.clustertune.tile.QuickSettingsTileAddResult
 import com.aure.clustertune.tile.QuickSettingsTilePrompt
@@ -59,6 +64,7 @@ import com.aure.clustertune.update.UpdateCheckPolicy
 import com.aure.clustertune.update.UpdateCheckResult
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
 
@@ -112,6 +118,7 @@ class MainActivity : ComponentActivity() {
                     val applyingProfileId = viewModel.applyingProfileId.collectAsStateWithLifecycle().value
                     val launchableApps = viewModel.launchableApps.collectAsStateWithLifecycle().value
                     val recentActiveApps = viewModel.recentActiveApps.collectAsStateWithLifecycle().value
+                    val visibleAppSnapshot = VisibleAppWindowEvents.snapshots.collectAsStateWithLifecycle().value
                     var showSettings by rememberSaveable { mutableStateOf(false) }
                     var showSupport by rememberSaveable { mutableStateOf(false) }
                     BackHandler(enabled = showSettings || showSupport) {
@@ -126,7 +133,18 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         lifecycle.addObserver(observer)
-                        onDispose { lifecycle.removeObserver(observer) }
+                        val accessObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+                            override fun onChange(selfChange: Boolean) { permissionRefresh++ }
+                        }
+                        contentResolver.registerContentObserver(
+                            Settings.Secure.getUriFor(Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES),
+                            false,
+                            accessObserver,
+                        )
+                        onDispose {
+                            lifecycle.removeObserver(observer)
+                            contentResolver.unregisterContentObserver(accessObserver)
+                        }
                     }
                     val canDrawOverlays = remember(permissionRefresh) {
                         OverlayPermission.canDrawOverlays(this@MainActivity)
@@ -136,6 +154,17 @@ class MainActivity : ComponentActivity() {
                     }
                     val hasAppProfileAccessibilityAccess = remember(permissionRefresh) {
                         AppProfileAccessibilityAccess.isEnabled(this@MainActivity)
+                    }
+                    val accessibilityConnected by AppProfileAccessibilityAccess.isConnected.collectAsStateWithLifecycle()
+                    val accessibilityHealthy by AppProfileAccessibilityAccess.isHealthy.collectAsStateWithLifecycle()
+                    var accessibilityBindingGraceElapsed by remember(permissionRefresh, accessibilityConnected, accessibilityHealthy) {
+                        mutableStateOf(false)
+                    }
+                    LaunchedEffect(permissionRefresh, accessibilityConnected, accessibilityHealthy, hasAppProfileAccessibilityAccess) {
+                        if (hasAppProfileAccessibilityAccess && (!accessibilityConnected || !accessibilityHealthy)) {
+                            delay(3_000L)
+                            accessibilityBindingGraceElapsed = true
+                        }
                     }
                     val hasNotificationAccess = remember(permissionRefresh) {
                         NotificationManagerCompat.from(this@MainActivity)
@@ -150,6 +179,9 @@ class MainActivity : ComponentActivity() {
                             accessibilityGranted = hasAppProfileAccessibilityAccess,
                             usageGranted = hasUsageAccess,
                             notificationsGranted = hasNotificationAccess,
+                            accessibilityServiceDisconnected = accessibilityServiceNeedsRestart(
+                                hasAppProfileAccessibilityAccess, accessibilityConnected && accessibilityHealthy, accessibilityBindingGraceElapsed,
+                            ),
                         ),
                     )
                     var showPermissionDialog by rememberSaveable { mutableStateOf(true) }
@@ -163,6 +195,7 @@ class MainActivity : ComponentActivity() {
                     if (showSettings) {
                         SettingsScreen(
                             settings = settings,
+                            onAutoTuneEnabledChange = viewModel::setAutoTuneEnabled,
                             onBack = { showSettings = false },
                             onColorSourceChange = viewModel::setColorSource,
                             onAccentColorChange = viewModel::setAccentColor,
@@ -280,6 +313,7 @@ class MainActivity : ComponentActivity() {
                     } else {
                         MainTunerScreen(
                             state = state,
+                            autoTuneEnabled = settings.autoTuneEnabled,
                             applyingProfileId = applyingProfileId,
                             displayFrequenciesAsPercent = settings.displayFrequenciesAsPercent,
                             sleepProfileId = settings.sleepProfileId.takeIf { settings.sleepProfileEnabled },
@@ -299,13 +333,15 @@ class MainActivity : ComponentActivity() {
                             onMoveProfile = viewModel::moveProfile,
                             launchableApps = launchableApps,
                             recentActiveApps = recentActiveApps,
-                            onSaveAppProfileAssignment = { packageName, appLabel, profileId, customMaxFrequencies, customGpuMaxFrequencyHz ->
+                            visibleAppSnapshot = visibleAppSnapshot,
+                            onSaveAppProfileAssignment = { packageName, appLabel, profileId, customMaxFrequencies, customGpuMaxFrequencyHz, autoTuneTargetFps ->
                                 viewModel.saveAppProfileAssignment(
                                     packageName = packageName,
                                     appLabel = appLabel,
                                     profileId = profileId,
                                     customMaxFrequencies = customMaxFrequencies,
                                     customGpuMaxFrequencyHz = customGpuMaxFrequencyHz,
+                                    autoTuneTargetFps = autoTuneTargetFps,
                                 )
                             },
                             onDeleteAppProfileAssignment = viewModel::deleteAppProfileAssignment,
@@ -326,7 +362,7 @@ class MainActivity : ComponentActivity() {
                                         startActivity(OverlayPermission.createSettingsIntent(this@MainActivity))
                                     }
 
-                                    AppAccess.ACCESSIBILITY -> {
+                                    AppAccess.ACCESSIBILITY, AppAccess.ACCESSIBILITY_SERVICE -> {
                                         startActivity(AppProfileAccessibilityAccess.settingsIntent())
                                     }
 

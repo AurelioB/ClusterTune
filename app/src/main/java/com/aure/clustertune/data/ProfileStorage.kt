@@ -154,6 +154,32 @@ class ProfileStorage(private val context: Context) {
         }
     }
 
+    /** Atomically updates only the Auto Tune assignment captured by an interactive HUD gesture. */
+    suspend fun updateAutoTuneTargetIfCurrent(
+        packageName: String,
+        expectedTargetFps: Int,
+        targetFps: Int,
+    ): Boolean {
+        if (packageName.isBlank() || expectedTargetFps <= 0 || targetFps <= 0) return false
+        var updated = false
+        context.dataStore.edit { preferences ->
+            val current = ProfileStorageCodec
+                .parseAppProfileAssignments(preferences[appProfileAssignmentsKey])
+            val result = conditionalAutoTuneTargetUpdate(
+                assignments = current,
+                packageName = packageName,
+                expectedTargetFps = expectedTargetFps,
+                targetFps = targetFps,
+            )
+            if (!result.updated) return@edit
+            preferences[appProfileAssignmentsKey] = ProfileStorageCodec.encodeAppProfileAssignments(
+                result.assignments,
+            )
+            updated = true
+        }
+        return updated
+    }
+
     suspend fun deleteAppProfileAssignment(packageName: String) {
         context.dataStore.edit { preferences ->
             val updated = ProfileStorageCodec
@@ -341,6 +367,31 @@ class ProfileStorage(private val context: Context) {
                 )
             }
     }
+}
+
+internal data class ConditionalAutoTuneTargetUpdate(
+    val assignments: List<AppProfileAssignment>,
+    val updated: Boolean,
+)
+
+internal fun conditionalAutoTuneTargetUpdate(
+    assignments: List<AppProfileAssignment>,
+    packageName: String,
+    expectedTargetFps: Int,
+    targetFps: Int,
+): ConditionalAutoTuneTargetUpdate {
+    val captured = assignments.firstOrNull { assignment ->
+        assignment.packageName == packageName &&
+            assignment.isAutoTune &&
+            assignment.autoTuneTargetFps == expectedTargetFps
+    } ?: return ConditionalAutoTuneTargetUpdate(assignments, updated = false)
+    val replacement = captured.copy(autoTuneTargetFps = targetFps)
+    return ConditionalAutoTuneTargetUpdate(
+        assignments = assignments.map { assignment ->
+            if (assignment.packageName == packageName) replacement else assignment
+        },
+        updated = true,
+    )
 }
 
 internal fun boundedProfileSwitchHistory(

@@ -1,9 +1,31 @@
 package com.aure.clustertune.permissions
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AppAccessTest {
+    @Test
+    fun `disconnected service is not reported as revoked permission`() {
+        assertEquals(
+            listOf(AppAccess.ACCESSIBILITY_SERVICE),
+            missingAppAccess(AppAccessStatus(true, true, true, true, accessibilityServiceDisconnected = true)),
+        )
+        assertEquals(
+            listOf(AppAccess.ACCESSIBILITY),
+            missingAppAccess(AppAccessStatus(true, false, true, true, accessibilityServiceDisconnected = true)),
+        )
+    }
+
+    @Test
+    fun `service reconnect suppresses warning and initial binding gets a grace period`() {
+        assertFalse(accessibilityServiceNeedsRestart(true, false, false))
+        assertTrue(accessibilityServiceNeedsRestart(true, false, true))
+        assertFalse(accessibilityServiceNeedsRestart(true, true, true))
+        assertFalse(accessibilityServiceNeedsRestart(false, false, true))
+    }
+
     @Test
     fun `all granted returns no missing access`() {
         assertEquals(

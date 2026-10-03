@@ -15,6 +15,12 @@ on:
         default: "main"
         type: string
 
+      draft:
+        description: "Create a draft release for verification before publishing"
+        required: false
+        default: false
+        type: boolean
+
 permissions:
   contents: write
 
@@ -115,6 +121,9 @@ jobs:
         run: |
           tag="${{ steps.version.outputs.tag }}"
           release_flags=()
+          if [[ "$CREATE_DRAFT" == "true" ]]; then
+            release_flags+=(--draft)
+          fi
           if [[ "$tag" == *-* ]]; then
             release_flags+=(--prerelease)
           fi
@@ -124,3 +133,4 @@ jobs:
             "${release_flags[@]}"
         env:
           GH_TOKEN: ${{ github.token }}
+          CREATE_DRAFT: ${{ inputs.draft }}

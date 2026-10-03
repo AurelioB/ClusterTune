@@ -1,0 +1,16 @@
+# Focused excerpt from an isolated ftrace instance; original writer thread TID 1503 belongs to /system/bin/pservice PID 1439.
+     kworker/2:1-27464   [002] ..... 116378.335837: cpu_frequency_limits: min=307200 max=1459200 cpu_id=0
+     kworker/1:0-464     [001] ..... 116378.356941: cpu_frequency_limits: min=499200 max=1785600 cpu_id=3
+     kworker/0:2-29828   [000] ..... 116378.378514: cpu_frequency_limits: min=595200 max=1843200 cpu_id=7
+        pservice-1503    [000] ..... 116386.880085: sched_process_fork: comm=pservice pid=1503 child_comm=pservice child_pid=4414
+              sh-4414    [002] ..... 116386.881177: sched_process_exec: filename=/system/bin/sh pid=4414 old_pid=4414
+              sh-4414    [002] ..... 116386.905845: pm_qos_update_target: action=UPDATE_REQ prev_value=307200 curr_value=902400
+     kworker/2:1-27464   [002] ..... 116386.905904: cpu_frequency_limits: min=902400 max=1459200 cpu_id=0
+        pservice-1503    [000] ..... 116386.917397: sched_process_fork: comm=pservice pid=1503 child_comm=pservice child_pid=4417
+              sh-4417    [006] ..... 116386.917716: sched_process_exec: filename=/system/bin/sh pid=4417 old_pid=4417
+              sh-4417    [006] ..... 116386.921675: pm_qos_update_target: action=UPDATE_REQ prev_value=499200 curr_value=1651200
+     kworker/6:3-1085    [006] ..... 116386.921708: cpu_frequency_limits: min=1651200 max=1785600 cpu_id=3
+        pservice-1503    [000] ..... 116386.926988: sched_process_fork: comm=pservice pid=1503 child_comm=pservice child_pid=4419
+              sh-4419    [006] ..... 116386.927239: sched_process_exec: filename=/system/bin/sh pid=4419 old_pid=4419
+              sh-4419    [006] ..... 116386.930899: pm_qos_update_target: action=UPDATE_REQ prev_value=595200 curr_value=1843200
+     kworker/6:3-1085    [006] ..... 116386.930927: cpu_frequency_limits: min=1843200 max=1843200 cpu_id=7

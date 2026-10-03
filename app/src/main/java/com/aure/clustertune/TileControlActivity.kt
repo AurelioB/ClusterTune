@@ -13,6 +13,8 @@ class TileControlActivity : ComponentActivity() {
             "com.aure.clustertune.action.SHOW_COMPACT_TUNER_OVERLAY"
         private const val ACTION_SHOW_PROFILE_PICKER_OVERLAY =
             "com.aure.clustertune.action.SHOW_PROFILE_PICKER_OVERLAY"
+        private const val ACTION_TOGGLE_PERFORMANCE_HUD =
+            "com.aure.clustertune.action.TOGGLE_PERFORMANCE_HUD"
         private const val ACTION_QS_TILE_PREFERENCES = "android.service.quicksettings.action.QS_TILE_PREFERENCES"
 
         fun createCompactTunerOverlayIntent(context: Context): Intent {
@@ -25,6 +27,13 @@ class TileControlActivity : ComponentActivity() {
         fun createProfilePickerOverlayIntent(context: Context): Intent {
             return Intent(context, TileControlActivity::class.java).apply {
                 action = ACTION_SHOW_PROFILE_PICKER_OVERLAY
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+            }
+        }
+
+        fun createPerformanceHudOverlayIntent(context: Context): Intent {
+            return Intent(context, TileControlActivity::class.java).apply {
+                action = ACTION_TOGGLE_PERFORMANCE_HUD
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
             }
         }
@@ -46,6 +55,10 @@ class TileControlActivity : ComponentActivity() {
             }
             ACTION_SHOW_PROFILE_PICKER_OVERLAY -> {
                 OverlayHostService.showProfilePicker(applicationContext)
+                finishAndRemoveTask()
+            }
+            ACTION_TOGGLE_PERFORMANCE_HUD -> {
+                OverlayHostService.togglePerformanceHud(applicationContext)
                 finishAndRemoveTask()
             }
             else -> finishAndRemoveTask()

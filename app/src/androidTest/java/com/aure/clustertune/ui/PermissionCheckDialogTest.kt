@@ -72,6 +72,24 @@ class PermissionCheckDialogTest {
     }
 
     @Test
+    fun disconnectedService_explainsRecoveryWithoutClaimingPermissionWasRevoked() {
+        composeRule.setContent {
+            MaterialTheme {
+                PermissionCheckDialog(
+                    missingAccess = listOf(AppAccess.ACCESSIBILITY_SERVICE),
+                    onFixAccess = {},
+                    onDismiss = {},
+                )
+            }
+        }
+        composeRule.onNodeWithText("App automation needs attention").assertIsDisplayed()
+        composeRule.onNodeWithText("Accessibility access is enabled", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("turn its app profile service off and on", substring = true)
+            .performScrollTo().assertIsDisplayed()
+        composeRule.onAllNodesWithText("Permissions needed").assertCountEquals(0)
+    }
+
+    @Test
     fun notNow_dismissesDialog() {
         var dismissed = false
         composeRule.setContent {

@@ -75,6 +75,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -95,6 +96,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -109,8 +111,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import com.aure.clustertune.R
+import com.aure.clustertune.apps.VisibleAppSnapshot
+import com.aure.clustertune.apps.selectVisibleAppWindowForPackage
+import com.aure.clustertune.autotune.AdaptiveTuneReason
+import com.aure.clustertune.autotune.AdaptiveTuneRuntimeState
+import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.CpuPolicyInfo
 import com.aure.clustertune.model.InstalledAppInfo
+import com.aure.clustertune.model.MIN_AUTO_TUNE_TARGET_FPS
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.model.ProfileSource
@@ -125,12 +133,21 @@ import com.aure.clustertune.ui.designsystem.component.CtSelectableRow
 import com.aure.clustertune.ui.designsystem.component.CtSelectionIndicator
 import com.aure.clustertune.ui.designsystem.component.CtStatePanel
 import com.aure.clustertune.ui.designsystem.component.CtStatePanelState
+import com.aure.clustertune.ui.designsystem.component.CtSlider
 import com.aure.clustertune.ui.designsystem.component.CtSwitch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.roundToInt
 
 private const val NEW_PROFILE_DIALOG_ID = "__new_profile__"
+private const val DEFAULT_AUTO_TUNE_TARGET_FPS = 60
+
+internal object CompactOverlayTestTags {
+    const val AUTO_TUNE_TARGET_SLIDER = "compact_overlay_auto_tune_target_slider"
+    const val APP_PROFILE_SWITCH = "compact_overlay_app_profile_switch"
+}
+
 private enum class MainTab {
     PROFILES,
     APPS,
@@ -140,6 +157,7 @@ private enum class MainTab {
 @Composable
 fun MainTunerScreen(
     state: TunerState,
+    autoTuneEnabled: Boolean = false,
     applyingProfileId: String? = null,
     displayFrequenciesAsPercent: Boolean,
     sleepProfileId: String?,
@@ -151,7 +169,8 @@ fun MainTunerScreen(
     onMoveProfile: (String, Int) -> Unit,
     launchableApps: List<InstalledAppInfo>,
     recentActiveApps: List<InstalledAppInfo>,
-    onSaveAppProfileAssignment: (String, String, String?, Map<Int, Int>, Int?) -> Unit,
+    visibleAppSnapshot: VisibleAppSnapshot = VisibleAppSnapshot.Empty,
+    onSaveAppProfileAssignment: (String, String, String?, Map<Int, Int>, Int?, Int?) -> Unit,
     onDeleteAppProfileAssignment: (String) -> Unit,
     onRefreshInstalledApps: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -250,6 +269,7 @@ fun MainTunerScreen(
 
                                 MainTab.APPS -> AppProfilesSection(
                                     state = state,
+                                    autoTuneEnabled = autoTuneEnabled,
                                     apps = launchableApps,
                                     recentApps = recentActiveApps,
                                     onConfigureApp = { app ->
@@ -274,22 +294,37 @@ fun MainTunerScreen(
     if (showAppAssignmentDialog) {
         appToConfigure?.let { app ->
             val assignment = state.appProfileAssignments.firstOrNull { it.packageName == app.packageName }
-            var appOverlayMode by remember(app.packageName) { mutableStateOf(CompactOverlayMode.PROFILES) }
+            val visibleWindow = remember(app.packageName, visibleAppSnapshot) {
+                selectVisibleAppWindowForPackage(visibleAppSnapshot, app.packageName)
+            }
+            val currentRefreshRateFps = visibleWindow?.let { window ->
+                visibleAppSnapshot.refreshRateFpsByDisplay[window.displayId]
+            }
+            var appOverlayMode by remember(app.packageName, assignment?.isAutoTune) {
+                mutableStateOf(
+                    if (autoTuneEnabled && assignment?.isAutoTune == true) {
+                        CompactOverlayMode.AUTO_TUNE
+                    } else {
+                        CompactOverlayMode.PROFILES
+                    },
+                )
+            }
             CtCompactOverlayFrame(onDismissRequest = { showAppAssignmentDialog = false }) {
                 CompactOverlayScreen(
                     state = state,
+                    autoTuneEnabled = autoTuneEnabled,
                     displayFrequenciesAsPercent = displayFrequenciesAsPercent,
                     mode = appOverlayMode,
                     onModeChange = { appOverlayMode = it },
                     onApplyProfile = { profile, _ ->
                         // Named profiles carry their CPU and GPU values in profile storage.
                         // Keep the assignment declarative so later profile edits are picked up.
-                        onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null)
+                        onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null, null)
                         showAppAssignmentDialog = false
                     },
                     onApplyCurrent = { customState, profile, customValues, _ ->
                         if (profile != null) {
-                            onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null)
+                            onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null, null)
                         } else if (customValues == null && customState.currentGpuMaxFrequencyHz == null) {
                             onDeleteAppProfileAssignment(app.packageName)
                         } else {
@@ -299,6 +334,7 @@ fun MainTunerScreen(
                                 null,
                                 customValues ?: emptyMap(),
                                 customState.currentGpuMaxFrequencyHz,
+                                null,
                             )
                         }
                         showAppAssignmentDialog = false
@@ -308,10 +344,36 @@ fun MainTunerScreen(
                     contextPackageName = app.packageName,
                     contextLabel = app.label,
                     contextIcon = app.icon,
-                    onAppProfileAssignmentChange = { profile, customValues, customGpu ->
-                        if (profile == null && customValues == null && customGpu == null) onDeleteAppProfileAssignment(app.packageName)
-                        else if (profile != null) onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null)
-                        else onSaveAppProfileAssignment(app.packageName, app.label, null, customValues ?: emptyMap(), customGpu)
+                    contextDisplayRefreshRateFps = currentRefreshRateFps,
+                    onAppProfileAssignmentChange = { profile, customValues, customGpu, autoTuneTargetFps ->
+                        when {
+                            profile == null && customValues == null && customGpu == null && autoTuneTargetFps == null -> {
+                                onDeleteAppProfileAssignment(app.packageName)
+                            }
+                            profile != null -> {
+                                onSaveAppProfileAssignment(app.packageName, app.label, profile.id, emptyMap(), null, null)
+                            }
+                            autoTuneTargetFps != null -> {
+                                onSaveAppProfileAssignment(
+                                    app.packageName,
+                                    app.label,
+                                    null,
+                                    emptyMap(),
+                                    null,
+                                    autoTuneTargetFps,
+                                )
+                            }
+                            else -> {
+                                onSaveAppProfileAssignment(
+                                    app.packageName,
+                                    app.label,
+                                    null,
+                                    customValues ?: emptyMap(),
+                                    customGpu,
+                                    null,
+                                )
+                            }
+                        }
                     },
                     showAppProfileToggle = false,
                     showAssignmentRemove = assignment != null,
@@ -371,12 +433,13 @@ fun MainTunerScreen(
 
 }
 
-enum class CompactOverlayMode { PROFILES, TUNER }
+enum class CompactOverlayMode { PROFILES, TUNER, AUTO_TUNE }
 
 /** Compact app-aware overlay shared by the edge picker and quick tuner. */
 @Composable
 fun CompactOverlayScreen(
     state: TunerState,
+    autoTuneEnabled: Boolean = false,
     applyingProfileId: String? = null,
     displayFrequenciesAsPercent: Boolean,
     mode: CompactOverlayMode,
@@ -388,23 +451,49 @@ fun CompactOverlayScreen(
     contextPackageName: String? = null,
     contextLabel: String? = null,
     contextIcon: Drawable? = null,
-    onAppProfileAssignmentChange: ((PerformanceProfile?, Map<Int, Int>?, Int?) -> Unit)? = null,
+    contextDisplayRefreshRateFps: Int? = null,
+    onAppProfileAssignmentChange: ((PerformanceProfile?, Map<Int, Int>?, Int?, Int?) -> Unit)? = null,
     showAppProfileToggle: Boolean = true,
     showAssignmentRemove: Boolean = false,
     onRemoveAssignment: (() -> Unit)? = null,
 ) {
+    val effectiveMode = if (!autoTuneEnabled && mode == CompactOverlayMode.AUTO_TUNE) CompactOverlayMode.PROFILES else mode
+    LaunchedEffect(mode, autoTuneEnabled) {
+        if (mode != effectiveMode) onModeChange(effectiveMode)
+    }
     val colorScheme = MaterialTheme.colorScheme
     val profiles = profilesForCompactPicker(state.displayProfiles)
     val assignment = contextPackageName?.let { packageName ->
         state.appProfileAssignments.firstOrNull { it.packageName == packageName }
     }
+    val localDisplayRefreshRateFps = rememberCurrentDisplayRefreshRateFps()
+    val maximumAutoTuneTargetFps = autoTuneTargetMaximumFps(
+        contextDisplayRefreshRateFps = contextDisplayRefreshRateFps,
+        localDisplayRefreshRateFps = localDisplayRefreshRateFps,
+    )
     val canAssign = !contextPackageName.isNullOrBlank() && onAppProfileAssignmentChange != null
-    var appProfileEnabled by remember(contextPackageName, assignment?.profileId, assignment?.customMaxFrequencies) {
+    var appProfileEnabled by remember(
+        contextPackageName,
+        assignment?.profileId,
+        assignment?.customMaxFrequencies,
+        assignment?.customGpuMaxFrequencyHz,
+        assignment?.autoTuneTargetFps,
+    ) {
         mutableStateOf(assignment != null)
     }
-    var stagedProfile by remember(assignment?.profileId, state.selectedDisplayProfileId) {
+    // Keep the configured draft separate from the live effective value. If the
+    // panel changes 120 -> 60 -> 120 while this dialog is open, the unsaved
+    // 120 FPS preference returns instead of being silently rewritten.
+    var autoTuneDraftTargetFps by remember(contextPackageName, assignment?.autoTuneTargetFps) {
+        mutableIntStateOf(assignment?.autoTuneTargetFps ?: DEFAULT_AUTO_TUNE_TARGET_FPS)
+    }
+    val effectiveAutoTuneDraftTargetFps = autoTuneDraftTargetFps
+        .coerceIn(MIN_AUTO_TUNE_TARGET_FPS, maximumAutoTuneTargetFps)
+    var stagedProfile by remember(contextPackageName, assignment?.profileId, state.selectedDisplayProfileId) {
         mutableStateOf(
-            if (assignment?.isCustom == true || (assignment == null && state.isManualSelection)) {
+            if (assignment?.isCustom == true || assignment?.isAutoTune == true ||
+                (assignment == null && state.isManualSelection)
+            ) {
                 null
             } else {
                 profiles.firstOrNull { it.id == assignment?.profileId }
@@ -413,19 +502,24 @@ fun CompactOverlayScreen(
             },
         )
     }
-    val initialValues = remember(assignment?.profileId, assignment?.customMaxFrequencies, state.displayProfiles) {
+    val initialValues = remember(contextPackageName, assignment?.profileId, assignment?.customMaxFrequencies, state.displayProfiles) {
         assignment?.customMaxFrequencies?.takeIf { it.isNotEmpty() }
             ?: profiles.firstOrNull { it.id == assignment?.profileId }?.maxFrequencies
             ?: state.currentValues
     }
-    var stagedCustomValues by remember(initialValues) { mutableStateOf(initialValues) }
-    val initialGpuValue = remember(assignment?.profileId, assignment?.customGpuMaxFrequencyHz, state.currentGpuMaxFrequencyHz) {
+    var stagedCustomValues by remember(contextPackageName, initialValues) { mutableStateOf(initialValues) }
+    val initialGpuValue = remember(
+        contextPackageName,
+        assignment?.profileId,
+        assignment?.customGpuMaxFrequencyHz,
+        state.currentGpuMaxFrequencyHz,
+    ) {
         assignment?.customGpuMaxFrequencyHz
             ?: profiles.firstOrNull { it.id == assignment?.profileId }?.gpuMaxFrequencyHz
             ?: state.currentGpuMaxFrequencyHz
     }
-    var stagedGpuValue by remember(initialGpuValue) { mutableStateOf(initialGpuValue) }
-    var customDraft by remember(assignment?.profileId, assignment?.customMaxFrequencies) {
+    var stagedGpuValue by remember(contextPackageName, initialGpuValue) { mutableStateOf(initialGpuValue) }
+    var customDraft by remember(contextPackageName, assignment?.profileId, assignment?.customMaxFrequencies) {
         mutableStateOf(assignment?.isCustom == true || (assignment == null && state.isManualSelection))
     }
     // Keep the preset selection derived from the complete staged values. This also
@@ -518,10 +612,12 @@ fun CompactOverlayScreen(
                                     onCheckedChange = { enabled ->
                                         appProfileEnabled = enabled
                                         if (!enabled) {
-                                            onAppProfileAssignmentChange?.invoke(null, null, null)
+                                            onAppProfileAssignmentChange?.invoke(null, null, null, null)
                                         }
                                     },
-                                    modifier = Modifier.scale(0.78f),
+                                    modifier = Modifier
+                                        .testTag(CompactOverlayTestTags.APP_PROFILE_SWITCH)
+                                        .scale(0.78f),
                                 )
                             }
                         }
@@ -533,15 +629,21 @@ fun CompactOverlayScreen(
                                 .padding(2.dp),
                             horizontalArrangement = Arrangement.spacedBy(2.dp),
                         ) {
-                            listOf(CompactOverlayMode.PROFILES to "list", CompactOverlayMode.TUNER to "tune").forEach { (item, icon) ->
-                                val selected = mode == item
+                            listOf(
+                                Triple(CompactOverlayMode.PROFILES, "list", "Profiles"),
+                                Triple(CompactOverlayMode.TUNER, "tune", "Tuner"),
+                                Triple(CompactOverlayMode.AUTO_TUNE, "speed", "Auto Tune"),
+                            ).filter { autoTuneEnabled || it.first != CompactOverlayMode.AUTO_TUNE }.forEach { (item, icon, label) ->
+                                val selected = effectiveMode == item
                                 Box(
                                     modifier = Modifier.size(30.dp).clip(RoundedCornerShape(8.dp))
                                         .background(if (selected) colorScheme.primaryContainer else Color.Transparent)
-                                        .clickable { onModeChange(item) },
+                                        .clickable {
+                                            onModeChange(item)
+                                        },
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    CtIcon(icon, if (item == CompactOverlayMode.PROFILES) "Profiles" else "Tuner", tint = if (selected) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant, size = 18.dp)
+                                    CtIcon(icon, label, tint = if (selected) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant, size = 18.dp)
                                 }
                             }
                         }
@@ -552,7 +654,7 @@ fun CompactOverlayScreen(
                 }
             }
             CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
-            if (mode == CompactOverlayMode.PROFILES) {
+            if (effectiveMode == CompactOverlayMode.PROFILES) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -586,7 +688,7 @@ fun CompactOverlayScreen(
                     }
                     if (profiles.isEmpty()) ProfilePickerEmptyOptionCard()
                 }
-            } else {
+            } else if (effectiveMode == CompactOverlayMode.TUNER) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -610,7 +712,6 @@ fun CompactOverlayScreen(
                             customDraft = false
                             stagedCustomValues = profile.maxFrequencies
                             stagedGpuValue = profile.gpuMaxFrequencyHz ?: state.currentGpuMaxFrequencyHz
-                            if (mode == CompactOverlayMode.PROFILES) onApplyProfile(profile, appProfileEnabled)
                         },
                         onClearSelection = {
                             stagedProfile = null
@@ -631,8 +732,34 @@ fun CompactOverlayScreen(
                         compactMode = true,
                     )
                 }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .heightIn(min = 0.dp, max = 340.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                ) {
+                    if (canAssign) {
+                        AutoTunePickerSection(
+                            targetFps = effectiveAutoTuneDraftTargetFps,
+                            maximumTargetFps = maximumAutoTuneTargetFps,
+                            assigned = assignment?.autoTuneTargetFps == autoTuneDraftTargetFps,
+                            onTargetChange = {
+                                autoTuneDraftTargetFps = it
+                            },
+                        )
+                    } else {
+                        Text(
+                            text = "Choose a foreground app before assigning an Auto Tune target.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
-            if (mode == CompactOverlayMode.TUNER) {
+            if (effectiveMode == CompactOverlayMode.TUNER) {
                 CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
                 Row(
                     modifier = Modifier
@@ -656,10 +783,123 @@ fun CompactOverlayScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                     ) { Text("Apply") }
                 }
+            } else if (effectiveMode == CompactOverlayMode.AUTO_TUNE && canAssign) {
+                CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Button(
+                        onClick = {
+                            autoTuneDraftTargetFps = effectiveAutoTuneDraftTargetFps
+                            appProfileEnabled = true
+                            onAppProfileAssignmentChange?.invoke(null, null, null, effectiveAutoTuneDraftTargetFps)
+                            onDismissRequest()
+                        },
+                        modifier = Modifier.height(30.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+                    ) { Text("Apply") }
+                }
             }
         }
     }
 }
+
+@Composable
+private fun AutoTunePickerSection(
+    targetFps: Int,
+    maximumTargetFps: Int,
+    assigned: Boolean,
+    onTargetChange: (Int) -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    CtSectionCard(
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Auto Tune",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurface,
+                    )
+                    Text(
+                        text = "$targetFps FPS target",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (assigned) {
+                    Text(
+                        text = "Assigned",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = colorScheme.primary,
+                    )
+                }
+            }
+        },
+        shape = RoundedCornerShape(20.dp),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        AutoTuneTargetSlider(
+            targetFps = targetFps,
+            maximumTargetFps = maximumTargetFps,
+            onTargetChange = onTargetChange,
+        )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(
+                text = "$MIN_AUTO_TUNE_TARGET_FPS FPS",
+                style = MaterialTheme.typography.labelSmall,
+                color = colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = "$maximumTargetFps FPS · current display",
+                style = MaterialTheme.typography.labelSmall,
+                color = colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AutoTuneTargetSlider(
+    targetFps: Int,
+    maximumTargetFps: Int,
+    onTargetChange: (Int) -> Unit,
+) {
+    if (maximumTargetFps <= MIN_AUTO_TUNE_TARGET_FPS) return
+    CtSlider(
+        value = targetFps.toFloat(),
+        onValueChange = { onTargetChange(snapAutoTuneTargetFps(it, maximumTargetFps)) },
+        modifier = Modifier.testTag(CompactOverlayTestTags.AUTO_TUNE_TARGET_SLIDER),
+        valueRange = MIN_AUTO_TUNE_TARGET_FPS.toFloat()..maximumTargetFps.toFloat(),
+        accessibilityLabel = "Auto Tune target",
+        accessibilityValue = "$targetFps FPS",
+        accessibilitySteps = (maximumTargetFps - MIN_AUTO_TUNE_TARGET_FPS - 1).coerceAtLeast(0),
+    )
+}
+
+internal fun autoTuneTargetMaximumFps(
+    contextDisplayRefreshRateFps: Int?,
+    localDisplayRefreshRateFps: Int?,
+): Int = (contextDisplayRefreshRateFps?.takeIf { it > 0 }
+    ?: localDisplayRefreshRateFps?.takeIf { it > 0 }
+    ?: DEFAULT_AUTO_TUNE_TARGET_FPS)
+    .coerceAtLeast(MIN_AUTO_TUNE_TARGET_FPS)
+
+internal fun snapAutoTuneTargetFps(value: Float, maximumTargetFps: Int): Int =
+    value.roundToInt().coerceIn(
+        MIN_AUTO_TUNE_TARGET_FPS,
+        maximumTargetFps.coerceAtLeast(MIN_AUTO_TUNE_TARGET_FPS),
+    )
 
 @Composable
 private fun ProfilePickerEmptyOptionCard() {
@@ -1135,9 +1375,172 @@ private sealed interface AppListItem {
     }
 }
 
+internal data class AutoTuneRuntimePresentation(
+    val appAndTarget: String,
+    val status: String,
+    val frameMetrics: String?,
+    val utilization: String?,
+    val message: String?,
+    val frameBackend: String?,
+    val active: Boolean,
+)
+
+internal fun autoTuneRuntimePresentation(
+    runtime: AdaptiveTuneRuntimeState,
+): AutoTuneRuntimePresentation? {
+    val runtimeMessage = runtime.message?.trim()?.takeIf { it.isNotEmpty() }
+    if (!runtime.active && runtimeMessage == null) return null
+
+    val app = runtime.appLabel?.trim()?.takeIf { it.isNotEmpty() }
+        ?: runtime.packageName?.trim()?.takeIf { it.isNotEmpty() }
+        ?: "Current app"
+    val target = runtime.targetFps?.takeIf { it > 0 }
+    val measuredFps = runtime.measuredFps?.takeIf { it.isFinite() && it >= 0.0 }
+    val p95FrameTimeMillis = runtime.p95FrameTimeMillis?.takeIf { it.isFinite() && it >= 0.0 }
+    val frameMetrics = buildList {
+        measuredFps?.let { add("${formatOneDecimal(it)} FPS") }
+        p95FrameTimeMillis?.let { add("P95 ${formatOneDecimal(it)} ms") }
+    }.joinToString(" · ").ifEmpty { null }
+    val utilization = buildList {
+        runtime.cpuLoad.toSortedMap().forEach { (policyId, load) ->
+            load?.takeIf { it.isFinite() }?.let {
+                add("CPU C$policyId ${formatUtilization(it)}")
+            }
+        }
+        runtime.gpuBusy?.takeIf { it.isFinite() }?.let {
+            add("GPU ${formatUtilization(it)}")
+        }
+    }.joinToString(" · ").ifEmpty { null }
+
+    return AutoTuneRuntimePresentation(
+        appAndTarget = if (target == null) app else "$app · Target $target FPS",
+        status = runtime.status?.name?.humanizeEnumName()
+            ?: if (runtime.active) "Active" else "Stopped",
+        frameMetrics = frameMetrics,
+        utilization = utilization,
+        message = runtimeMessage ?: runtime.reason?.presentationMessage(),
+        frameBackend = runtime.frameBackend?.trim()?.takeIf { it.isNotEmpty() },
+        active = runtime.active,
+    )
+}
+
+private fun formatOneDecimal(value: Double): String = String.format(Locale.US, "%.1f", value)
+
+private fun formatUtilization(value: Double): String =
+    "${(value.coerceIn(0.0, 1.0) * 100).roundToInt()}%"
+
+private fun String.humanizeEnumName(): String =
+    lowercase().replace('_', ' ').replaceFirstChar { it.titlecase() }
+
+private fun AdaptiveTuneReason.presentationMessage(): String = when (this) {
+    AdaptiveTuneReason.WARMUP -> "Collecting warmup samples"
+    AdaptiveTuneReason.HEALTHY_QUALIFYING -> "Confirming stable performance"
+    AdaptiveTuneReason.FRAME_DATA_STALE -> "Waiting for frame data"
+    AdaptiveTuneReason.NON_MONOTONIC_SAMPLE -> "Waiting for the next telemetry sample"
+    AdaptiveTuneReason.HEALTHY_AT_FLOOR -> "Target met at the minimum ceilings"
+    AdaptiveTuneReason.HEALTHY_NO_TRIM_CANDIDATE -> "Target met; no safe trim candidate"
+    AdaptiveTuneReason.WITHIN_TARGET_BAND -> "Performance is within the target band"
+    AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY -> "Raising a CPU ceiling"
+    AdaptiveTuneReason.GPU_BOTTLENECK_RECOVERY -> "Raising the GPU ceiling"
+    AdaptiveTuneReason.RECOVERY_AT_BASE -> "Recovery reached the assigned ceilings"
+    AdaptiveTuneReason.EFFICIENCY_TRIM -> "Testing a lower frequency ceiling"
+    AdaptiveTuneReason.TRIAL_WATCH -> "Watching the latest frequency change"
+    AdaptiveTuneReason.TRIAL_ACCEPTED -> "The latest frequency change is stable"
+    AdaptiveTuneReason.TRIAL_REGRESSION -> "Reverted a change that reduced performance"
+    AdaptiveTuneReason.REQUESTED_STOP -> "Auto Tune stopped"
+}
+
+@Composable
+internal fun AutoTuneRuntimeStatusCard(
+    presentation: AutoTuneRuntimePresentation,
+    modifier: Modifier = Modifier,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = colorScheme.surfaceContainerHigh.copy(alpha = 0.56f),
+        border = BorderStroke(1.dp, colorScheme.outlineVariant.copy(alpha = 0.32f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CtIcon(
+                    imageVector = Icons.Outlined.Tune,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = if (presentation.active) colorScheme.primary else colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "Auto Tune",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface,
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = presentation.status,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (presentation.active) colorScheme.primary else colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                text = presentation.appAndTarget,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            presentation.frameMetrics?.let { metrics ->
+                Text(
+                    text = metrics,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant,
+                )
+            }
+            presentation.utilization?.let { utilization ->
+                Text(
+                    text = utilization,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            presentation.message?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            presentation.frameBackend?.let { backend ->
+                Text(
+                    text = "Frames · $backend",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun AppProfilesSection(
     state: TunerState,
+    autoTuneEnabled: Boolean,
     apps: List<InstalledAppInfo>,
     recentApps: List<InstalledAppInfo>,
     onConfigureApp: (InstalledAppInfo) -> Unit,
@@ -1152,7 +1555,18 @@ private fun AppProfilesSection(
             activeRailBubbleLabel = null
         }
     }
-    val sortedApps = remember(apps) { apps.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.label }) }
+    // Accessibility can assign a visible package even when it has no launcher
+    // activity. Keep those assignments editable from the full Apps screen.
+    val sortedApps = remember(apps, state.appProfileAssignments) {
+        (apps + state.appProfileAssignments.map { assignment ->
+            InstalledAppInfo(
+                packageName = assignment.packageName,
+                label = assignment.appLabel.ifBlank { assignment.packageName },
+            )
+        })
+            .distinctBy { it.packageName }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.label })
+    }
     val appsByPackage = remember(sortedApps) { sortedApps.associateBy { it.packageName } }
     val recentKnownApps = remember(recentApps, appsByPackage) {
         recentApps
@@ -1164,6 +1578,9 @@ private fun AppProfilesSection(
         state.appProfileAssignments.associateBy { it.packageName }
     }
     val profilesById = remember(state.displayProfiles) { state.displayProfiles.associateBy { it.id } }
+    val autoTunePresentation = remember(state.autoTuneRuntime, autoTuneEnabled) {
+        if (autoTuneEnabled) autoTuneRuntimePresentation(state.autoTuneRuntime) else null
+    }
     val appGroups = remember(sortedApps) {
         sortedApps.groupBy { appListLetter(it.label) }
     }
@@ -1219,72 +1636,91 @@ private fun AppProfilesSection(
             .toMap()
     }
 
-    Column(modifier = modifier.fillMaxSize()) {
-            if (sortedApps.isEmpty()) {
-                AssignmentEmptyState(
-                    title = "No apps found",
-                    message = "Refresh the app list and make sure ClusterTune can query installed packages.",
-                )
-            } else {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Row(
+    Column(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        autoTunePresentation?.let { presentation ->
+            AutoTuneRuntimeStatusCard(presentation = presentation)
+        }
+        if (sortedApps.isEmpty()) {
+            AssignmentEmptyState(
+                title = "No apps found",
+                message = "Refresh the app list and make sure ClusterTune can query installed packages.",
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .fillMaxHeight(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    LazyColumn(
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .weight(1f)
                             .fillMaxHeight(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        state = listState,
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        LazyColumn(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
-                            state = listState,
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            itemsIndexed(
-                                items = listItems,
-                                key = { _, item -> item.key },
-                            ) { _, item ->
-                                when (item) {
-                                    is AppListItem.Header -> AppListHeader(section = item.section)
-                                    is AppListItem.App -> {
-                                        val assignment = assignmentsByPackage[item.app.packageName]
-                                        val profileName = assignment?.let {
-                                            if (it.isCustom) "Custom" else profilesById[it.profileId]?.name ?: "Missing profile"
-                                        }
-                                        AppProfileAppRow(
-                                            app = item.app,
-                                            profileName = profileName,
-                                            onClick = { onConfigureApp(item.app) },
-                                        )
+                        itemsIndexed(
+                            items = listItems,
+                            key = { _, item -> item.key },
+                        ) { _, item ->
+                            when (item) {
+                                is AppListItem.Header -> AppListHeader(section = item.section)
+                                is AppListItem.App -> {
+                                    val assignment = assignmentsByPackage[item.app.packageName]
+                                    val profileName = assignment?.let {
+                                        appProfileAssignmentLabel(it, profilesById)
                                     }
+                                    AppProfileAppRow(
+                                        app = item.app,
+                                        profileName = profileName,
+                                        onClick = { onConfigureApp(item.app) },
+                                    )
                                 }
                             }
                         }
-                        AlphabetScrubber(
-                            sections = railSections,
-                            enabledSectionKeys = firstIndexBySection.keys,
-                            onSectionSelected = { section ->
-                                activeRailBubbleLabel = section.bubbleLabel
-                                firstIndexBySection[section.key]?.let { index ->
-                                    coroutineScope.launch { listState.scrollToItem(index) }
-                                }
-                            },
-                        )
                     }
-                    activeRailBubbleLabel?.let { label ->
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 96.dp),
-                            contentAlignment = Alignment.TopCenter,
-                        ) {
-                            SectionBubble(label = label)
-                        }
+                    AlphabetScrubber(
+                        sections = railSections,
+                        enabledSectionKeys = firstIndexBySection.keys,
+                        onSectionSelected = { section ->
+                            activeRailBubbleLabel = section.bubbleLabel
+                            firstIndexBySection[section.key]?.let { index ->
+                                coroutineScope.launch { listState.scrollToItem(index) }
+                            }
+                        },
+                    )
+                }
+                activeRailBubbleLabel?.let { label ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 96.dp),
+                        contentAlignment = Alignment.TopCenter,
+                    ) {
+                        SectionBubble(label = label)
                     }
                 }
             }
         }
     }
+}
+
+internal fun appProfileAssignmentLabel(
+    assignment: AppProfileAssignment,
+    profilesById: Map<String, PerformanceProfile>,
+): String = when {
+    assignment.isCustom -> "Custom"
+    assignment.isAutoTune -> "Auto ${assignment.autoTuneTargetFps} FPS"
+    else -> profilesById[assignment.profileId]?.name ?: "Missing profile"
+}
 
 @Composable
 private fun AppListHeader(section: AppListSection) {

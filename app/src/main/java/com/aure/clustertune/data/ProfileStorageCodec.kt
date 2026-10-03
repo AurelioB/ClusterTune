@@ -123,6 +123,7 @@ object ProfileStorageCodec {
                     customMaxFrequencies = assignment.customMaxFrequencies
                         .mapKeys { (policyId, _) -> policyId.toString() },
                     customGpuMaxFrequencyHz = assignment.customGpuMaxFrequencyHz,
+                    autoTuneTargetFps = assignment.autoTuneTargetFps,
                 )
             },
         )
@@ -138,18 +139,35 @@ object ProfileStorageCodec {
                     val parsedCustomValues = assignment.customMaxFrequencies.mapNotNull { (policyId, frequency) ->
                         policyId.toIntOrNull()?.takeIf { frequency > 0 }?.let { it to frequency }
                     }.toMap()
+                    val parsedCustomGpu = assignment.customGpuMaxFrequencyHz?.takeIf { it > 0 }
+                    val hasCustomTarget = parsedCustomValues.isNotEmpty() || parsedCustomGpu != null
+                    val autoTuneTargetFps = assignment.autoTuneTargetFps
+                        ?.takeIf { it > 0 }
+                    // Normalize malformed mixed targets deterministically. Keep
+                    // existing named/custom assignments ahead of the newer
+                    // auto-tune target so legacy data never changes meaning.
                     val customValues = if (profileId == null) parsedCustomValues else emptyMap()
                     // Older builds could persist the profile's GPU value next
                     // to its profileId. Treat that as redundant metadata and
                     // keep the named assignment rather than dropping it.
-                    val customGpu = if (profileId == null) assignment.customGpuMaxFrequencyHz?.takeIf { it > 0 } else null
-                    if (packageName.isBlank() || (profileId == null && customValues.isEmpty() && customGpu == null)) return@mapNotNull null
+                    val customGpu = if (profileId == null) parsedCustomGpu else null
+                    val normalizedAutoTuneTargetFps = if (profileId == null && !hasCustomTarget) {
+                        autoTuneTargetFps
+                    } else {
+                        null
+                    }
+                    if (packageName.isBlank() ||
+                        (profileId == null && customValues.isEmpty() && customGpu == null && normalizedAutoTuneTargetFps == null)
+                    ) {
+                        return@mapNotNull null
+                    }
                     AppProfileAssignment(
                         packageName = packageName,
                         appLabel = assignment.appLabel.ifBlank { packageName },
                         profileId = profileId,
                         customMaxFrequencies = customValues,
                         customGpuMaxFrequencyHz = customGpu,
+                        autoTuneTargetFps = normalizedAutoTuneTargetFps,
                     )
                 }
                 .sortedBy { it.appLabel.lowercase() }
@@ -212,6 +230,7 @@ object ProfileStorageCodec {
         val profileId: String? = null,
         val customMaxFrequencies: Map<String, Int> = emptyMap(),
         val customGpuMaxFrequencyHz: Int? = null,
+        val autoTuneTargetFps: Int? = null,
     )
 
     @Serializable
