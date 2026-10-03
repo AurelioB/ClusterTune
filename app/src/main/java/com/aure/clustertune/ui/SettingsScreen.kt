@@ -137,6 +137,7 @@ fun SettingsScreen(
     onProfileSwitchHistoryLimitChange: (Int) -> Unit,
     onPrivilegedExecutionMethodChange: (String?) -> Unit,
     onAutoDetectPrivilegedExecutionMethod: () -> Unit,
+    onAutoTuneEnabledChange: (Boolean) -> Unit,
 ) {
     var showResetConfirmation by remember { mutableStateOf(false) }
 
@@ -200,6 +201,15 @@ fun SettingsScreen(
                 description = { Text(stringResource(R.string.settings_use_percentages_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 checked = settings.displayFrequenciesAsPercent,
                 onCheckedChange = onDisplayFrequenciesAsPercentChange,
+            )
+        }
+
+        SectionCard(title = stringResource(R.string.settings_experimental), symbol = "science", density = density) {
+            CtSwitchPreference(
+                title = { Text(stringResource(R.string.settings_enable_autotune), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold) },
+                description = { Text(stringResource(R.string.settings_enable_autotune_description), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                checked = settings.autoTuneEnabled,
+                onCheckedChange = onAutoTuneEnabledChange,
             )
         }
 
@@ -292,7 +302,8 @@ fun SettingsScreen(
             )
             SettingsControlGroup(label = stringResource(R.string.settings_single_tap)) {
                 TileBehaviorSelector(
-                    selected = settings.tileTapBehavior,
+                    selected = settings.effectiveTileTapBehavior,
+                    autoTuneEnabled = settings.autoTuneEnabled,
                     onChange = onTileTapBehaviorChange,
                 )
             }
@@ -517,8 +528,9 @@ private fun SleepProfileSelector(
 
 
 @Composable
-private fun TileBehaviorSelector(
+internal fun TileBehaviorSelector(
     selected: TileInteractionBehavior,
+    autoTuneEnabled: Boolean,
     onChange: (TileInteractionBehavior) -> Unit,
 ) {
     Column(
@@ -540,6 +552,18 @@ private fun TileBehaviorSelector(
                 title = stringResource(R.string.settings_profile_picker),
                 selected = selected == TileInteractionBehavior.SHOW_PROFILE_PICKER,
                 onClick = { onChange(TileInteractionBehavior.SHOW_PROFILE_PICKER) },
+                modifier = Modifier.weight(1f),
+            )
+        }
+        if (autoTuneEnabled) Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TileBehaviorOption(
+                title = stringResource(R.string.settings_performance_hud),
+                selected = selected == TileInteractionBehavior.TOGGLE_PERFORMANCE_HUD,
+                onClick = { onChange(TileInteractionBehavior.TOGGLE_PERFORMANCE_HUD) },
                 modifier = Modifier.weight(1f),
             )
         }

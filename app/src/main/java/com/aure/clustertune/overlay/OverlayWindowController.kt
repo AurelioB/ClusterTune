@@ -22,6 +22,11 @@ data class EdgeHandleWindowConfig(
     val verticalPositionPercent: Int,
 )
 
+data class PerformanceHudWindowConfig(
+    val horizontalMarginDp: Int = PERFORMANCE_HUD_MARGIN_DP,
+    val verticalMarginDp: Int = PERFORMANCE_HUD_MARGIN_DP,
+)
+
 class OverlayWindowController(
     context: Context,
 ) {
@@ -34,9 +39,14 @@ class OverlayWindowController(
     private var edgeHandleView: View? = null
     private var edgeHandleAttached = false
     private var edgeHandleConfig: EdgeHandleWindowConfig? = null
+    private var performanceHudView: View? = null
+    private var performanceHudConfig: PerformanceHudWindowConfig? = null
 
     val hasActiveOverlay: Boolean
-        get() = modalView != null || edgeHandleView != null
+        get() = modalView != null || edgeHandleView != null || performanceHudView != null
+
+    val isPerformanceHudShowing: Boolean
+        get() = performanceHudView != null
 
     fun isShowing(type: OverlayType): Boolean = modalType == type && modalView != null
 
@@ -101,9 +111,52 @@ class OverlayWindowController(
         refreshEdgeHandleLayout()
     }
 
+    fun showPerformanceHud(
+        view: View,
+        config: PerformanceHudWindowConfig = PerformanceHudWindowConfig(),
+    ) {
+        removePerformanceHud()
+        try {
+            windowManager.addView(view, performanceHudLayoutParams(config))
+            performanceHudView = view
+            performanceHudConfig = config
+        } catch (throwable: Throwable) {
+            runCatching { windowManager.removeView(view) }
+            throw throwable
+        }
+    }
+
+    fun removePerformanceHud() {
+        performanceHudView?.let { view ->
+            runCatching { windowManager.removeView(view) }
+        }
+        performanceHudView = null
+        performanceHudConfig = null
+    }
+
+    fun refreshPerformanceHudLayout() {
+        val view = performanceHudView ?: return
+        val config = performanceHudConfig ?: return
+        runCatching {
+            windowManager.updateViewLayout(view, performanceHudLayoutParams(config))
+        }
+    }
+
+    fun updatePerformanceHudConfig(config: PerformanceHudWindowConfig) {
+        if (performanceHudView == null) return
+        performanceHudConfig = config
+        refreshPerformanceHudLayout()
+    }
+
+    fun refreshLayouts() {
+        refreshEdgeHandleLayout()
+        refreshPerformanceHudLayout()
+    }
+
     fun dismissAll() {
         dismissModal(restoreEdgeHandle = false)
         removeEdgeHandle()
+        removePerformanceHud()
     }
 
     private fun dismissModal(restoreEdgeHandle: Boolean) {
@@ -180,6 +233,26 @@ class OverlayWindowController(
                 verticalPositionPercent = config.verticalPositionPercent,
             )
             title = "ClusterTune profile edge handle"
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
+    }
+
+    private fun performanceHudLayoutParams(
+        config: PerformanceHudWindowConfig,
+    ): WindowManager.LayoutParams {
+        return WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            performanceHudWindowFlags(),
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.START or Gravity.TOP
+            x = dp(config.horizontalMarginDp)
+            y = dp(config.verticalMarginDp)
+            title = "ClusterTune performance HUD"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             }
@@ -289,6 +362,15 @@ internal fun modalWindowFlags(): Int {
         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
         WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
         WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+}
+
+internal const val PERFORMANCE_HUD_MARGIN_DP = 12
+
+internal fun performanceHudWindowFlags(): Int {
+    return WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+        WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
 }
 
 internal fun calculateEdgeHandleTopOffset(

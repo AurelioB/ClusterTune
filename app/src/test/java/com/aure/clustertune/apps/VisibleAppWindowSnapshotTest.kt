@@ -8,6 +8,45 @@ import org.junit.Test
 
 class VisibleAppWindowSnapshotTest {
     @Test
+    fun explicitShadePreservesFocusedGameAcrossDisplaysUntilDismissed() {
+        val tracker = VisibleWindowDisappearanceTracker(500L)
+        val game = VisibleAppWindow("game", 0, isFocused = true, isActive = true)
+        val other = VisibleAppWindow("other", 4, isFocused = true)
+        tracker.stabilize(mapOf(0 to listOf(game), 4 to listOf(other)), { true }, 0L)
+
+        val covered = tracker.stabilize(
+            mapOf(4 to listOf(other)), { true }, 10_000L,
+            transientlyCoveredDisplays = setOf(0),
+        )
+        assertEquals(game, selectVisibleAppWindow(VisibleAppSnapshot(covered.windowsByDisplay, true)))
+        assertNull(covered.nextDeadlineMs)
+
+        val launcher = VisibleAppWindow("launcher", 0, isFocused = true, isActive = true)
+        val dismissed = tracker.stabilize(
+            mapOf(0 to listOf(launcher), 4 to listOf(other)), { true }, 11_000L,
+            transientlyCoveredDisplays = setOf(0),
+        )
+        assertEquals(listOf(launcher), dismissed.windowsByDisplay[0])
+    }
+
+    @Test
+    fun unknownAbsenceAfterShadeDismissalStillExpires() {
+        val tracker = VisibleWindowDisappearanceTracker(500L)
+        tracker.stabilize(mapOf(0 to listOf(VisibleAppWindow("game", 0))), { true }, 0L)
+        tracker.stabilize(emptyMap(), { true }, 1_000L, transientlyCoveredDisplays = setOf(0))
+        assertEquals(2_500L, tracker.stabilize(emptyMap(), { true }, 2_000L).nextDeadlineMs)
+        assertTrue(tracker.stabilize(emptyMap(), { true }, 2_500L).windowsByDisplay.isEmpty())
+    }
+
+    @Test
+    fun persistentSystemWindowsAndHudDoNotPreserveOwnership() {
+        assertTrue(isForegroundAppObscuringWindow(null, "com.android.systemui", true, true))
+        assertTrue(isForegroundAppObscuringWindow("ClusterTune overlay", null, true, true))
+        assertEquals(false, isForegroundAppObscuringWindow(null, "com.android.systemui", false, false))
+        assertEquals(false, isForegroundAppObscuringWindow("ClusterTune performance HUD", null, false, false))
+    }
+
+    @Test
     fun fractionalDisplayRefreshRateIsRoundedToNominalFps() {
         assertEquals(60, nominalDisplayRefreshRateFps(59.94f))
         assertEquals(120, nominalDisplayRefreshRateFps(119.88f))
@@ -113,30 +152,20 @@ class VisibleAppWindowSnapshotTest {
     }
 
     @Test
-    fun pickerHandoffIsFixedExpiryMetadataAndNeverAnAutomationWindow() {
-        val tracker = PickerForegroundAppHandoffTracker(
-            seedDurationMs = 2_000L,
-            leaseDurationMs = 30_000L,
-        )
-        assertTrue(
-            tracker.update(
-                verifiedPackageByDisplay = mapOf(0 to "com.example.game"),
-                displayOn = { true },
-                nowMs = 0L,
-            ).isEmpty(),
-        )
-
-        val firstMissing = tracker.update(emptyMap(), { true }, nowMs = 100L)
-        val repeatedMissing = tracker.update(emptyMap(), { true }, nowMs = 1_500L)
-        val handoff = firstMissing.getValue(0)
-        val handoffOnlySnapshot = VisibleAppSnapshot(
+    fun pickerEvidenceNeverBecomesAnAutomationWindow() {
+        val tracker = PickerForegroundPackageTracker()
+        tracker.recordWindowStateEvent(0, "com.example.game", nowMs = 0L)
+        val evidence = tracker.updateFromEnumeration(emptyMap(), { true }, nowMs = 100L)
+        val repeatedEmpty = tracker.updateFromEnumeration(emptyMap(), { true }, nowMs = 1_000L)
+        val evidenceOnlySnapshot = VisibleAppSnapshot(
             windowsByDisplay = emptyMap(),
             isInteractive = true,
             refreshRateFpsByDisplay = mapOf(0 to 60),
-            pickerHandoffByDisplay = firstMissing,
+            pickerPackageByDisplay = evidence,
         )
         val automationPlan = resolveAppAutomationPlan(
-            snapshot = handoffOnlySnapshot,
+            autoTuneEnabled = true,
+            snapshot = evidenceOnlySnapshot,
             assignments = listOf(
                 AppProfileAssignment(
                     packageName = "com.example.game",
@@ -146,82 +175,164 @@ class VisibleAppWindowSnapshotTest {
             ),
         )
 
-        assertEquals("com.example.game", handoff.packageName)
-        assertEquals(2_100L, handoff.seedExpiresAtUptimeMs)
-        assertEquals(30_100L, handoff.leaseExpiresAtUptimeMs)
-        assertEquals(firstMissing, repeatedMissing)
-        assertTrue(handoffOnlySnapshot.windowsByDisplay.isEmpty())
-        assertTrue(handoffOnlySnapshot.packages.isEmpty())
+        assertEquals("com.example.game", evidence.getValue(0))
+        assertEquals(evidence, repeatedEmpty)
+        assertTrue(evidenceOnlySnapshot.windowsByDisplay.isEmpty())
+        assertTrue(evidenceOnlySnapshot.packages.isEmpty())
         assertNull(automationPlan.foregroundPackageName)
         assertNull(automationPlan.autoTuneAssignment)
-        assertTrue(tracker.update(emptyMap(), { true }, nowMs = 30_100L).isEmpty())
-        assertTrue(tracker.update(emptyMap(), { true }, nowMs = 30_101L).isEmpty())
     }
 
     @Test
-    fun pickerHandoffIsClearedByRealReplacementDisplayOffAndTeardown() {
-        val tracker = PickerForegroundAppHandoffTracker(
-            seedDurationMs = 2_000L,
-            leaseDurationMs = 30_000L,
+    fun displayQualifiedWindowEventSeedsPickerWhenOemPublishesNoApplicationWindow() {
+        val tracker = PickerForegroundPackageTracker()
+
+        tracker.recordWindowStateEvent(
+            displayId = 0,
+            packageName = "com.example.game",
+            nowMs = 0L,
         )
-        tracker.update(mapOf(0 to "com.example.game"), { true }, nowMs = 0L)
+        val firstEmptySnapshot = tracker.updateFromEnumeration(
+            verifiedPackageByDisplay = emptyMap(),
+            displayOn = { true },
+            nowMs = 100L,
+        )
+        val repeatedEmptySnapshot = tracker.updateFromEnumeration(
+            verifiedPackageByDisplay = emptyMap(),
+            displayOn = { true },
+            nowMs = 20_000L,
+        )
+
+        assertEquals("com.example.game", firstEmptySnapshot.getValue(0))
+        assertEquals(firstEmptySnapshot, repeatedEmptySnapshot)
+    }
+
+    @Test
+    fun newerDisplayQualifiedEventReplacesPickerEvidenceWithoutCrossingDisplays() {
+        val tracker = PickerForegroundPackageTracker()
+        tracker.recordWindowStateEvent(0, "com.example.old", nowMs = 0L)
+        tracker.recordWindowStateEvent(1, "com.example.secondary", nowMs = 0L)
+
+        tracker.recordWindowStateEvent(0, "com.example.new", nowMs = 100L)
+        val evidence = tracker.updateFromEnumeration(emptyMap(), { true }, nowMs = 200L)
+
+        assertEquals("com.example.new", evidence.getValue(0))
+        assertEquals("com.example.secondary", evidence.getValue(1))
+    }
+
+    @Test
+    fun staleEnumerationCannotOverwriteANewerWindowEvent() {
+        val tracker = PickerForegroundPackageTracker()
+        tracker.recordWindowStateEvent(0, "com.example.old", nowMs = 0L)
+        tracker.recordWindowStateEvent(0, "com.example.new", nowMs = 100L)
+        val afterStaleEnumeration = tracker.updateFromEnumeration(
+            mapOf(0 to "com.example.old"),
+            { true },
+            nowMs = 150L,
+        )
+        val afterLastScheduledStaleEnumeration = tracker.updateFromEnumeration(
+            mapOf(0 to "com.example.old"),
+            { true },
+            nowMs = 750L,
+        )
+        val afterProtection = tracker.updateFromEnumeration(
+            mapOf(0 to "com.example.new"),
+            { true },
+            nowMs = 1_000L,
+        )
+
+        assertEquals("com.example.new", afterStaleEnumeration.getValue(0))
+        assertEquals(afterStaleEnumeration, afterLastScheduledStaleEnumeration)
+        assertEquals(afterStaleEnumeration, afterProtection)
+    }
+
+    @Test
+    fun oldEventCanBeReplacedByRealEnumerationAfterTheProtectionWindow() {
+        val tracker = PickerForegroundPackageTracker()
+        tracker.recordWindowStateEvent(0, "com.example.event", nowMs = 0L)
+
+        val protected = tracker.updateFromEnumeration(
+            mapOf(0 to "com.example.real"),
+            { true },
+            nowMs = 999L,
+        )
+        val replaced = tracker.updateFromEnumeration(
+            mapOf(0 to "com.example.real"),
+            { true },
+            nowMs = 1_000L,
+        )
+
+        assertEquals("com.example.event", protected.getValue(0))
+        assertEquals("com.example.real", replaced.getValue(0))
+    }
+
+    @Test
+    fun enumerationIsUsedAsColdStartFallbackUntilAWindowEventArrives() {
+        val tracker = PickerForegroundPackageTracker()
+        val firstEnumeration = tracker.updateFromEnumeration(
+            mapOf(0 to "com.example.launcher"),
+            { true },
+            nowMs = 0L,
+        )
+        val secondEnumeration = tracker.updateFromEnumeration(
+            mapOf(0 to "com.example.game"),
+            { true },
+            nowMs = 100L,
+        )
+        tracker.recordWindowStateEvent(0, "com.example.event", nowMs = 200L)
+        val afterEvent = tracker.updateFromEnumeration(
+            mapOf(0 to "com.example.stale"),
+            { true },
+            nowMs = 300L,
+        )
+
+        assertEquals("com.example.launcher", firstEnumeration.getValue(0))
+        assertEquals("com.example.game", secondEnumeration.getValue(0))
+        assertEquals("com.example.event", afterEvent.getValue(0))
+    }
+
+    @Test
+    fun pickerEvidenceIsClearedByDisplayOffAndTeardown() {
+        val tracker = PickerForegroundPackageTracker()
+        tracker.recordWindowStateEvent(0, "com.example.game", nowMs = 0L)
         assertEquals(
             "com.example.game",
-            tracker.update(emptyMap(), { true }, nowMs = 100L).getValue(0).packageName,
+            tracker.updateFromEnumeration(emptyMap(), { true }, nowMs = 100L)
+                .getValue(0),
         )
+        assertTrue(tracker.updateFromEnumeration(emptyMap(), { false }, nowMs = 200L).isEmpty())
+        assertTrue(tracker.updateFromEnumeration(emptyMap(), { true }, nowMs = 300L).isEmpty())
 
-        assertTrue(
-            tracker.update(
-                verifiedPackageByDisplay = mapOf(0 to "com.example.launcher"),
-                displayOn = { true },
-                nowMs = 200L,
-            ).isEmpty(),
-        )
-        assertEquals(
-            "com.example.launcher",
-            tracker.update(emptyMap(), { true }, nowMs = 300L).getValue(0).packageName,
-        )
-        assertTrue(tracker.update(emptyMap(), { false }, nowMs = 400L).isEmpty())
-        assertTrue(tracker.update(emptyMap(), { true }, nowMs = 500L).isEmpty())
-
-        tracker.update(mapOf(0 to "com.example.game"), { true }, nowMs = 600L)
+        tracker.recordWindowStateEvent(0, "com.example.game", nowMs = 400L)
         tracker.clear()
-        assertTrue(tracker.update(emptyMap(), { true }, nowMs = 700L).isEmpty())
+        assertTrue(tracker.updateFromEnumeration(emptyMap(), { true }, nowMs = 500L).isEmpty())
     }
 
     @Test
     fun rootlessExactWindowMaintainsProvenanceUntilItsIdentityDisappears() {
         val cache = AccessibilityWindowPackageCache()
         val identity = AccessibilityWindowIdentity(displayId = 0, windowId = 42)
-        val tracker = PickerForegroundAppHandoffTracker(
-            seedDurationMs = 2_000L,
-            leaseDurationMs = 30_000L,
-        )
+        val tracker = PickerForegroundPackageTracker()
         cache.record(identity, "com.example.game")
-        tracker.update(mapOf(0 to "com.example.game"), { true }, nowMs = 0L)
+        tracker.updateFromEnumeration(
+            mapOf(0 to "com.example.game"),
+            { true },
+            nowMs = 0L,
+        )
 
         val rootlessPackage = cache.resolvePackage(identity, resolvedPackageName = null)
-        val firstRootless = tracker.update(
+        val firstRootless = tracker.updateFromEnumeration(
             verifiedPackageByDisplay = mapOf(0 to requireNotNull(rootlessPackage)),
             displayOn = { true },
             nowMs = 100L,
         )
-        val repeatedRootless = tracker.update(
-            verifiedPackageByDisplay = mapOf(0 to requireNotNull(rootlessPackage)),
-            displayOn = { true },
-            nowMs = 2_100L,
-        )
         cache.retainOnly(emptySet())
-        val firstMissing = tracker.update(emptyMap(), { true }, nowMs = 3_000L)
-        val repeatedMissing = tracker.update(emptyMap(), { true }, nowMs = 5_000L)
+        val missing = tracker.updateFromEnumeration(emptyMap(), { true }, nowMs = 200L)
 
         assertEquals("com.example.game", rootlessPackage)
-        assertTrue(firstRootless.isEmpty())
-        assertTrue(repeatedRootless.isEmpty())
+        assertEquals("com.example.game", firstRootless.getValue(0))
         assertNull(cache.resolvePackage(identity, resolvedPackageName = null))
-        assertEquals(firstMissing, repeatedMissing)
-        assertEquals(5_000L, firstMissing.getValue(0).seedExpiresAtUptimeMs)
-        assertEquals(33_000L, firstMissing.getValue(0).leaseExpiresAtUptimeMs)
+        assertEquals(firstRootless, missing)
     }
 
     @Test
@@ -282,6 +393,22 @@ class VisibleAppWindowSnapshotTest {
             expired.windowsByDisplay.getValue(0).mapTo(mutableSetOf()) { it.packageName },
         )
         assertNull(expired.nextDeadlineMs)
+    }
+
+    @Test
+    fun offDisplayCannotPublishOrRetainAStaleApplicationWindow() {
+        val tracker = VisibleWindowDisappearanceTracker(graceMs = 300L)
+        val game = mapOf(
+            4 to listOf(VisibleAppWindow("com.example.game", 4, isFocused = true)),
+        )
+
+        val freshWhileOff = tracker.stabilize(game, displayOn = { false }, nowMs = 0L)
+        tracker.stabilize(game, displayOn = { true }, nowMs = 100L)
+        val staleAfterOff = tracker.stabilize(game, displayOn = { false }, nowMs = 200L)
+
+        assertTrue(freshWhileOff.windowsByDisplay.isEmpty())
+        assertTrue(staleAfterOff.windowsByDisplay.isEmpty())
+        assertNull(staleAfterOff.nextDeadlineMs)
     }
 
     @Test

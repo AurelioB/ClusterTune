@@ -14,6 +14,8 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.Toast
 import com.aure.clustertune.AppContainer
+import com.aure.clustertune.autotune.AdaptiveTuneRuntime
+import com.aure.clustertune.autotune.AdaptiveTuneRuntimeState
 import com.aure.clustertune.data.ProfileStorage
 import com.aure.clustertune.R
 import com.aure.clustertune.TileControlActivity
@@ -31,6 +33,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -41,7 +46,19 @@ internal fun resolveEffectiveTileState(
     effective: EffectiveProfileState?,
     storedProfiles: List<PerformanceProfile>,
     fallbackId: String?,
+    autoTune: AdaptiveTuneRuntimeState = AdaptiveTuneRuntimeState(),
 ): EffectiveProfileState? {
+    if (autoTune.active && autoTune.targetFps != null) {
+        return EffectiveProfileState(
+            id = "auto:${autoTune.targetFps}",
+            name = "Auto Tune · ${autoTune.targetFps} FPS",
+            source = EffectiveProfileSource.APP,
+        )
+    }
+    if (effective?.source == EffectiveProfileSource.APP && effective.id.startsWith("auto:")) {
+        // A persisted session identity does not mean tuning survived a stop or process restart.
+        return null
+    }
     if (effective != null) return effective
     return when (fallbackId) {
         ProfileStateResolver.STOCK_PROFILE_ID -> EffectiveProfileState(
@@ -61,8 +78,13 @@ internal fun resolveEffectiveTileState(
     }
 }
 
+internal fun isTileProfileActive(state: EffectiveProfileState?): Boolean =
+    state != null && state.source != EffectiveProfileSource.STOCK &&
+        state.id != ProfileStateResolver.STOCK_PROFILE_ID
+
 internal enum class TileTapAction {
     SHOW_DIALOG,
+    TOGGLE_PERFORMANCE_HUD,
     SHOW_PROFILE_PICKER,
     OPEN_APP,
     CYCLE_PROFILES,
@@ -74,6 +96,8 @@ internal fun resolveTileTapAction(
 ): TileTapAction = when (behavior) {
     TileInteractionBehavior.SHOW_DIALOG ->
         if (canDrawOverlays) TileTapAction.SHOW_DIALOG else TileTapAction.REQUEST_OVERLAY_PERMISSION
+    TileInteractionBehavior.TOGGLE_PERFORMANCE_HUD ->
+        if (canDrawOverlays) TileTapAction.TOGGLE_PERFORMANCE_HUD else TileTapAction.REQUEST_OVERLAY_PERMISSION
     TileInteractionBehavior.SHOW_PROFILE_PICKER ->
         if (canDrawOverlays) TileTapAction.SHOW_PROFILE_PICKER else TileTapAction.REQUEST_OVERLAY_PERMISSION
     TileInteractionBehavior.OPEN_APP -> TileTapAction.OPEN_APP
@@ -107,8 +131,18 @@ class PerformanceTileService : TileService() {
         super.onCreate()
         activeService = WeakReference(this)
         serviceScope.launch {
-            container.settingsStorage.settings.collect { settings ->
-                cachedTileTapBehavior = settings.tileTapBehavior
+            val storage = container.profileStorage
+            combine(
+                storage.effectiveProfileState,
+                combine(storage.profiles, storage.lastAppliedDisplayProfileId, storage.selectedProfileId) {
+                        profiles, appliedId, selectedId -> Triple(profiles, appliedId, selectedId)
+                },
+                container.settingsStorage.settings.map { it.effectiveTileTapBehavior }.distinctUntilChanged(),
+                AdaptiveTuneRuntime.state.map { it.active to it.targetFps }.distinctUntilChanged(),
+            ) { _, _, behavior, _ ->
+                cachedTileTapBehavior = behavior
+            }.collect {
+                refreshTileStateAsync()
             }
         }
     }
@@ -161,9 +195,9 @@ class PerformanceTileService : TileService() {
                         ?: storage.selectedProfileId.first()
                     Triple(effective, profiles, fallbackId) to settings
                 }
-                cachedTileTapBehavior = settings.tileTapBehavior
+                cachedTileTapBehavior = settings.effectiveTileTapBehavior
                 val (effective, profiles, fallbackId) = state
-                val resolved = resolveEffectiveTileState(effective, profiles, fallbackId)
+                val resolved = resolveEffectiveTileState(effective, profiles, fallbackId, AdaptiveTuneRuntime.state.value)
                 val presentation = buildTilePresentation(resolved, settings)
                 qsTile?.apply {
                     label = presentation.label
@@ -203,7 +237,7 @@ class PerformanceTileService : TileService() {
             )
         }
         val currentName = state.name
-        if (settings.tileTapBehavior != TileInteractionBehavior.CYCLE_PROFILES) {
+        if (settings.effectiveTileTapBehavior != TileInteractionBehavior.CYCLE_PROFILES) {
             return TilePresentation(
                 label = getString(R.string.tile_title),
                 subtitle = currentName,
@@ -216,9 +250,7 @@ class PerformanceTileService : TileService() {
     }
 
     private fun buildTileVisualState(state: EffectiveProfileState?): Int {
-        if (state == null) return Tile.STATE_INACTIVE
-        val stockIsActive = state.source == EffectiveProfileSource.STOCK || state.id == ProfileStateResolver.STOCK_PROFILE_ID || state.name == "Stock"
-        return if (stockIsActive) Tile.STATE_INACTIVE else Tile.STATE_ACTIVE
+        return if (isTileProfileActive(state)) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
     }
 
     private fun persistTileAddedState(isAdded: Boolean) {
@@ -244,8 +276,8 @@ class PerformanceTileService : TileService() {
                 cacheLoadJob = serviceScope.launch {
                     try {
                         val settings = withContext(Dispatchers.IO) { container.settingsStorage.settings.first() }
-                        cachedTileTapBehavior = settings.tileTapBehavior
-                        dispatchTap(settings.tileTapBehavior)
+                        cachedTileTapBehavior = settings.effectiveTileTapBehavior
+                        dispatchTap(settings.effectiveTileTapBehavior)
                     } catch (error: Throwable) {
                         if (error !is kotlinx.coroutines.CancellationException) {
                             showToast(error.message ?: "Unable to read tile settings")
@@ -266,6 +298,10 @@ class PerformanceTileService : TileService() {
                 TileTapAction.SHOW_DIALOG -> showOverlayWithBridge(
                     launch = { OverlayHostService.showCompactTuner(it) },
                     fallback = ::showOverlayAndCollapse,
+                )
+                TileTapAction.TOGGLE_PERFORMANCE_HUD -> showOverlayWithBridge(
+                    launch = { OverlayHostService.togglePerformanceHud(it) },
+                    fallback = ::togglePerformanceHudAndCollapse,
                 )
                 TileTapAction.SHOW_PROFILE_PICKER -> showOverlayWithBridge(
                     launch = { OverlayHostService.showProfilePicker(it) },
@@ -319,6 +355,13 @@ class PerformanceTileService : TileService() {
     private fun showProfilePickerOverlayAndCollapse() {
         launchIntentAndCollapse(
             TileControlActivity.createProfilePickerOverlayIntent(applicationContext),
+        )
+    }
+
+    @Suppress("DEPRECATION")
+    private fun togglePerformanceHudAndCollapse() {
+        launchIntentAndCollapse(
+            TileControlActivity.createPerformanceHudOverlayIntent(applicationContext),
         )
     }
 

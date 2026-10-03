@@ -11,6 +11,7 @@ import com.aure.clustertune.autotune.AdaptiveTuneTermination
 import com.aure.clustertune.data.PerformanceRepository
 import com.aure.clustertune.data.ProfileStorage
 import com.aure.clustertune.data.SettingsStorage
+import com.aure.clustertune.data.retryTransientReads
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.EffectiveProfileSource
 import com.aure.clustertune.model.EffectiveProfileState
@@ -19,6 +20,7 @@ import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.tile.QuickSettingsTileRefresher
 import com.aure.clustertune.ui.SingleToast
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -32,6 +34,7 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -44,9 +47,14 @@ class AppProfileCoordinator(
     private val repository: PerformanceRepository,
     private val profileStorage: ProfileStorage,
     private val settingsStorage: SettingsStorage,
+    private val onFailure: (Throwable) -> Unit = {},
 ) {
     private val appContext = context.applicationContext
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default + CoroutineExceptionHandler { _, error ->
+        // SupervisorJob isolates sibling cancellation, but does not consume uncaught launch failures.
+        Log.e(TAG, "App-profile background worker failed", error)
+        onFailure(error)
+    })
     private val reconcileMutex = PROCESS_RECONCILE_MUTEX
     private val reconcileRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     private val autoTuneRunner = AdaptiveTuneSessionRunner(repository)
@@ -91,8 +99,9 @@ class AppProfileCoordinator(
             val configuration = combine(
                 assignmentConfiguration,
                 profileStorage.effectiveProfileState,
-            ) { assignments, effective ->
-                ProfileConfiguration(assignments, effective)
+                settingsStorage.settings.map { it.autoTuneEnabled }.distinctUntilChanged(),
+            ) { assignments, effective, autoTuneEnabled ->
+                ProfileConfiguration(assignments, effective, autoTuneEnabled)
             }
             val inputs = combine(
                 VisibleAppWindowEvents.snapshots,
@@ -108,6 +117,10 @@ class AppProfileCoordinator(
                 inputs,
                 reconcileRequests.onStart { emit(Unit) },
             ) { input, _ -> input }
+                .retryTransientReads { error ->
+                    Log.w(TAG, "Profile input unavailable; pausing Auto Tune before retry", error)
+                    reconcileMutex.withLock { stopAutoTune("Profile input temporarily unavailable") }
+                }
                 .collect { input ->
                     try {
                         reconcileMutex.withLock { reconcile(input) }
@@ -134,25 +147,28 @@ class AppProfileCoordinator(
         autoTuneJob?.cancel()
         autoTuneCleanupRetryJob?.cancel()
         scope.launch {
-            val cleanupSucceeded = reconcileMutex.withLock {
-                val stoppedSignature = activeAutoTune?.signature ?: autoTuneCleanupSignature
-                pausedAutoTuneSignature = null
-                val cleaned = stopAutoTune("App profile automation stopped")
-                val lease = coordinatorLease
-                if (cleaned && stoppedSignature != null && lease != null) {
-                    completeAutoTuneCleanup(
-                        signature = stoppedSignature,
-                        cleanupReason = "App profile automation stopped",
-                        lease = lease,
-                        releasePauseAfterCleanup = false,
-                    )
+            try {
+                val cleanupSucceeded = reconcileMutex.withLock {
+                    val stoppedSignature = activeAutoTune?.signature ?: autoTuneCleanupSignature
+                    pausedAutoTuneSignature = null
+                    val cleaned = stopAutoTune("App profile automation stopped")
+                    val lease = coordinatorLease
+                    if (cleaned && stoppedSignature != null && lease != null) {
+                        completeAutoTuneCleanup(
+                            signature = stoppedSignature,
+                            cleanupReason = "App profile automation stopped",
+                            lease = lease,
+                            releasePauseAfterCleanup = false,
+                        )
+                    }
+                    cleaned
                 }
-                cleaned
+                if (!cleanupSucceeded) {
+                    coordinatorLease?.let { lease -> retryCleanupAfterCoordinatorStop(lease) }
+                }
+            } finally {
+                scope.cancel()
             }
-            if (!cleanupSucceeded) {
-                coordinatorLease?.let { lease -> retryCleanupAfterCoordinatorStop(lease) }
-            }
-            scope.cancel()
         }
     }
 
@@ -182,6 +198,7 @@ class AppProfileCoordinator(
             snapshot = input.visibleApps,
             assignments = assignments,
             excludedPackages = excludedPackages,
+            autoTuneEnabled = input.configuration.autoTuneEnabled,
         )
 
         val desiredAutoTuneSignature = plan.autoTuneAssignment?.toAutoTuneSignature(
@@ -421,6 +438,9 @@ class AppProfileCoordinator(
                 AdaptiveTuneTermination.STOPPED -> "Auto Tune stopped"
                 AdaptiveTuneTermination.FAILED -> "Auto Tune failed"
             }
+            if (result.termination == AdaptiveTuneTermination.FAILED) {
+                showProfileToast("Auto Tune failed: ${result.message ?: "Unable to start tuning"}")
+            }
             val cleanup = repository.ensureAutoTuneStopped(cleanupReason, lease)
             if (!AdaptiveTuneRuntime.isCoordinatorCurrent(lease)) return
             if (cleanup.isFailure) {
@@ -556,9 +576,6 @@ class AppProfileCoordinator(
                 appOverrideActive = false
                 lastAppliedSignature = null
                 QuickSettingsTileRefresher.requestUpdate(appContext)
-                if (!terminated) {
-                    showProfileToast(identity.profileName)
-                }
             }
         }.onFailure { error ->
             Log.e(TAG, "Unable to restore the effective profile identity", error)
@@ -666,6 +683,7 @@ class AppProfileCoordinator(
     private data class ProfileConfiguration(
         val assignments: AssignmentConfiguration,
         val effectiveState: EffectiveProfileState?,
+        val autoTuneEnabled: Boolean,
     )
 
     private data class AppTargetSignature(

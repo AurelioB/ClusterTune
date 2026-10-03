@@ -113,7 +113,13 @@ class ClusterTuneHostClient(
                 val handoffNonce = HostRendezvous.prepare(context, serviceName, generation, method)
                 File(dexDirectory, "host-startup.log").apply { writeText("") }
                 val launcher = File(dexDirectory, "launch-host-${System.nanoTime().toString(16)}.sh")
-                launcher.writeText("#!/system/bin/sh\nCT_HOST_LOG='./host-startup.log' CLASSPATH='${classpath.replace("'", "'\\''")}' /system/bin/app_process /system/bin ${ClusterTuneHostEntry::class.java.name} '${serviceName.replace("'", "'\\''")}' ${Process.myUid()} $generation '${method.replace("'", "'\\''")}' '${context.packageName.replace("'", "'\\''")}' '${handoffNonce.replace("'", "'\\''")}' >'./host-startup.log' 2>&1 </dev/null &\n")
+                launcher.writeText(hostLaunchScript(
+                    arguments = listOf(
+                        ClusterTuneHostEntry::class.java.name, serviceName, Process.myUid().toString(),
+                        generation.toString(), method, context.packageName, handoffNonce,
+                    ),
+                    classpath = classpath,
+                ))
                 launcher.setExecutable(true, false)
                 launcher.setWritable(false, false)
                 try {
@@ -237,6 +243,51 @@ class ClusterTuneHostClient(
 
     fun stopAutoSession(handle: HostAutoSessionHandle): Result<HostAutoSessionSnapshot> =
         stopAutoSession(handle.sessionId, handle.hostEpoch)
+
+    fun startTelemetrySession(request: TelemetrySessionRequest): Result<HostTelemetrySessionSnapshot> =
+        call(HostProtocol.START_TELEMETRY_SESSION, writer = { p ->
+            val targetPackage = request.packageName?.takeUnless(String::isBlank)
+            if (targetPackage == null) {
+                require(request.targetFps == 0) { "device-only telemetry requires a zero target FPS" }
+            } else {
+                require(HostTelemetryParsers.isValidPackageName(targetPackage)) { "invalid target package" }
+                require(request.targetFps > 0) { "frame telemetry requires a positive target FPS" }
+            }
+            p.writeString(targetPackage)
+            p.writeInt(request.targetFps)
+            p.writeLong(request.heartbeatTimeoutMs)
+        }, reader = ::readTelemetrySessionSnapshot)
+
+    fun readTelemetrySession(
+        sessionId: String,
+        hostEpoch: Long,
+        afterSequence: Long = -1L,
+    ): Result<HostTelemetrySessionSnapshot> =
+        call(HostProtocol.READ_TELEMETRY_SESSION, writer = { p ->
+            writeSessionId(p, sessionId, nullable = false)
+            writeExpectedEpoch(p, hostEpoch)
+            require(afterSequence >= -1L) { "invalid telemetry sequence" }
+            p.writeLong(afterSequence)
+        }, reader = ::readTelemetrySessionSnapshot)
+
+    fun readTelemetrySession(
+        handle: HostTelemetrySessionHandle,
+        afterSequence: Long = -1L,
+    ): Result<HostTelemetrySessionSnapshot> =
+        readTelemetrySession(handle.sessionId, handle.hostEpoch, afterSequence)
+
+    fun stopTelemetrySession(
+        sessionId: String,
+        hostEpoch: Long,
+    ): Result<HostTelemetrySessionSnapshot> =
+        call(HostProtocol.STOP_TELEMETRY_SESSION, writer = { p ->
+            writeSessionId(p, sessionId, nullable = false)
+            writeExpectedEpoch(p, hostEpoch)
+        }, reader = ::readTelemetrySessionSnapshot)
+
+    fun stopTelemetrySession(handle: HostTelemetrySessionHandle): Result<HostTelemetrySessionSnapshot> =
+        stopTelemetrySession(handle.sessionId, handle.hostEpoch)
+
     private fun readCapabilitiesPayload(p: Parcel): HostCapabilities {
         val count = readCount(p, 64, "CPU domains")
         require(count > 0) { "host returned no CPU domains" }
@@ -522,6 +573,26 @@ class ClusterTuneHostClient(
             state = state,
             restorationAttempted = restorationAttempted,
             restorationComplete = restorationComplete,
+            message = message,
+        )
+    }
+
+    private fun readTelemetrySessionSnapshot(parcel: Parcel): HostTelemetrySessionSnapshot {
+        val sessionId = readBoundedOptionalString(parcel, "session ID", HostProtocol.MAX_SESSION_ID_LENGTH)
+        val epoch = parcel.readLong()
+        val statusOrdinal = parcel.readInt()
+        val status = HostTelemetrySessionStatus.values().getOrNull(statusOrdinal)
+            ?: error("invalid telemetry session status: $statusOrdinal")
+        val targetFps = parcel.readInt()
+        require(targetFps >= 0) { "invalid target FPS" }
+        val telemetry = if (readBoolean(parcel, "telemetry presence")) readAutoTelemetryPayload(parcel) else null
+        val message = readBoundedOptionalString(parcel, "session message")
+        return HostTelemetrySessionSnapshot(
+            sessionId = sessionId,
+            hostEpoch = epoch,
+            status = status,
+            targetFps = targetFps,
+            telemetry = telemetry,
             message = message,
         )
     }

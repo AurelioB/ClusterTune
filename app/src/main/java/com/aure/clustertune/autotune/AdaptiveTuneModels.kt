@@ -12,7 +12,6 @@ data class AdaptiveTuneConfig(
     val targetFps: Int,
     val warmupSampleCount: Int = 5,
     val healthyQualificationSampleCount: Int = 3,
-    val missingFrameGraceNanos: Long = 4_000_000_000L,
     val trialWatchSampleCount: Int = 2,
     val trialFreezeNanos: Long = 30_000_000_000L,
     val recoveryFpsRatio: Double = 0.96,
@@ -28,7 +27,6 @@ data class AdaptiveTuneConfig(
         require(healthyQualificationSampleCount > 0) {
             "Healthy qualification sample count must be positive"
         }
-        require(missingFrameGraceNanos > 0L) { "Missing-frame grace must be positive" }
         require(trialWatchSampleCount > 0) { "Trial watch sample count must be positive" }
         require(trialFreezeNanos >= 0L) { "Trial freeze must not be negative" }
         require(recoveryFpsRatio in 0.5..1.0) { "Recovery FPS ratio is out of range" }
@@ -131,7 +129,6 @@ enum class AdaptiveTuneStatus {
 enum class AdaptiveTuneReason {
     WARMUP,
     HEALTHY_QUALIFYING,
-    FRAME_DATA_GRACE,
     FRAME_DATA_STALE,
     NON_MONOTONIC_SAMPLE,
     HEALTHY_AT_FLOOR,
@@ -140,12 +137,10 @@ enum class AdaptiveTuneReason {
     CPU_BOTTLENECK_RECOVERY,
     GPU_BOTTLENECK_RECOVERY,
     RECOVERY_AT_BASE,
-    RECOVERY_FROZEN,
     EFFICIENCY_TRIM,
     TRIAL_WATCH,
     TRIAL_ACCEPTED,
     TRIAL_REGRESSION,
-    TRIAL_NO_GAIN,
     REQUESTED_STOP,
 }
 

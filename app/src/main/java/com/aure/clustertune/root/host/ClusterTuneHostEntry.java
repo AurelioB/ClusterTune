@@ -200,8 +200,10 @@ public final class ClusterTuneHostEntry {
         IBinder.DeathRecipient leaseDeath;
         final RealHostFilesystem filesystem;
         final HostApplyEngine engine;
+        final HostMinimumProtection minimumProtection;
         final ScheduledExecutorService watchdog;
         volatile HostAutoSessionController autoController;
+        volatile HostTelemetrySessionController telemetryController;
         HostCapabilities capabilities;
 
         HostBinder(String name, int owner, long generation, String method) {
@@ -211,8 +213,9 @@ public final class ClusterTuneHostEntry {
             this.method = method;
             this.filesystem = new RealHostFilesystem();
             this.engine = new HostApplyEngine(filesystem);
+            this.minimumProtection = HostMinimumProtection.createIfSupported(filesystem, owner);
             this.watchdog = Executors.newSingleThreadScheduledExecutor(runnable -> {
-                Thread thread = new Thread(runnable, "ClusterTune-auto-watchdog");
+                Thread thread = new Thread(runnable, "ClusterTune-host-watchdog");
                 thread.setDaemon(true);
                 return thread;
             });
@@ -247,6 +250,7 @@ public final class ClusterTuneHostEntry {
 
         private HostCapabilities ensureCapabilities() {
             capabilities = capabilities == null ? discover() : capabilities;
+            if (minimumProtection != null) minimumProtection.recoverOrThrow(capabilities);
             return capabilities;
         }
 
@@ -257,6 +261,28 @@ public final class ClusterTuneHostEntry {
                 autoController = current;
             }
             return current;
+        }
+
+        private HostTelemetrySessionController telemetryController() {
+            HostTelemetrySessionController current = telemetryController;
+            if (current == null) {
+                current = HostTelemetrySessionController.production(ensureCapabilities(), filesystem, epoch);
+                telemetryController = current;
+            }
+            return current;
+        }
+
+        private boolean autoOwnsTelemetry() {
+            HostAutoSessionController current = autoController;
+            return current != null
+                    && current.current().getStatus() == HostAutoSessionStatus.ACTIVE;
+        }
+
+        private HostTelemetrySessionSnapshot stopTelemetry(
+                HostTelemetrySessionStatus status,
+                String reason) {
+            HostTelemetrySessionController current = telemetryController;
+            return current == null ? null : current.stopCurrent(status, reason);
         }
 
         private HostAutoSessionSnapshot stopAutoForExternalApply(String reason) {
@@ -280,6 +306,17 @@ public final class ClusterTuneHostEntry {
             return snapshot == null || snapshot.getRestorationComplete();
         }
 
+        private boolean releaseProfileMinimums() {
+            if (minimumProtection == null) return true;
+            try {
+                minimumProtection.releaseOrThrow(ensureCapabilities());
+                return true;
+            } catch (Throwable failure) {
+                log("CPU minimum permission recovery pending: " + failure);
+                return false;
+            }
+        }
+
         /** Caller holds this HostBinder's monitor. */
         private void finishStoppingLocked() {
             lifecycle.finishStopping();
@@ -300,8 +337,15 @@ public final class ClusterTuneHostEntry {
                 leaseDeath = null;
                 lifecycle.leaseLost();
                 try {
+                    stopTelemetry(
+                            HostTelemetrySessionStatus.STOPPED,
+                            "privileged host lease ended");
+                } catch (Throwable throwable) {
+                    log("telemetry session cleanup failed after lease death: " + throwable);
+                }
+                try {
                     HostAutoSessionSnapshot stopped = stopAutoForExternalApply("privileged host lease ended");
-                    if (lifecycle.canFinishLeaseLoss(false, restorationComplete(stopped))) {
+                    if (lifecycle.canFinishLeaseLoss(false, restorationComplete(stopped) && releaseProfileMinimums())) {
                         finishStoppingLocked();
                     }
                 } catch (Throwable throwable) {
@@ -314,8 +358,15 @@ public final class ClusterTuneHostEntry {
             synchronized (this) {
                 if (lifecycle.isWaitingForLeaseLossRestoration(lease != null)) {
                     try {
+                        stopTelemetry(
+                                HostTelemetrySessionStatus.STOPPED,
+                                "privileged host lease ended");
+                    } catch (Throwable throwable) {
+                        log("telemetry session watchdog cleanup failed after lease death: " + throwable);
+                    }
+                    try {
                         HostAutoSessionSnapshot stopped = stopAutoForExternalApply("privileged host lease ended");
-                        if (lifecycle.canFinishLeaseLoss(lease != null, restorationComplete(stopped))) {
+                        if (lifecycle.canFinishLeaseLoss(lease != null, restorationComplete(stopped) && releaseProfileMinimums())) {
                             finishStoppingLocked();
                         }
                     } catch (Throwable throwable) {
@@ -333,9 +384,24 @@ public final class ClusterTuneHostEntry {
                     log("automatic session watchdog failed: " + throwable);
                 }
             }
+            HostTelemetrySessionController telemetry = telemetryController;
+            if (telemetry != null) {
+                try {
+                    telemetry.expireIfNeeded();
+                } catch (Throwable throwable) {
+                    log("telemetry session watchdog failed: " + throwable);
+                }
+            }
         }
 
         private void closeBeforeExit() {
+            try {
+                stopTelemetry(
+                        HostTelemetrySessionStatus.STOPPED,
+                        "privileged host stopped");
+            } catch (Throwable throwable) {
+                log("telemetry session shutdown failed: " + throwable);
+            }
             HostAutoSessionSnapshot stopped = null;
             Throwable stopFailure = null;
             boolean restored = false;
@@ -348,7 +414,7 @@ public final class ClusterTuneHostEntry {
                 try {
                     stopped = stopAutoForExternalApply("privileged host lease ended");
                     stopFailure = null;
-                    restored = restorationComplete(stopped);
+                    restored = restorationComplete(stopped) && releaseProfileMinimums();
                 } catch (Throwable throwable) {
                     stopFailure = throwable;
                 }
@@ -364,6 +430,7 @@ public final class ClusterTuneHostEntry {
                 }
             }
             watchdog.shutdownNow();
+            if (minimumProtection != null) minimumProtection.close();
             IBinder currentLease;
             IBinder.DeathRecipient currentDeath;
             synchronized (this) {
@@ -448,14 +515,25 @@ public final class ClusterTuneHostEntry {
                             ApplyRequest request = readApplyRequest(data, discovered);
                             HostAutoSessionSnapshot stopped = stopAutoForExternalApply("automatic session preempted by profile apply");
                             requireCompleteRestoration(stopped);
-                            HostProfileApplyDispatcher.applyOrThrow(engine, discovered, request);
+                            if (minimumProtection != null) {
+                                minimumProtection.applyOrThrow(engine, discovered, request);
+                            } else {
+                                HostProfileApplyDispatcher.applyOrThrow(engine, discovered, request);
+                            }
                             header(reply, true);
                             writeStatePayload(reply, discovered);
                             return true;
                         }
                         case HostProtocol.STOP: {
+                            stopTelemetry(
+                                    HostTelemetrySessionStatus.STOPPED,
+                                    "privileged host stopped");
                             HostAutoSessionSnapshot stopped = stopAutoForExternalApply("privileged host stopped");
                             requireCompleteRestoration(stopped);
+                            if (!releaseProfileMinimums()) {
+                                throw new HostApplyFailure(HostApplyPhase.ROLLBACK, true, false, false,
+                                        "CPU minimum permission recovery is pending; privileged host retained", null);
+                            }
                             finishStoppingLocked();
                             header(reply, true);
                             return true;
@@ -476,6 +554,11 @@ public final class ClusterTuneHostEntry {
                             lease = candidate;
                             leaseDeath = recipient;
                             lifecycle.leaseEstablished();
+                            if (previousLease != null && previousLease != candidate) {
+                                stopTelemetry(
+                                        HostTelemetrySessionStatus.STOPPED,
+                                        "privileged host lease replaced");
+                            }
                             if (previousLease != null && previousDeath != null) {
                                 try { previousLease.unlinkToDeath(previousDeath, 0); } catch (Throwable ignored) { }
                             }
@@ -496,6 +579,9 @@ public final class ClusterTuneHostEntry {
                             ApplyRequest baseline = hasBaseline == 1
                                     ? readApplyRequest(data, ensureCapabilities())
                                     : null;
+                            stopTelemetry(
+                                    HostTelemetrySessionStatus.UNAVAILABLE,
+                                    "performance telemetry is held by Auto Tune");
                             HostAutoSessionSnapshot snapshot = autoController().start(
                                     new AutoSessionRequest(packageName, targetFps, heartbeatTimeoutMs, baseline));
                             writeAutoSnapshot(reply, snapshot);
@@ -527,6 +613,52 @@ public final class ClusterTuneHostEntry {
                             String sessionId = readBoundedString(data, HostProtocol.MAX_SESSION_ID_LENGTH, "session ID", true);
                             Long expectedEpoch = readExpectedEpoch(data);
                             writeAutoSnapshot(reply, autoController().stop(sessionId, expectedEpoch));
+                            return true;
+                        }
+                        case HostProtocol.START_TELEMETRY_SESSION: {
+                            String packageName = readBoundedString(
+                                    data,
+                                    HostProtocol.MAX_PACKAGE_LENGTH,
+                                    "target package",
+                                    true);
+                            int targetFps = data.readInt();
+                            long heartbeatTimeoutMs = data.readLong();
+                            HostTelemetrySessionSnapshot snapshot = telemetryController().start(
+                                    new TelemetrySessionRequest(packageName, targetFps, heartbeatTimeoutMs),
+                                    !autoOwnsTelemetry());
+                            writeTelemetrySnapshot(reply, snapshot);
+                            return true;
+                        }
+                        case HostProtocol.READ_TELEMETRY_SESSION: {
+                            String sessionId = readBoundedString(
+                                    data,
+                                    HostProtocol.MAX_SESSION_ID_LENGTH,
+                                    "session ID",
+                                    false);
+                            long expectedEpoch = requireExpectedEpoch(data);
+                            long afterSequence = data.readLong();
+                            if (afterSequence < -1L) {
+                                throw new IllegalArgumentException("invalid telemetry sequence");
+                            }
+                            writeTelemetrySnapshot(
+                                    reply,
+                                    telemetryController().read(
+                                            sessionId,
+                                            expectedEpoch,
+                                            afterSequence,
+                                            !autoOwnsTelemetry()));
+                            return true;
+                        }
+                        case HostProtocol.STOP_TELEMETRY_SESSION: {
+                            String sessionId = readBoundedString(
+                                    data,
+                                    HostProtocol.MAX_SESSION_ID_LENGTH,
+                                    "session ID",
+                                    false);
+                            long expectedEpoch = requireExpectedEpoch(data);
+                            writeTelemetrySnapshot(
+                                    reply,
+                                    telemetryController().stop(sessionId, expectedEpoch));
                             return true;
                         }
                         default:
@@ -836,6 +968,18 @@ public final class ClusterTuneHostEntry {
             if (state != null) writeHostStateValue(reply, state);
             reply.writeInt(value.getRestorationAttempted() ? 1 : 0);
             reply.writeInt(value.getRestorationComplete() ? 1 : 0);
+            reply.writeString(bounded(value.getMessage()));
+        }
+
+        private void writeTelemetrySnapshot(Parcel reply, HostTelemetrySessionSnapshot value) {
+            header(reply, true);
+            reply.writeString(value.getSessionId());
+            reply.writeLong(value.getHostEpoch());
+            reply.writeInt(value.getStatus().ordinal());
+            reply.writeInt(value.getTargetFps());
+            HostAutoTelemetry telemetry = value.getTelemetry();
+            reply.writeInt(telemetry == null ? 0 : 1);
+            if (telemetry != null) writeAutoTelemetryPayload(reply, telemetry);
             reply.writeString(bounded(value.getMessage()));
         }
 

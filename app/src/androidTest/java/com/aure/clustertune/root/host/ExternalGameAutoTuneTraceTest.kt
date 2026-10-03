@@ -354,10 +354,7 @@ class ExternalGameAutoTuneTraceTest {
                         }
                         pendingTrialReason = null
                     }
-                    if (
-                        decision.reason == AdaptiveTuneReason.TRIAL_REGRESSION ||
-                        decision.reason == AdaptiveTuneReason.TRIAL_NO_GAIN
-                    ) {
+                    if (decision.reason == AdaptiveTuneReason.TRIAL_REGRESSION) {
                         pendingTrialReason = null
                     }
                     val reachedPhysicalHealthyFloor =
@@ -786,12 +783,8 @@ class ExternalGameAutoTuneTraceTest {
 
     private fun AdaptiveFrameMetrics.isUnhealthy(config: AdaptiveTuneConfig): Boolean {
         if (isStale || !fps.isFinite() || fps <= 0.0) return false
-        val p95 = p95FrameTimeMillis?.takeIf { it.isFinite() && it > 0.0 }
         val slowRatio = slowFrameRatio?.takeIf { it.isFinite() && it in 0.0..1.0 }
-        val frameBudgetMillis = 1_000.0 / config.targetFps
-        val pacingUnhealthy = p95?.let {
-            it > frameBudgetMillis * config.healthyP95BudgetMultiplier
-        } == true || slowRatio?.let { it > config.recoverySlowFrameRatio } == true
+        val pacingUnhealthy = slowRatio?.let { it > config.recoverySlowFrameRatio } == true
         return fps < config.targetFps * config.recoveryFpsRatio || pacingUnhealthy
     }
 

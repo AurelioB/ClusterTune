@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.asStateFlow
 /** Process-wide presentation and cancellation state shared by every AppContainer instance. */
 data class AdaptiveTuneRuntimeState(
     val active: Boolean = false,
+    /** Identifies one Auto Tune run for presentation-only telemetry consumers. */
+    val sessionGeneration: Long? = null,
     val packageName: String? = null,
     val appLabel: String? = null,
     val targetFps: Int? = null,
@@ -15,7 +17,15 @@ data class AdaptiveTuneRuntimeState(
     val measuredFps: Double? = null,
     val p95FrameTimeMillis: Double? = null,
     val cpuLoad: Map<Int, Double?> = emptyMap(),
+    val cpuClockKHz: Map<Int, Long?> = emptyMap(),
     val gpuBusy: Double? = null,
+    val gpuClockHz: Long? = null,
+    val thermalMilliCelsius: Map<String, Long> = emptyMap(),
+    val frameConfidence: Double? = null,
+    val slowFrameRatio: Double? = null,
+    val frameStale: Boolean = false,
+    /** Monotonic identity of the latest published host sample. */
+    val sampleTimestampNanos: Long? = null,
     val ceilings: AdaptiveFrequencyCeilings? = null,
     val frameBackend: String? = null,
     val message: String? = null,
@@ -94,6 +104,7 @@ object AdaptiveTuneRuntime {
         val token = ++generation
         mutableState.value = AdaptiveTuneRuntimeState(
             active = true,
+            sessionGeneration = token,
             packageName = packageName,
             appLabel = appLabel,
             targetFps = targetFps,
@@ -140,19 +151,10 @@ object AdaptiveTuneRuntime {
         val token = ++generation
         val current = mutableState.value
         if (current.active) {
-            mutableState.value = AdaptiveTuneRuntimeState(
+            mutableState.value = current.copy(
                 active = false,
-                packageName = current.packageName,
-                appLabel = current.appLabel,
-                targetFps = current.targetFps,
                 status = AdaptiveTuneStatus.STOPPED,
                 reason = AdaptiveTuneReason.REQUESTED_STOP,
-                measuredFps = current.measuredFps,
-                p95FrameTimeMillis = current.p95FrameTimeMillis,
-                cpuLoad = current.cpuLoad,
-                gpuBusy = current.gpuBusy,
-                ceilings = current.ceilings,
-                frameBackend = current.frameBackend,
                 message = message ?: current.message,
             )
         }

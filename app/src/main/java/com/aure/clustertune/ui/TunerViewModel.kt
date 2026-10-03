@@ -401,6 +401,10 @@ class TunerViewModel(
         }
     }
 
+    fun setAutoTuneEnabled(enabled: Boolean) {
+        viewModelScope.launch { settingsStorage.persistAutoTuneEnabled(enabled) }
+    }
+
     fun setAutomaticUpdateChecksEnabled(enabled: Boolean) {
         viewModelScope.launch {
             settingsStorage.persistAutomaticUpdateChecksEnabled(enabled)

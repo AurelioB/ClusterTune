@@ -115,6 +115,15 @@ class PrivilegedExecutionResolverTest {
         assertFalse(executor.command!!.contains("/sys/"))
     }
 
+    @Test
+    fun `pserver rejects oversized UTF8 envelopes before dispatch`() {
+        val executor = RecordingPServer(pServerAvailable = true)
+        val method = PServerExecutionMethod(executor)
+        assertTrue(method.launchHost(HostLaunchRequest("/" + "é".repeat(130), "launch.sh")).isFailure)
+        assertEquals(0, executor.launches)
+        assertTrue(method.launchHost(HostLaunchRequest("/data/user/0/com.aure.clustertune/code_cache/clustertune-host", "launch-host-123456789abcdef.sh")).isSuccess)
+    }
+
     private class FakeMethod(
         override val id: String,
         private val available: Boolean,

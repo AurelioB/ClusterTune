@@ -13,8 +13,6 @@ class AdaptiveFrequencyController(
     val config: AdaptiveTuneConfig,
     envelope: AdaptiveTuneEnvelope,
 ) {
-    private enum class TrialKind { RAISE, TRIM }
-
     private enum class HealthState { HEALTHY, NEUTRAL, UNHEALTHY }
 
     private data class FrameHealth(
@@ -33,10 +31,8 @@ class AdaptiveFrequencyController(
     )
 
     private data class Trial(
-        val kind: TrialKind,
         val domain: DomainState,
         val previousIndex: Int,
-        val trialIndex: Int,
         val baseline: FrameHealth,
         val observedSamples: Int = 0,
         val consecutiveRegressions: Int = 0,
@@ -73,14 +69,11 @@ class AdaptiveFrequencyController(
     val baseCeilings: AdaptiveFrequencyCeilings = ceilings()
 
     private var lastSampleTimestampNanos: Long? = null
-    private var sessionStartedAtNanos: Long? = null
-    private var lastFreshFrameAtNanos: Long? = null
     private var warmupSamplesSeen = 0
     private var healthyQualificationSamplesSeen = 0
     private var trial: Trial? = null
     private var stoppedReason: AdaptiveTuneReason? = null
-    private val raiseDeprioritizedUntil = mutableMapOf<AdaptiveActuator, Long>()
-    private val raiseRegressionFrozenUntil = mutableMapOf<AdaptiveActuator, Long>()
+    private var recoverySamplesSeen = 0
     private val trimFrozenUntil = mutableMapOf<AdaptiveActuator, Long>()
 
     fun currentCeilings(): AdaptiveFrequencyCeilings = ceilings()
@@ -105,27 +98,15 @@ class AdaptiveFrequencyController(
             return hold(AdaptiveTuneStatus.MONITORING, AdaptiveTuneReason.NON_MONOTONIC_SAMPLE)
         }
         lastSampleTimestampNanos = sample.timestampNanos
-        if (sessionStartedAtNanos == null) sessionStartedAtNanos = sample.timestampNanos
         expireFreezes(sample.timestampNanos)
 
         val frame = sample.frames
             ?.takeIf(::isFreshFrame)
             ?.let(::frameHealth)
-        if (frame != null) {
-            lastFreshFrameAtNanos = sample.timestampNanos
-        } else {
-            val graceAnchor = lastFreshFrameAtNanos ?: sessionStartedAtNanos ?: sample.timestampNanos
-            if (sample.timestampNanos - graceAnchor >= config.missingFrameGraceNanos) {
-                stoppedReason = AdaptiveTuneReason.FRAME_DATA_STALE
-                trial = null
-                healthyQualificationSamplesSeen = 0
-                return AdaptiveTuneDecision.Stop(AdaptiveTuneReason.FRAME_DATA_STALE, ceilings())
-            }
-        }
-
         if (frame == null) {
+            recoverySamplesSeen = 0
             healthyQualificationSamplesSeen = 0
-            return hold(AdaptiveTuneStatus.WAITING_FOR_FRAMES, AdaptiveTuneReason.FRAME_DATA_GRACE)
+            return hold(AdaptiveTuneStatus.WAITING_FOR_FRAMES, AdaptiveTuneReason.FRAME_DATA_STALE)
         }
 
         if (warmupSamplesSeen < config.warmupSampleCount) {
@@ -141,13 +122,15 @@ class AdaptiveFrequencyController(
 
         trial?.let { active ->
             healthyQualificationSamplesSeen = 0
-            return evaluateTrial(active, frame, sample)
+            return evaluateTrimTrial(active, frame, sample)
         }
+
+        if (frame.state != HealthState.UNHEALTHY) recoverySamplesSeen = 0
 
         return when (frame.state) {
             HealthState.UNHEALTHY -> {
                 healthyQualificationSamplesSeen = 0
-                recover(frame, sample)
+                recover(sample)
             }
             HealthState.HEALTHY -> qualifyHealthyThenTrim(frame, sample)
             HealthState.NEUTRAL -> {
@@ -176,7 +159,6 @@ class AdaptiveFrequencyController(
     }
 
     private fun recover(
-        frame: FrameHealth,
         sample: AdaptiveTuneSample,
     ): AdaptiveTuneDecision {
         val headroom = domains.filter { domain ->
@@ -186,47 +168,25 @@ class AdaptiveFrequencyController(
             return hold(AdaptiveTuneStatus.MONITORING, AdaptiveTuneReason.RECOVERY_AT_BASE)
         }
 
-        val unfrozenHeadroom = headroom.filter { domain ->
-            !isFrozen(raiseRegressionFrozenUntil, domain.actuator, sample.timestampNanos)
-        }
-        if (unfrozenHeadroom.isEmpty()) {
-            return hold(AdaptiveTuneStatus.FROZEN, AdaptiveTuneReason.RECOVERY_FROZEN)
-        }
-
-        val saturatedHeadroom = unfrozenHeadroom.filter { domain ->
+        val saturatedHeadroom = headroom.filter { domain ->
             utilization(domain, sample)?.let { it >= config.highUtilization } == true
         }
-        val eligibleHeadroom = saturatedHeadroom.ifEmpty { unfrozenHeadroom }
-        val preferred = eligibleHeadroom.filter { domain ->
-            !isFrozen(raiseDeprioritizedUntil, domain.actuator, sample.timestampNanos)
-        }
-        val candidates = preferred.ifEmpty {
-            // No-gain is not proof that a raise was useless: CPU/GPU and cluster bottlenecks can
-            // be coupled. When every domain has recently produced no isolated gain, keep opening
-            // the envelope instead of waiting for the deprioritization timeout. Choosing the
-            // oldest deadline rotates away from the domain most recently tested. A measured-hot
-            // domain remains a harder constraint than deprioritization, so a cold policy cannot
-            // displace the only saturated recovery candidate.
-            val oldestDeadline = eligibleHeadroom.minOf { domain ->
-                raiseDeprioritizedUntil[domain.actuator] ?: Long.MIN_VALUE
-            }
-            eligibleHeadroom.filter { domain ->
-                (raiseDeprioritizedUntil[domain.actuator] ?: Long.MIN_VALUE) == oldestDeadline
-            }
-        }
+        val candidates = saturatedHeadroom.ifEmpty { headroom }
 
         val domain = selectRecoveryDomain(candidates, sample)
-        val stepCount = recoveryStepCount(frame)
-        val targetIndex = (domain.currentIndex + stepCount).coerceAtMost(domain.baseIndex)
+        recoverySamplesSeen = (recoverySamplesSeen + 1).coerceAtMost(2)
+        val targetIndex = if (recoverySamplesSeen >= 2) {
+            domain.baseIndex
+        } else {
+            (domain.currentIndex + 3).coerceAtMost(domain.baseIndex)
+        }
         val reason = when (domain.actuator) {
             is AdaptiveActuator.CpuPolicy -> AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY
             is AdaptiveActuator.Gpu -> AdaptiveTuneReason.GPU_BOTTLENECK_RECOVERY
         }
-        return applyTrialMove(
+        return applyMove(
             domain = domain,
             targetIndex = targetIndex,
-            kind = TrialKind.RAISE,
-            baseline = frame,
             status = AdaptiveTuneStatus.RECOVERING,
             reason = reason,
         )
@@ -259,22 +219,10 @@ class AdaptiveFrequencyController(
         return applyTrialMove(
             domain = domain,
             targetIndex = domain.currentIndex - 1,
-            kind = TrialKind.TRIM,
             baseline = frame,
             status = AdaptiveTuneStatus.OPTIMIZING,
             reason = AdaptiveTuneReason.EFFICIENCY_TRIM,
         )
-    }
-
-    private fun evaluateTrial(
-        active: Trial,
-        frame: FrameHealth,
-        sample: AdaptiveTuneSample,
-    ): AdaptiveTuneDecision {
-        return when (active.kind) {
-            TrialKind.TRIM -> evaluateTrimTrial(active, frame, sample)
-            TrialKind.RAISE -> evaluateRaiseTrial(active, frame, sample)
-        }
     }
 
     private fun evaluateTrimTrial(
@@ -334,69 +282,6 @@ class AdaptiveFrequencyController(
     private fun trialMaximumSamples(): Long =
         config.trialWatchSampleCount.toLong() * TRIAL_MAX_SAMPLE_MULTIPLIER
 
-    private fun evaluateRaiseTrial(
-        active: Trial,
-        frame: FrameHealth,
-        sample: AdaptiveTuneSample,
-    ): AdaptiveTuneDecision {
-        val totalSamples = active.totalSamples + 1L
-        if (isRegression(active.baseline, frame)) {
-            val consecutiveRegressions = active.consecutiveRegressions + 1
-            if (
-                consecutiveRegressions >= TRIM_REGRESSION_SAMPLE_COUNT ||
-                totalSamples >= trialMaximumSamples()
-            ) {
-                return rollbackRaise(active, sample)
-            }
-            trial = active.copy(
-                observedSamples = 0,
-                consecutiveRegressions = consecutiveRegressions,
-                totalSamples = totalSamples,
-            )
-            return hold(AdaptiveTuneStatus.WATCHING_TRIAL, AdaptiveTuneReason.TRIAL_WATCH)
-        }
-
-        if (isImprovement(active.baseline, frame)) {
-            trial = null
-            raiseDeprioritizedUntil.remove(active.domain.actuator)
-            return hold(AdaptiveTuneStatus.MONITORING, AdaptiveTuneReason.TRIAL_ACCEPTED)
-        }
-
-        val observed = active.observedSamples + 1
-        if (observed >= config.trialWatchSampleCount) {
-            trial = null
-            raiseDeprioritizedUntil[active.domain.actuator] = freezeDeadline(sample.timestampNanos)
-            // A bounded raise cannot violate the assigned envelope. Keep it while performance is
-            // unhealthy because an isolated raise may only help after another coupled domain is
-            // opened too; the next recovery attempt is steered to another domain when possible.
-            return hold(AdaptiveTuneStatus.RECOVERING, AdaptiveTuneReason.TRIAL_NO_GAIN)
-        }
-        if (totalSamples >= trialMaximumSamples()) {
-            return rollbackRaise(active, sample)
-        }
-        trial = active.copy(
-            observedSamples = observed,
-            consecutiveRegressions = 0,
-            totalSamples = totalSamples,
-        )
-        return hold(AdaptiveTuneStatus.WATCHING_TRIAL, AdaptiveTuneReason.TRIAL_WATCH)
-    }
-
-    private fun rollbackRaise(
-        active: Trial,
-        sample: AdaptiveTuneSample,
-    ): AdaptiveTuneDecision.Apply {
-        trial = null
-        raiseDeprioritizedUntil.remove(active.domain.actuator)
-        raiseRegressionFrozenUntil[active.domain.actuator] = freezeDeadline(sample.timestampNanos)
-        return applyMove(
-            domain = active.domain,
-            targetIndex = active.previousIndex,
-            status = AdaptiveTuneStatus.FROZEN,
-            reason = AdaptiveTuneReason.TRIAL_REGRESSION,
-        )
-    }
-
     private fun selectRecoveryDomain(
         candidates: List<DomainState>,
         sample: AdaptiveTuneSample,
@@ -436,24 +321,9 @@ class AdaptiveFrequencyController(
         return raw?.takeIf { it.isFinite() }?.coerceIn(0.0, 1.0)
     }
 
-    private fun recoveryStepCount(frame: FrameHealth): Int {
-        val fpsRatio = frame.fps / config.targetFps.toDouble()
-        val frameBudget = frameBudgetMillis()
-        val severePacing = frame.p95FrameTimeMillis?.let { it > frameBudget * 2.0 } == true ||
-            frame.slowFrameRatio?.let { it > 0.30 } == true
-        val moderatePacing = frame.p95FrameTimeMillis?.let { it > frameBudget * 1.5 } == true ||
-            frame.slowFrameRatio?.let { it > 0.20 } == true
-        return when {
-            fpsRatio < 0.75 || severePacing -> 3
-            fpsRatio < 0.90 || moderatePacing -> 2
-            else -> 1
-        }
-    }
-
     private fun applyTrialMove(
         domain: DomainState,
         targetIndex: Int,
-        kind: TrialKind,
         baseline: FrameHealth,
         status: AdaptiveTuneStatus,
         reason: AdaptiveTuneReason,
@@ -461,10 +331,8 @@ class AdaptiveFrequencyController(
         val previousIndex = domain.currentIndex
         val decision = applyMove(domain, targetIndex, status, reason)
         trial = Trial(
-            kind = kind,
             domain = domain,
             previousIndex = previousIndex,
-            trialIndex = targetIndex,
             baseline = baseline,
         )
         return decision
@@ -501,8 +369,7 @@ class AdaptiveFrequencyController(
         val p95Healthy = p95?.let { it <= frameBudgetMillis() * config.healthyP95BudgetMultiplier } != false
         val slowRatioHealthy = slowRatio?.let { it <= config.healthySlowFrameRatio } != false
         val pacingHealthy = p95Healthy && slowRatioHealthy
-        val pacingUnhealthy = !p95Healthy ||
-            slowRatio?.let { it > config.recoverySlowFrameRatio } == true
+        val pacingUnhealthy = slowRatio?.let { it > config.recoverySlowFrameRatio } == true
         val fpsHealthy = frame.fps >= config.targetFps * config.healthyFpsRatio
         val fpsUnhealthy = frame.fps < config.targetFps * config.recoveryFpsRatio
         val state = when {
@@ -533,28 +400,9 @@ class AdaptiveFrequencyController(
         return false
     }
 
-    private fun isImprovement(baseline: FrameHealth, current: FrameHealth): Boolean {
-        if (baseline.state == HealthState.UNHEALTHY && current.state != HealthState.UNHEALTHY) return true
-        val fpsGain = max(1.0, config.targetFps * 0.02)
-        if (current.fps >= baseline.fps + fpsGain) return true
-        if (baseline.p95FrameTimeMillis != null && current.p95FrameTimeMillis != null &&
-            current.p95FrameTimeMillis <= baseline.p95FrameTimeMillis * 0.90
-        ) {
-            return true
-        }
-        if (baseline.slowFrameRatio != null && current.slowFrameRatio != null &&
-            current.slowFrameRatio <= baseline.slowFrameRatio - 0.03
-        ) {
-            return true
-        }
-        return false
-    }
-
     private fun frameBudgetMillis(): Double = 1_000.0 / config.targetFps
 
     private fun expireFreezes(timestampNanos: Long) {
-        raiseDeprioritizedUntil.entries.removeAll { (_, until) -> until <= timestampNanos }
-        raiseRegressionFrozenUntil.entries.removeAll { (_, until) -> until <= timestampNanos }
         trimFrozenUntil.entries.removeAll { (_, until) -> until <= timestampNanos }
     }
 

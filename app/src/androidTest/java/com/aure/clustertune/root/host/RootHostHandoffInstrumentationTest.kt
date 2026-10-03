@@ -53,6 +53,17 @@ class RootHostHandoffInstrumentationTest {
     }
 
     @Test
+    fun pServerAutoTune_preservesOwnedMinimumProtection() {
+        assumeTrue(InstrumentationRegistry.getArguments().getString("minimumProtection") == "1")
+        val method = PServerExecutionMethod()
+        assumeTrue(method.probe().isAvailable)
+        assertHostRoundTrip(
+            PrivilegedExecutionResolver(listOf(method), listOf(method.id)), method.id,
+            protectProfileMinimums = true,
+        )
+    }
+
+    @Test
     fun rootShellHostBinderHandoff_roundTripsWhenAvailable() {
         val method = RootShellExecutionMethod()
         val probe = method.probe()
@@ -64,15 +75,86 @@ class RootHostHandoffInstrumentationTest {
         )
     }
 
+    @Test
+    fun watchdogRestoresCeilingsWhenClientStopsHeartbeating() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val resolver = PrivilegedExecutionResolver.default(context)
+        assumeTrue("privileged execution unavailable", resolver.autoDetectBestMethod() != null)
+        val client = ClusterTuneHostClient(context, resolver)
+        var handle: HostAutoSessionHandle? = null
+        var fixture: ActivityScenario<ComponentActivity>? = null
+        var ownsHost = false
+        try {
+            client.ensureStarted(5_000).getOrThrow()
+            val snapshot = client.readSnapshot().getOrThrow()
+            val previous = client.readAutoTelemetry().getOrThrow()
+            assumeTrue(previous.status != HostAutoSessionStatus.ACTIVE && previous.status != HostAutoSessionStatus.RESTORE_FAILED)
+            ownsHost = true
+            fixture = launchFrameFixture()
+            val started = client.startAutoSession(AutoSessionRequest(context.packageName, 30, 5_000L)).getOrThrow()
+            val session = requireNotNull(started.handle)
+            handle = session
+            val baseline = requireNotNull(started.state)
+            val adjustable = adaptiveAdjustableCpuPolicyIds(snapshot.capabilities.cpus)
+            val candidate = snapshot.capabilities.cpus.withIndex().firstOrNull { (index, cpu) ->
+                cpu.policyId() in adjustable && baseline.cpuMin[index] > 0 &&
+                    cpu.supportedFrequencies.any { it > baseline.cpuMin[index] && it < baseline.cpuMax[index] }
+            }
+            val gpuTarget = snapshot.capabilities.gpu?.supportedFrequencies?.filter {
+                baseline.gpuMin != null && baseline.gpuMin > 0L &&
+                    baseline.gpuMax != null && it > baseline.gpuMin && it < baseline.gpuMax
+            }?.maxOrNull()
+            assumeTrue("no safe lower CPU or GPU ceiling", candidate != null || gpuTarget != null)
+            val ceilings = baseline.cpuMax.toMutableList()
+            candidate?.let { (index, cpu) ->
+                ceilings[index] = cpu.supportedFrequencies.filter {
+                    it > baseline.cpuMin[index] && it < baseline.cpuMax[index]
+                }.max()
+            }
+            val gpuCeiling = if (candidate == null) gpuTarget else baseline.gpuMax
+            val applied = client.applyAutoStep(session, ApplyRequest(
+                cpuMax = ceilings,
+                gpuMax = gpuCeiling,
+                resetToStock = false,
+                cpuIds = snapshot.capabilities.cpus.map(CpuDomain::id),
+                gpuId = snapshot.capabilities.gpu?.id,
+                gpuMaxPath = snapshot.capabilities.gpu?.maxPath,
+                maximumsOnly = true,
+            )).getOrThrow()
+            assertEquals(HostAutoSessionStatus.ACTIVE, applied.status)
+            assertEquals(ceilings, requireNotNull(applied.state).cpuMax)
+            assertEquals(gpuCeiling, requireNotNull(applied.state).gpuMax)
+
+            // No further session calls: restoration must run in the host's own watchdog.
+            Thread.sleep(7_000L)
+            val afterWatchdog = client.readSnapshot().getOrThrow().state
+            if (candidate != null) {
+                assertEquals("watchdog must restore the owned CPU ceiling", baseline.cpuMax[candidate.index], afterWatchdog.cpuMax[candidate.index])
+            } else {
+                assertEquals("watchdog must restore the owned GPU ceiling", baseline.gpuMax, afterWatchdog.gpuMax)
+            }
+            val expired = client.readAutoTelemetry(session).getOrThrow()
+            assertEquals(HostAutoSessionStatus.EXPIRED, expired.status)
+            assertTrue(expired.restorationComplete)
+        } finally {
+            handle?.let { stopAndRestore(client, it) }
+            fixture?.close()
+            if (ownsHost) client.stop().getOrThrow()
+        }
+    }
+
     private fun assertHostRoundTrip(
         resolver: PrivilegedExecutionResolver,
         expectedMethod: String,
+        protectProfileMinimums: Boolean = false,
     ) {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val client = ClusterTuneHostClient(context, resolver)
         var sessionHandle: HostAutoSessionHandle? = null
         var fixture: ActivityScenario<ComponentActivity>? = null
         var safeToStopHost = false
+        var minimumModes: Map<String, Int>? = null
+        fun modes(paths: Set<String>) = paths.associateWith { android.system.Os.stat(it).st_mode and 0x1ff }
         try {
             client.ensureStarted(5_000).getOrThrow()
             assertEquals(expectedMethod, client.selectedMethodId)
@@ -86,6 +168,15 @@ class RootHostHandoffInstrumentationTest {
             assumeTrue("an automatic session is already active", preflight.status != HostAutoSessionStatus.ACTIVE)
             assumeTrue("a prior automatic session has not restored", preflight.status != HostAutoSessionStatus.RESTORE_FAILED)
             safeToStopHost = true
+            if (protectProfileMinimums) {
+                val underclocked = snapshot.capabilities.cpus.filterIndexed { index, cpu ->
+                    snapshot.state.cpuMax[index] < cpu.selectableMax
+                }
+                assumeTrue("an underclock profile is required", underclocked.isNotEmpty())
+                minimumModes = modes(underclocked.map { it.minPath }.toSet())
+                client.applyProfile(ApplyRequest(snapshot.state.cpuMax, null, false, cpuIds = snapshot.capabilities.cpus.map { it.id })).getOrThrow()
+                assertEquals(minimumModes.mapValues { it.value and 0x16d }, modes(minimumModes.keys))
+            }
 
             fixture = launchFrameFixture()
             val targetFps = 30
@@ -188,6 +279,7 @@ class RootHostHandoffInstrumentationTest {
                 automatic = automaticState,
                 actual = client.readSnapshot().getOrThrow().state,
             )
+            minimumModes?.let { assertEquals(it.mapValues { entry -> entry.value and 0x16d }, modes(it.keys)) }
             sessionHandle = null
         } finally {
             var cleanupFailure: Throwable? = null
@@ -199,6 +291,7 @@ class RootHostHandoffInstrumentationTest {
                 .onFailure { failure -> cleanupFailure = cleanupFailure ?: failure }
             if (safeToStopHost && cleanupFailure == null) {
                 client.stop().exceptionOrNull()?.let { cleanupFailure = it }
+                if (cleanupFailure == null) minimumModes?.let { assertEquals(it, modes(it.keys)) }
             }
             cleanupFailure?.let { throw it }
         }

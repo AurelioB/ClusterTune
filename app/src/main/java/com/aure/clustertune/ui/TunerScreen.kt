@@ -157,6 +157,7 @@ private enum class MainTab {
 @Composable
 fun MainTunerScreen(
     state: TunerState,
+    autoTuneEnabled: Boolean = false,
     applyingProfileId: String? = null,
     displayFrequenciesAsPercent: Boolean,
     sleepProfileId: String?,
@@ -268,6 +269,7 @@ fun MainTunerScreen(
 
                                 MainTab.APPS -> AppProfilesSection(
                                     state = state,
+                                    autoTuneEnabled = autoTuneEnabled,
                                     apps = launchableApps,
                                     recentApps = recentActiveApps,
                                     onConfigureApp = { app ->
@@ -300,7 +302,7 @@ fun MainTunerScreen(
             }
             var appOverlayMode by remember(app.packageName, assignment?.isAutoTune) {
                 mutableStateOf(
-                    if (assignment?.isAutoTune == true) {
+                    if (autoTuneEnabled && assignment?.isAutoTune == true) {
                         CompactOverlayMode.AUTO_TUNE
                     } else {
                         CompactOverlayMode.PROFILES
@@ -310,6 +312,7 @@ fun MainTunerScreen(
             CtCompactOverlayFrame(onDismissRequest = { showAppAssignmentDialog = false }) {
                 CompactOverlayScreen(
                     state = state,
+                    autoTuneEnabled = autoTuneEnabled,
                     displayFrequenciesAsPercent = displayFrequenciesAsPercent,
                     mode = appOverlayMode,
                     onModeChange = { appOverlayMode = it },
@@ -436,6 +439,7 @@ enum class CompactOverlayMode { PROFILES, TUNER, AUTO_TUNE }
 @Composable
 fun CompactOverlayScreen(
     state: TunerState,
+    autoTuneEnabled: Boolean = false,
     applyingProfileId: String? = null,
     displayFrequenciesAsPercent: Boolean,
     mode: CompactOverlayMode,
@@ -453,6 +457,10 @@ fun CompactOverlayScreen(
     showAssignmentRemove: Boolean = false,
     onRemoveAssignment: (() -> Unit)? = null,
 ) {
+    val effectiveMode = if (!autoTuneEnabled && mode == CompactOverlayMode.AUTO_TUNE) CompactOverlayMode.PROFILES else mode
+    LaunchedEffect(mode, autoTuneEnabled) {
+        if (mode != effectiveMode) onModeChange(effectiveMode)
+    }
     val colorScheme = MaterialTheme.colorScheme
     val profiles = profilesForCompactPicker(state.displayProfiles)
     val assignment = contextPackageName?.let { packageName ->
@@ -625,8 +633,8 @@ fun CompactOverlayScreen(
                                 Triple(CompactOverlayMode.PROFILES, "list", "Profiles"),
                                 Triple(CompactOverlayMode.TUNER, "tune", "Tuner"),
                                 Triple(CompactOverlayMode.AUTO_TUNE, "speed", "Auto Tune"),
-                            ).forEach { (item, icon, label) ->
-                                val selected = mode == item
+                            ).filter { autoTuneEnabled || it.first != CompactOverlayMode.AUTO_TUNE }.forEach { (item, icon, label) ->
+                                val selected = effectiveMode == item
                                 Box(
                                     modifier = Modifier.size(30.dp).clip(RoundedCornerShape(8.dp))
                                         .background(if (selected) colorScheme.primaryContainer else Color.Transparent)
@@ -646,7 +654,7 @@ fun CompactOverlayScreen(
                 }
             }
             CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
-            if (mode == CompactOverlayMode.PROFILES) {
+            if (effectiveMode == CompactOverlayMode.PROFILES) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -680,7 +688,7 @@ fun CompactOverlayScreen(
                     }
                     if (profiles.isEmpty()) ProfilePickerEmptyOptionCard()
                 }
-            } else if (mode == CompactOverlayMode.TUNER) {
+            } else if (effectiveMode == CompactOverlayMode.TUNER) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -751,7 +759,7 @@ fun CompactOverlayScreen(
                     }
                 }
             }
-            if (mode == CompactOverlayMode.TUNER) {
+            if (effectiveMode == CompactOverlayMode.TUNER) {
                 CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
                 Row(
                     modifier = Modifier
@@ -775,7 +783,7 @@ fun CompactOverlayScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                     ) { Text("Apply") }
                 }
-            } else if (mode == CompactOverlayMode.AUTO_TUNE && canAssign) {
+            } else if (effectiveMode == CompactOverlayMode.AUTO_TUNE && canAssign) {
                 CtDivider(Modifier.fillMaxWidth(), colorScheme.outlineVariant.copy(alpha = 0.48f))
                 Row(
                     modifier = Modifier
@@ -1427,8 +1435,7 @@ private fun String.humanizeEnumName(): String =
 private fun AdaptiveTuneReason.presentationMessage(): String = when (this) {
     AdaptiveTuneReason.WARMUP -> "Collecting warmup samples"
     AdaptiveTuneReason.HEALTHY_QUALIFYING -> "Confirming stable performance"
-    AdaptiveTuneReason.FRAME_DATA_GRACE -> "Waiting for frame data"
-    AdaptiveTuneReason.FRAME_DATA_STALE -> "Frame data is stale"
+    AdaptiveTuneReason.FRAME_DATA_STALE -> "Waiting for frame data"
     AdaptiveTuneReason.NON_MONOTONIC_SAMPLE -> "Waiting for the next telemetry sample"
     AdaptiveTuneReason.HEALTHY_AT_FLOOR -> "Target met at the minimum ceilings"
     AdaptiveTuneReason.HEALTHY_NO_TRIM_CANDIDATE -> "Target met; no safe trim candidate"
@@ -1436,12 +1443,10 @@ private fun AdaptiveTuneReason.presentationMessage(): String = when (this) {
     AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY -> "Raising a CPU ceiling"
     AdaptiveTuneReason.GPU_BOTTLENECK_RECOVERY -> "Raising the GPU ceiling"
     AdaptiveTuneReason.RECOVERY_AT_BASE -> "Recovery reached the assigned ceilings"
-    AdaptiveTuneReason.RECOVERY_FROZEN -> "Recovery candidates are temporarily deprioritized"
     AdaptiveTuneReason.EFFICIENCY_TRIM -> "Testing a lower frequency ceiling"
     AdaptiveTuneReason.TRIAL_WATCH -> "Watching the latest frequency change"
     AdaptiveTuneReason.TRIAL_ACCEPTED -> "The latest frequency change is stable"
     AdaptiveTuneReason.TRIAL_REGRESSION -> "Reverted a change that reduced performance"
-    AdaptiveTuneReason.TRIAL_NO_GAIN -> "No isolated gain; keeping the raised ceiling"
     AdaptiveTuneReason.REQUESTED_STOP -> "Auto Tune stopped"
 }
 
@@ -1535,6 +1540,7 @@ internal fun AutoTuneRuntimeStatusCard(
 @Composable
 private fun AppProfilesSection(
     state: TunerState,
+    autoTuneEnabled: Boolean,
     apps: List<InstalledAppInfo>,
     recentApps: List<InstalledAppInfo>,
     onConfigureApp: (InstalledAppInfo) -> Unit,
@@ -1572,8 +1578,8 @@ private fun AppProfilesSection(
         state.appProfileAssignments.associateBy { it.packageName }
     }
     val profilesById = remember(state.displayProfiles) { state.displayProfiles.associateBy { it.id } }
-    val autoTunePresentation = remember(state.autoTuneRuntime) {
-        autoTuneRuntimePresentation(state.autoTuneRuntime)
+    val autoTunePresentation = remember(state.autoTuneRuntime, autoTuneEnabled) {
+        if (autoTuneEnabled) autoTuneRuntimePresentation(state.autoTuneRuntime) else null
     }
     val appGroups = remember(sortedApps) {
         sortedApps.groupBy { appListLetter(it.label) }

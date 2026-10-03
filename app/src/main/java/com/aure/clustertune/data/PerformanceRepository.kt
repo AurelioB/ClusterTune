@@ -322,6 +322,7 @@ class PerformanceRepository(
         try {
             return processApplyMutex.withLock {
                 if (!AdaptiveTuneRuntime.isCurrent(generation)) throw AdaptiveTuneSupersededException()
+                requireAutoTuneEnabled()
                 require(packageName.isNotBlank()) { "Auto Tune package is required" }
 
                 val state = observeState().first()
@@ -372,6 +373,7 @@ class PerformanceRepository(
                     hostCapabilities.unsupportedReason ?: "Frame telemetry is unavailable for this device"
                 }
                 val baseline = withContext(Dispatchers.IO) { hostClient.readSnapshot().getOrThrow() }
+                requireAutoTuneEnabled()
                 hostStartAttempted = true
                 val started = withContext(Dispatchers.IO) {
                     hostClient.startAutoSession(
@@ -480,7 +482,12 @@ class PerformanceRepository(
         }
     }
 
+    private suspend fun requireAutoTuneEnabled() {
+        check(settingsStorage.settings.first().autoTuneEnabled) { "Auto Tune is disabled in Settings" }
+    }
+
     override suspend fun heartbeat(session: AdaptiveTuneBackendSession) {
+        requireAutoTuneEnabled()
         requireCurrentAutoTuneSession(session)
         val snapshot = withContext(Dispatchers.IO) {
             hostClient.heartbeatAutoSession(session.hostHandle()).getOrThrow()
@@ -501,6 +508,18 @@ class PerformanceRepository(
         return telemetry.sequence to AdaptiveTuneObservation(
             sample = telemetry.toAdaptiveTuneSample(context.policies),
             frameBackend = telemetry.frameBackend,
+            cpuClockKHz = context.policies.mapIndexed { index, policy ->
+                policy.id to telemetry.cpuClockKHz.getOrNull(index)
+            }.toMap(),
+            gpuClockHz = telemetry.gpuClockHz,
+            thermalMilliCelsius = telemetry.thermal.associate { reading ->
+                reading.type to reading.temperatureMilliCelsius
+            },
+            frameConfidence = telemetry.frameConfidencePermille.coerceIn(0, 1_000) / 1_000.0,
+            slowFrameRatio = telemetry.slowFrameRatioPermille
+                ?.coerceIn(0, 1_000)
+                ?.div(1_000.0),
+            frameStale = telemetry.frameStale,
         )
     }
 
@@ -509,6 +528,7 @@ class PerformanceRepository(
         ceilings: AdaptiveFrequencyCeilings,
     ) {
         processApplyMutex.withLock {
+            requireAutoTuneEnabled()
             val context = requireCurrentAutoTuneSession(session)
             validateAdaptiveCeilings(ceilings, context.envelope)
             val gpuTarget = context.envelope.gpu?.let {
@@ -1230,6 +1250,7 @@ class PerformanceRepository(
     suspend fun saveAppProfileAssignment(assignment: AppProfileAssignment) {
         if (assignment.packageName.isBlank() || !assignment.hasValidTarget) return
         if (assignment.isAutoTune) {
+            requireAutoTuneEnabled()
             profileStorage.saveAppProfileAssignment(
                 assignment.copy(
                     appLabel = assignment.appLabel.ifBlank { assignment.packageName },

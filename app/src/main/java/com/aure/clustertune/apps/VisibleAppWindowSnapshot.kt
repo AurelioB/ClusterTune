@@ -5,9 +5,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlin.math.roundToInt
 
-/** Hard, nonrenewing lifetime for a foreground-app picker target. */
-internal const val PICKER_FOREGROUND_LEASE_DURATION_MS = 120_000L
-
 /** A visible application window, grouped by physical display. */
 data class VisibleAppWindow(
     val packageName: String,
@@ -58,15 +55,6 @@ data class RecentAppIdentity(
     val packageName: String,
 )
 
-/** Picker-only handoff that never contributes a package to app-profile automation. */
-data class PickerForegroundAppHandoff(
-    val packageName: String,
-    /** A new picker may consume the handoff only during this short bridge window. */
-    val seedExpiresAtUptimeMs: Long,
-    /** Absolute deadline inherited by a picker that consumes the handoff. */
-    val leaseExpiresAtUptimeMs: Long,
-)
-
 data class VisibleAppSnapshot(
     val windowsByDisplay: Map<Int, List<VisibleAppWindow>> = emptyMap(),
     val isInteractive: Boolean = false,
@@ -76,8 +64,8 @@ data class VisibleAppSnapshot(
     val mostRecentAppIdentity: RecentAppIdentity? = null,
     /** Nominal current refresh rate for each connected display, rounded to whole FPS. */
     val refreshRateFpsByDisplay: Map<Int, Int> = emptyMap(),
-    /** Last verified app briefly available to a picker while system/overlay windows own Accessibility. */
-    val pickerHandoffByDisplay: Map<Int, PickerForegroundAppHandoff> = emptyMap(),
+    /** Latest real foreground-app package per display, used only by foreground-app pickers. */
+    val pickerPackageByDisplay: Map<Int, String> = emptyMap(),
 ) {
     val packages: Set<String> get() = windowsByDisplay.values.flatten().mapTo(linkedSetOf()) { it.packageName }
 
@@ -132,11 +120,29 @@ internal class VisibleWindowDisappearanceTracker(
         displayOn: (Int) -> Boolean,
         nowMs: Long,
         obscuringPackages: Set<String> = emptySet(),
+        transientlyCoveredDisplays: Set<Int> = emptySet(),
     ): Result {
-        val output = observed.toMutableMap()
+        val output = observed.filterKeys(displayOn).toMutableMap()
         var next: Long? = null
         published.toMap().forEach { (id, previous) ->
+            if (!displayOn(id)) {
+                deadlines.remove(id)
+                published.remove(id)
+                output.remove(id)
+                return@forEach
+            }
             val current = output[id].orEmpty()
+            val hasNewApp = current.any { candidate ->
+                candidate.packageName !in obscuringPackages &&
+                    previous.none { it.packageName == candidate.packageName }
+            }
+            if (id in transientlyCoveredDisplays && !hasNewApp) {
+                deadlines.remove(id)
+                output[id] = previous + current.filter { candidate ->
+                    previous.none { it.packageName == candidate.packageName }
+                }
+                return@forEach
+            }
             val currentIsOnlyObscuring = current.isNotEmpty() &&
                 current.all { it.packageName in obscuringPackages }
             val previousUnobscured = previous.filterNot { it.packageName in obscuringPackages }
@@ -144,12 +150,6 @@ internal class VisibleWindowDisappearanceTracker(
             val previousAppIsNowObscured = currentIsOnlyObscuring && previousUnobscured.isNotEmpty()
             if (current.isNotEmpty() && !previousAppIsNowObscured) {
                 deadlines.remove(id)
-                return@forEach
-            }
-            if (!displayOn(id)) {
-                deadlines.remove(id)
-                published.remove(id)
-                output.remove(id)
                 return@forEach
             }
             val deadline = deadlines[id] ?: (nowMs + graceMs).also { deadlines[id] = it }
@@ -183,57 +183,52 @@ internal class VisibleWindowDisappearanceTracker(
 }
 
 /**
- * Moves a verified real app into a fixed picker-only handoff when Accessibility
- * stops exposing it. Repeated empty or ignored observations cannot renew it.
+ * Keeps the latest real app event for the picker without fabricating an
+ * application window for app-profile automation. A fresh display-qualified
+ * event briefly wins over lagging enumeration; current windows then resume as
+ * a correction path if a later event is missed.
  */
-internal class PickerForegroundAppHandoffTracker(
-    private val seedDurationMs: Long,
-    private val leaseDurationMs: Long,
+internal class PickerForegroundPackageTracker(
+    private val eventProtectionMs: Long = 1_000L,
 ) {
-    private val lastVerifiedPackages = mutableMapOf<Int, String>()
-    private val handoffs = mutableMapOf<Int, PickerForegroundAppHandoff>()
+    private val packageByDisplay = mutableMapOf<Int, String>()
+    private val eventProtectedUntilByDisplay = mutableMapOf<Int, Long>()
 
-    fun update(
+    fun recordWindowStateEvent(displayId: Int, packageName: String, nowMs: Long) {
+        if (displayId < 0 || packageName.isBlank()) return
+        packageByDisplay[displayId] = packageName
+        eventProtectedUntilByDisplay[displayId] = nowMs + eventProtectionMs
+    }
+
+    fun updateFromEnumeration(
         verifiedPackageByDisplay: Map<Int, String>,
         displayOn: (Int) -> Boolean,
         nowMs: Long,
-    ): Map<Int, PickerForegroundAppHandoff> {
-        verifiedPackageByDisplay.forEach { (displayId, packageName) ->
-            if (packageName.isNotBlank() && displayOn(displayId)) {
-                lastVerifiedPackages[displayId] = packageName
-                handoffs.remove(displayId)
-            }
-        }
-        (lastVerifiedPackages.keys + handoffs.keys).forEach { displayId ->
-            if (!displayOn(displayId)) {
+    ): Map<Int, String> {
+        (packageByDisplay.keys + verifiedPackageByDisplay.keys).forEach { displayId ->
+            if (displayId < 0 || !displayOn(displayId)) {
                 removeDisplay(displayId)
                 return@forEach
             }
-            if (displayId in verifiedPackageByDisplay) return@forEach
-            val existing = handoffs[displayId]
-            if (existing != null && nowMs < existing.leaseExpiresAtUptimeMs) return@forEach
-            handoffs.remove(displayId)
-            lastVerifiedPackages.remove(displayId)?.let { packageName ->
-                handoffs[displayId] = PickerForegroundAppHandoff(
-                    packageName = packageName,
-                    seedExpiresAtUptimeMs = nowMs + seedDurationMs,
-                    leaseExpiresAtUptimeMs = nowMs + leaseDurationMs,
-                )
+            val packageName = verifiedPackageByDisplay[displayId]?.takeIf { it.isNotBlank() }
+            if (
+                packageName != null &&
+                nowMs >= (eventProtectedUntilByDisplay[displayId] ?: Long.MIN_VALUE)
+            ) {
+                packageByDisplay[displayId] = packageName
             }
         }
-        return handoffs
-            .filterValues { nowMs < it.leaseExpiresAtUptimeMs }
-            .toSortedMap()
+        return packageByDisplay.toSortedMap()
     }
 
     fun removeDisplay(displayId: Int) {
-        lastVerifiedPackages.remove(displayId)
-        handoffs.remove(displayId)
+        packageByDisplay.remove(displayId)
+        eventProtectedUntilByDisplay.remove(displayId)
     }
 
     fun clear() {
-        lastVerifiedPackages.clear()
-        handoffs.clear()
+        packageByDisplay.clear()
+        eventProtectedUntilByDisplay.clear()
     }
 }
 

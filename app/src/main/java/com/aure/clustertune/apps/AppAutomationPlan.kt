@@ -23,6 +23,7 @@ internal fun resolveAppAutomationPlan(
     snapshot: VisibleAppSnapshot,
     assignments: List<AppProfileAssignment>,
     excludedPackages: Set<String> = emptySet(),
+    autoTuneEnabled: Boolean = false,
 ): AppAutomationPlan {
     if (!snapshot.isInteractive) {
         return AppAutomationPlan(null, null, emptyList())
@@ -43,7 +44,7 @@ internal fun resolveAppAutomationPlan(
         ?.let(snapshot.refreshRateFpsByDisplay::get)
     val autoTuneAssignment = foregroundPackageName
         ?.let(assignmentsByPackage::get)
-        ?.takeIf(AppProfileAssignment::isAutoTune)
+        ?.takeIf { autoTuneEnabled && it.isAutoTune }
     val effectiveAutoTuneTargetFps = autoTuneAssignment
         ?.autoTuneTargetFps
         ?.let { configuredTargetFps ->

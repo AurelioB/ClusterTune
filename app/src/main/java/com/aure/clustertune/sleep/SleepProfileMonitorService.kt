@@ -1,23 +1,16 @@
 package com.aure.clustertune.sleep
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
-import androidx.core.app.NotificationCompat
-import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import com.aure.clustertune.AppContainer
-import com.aure.clustertune.MainActivity
-import com.aure.clustertune.R
+import com.aure.clustertune.notifications.AppForegroundNotification
 import com.aure.clustertune.tile.QuickSettingsTileRefresher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,17 +40,7 @@ class SleepProfileMonitorService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            buildNotification(),
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-            } else {
-                0
-            },
-        )
+        AppForegroundNotification.start(this)
         registerScreenReceiver()
     }
 
@@ -130,40 +113,7 @@ class SleepProfileMonitorService : Service() {
         }
     }
 
-    private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            "Sleep profile monitoring",
-            NotificationManager.IMPORTANCE_LOW,
-        ).apply {
-            setShowBadge(false)
-            description = "Keeps ClusterTune ready to apply and restore the sleep profile."
-        }
-        getSystemService<NotificationManager>()?.createNotificationChannel(channel)
-    }
-
-    private fun buildNotification() =
-        NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_tile_underclock)
-            .setContentTitle("ClusterTune sleep profile")
-            .setContentText("Monitoring sleep and wake to restore CPU limits.")
-            .setOngoing(true)
-            .setShowWhen(false)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    this,
-                    0,
-                    Intent(this, MainActivity::class.java),
-                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-                ),
-            )
-            .build()
-
     companion object {
-        private const val CHANNEL_ID = "sleep_profile_monitoring"
-        private const val NOTIFICATION_ID = 31
-
         fun start(context: Context) {
             ContextCompat.startForegroundService(
                 context,

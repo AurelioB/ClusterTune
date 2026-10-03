@@ -1,0 +1,1306 @@
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.AccessibilityLifecycleTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.apps.AccessibilityLifecycleTest:
+INSTRUMENTATION_STATUS: test=transientWindowFailure_recoversWithoutCrashingOrAnotherEvent
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.AccessibilityLifecycleTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=transientWindowFailure_recoversWithoutCrashingOrAnotherEvent
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.AccessibilityLifecycleTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=unbindRejectsLateWakeAndEvents_thenReconnectRestartsSampling
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.AccessibilityLifecycleTest
+INSTRUMENTATION_STATUS: current=2
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=unbindRejectsLateWakeAndEvents_thenReconnectRestartsSampling
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.AccessibilityLifecycleTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=continuousWindowEvents_cannotPostponeSamplingIndefinitely
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.AccessibilityLifecycleTest
+INSTRUMENTATION_STATUS: current=3
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=continuousWindowEvents_cannotPostponeSamplingIndefinitely
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.AccessibilityLifecycleTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=failedCoordinator_isReportedWithoutCrashingOrClaimingHealthyConnection
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.AccessibilityLifecycleTest
+INSTRUMENTATION_STATUS: current=4
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=failedCoordinator_isReportedWithoutCrashingOrClaimingHealthyConnection
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.notifications.SharedForegroundNotificationTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.notifications.SharedForegroundNotificationTest:
+INSTRUMENTATION_STATUS: test=stoppingOverlay_keepsSleepNotification
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.notifications.SharedForegroundNotificationTest
+INSTRUMENTATION_STATUS: current=5
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=stoppingOverlay_keepsSleepNotification
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.notifications.SharedForegroundNotificationTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=stoppingSleep_keepsOverlayNotification
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.notifications.SharedForegroundNotificationTest
+INSTRUMENTATION_STATUS: current=6
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=stoppingSleep_keepsOverlayNotification
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.ExternalGameAutoTuneTraceTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.root.host.ExternalGameAutoTuneTraceTest:
+INSTRUMENTATION_STATUS: test=traceExternalGameUntilBoundaryOrTimeout
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.ExternalGameAutoTuneTraceTest
+INSTRUMENTATION_STATUS: current=7
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stack=org.junit.AssumptionViolatedException: externalPackage was not supplied
+	at org.junit.Assume.assumeTrue(Assume.java:68)
+	at com.aure.clustertune.root.host.ExternalGameAutoTuneTraceTest.traceExternalGameUntilBoundaryOrTimeout(ExternalGameAutoTuneTraceTest.kt:45)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)
+	at org.junit.runners.Suite.runChild(Suite.java:128)
+	at org.junit.runners.Suite.runChild(Suite.java:27)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:67)
+	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:58)
+	at androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:446)
+	at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2367)
+
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.root.host.ExternalGameAutoTuneTraceTest:
+INSTRUMENTATION_STATUS: test=traceExternalGameUntilBoundaryOrTimeout
+INSTRUMENTATION_STATUS_CODE: -4
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.MinimumProtectionInstrumentationTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.root.host.MinimumProtectionInstrumentationTest:
+INSTRUMENTATION_STATUS: test=prepareClientDeathFixture
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.MinimumProtectionInstrumentationTest
+INSTRUMENTATION_STATUS: current=8
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stack=org.junit.AssumptionViolatedException: got: <false>, expected: is <true>
+	at org.junit.Assume.assumeThat(Assume.java:106)
+	at org.junit.Assume.assumeTrue(Assume.java:50)
+	at com.aure.clustertune.root.host.MinimumProtectionInstrumentationTest.prepareClientDeathFixture(MinimumProtectionInstrumentationTest.kt:90)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)
+	at org.junit.runners.Suite.runChild(Suite.java:128)
+	at org.junit.runners.Suite.runChild(Suite.java:27)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:67)
+	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:58)
+	at androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:446)
+	at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2367)
+
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.root.host.MinimumProtectionInstrumentationTest:
+INSTRUMENTATION_STATUS: test=prepareClientDeathFixture
+INSTRUMENTATION_STATUS_CODE: -4
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.MinimumProtectionInstrumentationTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=protectedProfiles_releaseOnStockStopAndRecoverAfterHostKill
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.MinimumProtectionInstrumentationTest
+INSTRUMENTATION_STATUS: current=9
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stack=org.junit.AssumptionViolatedException: got: <false>, expected: is <true>
+	at org.junit.Assume.assumeThat(Assume.java:106)
+	at org.junit.Assume.assumeTrue(Assume.java:50)
+	at com.aure.clustertune.root.host.MinimumProtectionInstrumentationTest.protectedProfiles_releaseOnStockStopAndRecoverAfterHostKill(MinimumProtectionInstrumentationTest.kt:21)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)
+	at org.junit.runners.Suite.runChild(Suite.java:128)
+	at org.junit.runners.Suite.runChild(Suite.java:27)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:67)
+	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:58)
+	at androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:446)
+	at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2367)
+
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=protectedProfiles_releaseOnStockStopAndRecoverAfterHostKill
+INSTRUMENTATION_STATUS_CODE: -4
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest
+INSTRUMENTATION_STATUS: current=10
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest:
+INSTRUMENTATION_STATUS: test=watchdogRestoresCeilingsWhenClientStopsHeartbeating
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest
+INSTRUMENTATION_STATUS: current=10
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=watchdogRestoresCeilingsWhenClientStopsHeartbeating
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest
+INSTRUMENTATION_STATUS: current=11
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=rootShellHostBinderHandoff_roundTripsWhenAvailable
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest
+INSTRUMENTATION_STATUS: current=11
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stack=org.junit.AssumptionViolatedException: root shell unavailable: Permission denied
+
+	at org.junit.Assume.assumeTrue(Assume.java:68)
+	at com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest.rootShellHostBinderHandoff_roundTripsWhenAvailable(RootHostHandoffInstrumentationTest.kt:70)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)
+	at org.junit.runners.Suite.runChild(Suite.java:128)
+	at org.junit.runners.Suite.runChild(Suite.java:27)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:67)
+	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:58)
+	at androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:446)
+	at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2367)
+
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=rootShellHostBinderHandoff_roundTripsWhenAvailable
+INSTRUMENTATION_STATUS_CODE: -4
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest
+INSTRUMENTATION_STATUS: current=12
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=privilegedHostBinderHandoff_roundTripsThroughProductionClient
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest
+INSTRUMENTATION_STATUS: current=12
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=privilegedHostBinderHandoff_roundTripsThroughProductionClient
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest
+INSTRUMENTATION_STATUS: current=13
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=pServerAutoTune_preservesOwnedMinimumProtection
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest
+INSTRUMENTATION_STATUS: current=13
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stack=org.junit.AssumptionViolatedException: got: <false>, expected: is <true>
+	at org.junit.Assume.assumeThat(Assume.java:106)
+	at org.junit.Assume.assumeTrue(Assume.java:50)
+	at com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest.pServerAutoTune_preservesOwnedMinimumProtection(RootHostHandoffInstrumentationTest.kt:57)
+	at java.lang.reflect.Method.invoke(Native Method)
+	at org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)
+	at org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)
+	at org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)
+	at org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)
+	at org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)
+	at org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)
+	at org.junit.runners.Suite.runChild(Suite.java:128)
+	at org.junit.runners.Suite.runChild(Suite.java:27)
+	at org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)
+	at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)
+	at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)
+	at org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)
+	at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)
+	at org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)
+	at org.junit.runners.ParentRunner.run(ParentRunner.java:413)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:137)
+	at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
+	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:67)
+	at androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:58)
+	at androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:446)
+	at android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2367)
+
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=pServerAutoTune_preservesOwnedMinimumProtection
+INSTRUMENTATION_STATUS_CODE: -4
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest
+INSTRUMENTATION_STATUS: current=14
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=pServerHostBinderHandoff_roundTripsWhenAvailable
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest
+INSTRUMENTATION_STATUS: current=14
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=pServerHostBinderHandoff_roundTripsWhenAvailable
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.AutoTuneRuntimeStatusCardTest
+INSTRUMENTATION_STATUS: current=15
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.ui.AutoTuneRuntimeStatusCardTest:
+INSTRUMENTATION_STATUS: test=cardDisplaysRuntimeSummary
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.AutoTuneRuntimeStatusCardTest
+INSTRUMENTATION_STATUS: current=15
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=cardDisplaysRuntimeSummary
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=16
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.ui.CompactOverlayScreenTest:
+INSTRUMENTATION_STATUS: test=tunerMode_marksOnlyNamedApplyingChip
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=16
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=tunerMode_marksOnlyNamedApplyingChip
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=17
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=autoTunePicker_restoresArbitraryAssignedTarget
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=17
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=autoTunePicker_restoresArbitraryAssignedTarget
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=18
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=autoTunePicker_tracksRefreshModeWithoutRewritingUnsavedTarget
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=18
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=autoTunePicker_tracksRefreshModeWithoutRewritingUnsavedTarget
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=19
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=customAssignment_isRepresentedAsCustomInTunerMode
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=19
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=customAssignment_isRepresentedAsCustomInTunerMode
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=20
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=assigningAutoTune_replacesFixedAssignmentOnlyAfterExplicitAction
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=20
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=assigningAutoTune_replacesFixedAssignmentOnlyAfterExplicitAction
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=21
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=profilesMode_marksMatchingProfileAsApplying
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=21
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=profilesMode_marksMatchingProfileAsApplying
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=22
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=constrainedTuner_keepsHeaderAndActionsVisible_whileControlsScroll
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=22
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=constrainedTuner_keepsHeaderAndActionsVisible_whileControlsScroll
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=23
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=profileSelection_appliesImmediately_andCarriesEnabledAppProfileState
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=23
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=profileSelection_appliesImmediately_andCarriesEnabledAppProfileState
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=24
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=autoTunePicker_capsSelectionToCurrentDisplayRefreshRate
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=24
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=autoTunePicker_capsSelectionToCurrentDisplayRefreshRate
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=25
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=tunerPresetSelection_isStagedUntilApply_andCancelOnlyDismisses
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=25
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=tunerPresetSelection_isStagedUntilApply_andCancelOnlyDismisses
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=26
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=matchingOffscreenProfile_isHighlightedAndScrolledIntoView
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=26
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=matchingOffscreenProfile_isHighlightedAndScrolledIntoView
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=27
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=nonMatchingValues_selectCustomAndScrollCustomIntoView
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=27
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=nonMatchingValues_selectCustomAndScrollCustomIntoView
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=28
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=savedCustomAssignment_applyUsesSnapshotWithoutNamedProfile
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=28
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=savedCustomAssignment_applyUsesSnapshotWithoutNamedProfile
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=29
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=assignmentMode_hidesAppProfileToggle_butProfileSelectionStillApplies
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=29
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=assignmentMode_hidesAppProfileToggle_butProfileSelectionStillApplies
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=30
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=autoTuneMode_exposesAssignedTargetControlsToAccessibility
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=30
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=autoTuneMode_exposesAssignedTargetControlsToAccessibility
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=31
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=profilesWithoutAppContextHideAssignmentToggleAndApplyGlobally
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=31
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=profilesWithoutAppContextHideAssignmentToggleAndApplyGlobally
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=32
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=autoTunePicker_savesArbitraryTargetOnlyFromExplicitAction
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=32
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=autoTunePicker_savesArbitraryTargetOnlyFromExplicitAction
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=33
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=disablingAppProfile_inTunerModeRemovesAssignmentImmediately
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=33
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=disablingAppProfile_inTunerModeRemovesAssignmentImmediately
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=34
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=sharedHeader_isPresentInBothModes_andModeButtonSwitchesContent
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=34
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=sharedHeader_isPresentInBothModes_andModeButtonSwitchesContent
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=35
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=autoTuneWithoutAppContextShowsGuidanceAndCannotCreateAssignment
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=35
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=autoTuneWithoutAppContextShowsGuidanceAndCannotCreateAssignment
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=36
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=inspectingAutoTune_preservesFixedSelectionAndDisabledAppProfileToggle
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=36
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=inspectingAutoTune_preservesFixedSelectionAndDisabledAppProfileToggle
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=37
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=autoTunePicker_resetsDraftWhenForegroundPackageChanges
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=37
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=autoTunePicker_resetsDraftWhenForegroundPackageChanges
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=38
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=appPickerFrame_usesSharedOverlayHostGeometry
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=38
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=appPickerFrame_usesSharedOverlayHostGeometry
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=39
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=tunerMode_stripsUnderclockSuffix_butProfilesModeKeepsName
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.CompactOverlayScreenTest
+INSTRUMENTATION_STATUS: current=39
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=tunerMode_stripsUnderclockSuffix_butProfilesModeKeepsName
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PerformanceHudOverlayComposeTest
+INSTRUMENTATION_STATUS: current=40
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.ui.PerformanceHudOverlayComposeTest:
+INSTRUMENTATION_STATUS: test=unsupportedGraphHistoryIsOmitted
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PerformanceHudOverlayComposeTest
+INSTRUMENTATION_STATUS: current=40
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=unsupportedGraphHistoryIsOmitted
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PerformanceHudOverlayComposeTest
+INSTRUMENTATION_STATUS: current=41
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=emptyTelemetryShowsWaiting_whileKeepingContext
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PerformanceHudOverlayComposeTest
+INSTRUMENTATION_STATUS: current=41
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=emptyTelemetryShowsWaiting_whileKeepingContext
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PerformanceHudOverlayComposeTest
+INSTRUMENTATION_STATUS: current=42
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=fixedProfileRendersAvailableRows_withoutInteractiveControl
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PerformanceHudOverlayComposeTest
+INSTRUMENTATION_STATUS: current=42
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=fixedProfileRendersAvailableRows_withoutInteractiveControl
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PerformanceHudOverlayComposeTest
+INSTRUMENTATION_STATUS: current=43
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=autoTuneSliderAccessibilityProgressCommitsRoundedFps
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PerformanceHudOverlayComposeTest
+INSTRUMENTATION_STATUS: current=43
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=autoTuneSliderAccessibilityProgressCommitsRoundedFps
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PerformanceHudOverlayComposeTest
+INSTRUMENTATION_STATUS: current=44
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=autoTuneSliderCommitsOnlyAfterGestureFinishes
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PerformanceHudOverlayComposeTest
+INSTRUMENTATION_STATUS: current=44
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=autoTuneSliderCommitsOnlyAfterGestureFinishes
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PermissionCheckDialogTest
+INSTRUMENTATION_STATUS: current=45
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.ui.PermissionCheckDialogTest:
+INSTRUMENTATION_STATUS: test=disconnectedService_explainsRecoveryWithoutClaimingPermissionWasRevoked
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PermissionCheckDialogTest
+INSTRUMENTATION_STATUS: current=45
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=disconnectedService_explainsRecoveryWithoutClaimingPermissionWasRevoked
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PermissionCheckDialogTest
+INSTRUMENTATION_STATUS: current=46
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=fixButtons_returnTheirCorrespondingAccess_inStableOrder
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PermissionCheckDialogTest
+INSTRUMENTATION_STATUS: current=46
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=fixButtons_returnTheirCorrespondingAccess_inStableOrder
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PermissionCheckDialogTest
+INSTRUMENTATION_STATUS: current=47
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=notNow_dismissesDialog
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PermissionCheckDialogTest
+INSTRUMENTATION_STATUS: current=47
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=notNow_dismissesDialog
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PermissionCheckDialogTest
+INSTRUMENTATION_STATUS: current=48
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=dialog_rendersOnlySuppliedAccess_withPurposeAndExactInstructions
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.PermissionCheckDialogTest
+INSTRUMENTATION_STATUS: current=48
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=dialog_rendersOnlySuppliedAccess_withPurposeAndExactInstructions
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.SupportScreenTest
+INSTRUMENTATION_STATUS: current=49
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.ui.SupportScreenTest:
+INSTRUMENTATION_STATUS: test=headerTitle_andDone_shareVerticalCenter
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.SupportScreenTest
+INSTRUMENTATION_STATUS: current=49
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=headerTitle_andDone_shareVerticalCenter
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.SupportScreenTest
+INSTRUMENTATION_STATUS: current=50
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=supportContent_andDoneAction_areDisplayed
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.SupportScreenTest
+INSTRUMENTATION_STATUS: current=50
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=supportContent_andDoneAction_areDisplayed
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.DesignSystemComponentsTest
+INSTRUMENTATION_STATUS: current=51
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.ui.designsystem.DesignSystemComponentsTest:
+INSTRUMENTATION_STATUS: test=switchPreference_exposesOneToggle_andRowClickTogglesIt
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.DesignSystemComponentsTest
+INSTRUMENTATION_STATUS: current=51
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=switchPreference_exposesOneToggle_andRowClickTogglesIt
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.DesignSystemComponentsTest
+INSTRUMENTATION_STATUS: current=52
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=switch_exposesToggleState_andInvokesCallback
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.DesignSystemComponentsTest
+INSTRUMENTATION_STATUS: current=52
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=switch_exposesToggleState_andInvokesCallback
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.DesignSystemComponentsTest
+INSTRUMENTATION_STATUS: current=53
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=slider_exposesProgressSemantics_andRetainsInteractionHeight
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.DesignSystemComponentsTest
+INSTRUMENTATION_STATUS: current=53
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=slider_exposesProgressSemantics_andRetainsInteractionHeight
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.DesignSystemComponentsTest
+INSTRUMENTATION_STATUS: current=54
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=numericField_filtersNonDigits_andRetainsCompactTouchHeight
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.DesignSystemComponentsTest
+INSTRUMENTATION_STATUS: current=54
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=numericField_filtersNonDigits_andRetainsCompactTouchHeight
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=55
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.ui.designsystem.LeafComponentsTest:
+INSTRUMENTATION_STATUS: test=selectableRow_exposesSelectedState
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=55
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=selectableRow_exposesSelectedState
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=56
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=icon_exposesCallerOwnedDescription
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=56
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=icon_exposesCallerOwnedDescription
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=57
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=rowSurface_selectedStateIsExposed
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=57
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=rowSurface_selectedStateIsExposed
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=58
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=statePanel_rendersCallerTitle
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=58
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=statePanel_rendersCallerTitle
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=59
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=appIdentity_rendersCallerOwnedLabelAndSubtitle
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=59
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=appIdentity_rendersCallerOwnedLabelAndSubtitle
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=60
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=statePanel_rendersMessageAndActionForErrorState
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=60
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=statePanel_rendersMessageAndActionForErrorState
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=61
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=selectableRow_hasRadioSemanticsAndTarget
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=61
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=selectableRow_hasRadioSemanticsAndTarget
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=62
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=selectionIndicator_exposesOneRadioActionAndTarget
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=62
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=selectionIndicator_exposesOneRadioActionAndTarget
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=63
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=selectionIndicator_exposesApplyingDescription
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=63
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=selectionIndicator_exposesApplyingDescription
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=64
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=divider_acceptsCallerModifier
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=64
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=divider_acceptsCallerModifier
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=65
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=sectionAndDashedCards_renderSlottedContent
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=65
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=sectionAndDashedCards_renderSlottedContent
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=66
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=preferenceRow_disabledStateIsExposed
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.LeafComponentsTest
+INSTRUMENTATION_STATUS: current=66
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=preferenceRow_disabledStateIsExposed
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=67
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest:
+INSTRUMENTATION_STATUS: test=overlayFrame_dismissesOutsideButIsolatesPanelTaps
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=67
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=overlayFrame_dismissesOutsideButIsolatesPanelTaps
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=68
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=overlayFrame_keepsPanelContentVisible
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=68
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=overlayFrame_keepsPanelContentVisible
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=69
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=confirmationDialog_dismissButtonInvokesCallback
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=69
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=confirmationDialog_dismissButtonInvokesCallback
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=70
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=modalScaffold_rendersHeaderBodyAndFooterSlots
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=70
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=modalScaffold_rendersHeaderBodyAndFooterSlots
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=71
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=overlayFrame_resolvesFractionAgainstAvailableWidthBeforeMaximum
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=71
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=overlayFrame_resolvesFractionAgainstAvailableWidthBeforeMaximum
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=72
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=overlayFrame_canIgnoreOutsideTaps
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=72
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=overlayFrame_canIgnoreOutsideTaps
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=73
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=overlayFrame_capsFractionalHeightAtMaximum
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=73
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=overlayFrame_capsFractionalHeightAtMaximum
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=74
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=confirmationDialog_confirmInvokesCallback
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=74
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=confirmationDialog_confirmInvokesCallback
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=75
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=overlayFrame_wrapsContentWhenNoHeightFractionIsGiven
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest
+INSTRUMENTATION_STATUS: current=75
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=overlayFrame_wrapsContentWhenNoHeightFractionIsGiven
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ThemeIntegrationTest
+INSTRUMENTATION_STATUS: current=76
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.ui.designsystem.ThemeIntegrationTest:
+INSTRUMENTATION_STATUS: test=themeProvidesMaterialAndSemanticColorsToContent
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.ThemeIntegrationTest
+INSTRUMENTATION_STATUS: current=76
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=themeProvidesMaterialAndSemanticColorsToContent
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.component.CompactSettingsFieldTest
+INSTRUMENTATION_STATUS: current=77
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.ui.designsystem.component.CompactSettingsFieldTest:
+INSTRUMENTATION_STATUS: test=numericField_keepsValueVisibleAtCompactHeight_andFiltersDigits
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.component.CompactSettingsFieldTest
+INSTRUMENTATION_STATUS: current=77
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=numericField_keepsValueVisibleAtCompactHeight_andFiltersDigits
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.component.CompactSettingsFieldTest
+INSTRUMENTATION_STATUS: current=78
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=
+INSTRUMENTATION_STATUS: test=compactDropdownField_keepsWhileAsleepTextVisibleAtCompactHeight
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.ui.designsystem.component.CompactSettingsFieldTest
+INSTRUMENTATION_STATUS: current=78
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=78
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=compactDropdownField_keepsWhileAsleepTextVisibleAtCompactHeight
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 117.066
+
+OK (78 tests)
+
+
+INSTRUMENTATION_CODE: -1

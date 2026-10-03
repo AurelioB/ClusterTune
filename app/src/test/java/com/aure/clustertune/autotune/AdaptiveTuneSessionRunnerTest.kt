@@ -22,25 +22,47 @@ class AdaptiveTuneSessionRunnerTest {
     fun tearDown() = AdaptiveTuneRuntime.resetForTest()
 
     @Test
-    fun `stale telemetry stops and restores the backend`() = runTest {
+    fun `missing and stale frames wait then resume without restarting the backend`() = runTest {
         val backend = FakeBackend(
             samples = buildList {
                 repeat(5) { index -> add(telemetry(index + 1L, stale = false)) }
-                add(telemetry(10L, stale = true))
+                repeat(10) { index ->
+                    val (sequence, observation) = telemetry(index + 6L, stale = true)
+                    add(sequence to if (index % 2 == 0) {
+                        observation.copy(sample = observation.sample.copy(frames = null))
+                    } else {
+                        observation
+                    })
+                }
+                repeat(10) { index -> add(telemetry(index + 16L, stale = false)) }
             },
         )
         val runner = AdaptiveTuneSessionRunner(backend, sampleIntervalMillis = 100L)
         var startedCallbacks = 0
+        val job = launch { runner.run("game.app", "Game", 60) { startedCallbacks += 1 } }
 
-        val result = runner.run("game.app", "Game", 60) { startedCallbacks += 1 }
+        advanceTimeBy(1_400L)
+        runCurrent()
 
-        assertEquals(AdaptiveTuneTermination.STOPPED, result.termination)
-        assertTrue(result.sessionStarted)
+        assertTrue(AdaptiveTuneRuntime.state.value.active)
+        assertEquals(AdaptiveTuneReason.FRAME_DATA_STALE, AdaptiveTuneRuntime.state.value.reason)
+        assertEquals(0, backend.stopCalls)
+        val applicationsBeforeFreshFrames = backend.applyCalls
+
+        advanceTimeBy(1_000L)
+        runCurrent()
+
+        assertTrue(AdaptiveTuneRuntime.state.value.active)
+        assertTrue(backend.applyCalls > applicationsBeforeFreshFrames)
+        assertEquals(1, backend.startCalls)
         assertEquals(1, startedCallbacks)
+        assertEquals(0, backend.stopCalls)
+
+        job.cancelAndJoin()
+
         assertEquals(1, backend.stopCalls)
         assertTrue(backend.stopCompleted)
         assertFalse(AdaptiveTuneRuntime.state.value.active)
-        assertEquals(AdaptiveTuneReason.FRAME_DATA_STALE, AdaptiveTuneRuntime.state.value.reason)
     }
 
     @Test
@@ -109,7 +131,7 @@ class AdaptiveTuneSessionRunnerTest {
         val backend = FakeBackend(
             samples = buildList {
                 repeat(5) { index -> add(telemetry(index + 1L, stale = false)) }
-                add(telemetry(10L, stale = true))
+                add(telemetry(sequence = 6L, second = 1L, stale = false))
             },
             onStop = { AdaptiveTuneRuntime.invalidate("Sleep profile selected") },
         )
@@ -244,7 +266,7 @@ class AdaptiveTuneSessionRunnerTest {
         val backend = FakeBackend(
             samples = listOf(
                 telemetry(1L, stale = false),
-                telemetry(5L, stale = true),
+                telemetry(sequence = 2L, second = 0L, stale = false),
             ),
             stopFailure = IllegalStateException("restore broke"),
         )
@@ -287,7 +309,7 @@ class AdaptiveTuneSessionRunnerTest {
         val backend = FakeBackend(
             samples = listOf(
                 telemetry(1L, stale = false),
-                telemetry(5L, stale = true),
+                telemetry(sequence = 2L, second = 0L, stale = false),
             ),
             hangOnStop = true,
         )

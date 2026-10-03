@@ -382,10 +382,8 @@ class HostAutoSessionController(
         val checkpoint: HostHardwareCheckpoint,
         val cpuLowerEnvelope: List<Long>,
         val cpuCeilingEnvelope: List<Long>,
-        val capturedCpuFloors: List<Long?>,
         val gpuLowerEnvelope: Long?,
         val gpuCeilingEnvelope: Long?,
-        val capturedGpuFloor: Long?,
         var deadlineNanos: Long,
         var sequence: Long = 0L,
         var latestTelemetry: HostAutoTelemetry? = null,
@@ -458,22 +456,20 @@ class HostAutoSessionController(
         if (!support.autoSessionSupported) {
             return unsupported(support.unsupportedReason ?: "automatic telemetry is unavailable")
         }
-        val preBaselineCheckpoint = HostCheckpointEngine(fs, hostCapabilities).captureCeilings().getOrElse { failure ->
-            return unsupported("unable to checkpoint tuning state: ${failure.message}")
-        }
-        val preBaselineState = HostHardwareStateReader.read(fs, hostCapabilities)
-        if (!checkpointMatchesState(preBaselineCheckpoint, preBaselineState)) {
-            return unsupported("frequency ceilings changed while Auto Tune was starting")
-        }
         val telemetryStart = telemetrySource.begin(request.packageName, request.targetFps)
         if (telemetryStart.isFailure) {
             runCatching(telemetrySource::end)
             return unsupported(telemetryStart.exceptionOrNull()?.message ?: "frame telemetry is unavailable")
         }
-        val stateAfterTelemetryStart = HostHardwareStateReader.read(fs, hostCapabilities)
-        if (!checkpointMatchesState(preBaselineCheckpoint, stateAfterTelemetryStart)) {
+        // Telemetry startup can span OEM clock changes. Take ownership only after it is ready.
+        val preBaselineCheckpoint = HostCheckpointEngine(fs, hostCapabilities).captureCeilings().getOrElse { failure ->
             runCatching(telemetrySource::end)
-            return unsupported("frequency ceilings changed while Auto Tune telemetry was starting")
+            return unsupported("unable to checkpoint tuning state: ${failure.message}")
+        }
+        val preBaselineState = HostHardwareStateReader.read(fs, hostCapabilities)
+        if (!checkpointMatchesState(preBaselineCheckpoint, preBaselineState)) {
+            runCatching(telemetrySource::end)
+            return unsupported("frequency ceilings changed while Auto Tune was starting")
         }
         val now = clock.nanoTime()
         val sessionId = UUID.randomUUID().toString()
@@ -482,7 +478,7 @@ class HostAutoSessionController(
                 request = request,
                 id = sessionId,
                 checkpoint = preBaselineCheckpoint,
-                state = stateAfterTelemetryStart,
+                state = preBaselineState,
                 now = now,
             )
         }.getOrElse { failure ->
@@ -494,7 +490,7 @@ class HostAutoSessionController(
 
         val baseline = request.baseline
         if (baseline == null) {
-            return activeSnapshot(provisional, state = stateAfterTelemetryStart)
+            return activeSnapshot(provisional, state = preBaselineState)
         }
 
         val resolved = resolveHostMaximumTargets(hostCapabilities, baseline)
@@ -508,12 +504,6 @@ class HostAutoSessionController(
             check(checkpointMatchesState(preBaselineCheckpoint, stateBeforeBaselineApply)) {
                 "frequency ceilings changed before the Auto Tune baseline was applied"
             }
-            requireFloorsUnchanged(
-                expected = stateAfterTelemetryStart,
-                actual = stateBeforeBaselineApply,
-                context = "before the Auto Tune baseline was applied",
-            )
-            requireSafeBaselineMaximums(stateBeforeBaselineApply, baseline, resolved)
             val mutationReceipt = applyEngine.applyMaxOnlyTrackedOrThrow(hostCapabilities, baseline)
             baselineModeMutationPaths = mutationReceipt.modePaths
             baselineValueMutationPaths = mutationReceipt.valuePaths
@@ -522,11 +512,6 @@ class HostAutoSessionController(
 
             val baselineState = HostHardwareStateReader.read(fs, hostCapabilities)
             confirmedBaselineState = baselineState
-            requireFloorsUnchanged(
-                expected = stateBeforeBaselineApply,
-                actual = baselineState,
-                context = "while the Auto Tune baseline was applied",
-            )
             requireBaselineStateMatches(
                 before = preBaselineState,
                 after = baselineState,
@@ -544,11 +529,6 @@ class HostAutoSessionController(
             check(checkpointMatchesState(baselineCheckpoint, verifiedState)) {
                 "frequency ceilings changed while the Auto Tune baseline was checkpointed"
             }
-            requireFloorsUnchanged(
-                expected = stateBeforeBaselineApply,
-                actual = verifiedState,
-                context = "while the Auto Tune baseline was checkpointed",
-            )
             requireBaselineStateMatches(
                 before = preBaselineState,
                 after = verifiedState,
@@ -606,14 +586,6 @@ class HostAutoSessionController(
         expireLocked()
         val session = resolveActive(sessionId, expectedHostEpoch) ?: return staleOrTerminal(sessionId, expectedHostEpoch)
         val current = HostHardwareStateReader.read(fs, hostCapabilities)
-        externalFloorDrift(session, current)?.let { detail ->
-            return stopLocked(
-                session,
-                HostAutoSessionStatus.STOPPED,
-                "automatic session stopped: live minimum changed ($detail)",
-                observedState = current,
-            )
-        }
         externalCeilingDrift(session, current, tolerateUpwardStockReset = true)?.let { detail ->
             return stopLocked(
                 session,
@@ -676,14 +648,6 @@ class HostAutoSessionController(
         val session = resolveActive(sessionId, expectedHostEpoch) ?: return staleOrTerminal(sessionId, expectedHostEpoch)
         validateRequestIdentity(request)
         val current = HostHardwareStateReader.read(fs, hostCapabilities)
-        externalFloorDrift(session, current)?.let { detail ->
-            return stopLocked(
-                session,
-                HostAutoSessionStatus.STOPPED,
-                "automatic session stopped: live minimum changed ($detail)",
-                observedState = current,
-            )
-        }
         externalCeilingDrift(session, current, tolerateUpwardStockReset = true)?.let { detail ->
             return stopLocked(
                 session,
@@ -859,14 +823,6 @@ class HostAutoSessionController(
         } else {
             current
         }
-        externalFloorDrift(session, appliedState)?.let { detail ->
-            return stopLocked(
-                session,
-                HostAutoSessionStatus.STOPPED,
-                "automatic session stopped: live minimum changed after apply ($detail)",
-                observedState = appliedState,
-            )
-        }
         externalCeilingDrift(session, appliedState)?.let { detail ->
             return stopLocked(
                 session,
@@ -883,14 +839,6 @@ class HostAutoSessionController(
         expireLocked()
         val session = resolveActive(sessionId, expectedHostEpoch) ?: return staleOrTerminal(sessionId, expectedHostEpoch)
         val current = HostHardwareStateReader.read(fs, hostCapabilities)
-        externalFloorDrift(session, current)?.let { detail ->
-            return stopLocked(
-                session,
-                HostAutoSessionStatus.STOPPED,
-                "automatic session stopped: live minimum changed ($detail)",
-                observedState = current,
-            )
-        }
         externalCeilingDrift(session, current, tolerateUpwardStockReset = true)?.let { detail ->
             return stopLocked(
                 session,
@@ -1032,7 +980,6 @@ class HostAutoSessionController(
                 )
             },
             cpuCeilingEnvelope = cpuCeilings,
-            capturedCpuFloors = cpuFloors,
             gpuLowerEnvelope = hostCapabilities.gpu?.let { gpu ->
                 lowestGpuCeiling(
                     gpu = gpu,
@@ -1041,7 +988,6 @@ class HostAutoSessionController(
                 )
             },
             gpuCeilingEnvelope = gpuCeiling,
-            capturedGpuFloor = gpuFloor,
             deadlineNanos = deadline(now, timeoutNanos),
             lastOwnedCpuMax = state.cpuMax,
             lastOwnedGpuMax = state.gpuMax,
@@ -1078,56 +1024,6 @@ class HostAutoSessionController(
         // Resolve Stock aliases during preflight so malformed hints fail before telemetry or
         // hardware ownership is acquired.
         resolveHostMaximumTargets(hostCapabilities, request)
-    }
-
-    /** A max-only baseline may leave an already accepted ceiling alone regardless of its floor. */
-    private fun requireSafeBaselineMaximums(
-        state: HostState,
-        request: ApplyRequest,
-        resolved: HostResolvedMaximumTargets,
-    ) {
-        require(state.cpuMax.size == hostCapabilities.cpus.size) {
-            "Auto Tune baseline CPU state is incomplete"
-        }
-        resolved.cpuAcceptedCeilings.forEachIndexed { index, accepted ->
-            if (state.cpuMax[index] in accepted) return@forEachIndexed
-            val floor = state.cpuMin.getOrNull(index).positiveFloorOrNull()
-            require(floor != null) {
-                "Auto Tune baseline cannot change ${hostCapabilities.cpus[index].id} without a live minimum"
-            }
-            require(accepted.isNotEmpty() && accepted.all { it > floor }) {
-                "Auto Tune baseline target is not above the live minimum for ${hostCapabilities.cpus[index].id}"
-            }
-        }
-        if (request.gpuMax != null) {
-            val gpu = hostCapabilities.gpu
-                ?: throw IllegalArgumentException("GPU target requested without a GPU domain")
-            val accepted = resolved.gpuAcceptedCeilings
-            if (state.gpuMax !in accepted) {
-                val floor = state.gpuMin.positiveFloorOrNull()
-                require(floor != null) {
-                    "Auto Tune baseline cannot change ${gpu.id} without a live minimum"
-                }
-                require(accepted.isNotEmpty() && accepted.all { it > floor }) {
-                    "Auto Tune baseline target is not above the live minimum for ${gpu.id}"
-                }
-            }
-        }
-    }
-
-    private fun requireFloorsUnchanged(
-        expected: HostState,
-        actual: HostState,
-        context: String,
-    ) {
-        val detail = floorDrift(
-            capturedCpuFloors = List(hostCapabilities.cpus.size) { index ->
-                expected.cpuMin.getOrNull(index).positiveFloorOrNull()
-            },
-            capturedGpuFloor = expected.gpuMin.positiveFloorOrNull(),
-            state = actual,
-        )
-        require(detail == null) { "frequency minimum changed $context ($detail)" }
     }
 
     private fun requireBaselineStateMatches(
@@ -1297,38 +1193,6 @@ class HostAutoSessionController(
     private fun requestMatchesState(request: ApplyRequest, state: HostState): Boolean {
         if (request.resetToStock || request.cpuMax != state.cpuMax) return false
         return request.gpuMax == null || request.gpuMax == state.gpuMax
-    }
-
-    private fun externalFloorDrift(session: ActiveSession, state: HostState): String? =
-        floorDrift(session.capturedCpuFloors, session.capturedGpuFloor, state)
-
-    private fun floorDrift(
-        capturedCpuFloors: List<Long?>,
-        capturedGpuFloor: Long?,
-        state: HostState,
-    ): String? {
-        if (state.cpuMin.size != capturedCpuFloors.size) return "CPU minimum topology"
-        capturedCpuFloors.forEachIndexed { index, captured ->
-            val current = state.cpuMin[index].positiveFloorOrNull()
-            if (current != captured) {
-                return if (current == null) {
-                    "${hostCapabilities.cpus[index].id} minimum unavailable"
-                } else {
-                    "${hostCapabilities.cpus[index].id} minimum changed"
-                }
-            }
-        }
-        if (hostCapabilities.gpu != null) {
-            val current = state.gpuMin.positiveFloorOrNull()
-            if (current != capturedGpuFloor) {
-                return if (current == null) {
-                    "${hostCapabilities.gpu.id} minimum unavailable"
-                } else {
-                    "${hostCapabilities.gpu.id} minimum changed"
-                }
-            }
-        }
-        return null
     }
 
     /**

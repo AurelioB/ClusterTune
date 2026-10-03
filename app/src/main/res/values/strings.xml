@@ -29,6 +29,9 @@
     <string name="settings_notifications">Notifications</string>
     <string name="settings_notifications_description">Shows background status for overlays and automation while they run.</string>
     <string name="permission_dialog_title">Permissions needed</string>
+    <string name="permission_dialog_service_title">App automation needs attention</string>
+    <string name="permission_dialog_service_explanation">Accessibility access is enabled, but app detection is unavailable. App profiles and Auto Tune cannot follow apps until the service recovers.</string>
+    <string name="permission_dialog_accessibility_restart_instructions">Open Accessibility settings, select ClusterTune, then turn its app profile service off and on. If this happens after closing the app, check your device’s background activity or battery restrictions for ClusterTune.</string>
     <string name="permission_dialog_explanation">Some features are unavailable until you grant the following access.</string>
     <string name="permission_dialog_review_later">You can review these permissions later in Settings.</string>
     <string name="permission_dialog_not_now">Not now</string>
@@ -68,6 +71,7 @@
     <string name="settings_cancel">Cancel</string>
     <string name="settings_select_profile">Select profile</string>
     <string name="settings_quick_tuner">Quick tuner</string>
+    <string name="settings_performance_hud">Performance HUD</string>
     <string name="settings_profile_picker">Profile picker</string>
     <string name="settings_cycle_profiles">Cycle profiles</string>
     <string name="settings_open_app">Open app</string>
@@ -110,4 +114,7 @@
     <string name="settings_execution_pserver_description">Compatible with AYN and Retroid devices, except Odin 2 Mini.</string>
     <string name="settings_execution_root">Root</string>
     <string name="settings_execution_root_description">Compatible with all rooting methods that provide su.</string>
+    <string name="settings_experimental">Experimental</string>
+    <string name="settings_enable_autotune">Enable autotune settings (experimental)</string>
+    <string name="settings_enable_autotune_description">Show Auto Tune controls and the Performance HUD. Turning this off stops tuning and closes the HUD; saved assignments are kept.</string>
 </resources>

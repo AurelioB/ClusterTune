@@ -7,6 +7,35 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class AppAutomationPlanTest {
+    private fun enabledPlan(
+        snapshot: VisibleAppSnapshot,
+        assignments: List<AppProfileAssignment>,
+        excludedPackages: Set<String> = emptySet(),
+    ) = resolveAppAutomationPlan(snapshot, assignments, excludedPackages, autoTuneEnabled = true)
+
+    @Test fun `experimental tuning is off by default even with a saved assignment`() {
+        val automatic = automatic("game", 60)
+        val snapshot = VisibleAppSnapshot(
+            windowsByDisplay = mapOf(0 to listOf(VisibleAppWindow("game", 0, isFocused = true))),
+            isInteractive = true,
+        )
+        assertNull(resolveAppAutomationPlan(snapshot, listOf(automatic)).autoTuneAssignment)
+        assertEquals(automatic, enabledPlan(snapshot, listOf(automatic)).autoTuneAssignment)
+        assertNull(resolveAppAutomationPlan(snapshot, listOf(automatic), autoTuneEnabled = false).autoTuneAssignment)
+        assertEquals(60, automatic.autoTuneTargetFps) // Disabling never rewrites the saved target.
+    }
+
+    @Test fun `disabling tuning keeps static app assignments available`() {
+        val fixed = AppProfileAssignment("fixed", "Fixed", profileId = "small")
+        val snapshot = VisibleAppSnapshot(
+            windowsByDisplay = mapOf(0 to listOf(VisibleAppWindow("game", 0, isFocused = true), VisibleAppWindow("fixed", 0))),
+            isInteractive = true,
+        )
+        val plan = resolveAppAutomationPlan(snapshot, listOf(automatic("game", 60), fixed))
+        assertNull(plan.autoTuneAssignment)
+        assertEquals(listOf(fixed), plan.staticAssignments)
+    }
+
     @Test
     fun `automatic runtime target is capped by foreground display refresh rate`() {
         val configured = automatic("game", 120)
@@ -18,7 +47,7 @@ class AppAutomationPlanTest {
             refreshRateFpsByDisplay = mapOf(2 to 60),
         )
 
-        val plan = resolveAppAutomationPlan(snapshot, listOf(configured))
+        val plan = enabledPlan(snapshot, listOf(configured))
 
         assertEquals(configured, plan.autoTuneAssignment)
         assertEquals(120, plan.autoTuneAssignment?.autoTuneTargetFps)
@@ -29,7 +58,7 @@ class AppAutomationPlanTest {
 
     @Test
     fun `automatic runtime target keeps lower configured target`() {
-        val plan = resolveAppAutomationPlan(
+        val plan = enabledPlan(
             snapshot = VisibleAppSnapshot(
                 windowsByDisplay = mapOf(
                     0 to listOf(VisibleAppWindow("game", 0, isFocused = true)),
@@ -45,7 +74,7 @@ class AppAutomationPlanTest {
 
     @Test
     fun `automatic runtime target falls back to configured target when refresh is unavailable`() {
-        val plan = resolveAppAutomationPlan(
+        val plan = enabledPlan(
             snapshot = VisibleAppSnapshot(
                 windowsByDisplay = mapOf(
                     0 to listOf(VisibleAppWindow("game", 0, isFocused = true)),
@@ -62,7 +91,7 @@ class AppAutomationPlanTest {
     @Test
     fun `display mode identity changes even when effective target remains capped`() {
         val assignment = automatic("game", 30)
-        fun plan(refreshRateFps: Int) = resolveAppAutomationPlan(
+        fun plan(refreshRateFps: Int) = enabledPlan(
             snapshot = VisibleAppSnapshot(
                 windowsByDisplay = mapOf(
                     0 to listOf(VisibleAppWindow("game", 0, isFocused = true)),
@@ -84,7 +113,7 @@ class AppAutomationPlanTest {
     @Test
     fun `hosting display identity changes when app moves between displays`() {
         val assignment = automatic("game", 120)
-        fun plan(displayId: Int) = resolveAppAutomationPlan(
+        fun plan(displayId: Int) = enabledPlan(
             snapshot = VisibleAppSnapshot(
                 windowsByDisplay = mapOf(
                     displayId to listOf(VisibleAppWindow("game", displayId, isFocused = true)),
@@ -115,7 +144,7 @@ class AppAutomationPlanTest {
             isInteractive = true,
         )
 
-        val plan = resolveAppAutomationPlan(snapshot, listOf(automatic, static))
+        val plan = enabledPlan(snapshot, listOf(automatic, static))
 
         assertEquals("game", plan.foregroundPackageName)
         assertEquals(automatic, plan.autoTuneAssignment)
@@ -136,7 +165,7 @@ class AppAutomationPlanTest {
             isInteractive = true,
         )
 
-        val plan = resolveAppAutomationPlan(snapshot, listOf(automatic, static))
+        val plan = enabledPlan(snapshot, listOf(automatic, static))
 
         assertEquals("reader", plan.foregroundPackageName)
         assertNull(plan.autoTuneAssignment)
@@ -145,7 +174,7 @@ class AppAutomationPlanTest {
 
     @Test
     fun `screen off produces no automatic owner`() {
-        val plan = resolveAppAutomationPlan(
+        val plan = enabledPlan(
             snapshot = VisibleAppSnapshot(
                 windowsByDisplay = mapOf(0 to listOf(VisibleAppWindow("game", 0, isFocused = true))),
                 isInteractive = false,
@@ -173,7 +202,7 @@ class AppAutomationPlanTest {
             recentPackageByDisplay = mapOf(0 to "zeta.game"),
         )
 
-        val plan = resolveAppAutomationPlan(snapshot, listOf(first, recent))
+        val plan = enabledPlan(snapshot, listOf(first, recent))
 
         assertEquals("zeta.game", plan.foregroundPackageName)
         assertEquals(recent, plan.autoTuneAssignment)
@@ -194,7 +223,7 @@ class AppAutomationPlanTest {
             recentPackageByDisplay = mapOf(0 to "recent.game"),
         )
 
-        val plan = resolveAppAutomationPlan(snapshot, listOf(recent, active))
+        val plan = enabledPlan(snapshot, listOf(recent, active))
 
         assertEquals("active.game", plan.foregroundPackageName)
         assertEquals(active, plan.autoTuneAssignment)
@@ -221,7 +250,7 @@ class AppAutomationPlanTest {
             mostRecentAppIdentity = RecentAppIdentity(2, "external.game"),
         )
 
-        val plan = resolveAppAutomationPlan(snapshot, listOf(defaultDisplay, latest))
+        val plan = enabledPlan(snapshot, listOf(defaultDisplay, latest))
 
         assertEquals("external.game", plan.foregroundPackageName)
         assertEquals(latest, plan.autoTuneAssignment)
@@ -241,7 +270,7 @@ class AppAutomationPlanTest {
             isInteractive = true,
         )
 
-        val plan = resolveAppAutomationPlan(
+        val plan = enabledPlan(
             snapshot,
             listOf(automatic, excludedStatic),
             setOf("assistant"),

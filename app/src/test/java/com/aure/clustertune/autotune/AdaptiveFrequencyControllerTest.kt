@@ -77,21 +77,20 @@ class AdaptiveFrequencyControllerTest {
     }
 
     @Test
-    fun `p95 and slow ratio independently trigger recovery at target fps`() {
-        listOf(
-            frame(fps = 60.0, p95 = 40.0, slow = 0.01),
-            frame(fps = 60.0, p95 = 10.0, slow = 0.25),
-        ).forEachIndexed { index, unhealthyFrame ->
-            val controller = controller(warmup = 0)
-            settleHealthyTrim(controller, startSecond = 1, cpuLoad = mapOf(0 to 0.1))
+    fun `p95 noise holds ceilings while slow frame spikes trigger recovery`() {
+        val controller = controller(warmup = 0)
+        settleHealthyTrim(controller, startSecond = 1, cpuLoad = mapOf(0 to 0.1))
+        val ceilings = controller.currentCeilings()
 
-            val recovery = assertApply(
-                controller.step(sample(4, unhealthyFrame, cpu0 = 0.95)),
-            )
-
-            assertEquals("metric case $index", AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY, recovery.reason)
-            assertTrue("recovery must raise", recovery.change.stepDelta > 0)
+        repeat(5) { index ->
+            val hold = assertHold(controller.step(sample(4L + index, frame(60.0, p95 = 40.0))))
+            assertEquals(AdaptiveTuneReason.WITHIN_TARGET_BAND, hold.reason)
+            assertEquals(ceilings, hold.ceilings)
         }
+
+        val recovery = assertApply(controller.step(sample(9, frame(60.0, slow = 0.25), cpu0 = 0.95)))
+        assertEquals(AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY, recovery.reason)
+        assertTrue(recovery.change.stepDelta > 0)
     }
 
     @Test
@@ -261,164 +260,55 @@ class AdaptiveFrequencyControllerTest {
     }
 
     @Test
-    fun `one-domain sustained deficit keeps no-gain raises and reaches the base without waiting`() {
-        val controller = controller(warmup = 0, freezeNanos = 30 * SECOND)
-        settleHealthyTrim(controller, startSecond = 1, cpuLoad = mapOf(0 to 0.1))
-        settleHealthyTrim(controller, startSecond = 4, cpuLoad = mapOf(0 to 0.1))
-        settleHealthyTrim(controller, startSecond = 7, cpuLoad = mapOf(0 to 0.1))
-        assertEquals(100L, controller.currentCeilings().cpuKHz.getValue(0))
-
-        val firstRaise = assertApply(controller.step(sample(10, frame(57.0), cpu0 = 0.95)))
-        assertEquals(200L, firstRaise.ceilings.cpuKHz.getValue(0))
-
-        val watch = assertHold(controller.step(sample(11, frame(57.0), cpu0 = 0.95)))
-        assertEquals(AdaptiveTuneReason.TRIAL_WATCH, watch.reason)
-        val noGain = assertHold(controller.step(sample(12, frame(57.0), cpu0 = 0.95)))
-        assertEquals(AdaptiveTuneStatus.RECOVERING, noGain.status)
-        assertEquals(AdaptiveTuneReason.TRIAL_NO_GAIN, noGain.reason)
-        assertEquals(200L, noGain.ceilings.cpuKHz.getValue(0))
-
-        val secondRaise = assertApply(controller.step(sample(13, frame(57.0), cpu0 = 0.95)))
-        assertEquals(300L, secondRaise.ceilings.cpuKHz.getValue(0))
-        assertEquals(AdaptiveTuneReason.TRIAL_WATCH, assertHold(controller.step(sample(14, frame(57.0)))).reason)
-        assertEquals(AdaptiveTuneReason.TRIAL_NO_GAIN, assertHold(controller.step(sample(15, frame(57.0)))).reason)
-
-        val thirdRaise = assertApply(controller.step(sample(16, frame(57.0), cpu0 = 0.95)))
-        assertEquals(400L, thirdRaise.ceilings.cpuKHz.getValue(0))
-        assertTrue(thirdRaise.ceilings.cpuKHz.getValue(0) <= controller.baseCeilings.cpuKHz.getValue(0))
-    }
-
-    @Test
-    fun `two consecutive regressions undo and hard-freeze a recovery raise`() {
-        val controller = controller(warmup = 0, freezeNanos = 30 * SECOND)
-        settleHealthyTrim(controller, startSecond = 1, cpuLoad = mapOf(0 to 0.1))
-        settleHealthyTrim(controller, startSecond = 4, cpuLoad = mapOf(0 to 0.1))
-        settleHealthyTrim(controller, startSecond = 7, cpuLoad = mapOf(0 to 0.1))
-        assertEquals(100L, controller.currentCeilings().cpuKHz.getValue(0))
-
-        val raise = assertApply(controller.step(sample(10, frame(57.0), cpu0 = 0.95)))
-        assertEquals(200L, raise.ceilings.cpuKHz.getValue(0))
-
-        val firstRegression = assertHold(controller.step(sample(11, frame(45.0), cpu0 = 0.95)))
-        assertEquals(AdaptiveTuneReason.TRIAL_WATCH, firstRegression.reason)
-
-        val rollback = assertApply(controller.step(sample(12, frame(44.0), cpu0 = 0.95)))
-        assertEquals(AdaptiveTuneStatus.FROZEN, rollback.status)
-        assertEquals(AdaptiveTuneReason.TRIAL_REGRESSION, rollback.reason)
-        assertEquals(-1, rollback.change.stepDelta)
-        assertEquals(100L, rollback.ceilings.cpuKHz.getValue(0))
-
-        val frozen = assertHold(controller.step(sample(13, frame(57.0), cpu0 = 0.95)))
-        assertEquals(AdaptiveTuneStatus.FROZEN, frozen.status)
-        assertEquals(AdaptiveTuneReason.RECOVERY_FROZEN, frozen.reason)
-        assertEquals(100L, frozen.ceilings.cpuKHz.getValue(0))
-
-        val retryAfterFreeze = assertApply(
-            controller.step(sample(42, frame(57.0), cpu0 = 0.95)),
-        )
-        assertEquals(AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY, retryAfterFreeze.reason)
-        assertEquals(200L, retryAfterFreeze.ceilings.cpuKHz.getValue(0))
-    }
-
-    @Test
-    fun `pacing regression vetoes an apparent FPS improvement after a raise`() {
-        val controller = controller(warmup = 0, freezeNanos = 30 * SECOND)
-        settleHealthyTrim(controller, startSecond = 1, cpuLoad = mapOf(0 to 0.1))
-        settleHealthyTrim(controller, startSecond = 4, cpuLoad = mapOf(0 to 0.1))
-        settleHealthyTrim(controller, startSecond = 7, cpuLoad = mapOf(0 to 0.1))
-
-        assertApply(
-            controller.step(sample(10, frame(fps = 57.0, p95 = 20.0), cpu0 = 0.95)),
-        )
-        val firstMixedVerdict = assertHold(
-            controller.step(sample(11, frame(fps = 59.0, p95 = 40.0), cpu0 = 0.95)),
-        )
-        assertEquals(AdaptiveTuneReason.TRIAL_WATCH, firstMixedVerdict.reason)
-
-        val rollback = assertApply(
-            controller.step(sample(12, frame(fps = 59.0, p95 = 40.0), cpu0 = 0.95)),
-        )
-        assertEquals(AdaptiveTuneReason.TRIAL_REGRESSION, rollback.reason)
-        assertEquals(100L, rollback.ceilings.cpuKHz.getValue(0))
-    }
-
-    @Test
-    fun `coupled bottleneck keeps the first raise and steers recovery to another domain`() {
+    fun `sustained deficit reopens ceiling on second recovery sample without watching a raise`() {
         val controller = AdaptiveFrequencyController(
-            config = config(warmup = 0, freezeNanos = 30 * SECOND),
+            config(warmup = 0),
+            AdaptiveTuneEnvelope(listOf(cpu(0, 100, 200, 300, 400, 500, 600))),
+        )
+        listOf(1L, 4L, 7L, 10L, 13L).forEach {
+            settleHealthyTrim(controller, startSecond = it, cpuLoad = mapOf(0 to 0.1))
+        }
+        val first = assertApply(controller.step(sample(16, frame(57.0), cpu0 = 0.95)))
+        assertEquals(400L, first.ceilings.cpuKHz.getValue(0))
+        val second = assertApply(controller.step(sample(17, frame(57.0), cpu0 = 0.95)))
+        assertEquals(600L, second.ceilings.cpuKHz.getValue(0))
+        assertEquals(AdaptiveTuneReason.RECOVERY_AT_BASE, assertHold(controller.step(sample(18, frame(57.0)))).reason)
+    }
+
+    @Test
+    fun `worsening frames never undo or freeze a recovery raise`() {
+        val controller = controller(warmup = 0)
+        listOf(1L, 4L, 7L).forEach {
+            settleHealthyTrim(controller, startSecond = it, cpuLoad = mapOf(0 to 0.1))
+        }
+        assertApply(controller.step(sample(10, frame(57.0), cpu0 = 0.95)))
+        val recovery = assertHold(controller.step(sample(11, frame(40.0, p95 = 50.0), cpu0 = 0.95)))
+        assertEquals(400L, recovery.ceilings.cpuKHz.getValue(0))
+        repeat(4) { index ->
+            val hold = assertHold(controller.step(sample(12L + index, frame(30.0, p95 = 60.0))))
+            assertEquals(AdaptiveTuneReason.RECOVERY_AT_BASE, hold.reason)
+            assertEquals(400L, hold.ceilings.cpuKHz.getValue(0))
+        }
+    }
+
+    @Test
+    fun `saturated policy reopens first then coupled recovery opens remaining domain`() {
+        val controller = AdaptiveFrequencyController(
+            config = config(warmup = 0),
             envelope = AdaptiveTuneEnvelope(
-                cpuPolicies = listOf(
-                    cpu(0, 100, 200, 300),
-                    cpu(4, 100, 200, 300),
-                ),
+                cpuPolicies = listOf(cpu(3, 100, 200, 300), cpu(7, 100, 200, 300)),
             ),
         )
-        settleHealthyTrim(controller, startSecond = 1, cpuLoad = mapOf(0 to 0.1, 4 to 0.9))
-        settleHealthyTrim(controller, startSecond = 4, cpuLoad = mapOf(0 to 0.1, 4 to 0.9))
-        settleHealthyTrim(controller, startSecond = 7, cpuLoad = mapOf(0 to 0.9, 4 to 0.1))
-        settleHealthyTrim(controller, startSecond = 10, cpuLoad = mapOf(0 to 0.9, 4 to 0.1))
-        assertEquals(mapOf(0 to 100L, 4 to 100L), controller.currentCeilings().cpuKHz)
+        settleHealthyTrim(controller, 1, mapOf(3 to 0.1, 7 to 0.9))
+        settleHealthyTrim(controller, 4, mapOf(3 to 0.1, 7 to 0.9))
+        settleHealthyTrim(controller, 7, mapOf(3 to 0.9, 7 to 0.1))
+        settleHealthyTrim(controller, 10, mapOf(3 to 0.9, 7 to 0.1))
 
-        val firstRaise = assertApply(
-            controller.step(sample(13, frame(57.0), cpuLoad = mapOf(0 to 0.99, 4 to 0.95))),
-        )
-        assertEquals(AdaptiveActuator.CpuPolicy(0), firstRaise.change.actuator)
-        assertEquals(200L, firstRaise.ceilings.cpuKHz.getValue(0))
-        assertHold(controller.step(sample(14, frame(57.0), cpuLoad = mapOf(0 to 0.99, 4 to 0.95))))
-        val noIsolatedGain = assertHold(
-            controller.step(sample(15, frame(57.0), cpuLoad = mapOf(0 to 0.99, 4 to 0.95))),
-        )
-        assertEquals(AdaptiveTuneReason.TRIAL_NO_GAIN, noIsolatedGain.reason)
-        assertEquals(mapOf(0 to 200L, 4 to 100L), noIsolatedGain.ceilings.cpuKHz)
-
-        val coupledRaise = assertApply(
-            controller.step(sample(16, frame(57.0), cpuLoad = mapOf(0 to 0.99, 4 to 0.95))),
-        )
-        assertEquals(AdaptiveActuator.CpuPolicy(4), coupledRaise.change.actuator)
-        assertEquals(mapOf(0 to 200L, 4 to 200L), coupledRaise.ceilings.cpuKHz)
-
-        val accepted = assertHold(
-            controller.step(sample(17, frame(60.0), cpuLoad = mapOf(0 to 0.8, 4 to 0.8))),
-        )
-        assertEquals(AdaptiveTuneReason.TRIAL_ACCEPTED, accepted.reason)
-        assertEquals(mapOf(0 to 200L, 4 to 200L), accepted.ceilings.cpuKHz)
-    }
-
-    @Test
-    fun `saturated prime policy remains the recovery target instead of a cold policy`() {
-        val controller = AdaptiveFrequencyController(
-            config = config(warmup = 0, freezeNanos = 30 * SECOND),
-            envelope = AdaptiveTuneEnvelope(
-                cpuPolicies = listOf(
-                    cpu(3, 100, 200, 300),
-                    cpu(7, 100, 200, 300),
-                ),
-            ),
-        )
-        settleHealthyTrim(controller, startSecond = 1, cpuLoad = mapOf(3 to 0.1, 7 to 0.9))
-        settleHealthyTrim(controller, startSecond = 4, cpuLoad = mapOf(3 to 0.1, 7 to 0.9))
-        settleHealthyTrim(controller, startSecond = 7, cpuLoad = mapOf(3 to 0.9, 7 to 0.1))
-        settleHealthyTrim(controller, startSecond = 10, cpuLoad = mapOf(3 to 0.9, 7 to 0.1))
-        assertEquals(mapOf(3 to 100L, 7 to 100L), controller.currentCeilings().cpuKHz)
-
-        val fZeroLoad = mapOf(3 to 0.05, 7 to 0.99)
-        val firstRaise = assertApply(
-            controller.step(sample(13, frame(57.0), cpuLoad = fZeroLoad)),
-        )
-        assertEquals(AdaptiveActuator.CpuPolicy(7), firstRaise.change.actuator)
-        assertEquals(mapOf(3 to 100L, 7 to 200L), firstRaise.ceilings.cpuKHz)
-
-        assertHold(controller.step(sample(14, frame(57.0), cpuLoad = fZeroLoad)))
-        val noIsolatedGain = assertHold(
-            controller.step(sample(15, frame(57.0), cpuLoad = fZeroLoad)),
-        )
-        assertEquals(AdaptiveTuneReason.TRIAL_NO_GAIN, noIsolatedGain.reason)
-
-        val repeatedPrimeRaise = assertApply(
-            controller.step(sample(16, frame(57.0), cpuLoad = fZeroLoad)),
-        )
-        assertEquals(AdaptiveActuator.CpuPolicy(7), repeatedPrimeRaise.change.actuator)
-        assertEquals(mapOf(3 to 100L, 7 to 300L), repeatedPrimeRaise.ceilings.cpuKHz)
+        val loads = mapOf(3 to 0.05, 7 to 0.99)
+        val first = assertApply(controller.step(sample(13, frame(57.0), cpuLoad = loads)))
+        assertEquals(mapOf(3 to 100L, 7 to 300L), first.ceilings.cpuKHz)
+        val second = assertApply(controller.step(sample(14, frame(57.0), cpuLoad = loads)))
+        assertEquals(mapOf(3 to 300L, 7 to 300L), second.ceilings.cpuKHz)
     }
 
     @Test
@@ -484,19 +374,19 @@ class AdaptiveFrequencyControllerTest {
     }
 
     @Test
-    fun `missing or explicitly stale frames stop after bounded grace`() {
-        listOf<AdaptiveFrameMetrics?>(null, frame(60.0).copy(isStale = true)).forEach { missing ->
-            val controller = controller(warmup = 0, graceNanos = 3 * SECOND)
-            controller.step(sample(1, frame(60.0), cpu0 = 0.2))
-
-            val waiting = assertHold(controller.step(sample(3, missing)))
-            assertEquals(AdaptiveTuneStatus.WAITING_FOR_FRAMES, waiting.status)
-            assertEquals(AdaptiveTuneReason.FRAME_DATA_GRACE, waiting.reason)
-
-            val stop = assertStop(controller.step(sample(4, missing)))
-            assertEquals(AdaptiveTuneReason.FRAME_DATA_STALE, stop.reason)
-            val sticky = assertStop(controller.step(sample(5, frame(60.0))))
-            assertEquals(AdaptiveTuneReason.FRAME_DATA_STALE, sticky.reason)
+    fun `missing or stale frames hold ceilings and resume after a long idle`() {
+        listOf(null, frame(60.0).copy(isStale = true)).forEach { missing ->
+            val controller = controller(warmup = 0)
+            settleHealthyTrim(controller, 1, mapOf(0 to 0.1))
+            val ceilings = controller.currentCeilings()
+            listOf(4L, 10L, 300L).forEach { second ->
+                val waiting = assertHold(controller.step(sample(second, missing)))
+                assertEquals(AdaptiveTuneStatus.WAITING_FOR_FRAMES, waiting.status)
+                assertEquals(AdaptiveTuneReason.FRAME_DATA_STALE, waiting.reason)
+                assertEquals(ceilings, waiting.ceilings)
+            }
+            val resumed = assertApply(controller.step(sample(301, frame(40.0), cpu0 = 0.95)))
+            assertEquals(AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY, resumed.reason)
         }
     }
 
@@ -659,10 +549,9 @@ class AdaptiveFrequencyControllerTest {
         targetFps: Int = 60,
         warmup: Int = 5,
         qualification: Int = 1,
-        graceNanos: Long = 4 * SECOND,
         freezeNanos: Long = 30 * SECOND,
     ): AdaptiveFrequencyController = AdaptiveFrequencyController(
-        config = config(targetFps, warmup, qualification, graceNanos, freezeNanos),
+        config = config(targetFps, warmup, qualification, freezeNanos),
         envelope = AdaptiveTuneEnvelope(cpuPolicies = listOf(cpu(0, 100, 200, 300, 400))),
     )
 
@@ -670,13 +559,11 @@ class AdaptiveFrequencyControllerTest {
         targetFps: Int = 60,
         warmup: Int = 5,
         qualification: Int = 1,
-        graceNanos: Long = 4 * SECOND,
         freezeNanos: Long = 30 * SECOND,
     ) = AdaptiveTuneConfig(
         targetFps = targetFps,
         warmupSampleCount = warmup,
         healthyQualificationSampleCount = qualification,
-        missingFrameGraceNanos = graceNanos,
         trialWatchSampleCount = 2,
         trialFreezeNanos = freezeNanos,
     )
@@ -727,11 +614,6 @@ class AdaptiveFrequencyControllerTest {
     private fun assertHold(decision: AdaptiveTuneDecision): AdaptiveTuneDecision.Hold {
         assertTrue("Expected Hold but was $decision", decision is AdaptiveTuneDecision.Hold)
         return decision as AdaptiveTuneDecision.Hold
-    }
-
-    private fun assertStop(decision: AdaptiveTuneDecision): AdaptiveTuneDecision.Stop {
-        assertTrue("Expected Stop but was $decision", decision is AdaptiveTuneDecision.Stop)
-        return decision as AdaptiveTuneDecision.Stop
     }
 
     private companion object {

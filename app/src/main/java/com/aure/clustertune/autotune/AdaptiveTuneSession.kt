@@ -20,6 +20,13 @@ data class AdaptiveTuneBackendSession(
 data class AdaptiveTuneObservation(
     val sample: AdaptiveTuneSample,
     val frameBackend: String? = null,
+    /** Presentation-only host metrics; controller decisions intentionally ignore these. */
+    val cpuClockKHz: Map<Int, Long?> = emptyMap(),
+    val gpuClockHz: Long? = null,
+    val thermalMilliCelsius: Map<String, Long> = emptyMap(),
+    val frameConfidence: Double? = null,
+    val slowFrameRatio: Double? = null,
+    val frameStale: Boolean = false,
 )
 
 enum class AdaptiveTuneTermination {
@@ -64,7 +71,7 @@ interface AdaptiveTuneBackend {
 }
 
 /**
- * Runs one focused package until cancellation, stale telemetry, or a competing
+ * Runs one focused package until cancellation, a backend failure, or a competing
  * manual/sleep/profile request invalidates its generation.
  */
 class AdaptiveTuneSessionRunner(
@@ -249,7 +256,14 @@ class AdaptiveTuneSessionRunner(
                 measuredFps = frames?.fps,
                 p95FrameTimeMillis = frames?.p95FrameTimeMillis,
                 cpuLoad = observation.sample.cpuLoad,
+                cpuClockKHz = observation.cpuClockKHz,
                 gpuBusy = observation.sample.gpuBusy,
+                gpuClockHz = observation.gpuClockHz,
+                thermalMilliCelsius = observation.thermalMilliCelsius,
+                frameConfidence = observation.frameConfidence,
+                slowFrameRatio = observation.slowFrameRatio,
+                frameStale = observation.frameStale,
+                sampleTimestampNanos = observation.sample.timestampNanos,
                 ceilings = decision.ceilings,
                 frameBackend = observation.frameBackend ?: state.frameBackend,
                 message = decision.reason.userMessage(),
@@ -261,8 +275,7 @@ class AdaptiveTuneSessionRunner(
 internal fun AdaptiveTuneReason.userMessage(): String = when (this) {
     AdaptiveTuneReason.WARMUP -> "Warming up frame telemetry"
     AdaptiveTuneReason.HEALTHY_QUALIFYING -> "Confirming performance headroom"
-    AdaptiveTuneReason.FRAME_DATA_GRACE -> "Waiting for fresh frames"
-    AdaptiveTuneReason.FRAME_DATA_STALE -> "Frame telemetry became unavailable"
+    AdaptiveTuneReason.FRAME_DATA_STALE -> "Waiting for fresh frames"
     AdaptiveTuneReason.NON_MONOTONIC_SAMPLE -> "Frame telemetry clock was reset"
     AdaptiveTuneReason.HEALTHY_AT_FLOOR -> "Target is stable at the lowest available ceiling"
     AdaptiveTuneReason.HEALTHY_NO_TRIM_CANDIDATE -> "All lower ceilings are temporarily frozen"
@@ -270,11 +283,9 @@ internal fun AdaptiveTuneReason.userMessage(): String = when (this) {
     AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY -> "Raising a CPU ceiling"
     AdaptiveTuneReason.GPU_BOTTLENECK_RECOVERY -> "Raising the GPU ceiling"
     AdaptiveTuneReason.RECOVERY_AT_BASE -> "Target needs the full configured envelope"
-    AdaptiveTuneReason.RECOVERY_FROZEN -> "Recovery candidates are temporarily deprioritized"
     AdaptiveTuneReason.EFFICIENCY_TRIM -> "Testing a lower frequency ceiling"
     AdaptiveTuneReason.TRIAL_WATCH -> "Watching the last ceiling change"
     AdaptiveTuneReason.TRIAL_ACCEPTED -> "Last ceiling change is stable"
     AdaptiveTuneReason.TRIAL_REGRESSION -> "Reverted a ceiling that hurt frame pacing"
-    AdaptiveTuneReason.TRIAL_NO_GAIN -> "Keeping the raised ceiling and continuing targeted recovery"
     AdaptiveTuneReason.REQUESTED_STOP -> "Auto Tune stopped"
 }

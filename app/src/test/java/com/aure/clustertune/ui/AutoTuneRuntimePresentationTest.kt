@@ -84,7 +84,7 @@ class AutoTuneRuntimePresentationTest {
             AdaptiveTuneRuntimeState(
                 active = true,
                 status = AdaptiveTuneStatus.WAITING_FOR_FRAMES,
-                reason = AdaptiveTuneReason.FRAME_DATA_GRACE,
+                reason = AdaptiveTuneReason.FRAME_DATA_STALE,
                 measuredFps = Double.NaN,
                 p95FrameTimeMillis = -1.0,
                 cpuLoad = mapOf(0 to 1.4, 4 to Double.NaN),

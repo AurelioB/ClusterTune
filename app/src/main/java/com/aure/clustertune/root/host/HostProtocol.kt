@@ -3,7 +3,7 @@ package com.aure.clustertune.root.host
 /** Private wire contract between ClusterTune and its persistent privileged host. */
 object HostProtocol {
     const val DESCRIPTOR = "com.aure.clustertune.root.host.IClusterTuneHost"
-    const val VERSION = 10
+    const val VERSION = 13
     const val SERVICE_PREFIX = "clustertune.host."
     const val PING = 1
     const val HOST_IDENTITY = 2
@@ -19,6 +19,9 @@ object HostProtocol {
     const val APPLY_AUTO_STEP = 14
     const val HEARTBEAT_AUTO_SESSION = 15
     const val STOP_AUTO_SESSION = 16
+    const val START_TELEMETRY_SESSION = 17
+    const val READ_TELEMETRY_SESSION = 18
+    const val STOP_TELEMETRY_SESSION = 19
 
     const val MAX_PACKAGE_LENGTH = 255
     const val MAX_SESSION_ID_LENGTH = 64
@@ -149,6 +152,23 @@ data class AutoSessionRequest(
 
 data class HostAutoSessionHandle(val sessionId: String, val hostEpoch: Long)
 
+/** A read-only performance-monitor session. It never owns or changes hardware state. */
+data class TelemetrySessionRequest(
+    val packageName: String? = null,
+    val targetFps: Int = 0,
+    val heartbeatTimeoutMs: Long = 15_000L,
+)
+
+data class HostTelemetrySessionHandle(val sessionId: String, val hostEpoch: Long)
+
+enum class HostTelemetrySessionStatus {
+    ACTIVE,
+    STOPPED,
+    EXPIRED,
+    STALE,
+    UNAVAILABLE,
+}
+
 enum class HostAutoSessionStatus {
     ACTIVE,
     STOPPED,
@@ -203,6 +223,26 @@ data class HostAutoSessionSnapshot(
 
     val handle: HostAutoSessionHandle?
         get() = sessionId?.let { HostAutoSessionHandle(it, hostEpoch) }
+}
+
+/** Typed state returned by every read-only telemetry-session operation. */
+data class HostTelemetrySessionSnapshot(
+    val sessionId: String?,
+    val hostEpoch: Long,
+    val status: HostTelemetrySessionStatus,
+    val targetFps: Int,
+    val telemetry: HostAutoTelemetry? = null,
+    val message: String? = null,
+) {
+    init {
+        require(targetFps >= 0) { "invalid target FPS" }
+        require(status != HostTelemetrySessionStatus.ACTIVE || sessionId != null) {
+            "active telemetry session requires a handle"
+        }
+    }
+
+    val handle: HostTelemetrySessionHandle?
+        get() = sessionId?.let { HostTelemetrySessionHandle(it, hostEpoch) }
 }
 
 class RemoteHostSessionFailure(

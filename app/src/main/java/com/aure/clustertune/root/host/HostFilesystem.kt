@@ -410,6 +410,30 @@ class HostApplyEngine(private val fs: HostFilesystem) {
     fun applyMaxOnly(capabilities: HostCapabilities, request: ApplyRequest): Result<Unit> =
         applyInternal(capabilities, request, repairMinimums = false).map { Unit }
 
+    @Synchronized
+    internal fun applyWithManagedCpuMinimumsOrThrow(
+        capabilities: HostCapabilities,
+        request: ApplyRequest,
+        managedMinimums: Set<String>,
+    ) {
+        applyInternal(capabilities, request, repairMinimums = true, managedCpuMinimums = managedMinimums)
+            .getOrThrow()
+    }
+
+    internal fun validateProfileTargets(capabilities: HostCapabilities, request: ApplyRequest): HostResolvedMaximumTargets {
+        request.gpuId?.let { require(capabilities.gpu?.id == it) { "GPU identity mismatch" } }
+        request.gpuMaxPath?.let { require(capabilities.gpu?.maxPath == it) { "GPU path mismatch" } }
+        val resolved = resolveHostMaximumTargets(capabilities, request)
+        capabilities.cpus.forEachIndexed { index, cpu ->
+            validateCpuTarget(cpu, resolved.cpuExpected[index], resolved.cpuStock[index])
+        }
+        resolved.gpuExpected?.let { target ->
+            val gpu = capabilities.gpu ?: error("GPU target requested but no GPU domain is available")
+            validateGpuTarget(gpu, target, resolved.gpuAcceptedCeilings.maxOrNull() ?: gpu.selectableMax)
+        }
+        return resolved
+    }
+
     private fun applyInternal(
         capabilities: HostCapabilities,
         request: ApplyRequest,
@@ -417,6 +441,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         stockModeOverrides: Map<String, Boolean> = emptyMap(),
         preserveModePaths: Set<String> = emptySet(),
         deferMaximumVerification: Boolean = false,
+        managedCpuMinimums: Set<String> = emptySet(),
     ): Result<HostMaximumMutationReceipt> = runCatching {
         request.gpuId?.let { require(capabilities.gpu?.id == it) { "GPU identity mismatch" } }
         request.gpuMaxPath?.let { require(capabilities.gpu?.maxPath == it) { "GPU path mismatch" } }
@@ -431,7 +456,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         ) {
             "maximum mutation intent does not match discovered domains"
         }
-        val resolved = resolveHostMaximumTargets(capabilities, request)
+        val resolved = validateProfileTargets(capabilities, request)
         val stabilizedStockCeiling = resolved.stabilizedStockCeiling
         val cpuStock = resolved.cpuStock
         val cpuStockCandidates = resolved.cpuStockCandidates
@@ -488,7 +513,8 @@ class HostApplyEngine(private val fs: HostFilesystem) {
             null
         }
         val cpuNeedsMinRepair = originalMins.mapIndexed { index, value ->
-            repairMinimums && (value <= 0 || value > safetyCeilings[index])
+            repairMinimums && capabilities.cpus[index].id !in managedCpuMinimums &&
+                (value <= 0 || value > safetyCeilings[index])
         }
         val gpuNeedsMinRepair = repairMinimums && expectedGpu != null && originalGpuMin != null &&
             (originalGpuMin <= 0 || originalGpuMin > (if (gpuStock) {
@@ -500,7 +526,6 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         // This keeps malformed multi-domain requests fail-closed instead of partially applying
         // an earlier CPU domain and relying on rollback for an avoidable validation error.
         capabilities.cpus.forEachIndexed { index, cpu ->
-            validateCpuTarget(cpu, expected[index], cpuStock[index])
             require(!cpuNeedsMinRepair[index] || cpu.minimumCandidates.any { it > 0 && it <= safetyCeilings[index] }) {
                 "no safe minimum candidate for ${cpu.minPath}"
             }
@@ -508,11 +533,6 @@ class HostApplyEngine(private val fs: HostFilesystem) {
         if (expectedGpu != null) {
             val gpu = capabilities.gpu
                 ?: error("GPU target requested but no GPU domain is available")
-            val gpuAcceptedCeilings = resolved.gpuAcceptedCeilings
-            // Validation accepts any candidate the forward write may select; minimum
-            // safety below is intentionally based on the *lowest* accepted ceiling.
-            val allowedCeiling = gpuAcceptedCeilings.maxOrNull() ?: gpu.selectableMax
-            validateGpuTarget(gpu, expectedGpu, allowedCeiling)
             if (gpu.minPath != null && gpuNeedsMinRepair) {
                 val minimumCeiling = if (gpuStock) {
                     listOfNotNull(stabilizedStockCeiling?.takeIf { it > 0 }, gpu.stockMax.takeIf { it > 0 }, gpu.selectableMax).minOrNull() ?: expectedGpu
@@ -701,7 +721,8 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                     val accepted = if (cpuStock[index]) cpuStockCandidates[index] else listOf(target)
                     verifiedMaximums[cpu.maxPath] = verifyMax(cpu.id, cpu.maxPath, accepted, finalMode)
                 }
-                if (repairMinimums && fs.read(cpu.minPath)?.toLongOrNull()?.let { it > 0 && it <= safetyCeilings[index] } != true) {
+                if (repairMinimums && cpu.id !in managedCpuMinimums &&
+                    fs.read(cpu.minPath)?.toLongOrNull()?.let { it > 0 && it <= safetyCeilings[index] } != true) {
                     journalBeforeMutation(cpu.minPath, originalMins[index], originalMinModes[index], false, cpu.maxPath)
                     reconcileMinimum(
                         path = cpu.minPath,

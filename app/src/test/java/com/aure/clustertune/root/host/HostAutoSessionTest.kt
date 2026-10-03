@@ -221,24 +221,23 @@ class HostAutoSessionTest {
     }
 
     @Test
-    fun `heartbeat stops and restores when a live minimum rises during a hold`() {
+    fun `heartbeat preserves tuning when an OEM minimum rises above the active cap`() {
         val fixture = fixture()
         val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
         val session = requireNotNull(started.sessionId)
         fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 600))
-        fixture.fs.values["min"] = "400"
+        fixture.fs.values["min"] = "700"
 
         val stopped = fixture.controller.heartbeat(session, started.hostEpoch)
 
-        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
-        assertTrue(stopped.restorationComplete)
-        assertTrue(stopped.message.orEmpty().contains("minimum changed"))
-        assertEquals("800", fixture.fs.values["max"])
-        assertEquals("400", fixture.fs.values["min"])
+        assertEquals(HostAutoSessionStatus.ACTIVE, stopped.status)
+        assertFalse(stopped.restorationAttempted)
+        assertEquals("600", fixture.fs.values["max"])
+        assertEquals("700", fixture.fs.values["min"])
     }
 
     @Test
-    fun `telemetry read stops and restores when a live minimum falls during a hold`() {
+    fun `telemetry read preserves tuning when an OEM minimum falls`() {
         val fixture = fixture()
         val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
         val session = requireNotNull(started.sessionId)
@@ -247,15 +246,14 @@ class HostAutoSessionTest {
 
         val stopped = fixture.controller.readTelemetry(session, started.hostEpoch)
 
-        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
-        assertTrue(stopped.restorationComplete)
-        assertTrue(stopped.message.orEmpty().contains("minimum changed"))
-        assertEquals("800", fixture.fs.values["max"])
+        assertEquals(HostAutoSessionStatus.ACTIVE, stopped.status)
+        assertFalse(stopped.restorationAttempted)
+        assertEquals("600", fixture.fs.values["max"])
         assertEquals("100", fixture.fs.values["min"])
     }
 
     @Test
-    fun `automatic apply stops before mutation when a captured live minimum becomes unreadable`() {
+    fun `automatic apply remains maximum-only when a live minimum becomes unreadable`() {
         val fixture = fixture()
         val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
         val session = requireNotNull(started.sessionId)
@@ -265,30 +263,63 @@ class HostAutoSessionTest {
 
         val stopped = fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 400))
 
-        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
-        assertTrue(stopped.restorationComplete)
-        assertTrue(stopped.message.orEmpty().contains("minimum unavailable"))
-        assertFalse(fixture.fs.operations.drop(operationsBefore).any { it == "write:max=400" })
-        assertEquals("800", fixture.fs.values["max"])
+        assertEquals(HostAutoSessionStatus.ACTIVE, stopped.status)
+        assertFalse(stopped.restorationAttempted)
+        assertFalse(fixture.fs.operations.drop(operationsBefore).any { it.startsWith("write:min=") })
+        assertEquals("400", fixture.fs.values["max"])
     }
 
     @Test
-    fun `minimum change racing an automatic apply is detected and the ceiling is restored`() {
+    fun `minimum change racing an automatic apply leaves the OEM vote untouched`() {
         val fixture = fixture()
         val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
         val session = requireNotNull(started.sessionId)
-        // The pre-apply read returns the captured floor, then the fake OEM changes it before
-        // the maximum transaction. The post-apply floor read must catch that race.
+        // The OEM changes its minimum while the max-only transaction is starting.
         fixture.fs.rewriteAfterReads("min", "400", reads = 1)
 
         val stopped = fixture.controller.applyStep(session, started.hostEpoch, request(cpu = 400))
 
-        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
-        assertTrue(stopped.restorationComplete)
-        assertTrue(stopped.message.orEmpty().contains("minimum changed after apply"))
+        assertEquals(HostAutoSessionStatus.ACTIVE, stopped.status)
+        assertFalse(stopped.restorationAttempted)
         assertTrue(fixture.fs.operations.any { it == "write:max=400" })
-        assertEquals("800", fixture.fs.values["max"])
+        assertEquals("400", fixture.fs.values["max"])
         assertEquals("400", fixture.fs.values["min"])
+        assertFalse(fixture.fs.operations.any { it.startsWith("write:min=") })
+    }
+
+    @Test
+    fun `OEM minimum votes on fixed CPU and GPU do not interrupt max-only tuning or restoration`() {
+        val fixture = multiDomainFixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val session = requireNotNull(started.sessionId)
+        fixture.fs.values["min0"] = "800"
+        fixture.fs.values["min1"] = "1200"
+        fixture.fs.values["gmin"] = "900"
+        val applied = fixture.controller.applyStep(
+            session,
+            started.hostEpoch,
+            ApplyRequest(
+                cpuMax = listOf(800, 900),
+                gpuMax = 600,
+                resetToStock = false,
+                cpuIds = listOf("policy0", "policy4"),
+                gpuId = "gpu0",
+                gpuMaxPath = "gmax",
+            ),
+        )
+        assertEquals(HostAutoSessionStatus.ACTIVE, applied.status)
+        assertEquals("800", fixture.fs.values["max0"])
+        assertEquals("900", fixture.fs.values["max1"])
+        assertEquals("600", fixture.fs.values["gmax"])
+        assertEquals(HostAutoSessionStatus.ACTIVE, fixture.controller.readTelemetry(session, started.hostEpoch).status)
+        assertTrue(fixture.controller.stop(session, started.hostEpoch).restorationComplete)
+        assertEquals("800", fixture.fs.values["min0"])
+        assertEquals("1200", fixture.fs.values["min1"])
+        assertEquals("900", fixture.fs.values["gmin"])
+        assertFalse(fixture.fs.operations.any {
+            it.startsWith("write:min") || it.startsWith("write:gmin") ||
+                it.startsWith("chmod:min") || it.startsWith("chmod:gmin")
+        })
     }
 
     @Test
@@ -458,10 +489,9 @@ class HostAutoSessionTest {
         fs.values["$kgsl/min_pwrlevel"] = "3"
         val stopped = controller.heartbeat(session, started.hostEpoch)
 
-        assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
-        assertTrue(stopped.restorationComplete)
-        assertTrue(stopped.message.orEmpty().contains("minimum changed"))
-        assertEquals("800", fs.values["max"])
+        assertEquals(HostAutoSessionStatus.ACTIVE, stopped.status)
+        assertFalse(stopped.restorationAttempted)
+        assertEquals("600", fs.values["max"])
         assertEquals("900", fs.values[gpuMaxPath])
     }
 
@@ -540,81 +570,55 @@ class HostAutoSessionTest {
     }
 
     @Test
-    fun `changed baseline with an unknown live minimum is rejected before mutation while an unchanged maximum passes`() {
-        val unsafe = fixture(cpuMin = 0)
-        unsafe.fs.values["max"] = "400"
-        val unsafeOperations = unsafe.fs.operations.toList()
-        val unsafeBatches = unsafe.fs.batchMutations
-
-        val rejected = unsafe.controller.start(
+    fun `baseline applies with unreadable minima without claiming minimum nodes`() {
+        val fixture = fixture(withGpu = true)
+        fixture.fs.values.remove("min")
+        fixture.fs.values.remove("gmin")
+        val started = fixture.controller.start(
             AutoSessionRequest(
-                "com.game",
-                60,
-                5_000,
-                baseline = request(cpu = 800).copy(maximumsOnly = true),
+                "com.game", 60, 5_000,
+                baseline = request(cpu = 600, gpu = 600).copy(maximumsOnly = true),
             ),
         )
-
-        assertEquals(HostAutoSessionStatus.STOPPED, rejected.status)
-        assertTrue(rejected.restorationComplete)
-        assertTrue(rejected.message.orEmpty().contains("without a live minimum"))
-        assertEquals("400", unsafe.fs.values["max"])
-        assertEquals(unsafeOperations, unsafe.fs.operations)
-        assertEquals(unsafeBatches, unsafe.fs.batchMutations)
-
-        val unchanged = fixture(cpuMin = 0)
-        val accepted = unchanged.controller.start(
-            AutoSessionRequest(
-                "com.game",
-                60,
-                5_000,
-                baseline = request(cpu = 800).copy(maximumsOnly = true),
-            ),
-        )
-
-        assertEquals(HostAutoSessionStatus.ACTIVE, accepted.status)
-        assertEquals("800", unchanged.fs.values["max"])
-        assertEquals(0, unchanged.fs.batchMutations)
+        assertEquals(HostAutoSessionStatus.ACTIVE, started.status)
+        assertEquals("600", fixture.fs.values["max"])
+        assertEquals("600", fixture.fs.values["gmax"])
+        assertFails {
+            fixture.controller.applyStep(started.sessionId!!, started.hostEpoch, request(cpu = 400, gpu = 600))
+        }
+        assertTrue(fixture.controller.stop(started.sessionId, started.hostEpoch).restorationComplete)
+        assertEquals(null, fixture.fs.values["min"])
+        assertEquals(null, fixture.fs.values["gmin"])
+        assertFalse(fixture.fs.operations.any {
+            it.startsWith("write:min") || it.startsWith("write:gmin") ||
+                it.startsWith("chmod:min") || it.startsWith("chmod:gmin")
+        })
     }
 
     @Test
-    fun `changed CPU or GPU baseline at its live minimum is rejected before any mutation`() {
-        val cpuUnsafe = fixture(cpuMin = 600)
-        val cpuOperations = cpuUnsafe.fs.operations.toList()
-        val cpuBatches = cpuUnsafe.fs.batchMutations
-
-        val cpuRejected = cpuUnsafe.controller.start(
-            AutoSessionRequest(
-                "com.game",
-                60,
-                5_000,
-                baseline = request(cpu = 600).copy(maximumsOnly = true),
-            ),
-        )
-
-        assertEquals(HostAutoSessionStatus.STOPPED, cpuRejected.status)
-        assertTrue(cpuRejected.message.orEmpty().contains("not above the live minimum"))
-        assertEquals(cpuOperations, cpuUnsafe.fs.operations)
-        assertEquals(cpuBatches, cpuUnsafe.fs.batchMutations)
-        assertEquals("800", cpuUnsafe.fs.values["max"])
-
-        val gpuUnsafe = fixture(withGpu = true, gpuMin = 600)
-        val gpuOperations = gpuUnsafe.fs.operations.toList()
-        val gpuBatches = gpuUnsafe.fs.batchMutations
-        val gpuRejected = gpuUnsafe.controller.start(
-            AutoSessionRequest(
-                "com.game",
-                60,
-                5_000,
-                baseline = request(cpu = 800, gpu = 600).copy(maximumsOnly = true),
-            ),
-        )
-
-        assertEquals(HostAutoSessionStatus.STOPPED, gpuRejected.status)
-        assertTrue(gpuRejected.message.orEmpty().contains("not above the live minimum"))
-        assertEquals(gpuOperations, gpuUnsafe.fs.operations)
-        assertEquals(gpuBatches, gpuUnsafe.fs.batchMutations)
-        assertEquals("900", gpuUnsafe.fs.values["gmax"])
+    fun `CPU and GPU baseline may equal or fall below OEM minimum votes`() {
+        listOf(600L, 700L).forEach { minimum ->
+            val fixture = fixture(withGpu = true, cpuMin = minimum, gpuMin = minimum)
+            val started = fixture.controller.start(
+                AutoSessionRequest(
+                    "com.game", 60, 5_000,
+                    baseline = request(cpu = 600, gpu = 600).copy(maximumsOnly = true),
+                ),
+            )
+            assertEquals(HostAutoSessionStatus.ACTIVE, started.status)
+            assertEquals("600", fixture.fs.values["max"])
+            assertEquals("600", fixture.fs.values["gmax"])
+            assertFails {
+                fixture.controller.applyStep(started.sessionId!!, started.hostEpoch, request(cpu = 400, gpu = 600))
+            }
+            assertTrue(fixture.controller.stop(started.sessionId, started.hostEpoch).restorationComplete)
+            assertEquals(minimum.toString(), fixture.fs.values["min"])
+            assertEquals(minimum.toString(), fixture.fs.values["gmin"])
+            assertFalse(fixture.fs.operations.any {
+                it.startsWith("write:min") || it.startsWith("write:gmin") ||
+                    it.startsWith("chmod:min") || it.startsWith("chmod:gmin")
+            })
+        }
     }
 
     @Test
@@ -701,12 +705,10 @@ class HostAutoSessionTest {
     }
 
     @Test
-    fun `ceiling change during telemetry startup aborts before atomic baseline writes`() {
+    fun `OEM ceiling change during telemetry startup permits baseline and restores it after tuning`() {
         val fixture = fixture()
         fixture.telemetry.onBegin = { fixture.fs.values["max"] = "700" }
-        val operationsBeforeStart = fixture.fs.operations.size
-
-        val unsupported = fixture.controller.start(
+        val started = fixture.controller.start(
             AutoSessionRequest(
                 packageName = "com.game",
                 targetFps = 60,
@@ -715,10 +717,36 @@ class HostAutoSessionTest {
             ),
         )
 
-        assertEquals(HostAutoSessionStatus.UNSUPPORTED, unsupported.status)
-        assertTrue(unsupported.message.orEmpty().contains("telemetry was starting"))
+        assertEquals(HostAutoSessionStatus.ACTIVE, started.status)
+        assertEquals("800", fixture.fs.values["max"])
+        fixture.controller.applyStep(started.sessionId!!, started.hostEpoch, request(cpu = 600))
+        val stopped = fixture.controller.stop(started.sessionId, started.hostEpoch)
+        assertTrue(stopped.restorationComplete)
+        assertEquals("800", fixture.fs.values["max"])
+    }
+
+    @Test
+    fun `session without baseline captures OEM ceiling after telemetry startup`() {
+        val fixture = fixture()
+        fixture.telemetry.onBegin = { fixture.fs.values["max"] = "700" }
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+
+        assertEquals(HostAutoSessionStatus.ACTIVE, started.status)
+        fixture.controller.applyStep(started.sessionId!!, started.hostEpoch, request(cpu = 600))
+        val stopped = fixture.controller.stop(started.sessionId, started.hostEpoch)
+        assertTrue(stopped.restorationComplete)
         assertEquals("700", fixture.fs.values["max"])
-        assertFalse(fixture.fs.operations.drop(operationsBeforeStart).any { it.startsWith("write:max=") })
+    }
+
+    @Test
+    fun `checkpoint failure after telemetry startup closes telemetry without writes`() {
+        val fixture = fixture()
+        fixture.telemetry.onBegin = { fixture.fs.values.remove("max") }
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+
+        assertEquals(HostAutoSessionStatus.UNSUPPORTED, started.status)
+        assertEquals(1, fixture.telemetry.endCount)
+        assertTrue(fixture.fs.operations.isEmpty())
     }
 
     @Test
@@ -913,7 +941,7 @@ class HostAutoSessionTest {
             // The stock baseline is now an exact max-only no-op. Trigger the OEM
             // takeover after its verification and baseline-state reads without relying
             // on a mutation batch that correctly never happens.
-            reads = 6,
+            reads = 5,
             failNextModeAfterRewrite = true,
         )
 
@@ -946,8 +974,8 @@ class HostAutoSessionTest {
         fixture.fs.rewriteAfterReads(
             path = "gmax",
             value = "900",
-            // GPU verification performs one additional accepted-maximum read.
-            reads = 8,
+            // GPU verification performs additional accepted-maximum reads.
+            reads = 7,
             failNextModeAfterRewrite = true,
         )
 
@@ -1421,7 +1449,7 @@ class HostAutoSessionTest {
     }
 
     @Test
-    fun `an exact Stock reset cannot hide live minimum or maximum mode drift`() {
+    fun `an exact Stock reset tolerates OEM minimum changes but not maximum mode drift`() {
         run {
             val fixture = fixture()
             val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
@@ -1433,8 +1461,7 @@ class HostAutoSessionTest {
 
             val stopped = fixture.controller.heartbeat(session, started.hostEpoch)
 
-            assertEquals(HostAutoSessionStatus.STOPPED, stopped.status)
-            assertTrue(stopped.message.orEmpty().contains("minimum changed"))
+            assertEquals(HostAutoSessionStatus.ACTIVE, stopped.status)
             assertEquals("800", fixture.fs.values["max"])
             assertEquals("400", fixture.fs.values["min"])
             assertFalse(fixture.fs.operations.drop(operationsBeforePoll).any { it.startsWith("write:") })
@@ -2414,6 +2441,7 @@ class HostAutoSessionTest {
         private val beginFailure: Throwable? = null,
     ) : HostTelemetrySource {
         var beginCount = 0
+        var endCount = 0
         var onBegin: (() -> Unit)? = null
         val begunTargets = mutableListOf<Int>()
         override fun capabilities() = HostAutoCapabilities(true, true, false, hasGpu, false, false, "fake")
@@ -2422,6 +2450,9 @@ class HostAutoSessionTest {
             begunTargets += targetFps
             onBegin?.invoke()
             return beginFailure?.let(Result.Companion::failure) ?: Result.success(Unit)
+        }
+        override fun end() {
+            endCount++
         }
         override fun sample() = HostRawTelemetry(
             timestampNanos = 1L,

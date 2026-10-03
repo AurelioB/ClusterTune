@@ -7,6 +7,7 @@ enum class AppColorSource {
 
 enum class TileInteractionBehavior {
     SHOW_DIALOG,
+    TOGGLE_PERFORMANCE_HUD,
     SHOW_PROFILE_PICKER,
     CYCLE_PROFILES,
     OPEN_APP,
@@ -19,6 +20,7 @@ data class AppSettings(
     val tileTapBehavior: TileInteractionBehavior = TileInteractionBehavior.SHOW_DIALOG,
     val applyLastProfileOnBoot: Boolean = false,
     val sleepProfileEnabled: Boolean = false,
+    val autoTuneEnabled: Boolean = false,
     val sleepProfileId: String? = null,
     val hasPromptedQuickSettingsTile: Boolean = false,
     val isQuickSettingsTileAdded: Boolean = false,
@@ -35,7 +37,15 @@ data class AppSettings(
     val profileSwitchToastsEnabled: Boolean = true,
     val profileSwitchHistoryLimit: Int = DEFAULT_PROFILE_SWITCH_HISTORY_LIMIT,
     val privilegedExecutionMethodId: String? = null,
-)
+) {
+    /** Keep the saved HUD choice, but use the quick tuner while experimental features are off. */
+    val effectiveTileTapBehavior: TileInteractionBehavior
+        get() = if (!autoTuneEnabled && tileTapBehavior == TileInteractionBehavior.TOGGLE_PERFORMANCE_HUD) {
+            TileInteractionBehavior.SHOW_DIALOG
+        } else {
+            tileTapBehavior
+        }
+}
 
 const val DEFAULT_PROFILE_SWITCH_HISTORY_LIMIT = 100
 const val DEFAULT_AUTOMATIC_UPDATE_CHECKS_ENABLED = true
