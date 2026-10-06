@@ -1,0 +1,24 @@
+Process: system_server
+Build: qti/kalama/kalama:13/TKQ1.231222.001/eng.Thor.20260206.163241:user/release-keys
+Loading-Progress: 1.0
+Dropped-Count: 0
+
+java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.Object com.android.server.wm.WindowContainer.reduceOnAllTaskDisplayAreas(java.util.function.BiFunction, java.lang.Object)' on a null object reference
+	at com.android.server.wm.RootWindowContainer.startHomeOnDisplay(RootWindowContainer.java:1433)
+	at com.android.server.wm.ActivityTaskManagerService$LocalService.startHomeOnDisplay(ActivityTaskManagerService.java:6084)
+	at com.android.server.policy.PhoneWindowManager.startDockOrHome(PhoneWindowManager.java:5633)
+	at com.android.server.policy.PhoneWindowManager.startDockOrHome(PhoneWindowManager.java:5638)
+	at com.android.server.policy.PhoneWindowManager.launchHomeFromHotKey(PhoneWindowManager.java:3715)
+	at com.android.server.policy.PhoneWindowManager.launchHomeFromHotKey(PhoneWindowManager.java:3672)
+	at com.android.server.policy.PhoneWindowManager.handleShortPressOnHome(PhoneWindowManager.java:1672)
+	at com.android.server.policy.PhoneWindowManager.-$$Nest$mhandleShortPressOnHome(Unknown Source:0)
+	at com.android.server.policy.PhoneWindowManager$DisplayHomeButtonHandler.lambda$handleHomeButton$0(PhoneWindowManager.java:1826)
+	at com.android.server.policy.PhoneWindowManager$DisplayHomeButtonHandler.$r8$lambda$5rQKs73-nKRT-vY-vVSg3sRPCFY(Unknown Source:0)
+	at com.android.server.policy.PhoneWindowManager$DisplayHomeButtonHandler$$ExternalSyntheticLambda0.run(Unknown Source:2)
+	at android.os.Handler.handleCallback(Handler.java:942)
+	at android.os.Handler.dispatchMessage(Handler.java:99)
+	at android.os.Looper.loopOnce(Looper.java:201)
+	at android.os.Looper.loop(Looper.java:288)
+	at android.os.HandlerThread.run(HandlerThread.java:67)
+	at com.android.server.ServiceThread.run(ServiceThread.java:44)
+	at com.android.server.UiThread.run(UiThread.java:45)
