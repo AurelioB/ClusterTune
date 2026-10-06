@@ -102,6 +102,33 @@ Android restarted its system process at approximately 14:30:24. AYN's persistent
 
 This was a test cleanup error. Future hardware interaction must discover and verify logical display IDs immediately before using them, and must not assume the second screen is display 1. After reboot, the device exposed logical IDs 0 and 4; the valid secondary ID was checked before the final Home action. The invalid-display action was not repeated to reproduce the crash. No command to enter recovery or wipe data was issued by the test.
 
+## Narrow profile entirely above 1 GHz
+
+At the user's request, a follow-up test set the prime core's maximum through ClusterTune's manual override to **1,248,000 kHz**, retaining the Large profile's other CPU/GPU ceilings. Because profiles currently configure ceilings rather than user-selected floors, root then temporarily raised the already-managed prime minimum to the supported **1,132,800 kHz** bin and restored its protected 0440 mode. Lowering only the maximum would not prevent the dashboard's below-1-GHz conversion error. This used the user's original development APK, which identifies as 1.2.2 but implements the minimum protection; the public-release comparisons are the separate tests above.
+
+The AYN dashboard was opened/closed using its own button-event broadcast. No Home event was sent to an assumed secondary display. Standard performance and `walt` remained in place. The first two frequency bins above 1 GHz are 1,132,800 and 1,248,000 kHz; the supported 998,400 kHz bin supplied a comparison just below the boundary.
+
+| Test phase | Prime minimum (GHz) | Prime maximum (GHz) | Driver readbacks (GHz) | AYN screenshot |
+| --- | ---: | ---: | --- | --- |
+| Above boundary, before load | 1.1328 | 1.2480 | 1.1328–1.2480 | 1.13 GHz |
+| Above boundary, after load | 1.1328 | 1.2480 | 1.1328 | 1.13 GHz |
+| Below boundary, same ceiling | 0.9984 | 1.2480 | 0.9984 | **3.19 GHz** |
+
+Each idle phase recorded 30 observations, all retaining the requested minimum, maximum and protected permissions. 3C's paired captures showed approximately 1.13 GHz above the boundary and 998 MHz below it. Changing the floor from 1.1328 to 0.9984 GHz brought back the false dashboard maximum without changing the ceiling.
+
+However, the narrow range was **not a strict physical range under load**:
+
+- Fifteen independent hardware-clock measurements ranged from **1.2480 to 2.0928 GHz**, while every paired driver-current read reported 1.2480 GHz.
+- Thirty-two roughly 250 ms cycle-counter windows averaged **1.5962 GHz**, ranging from 1.3309 to 1.9838 GHz.
+- A finer counter-only run produced **5,977 approximately 1 ms windows**, ranging from **1.1352 to 2.0913 GHz**, with a mean of 1.6082 GHz. Every window ran on CPU7 with matching enabled/running counter times. Wall-time brackets enclose both counter reads in this finer probe, avoiding an overstated rate from counting outside the measured wall interval. Window durations ranged from 1.000729 to 1.070208 ms.
+- No counter window or hardware-clock observation reached 3 GHz. These window averages still cannot exclude an arbitrarily short pulse above 3 GHz inside a window. They do rule out claiming that the hardware remained continuously within the requested 1.1328–1.2480 GHz range.
+
+Thus maintaining the requested minimum above 1 GHz removes the false 3.19 GHz dashboard reading, but does **not** remove the independently measured cap-enforcement discrepancy. This lower ceiling produced a larger discrepancy than the previous Medium/Large tests; the mechanism remains unresolved.
+
+[Summary](research/underclock-dashboard/above-1ghz-test/summary.json), [hardware clock comparisons](research/underclock-dashboard/above-1ghz-test/above-load-clocks.csv), [the 1 ms counter data](research/underclock-dashboard/above-1ghz-test/above-cycles-1ms.csv), and the [finer probe source](research/underclock-dashboard/above-1ghz-test/cycle_probe_1ms.c) are retained. The [above-boundary dashboard](research/underclock-dashboard/above-1ghz-test/above-idle-ayn.png) and [below-boundary dashboard](research/underclock-dashboard/above-1ghz-test/below-idle-ayn.png) captures provide a direct display comparison, alongside 3C captures and policy CSVs in the same directory.
+
+Stock and then Large were applied through the app to release/reacquire minimum ownership and restore the original low floors. The dashboard and 3C were closed, the 60-second timeout restored, both temporary probes/results removed, and the screens returned to sleep. [Final verification](research/underclock-dashboard/above-1ghz-test/restoration.txt) matches the [starting CPU/GPU state](research/underclock-dashboard/above-1ghz-test/baseline.txt), including permissions and `walt`; MSM minimum votes were zero. Uptime continued normally through the test and restoration. No new APK, permanent profile, governor change, or recovery incident was introduced in this pass. The manual override and restoration switches remain in the app's history.
+
 ## Report and recording
 
 [Reddit report](https://www.reddit.com/r/AynThor/comments/1wz3yqe/so_i_just_updated_clustertune_it_was_successfully/): an AYN Thor owner reports that updating ClusterTune stops the CPU from dropping below 3.19 GHz. Several replies describe similar behavior and improvement after returning to 1.2.2. These are user observations, not controlled measurements of energy use or proof of a particular cause.

@@ -1,0 +1,84 @@
+{
+  "above-idle": {
+    "count": 30,
+    "minima_khz": [
+      1132800
+    ],
+    "maxima_khz": [
+      1248000
+    ],
+    "current_khz": [
+      1132800,
+      1248000
+    ],
+    "minimum_modes": [
+      "440"
+    ]
+  },
+  "above-after-load": {
+    "count": 30,
+    "minima_khz": [
+      1132800
+    ],
+    "maxima_khz": [
+      1248000
+    ],
+    "current_khz": [
+      1132800
+    ],
+    "minimum_modes": [
+      "440"
+    ]
+  },
+  "below-idle": {
+    "count": 30,
+    "minima_khz": [
+      998400
+    ],
+    "maxima_khz": [
+      1248000
+    ],
+    "current_khz": [
+      998400
+    ],
+    "minimum_modes": [
+      "440"
+    ]
+  },
+  "cycles-250ms": {
+    "windows": 32,
+    "min_ghz": 1.330945351,
+    "max_ghz": 1.983789158,
+    "mean_ghz": 1.59624154721875,
+    "at_or_above_3_ghz": 0,
+    "wall_windows_ms": {
+      "min": 250.005573,
+      "max": 250.056406,
+      "median": 250.024714
+    },
+    "all_on_cpu7": true,
+    "no_multiplexing": true
+  },
+  "cycles-1ms": {
+    "windows": 5977,
+    "min_ghz": 1.135200273,
+    "max_ghz": 2.091308361,
+    "mean_ghz": 1.6081509376760916,
+    "at_or_above_3_ghz": 0,
+    "wall_windows_ms": {
+      "min": 1.000729,
+      "max": 1.070208,
+      "median": 1.001511
+    },
+    "all_on_cpu7": true,
+    "no_multiplexing": true
+  },
+  "hardware-clocks": {
+    "samples": 15,
+    "min_ghz": 1.24800064,
+    "max_ghz": 2.09281088,
+    "driver_current_khz": [
+      1248000
+    ]
+  }
+}
