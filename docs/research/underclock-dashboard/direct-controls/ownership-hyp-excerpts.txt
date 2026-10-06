@@ -1,0 +1,100 @@
+# HYP stock static disassembly; this does not execute SMC.
+
+# range 0xdc10+0xd0
+0000dc10 paciasp
+0000dc14 stp x29, x30, [sp, #-0x20]!
+0000dc18 str x19, [sp, #0x10]
+0000dc1c mov x29, sp
+0000dc20 mov x19, x1
+0000dc24 bl #0xdc58
+0000dc28 cbz x0, #0xdc3c
+0000dc2c mov w8, #1
+0000dc30 mov x0, xzr
+0000dc34 str x8, [x19]
+0000dc38 b #0xdc40
+0000dc3c mov x0, #-0xe
+0000dc40 ldr x19, [sp, #0x10]
+0000dc44 ldp x29, x30, [sp], #0x20
+0000dc48 autiasp
+0000dc4c ret
+0000dc50 dsb sy
+0000dc54 isb
+0000dc58 bti c
+0000dc5c adrp x8, #0x200000
+0000dc60 adrp x9, #0x200000
+0000dc64 and w10, w0, #0x3e000000
+0000dc68 mov w11, #0x30000000
+0000dc6c cmp w10, w11
+0000dc70 mov w11, #0xff
+0000dc74 ldr x8, [x8, #0x80]
+0000dc78 mov w10, #0x3f00ffff
+0000dc7c ldr x9, [x9, #0x88]
+0000dc80 movk w11, #0x3f00, lsl #16
+0000dc84 csel w10, w11, w10, eq
+0000dc88 sub x12, x9, x8
+0000dc8c cmp x12, #0x18
+0000dc90 ccmp x8, x9, #2, hs
+0000dc94 b.hs #0xdcb4
+0000dc98 and w10, w10, w0
+0000dc9c ldr w11, [x8, #4]
+0000dca0 cmp w10, w11
+0000dca4 b.eq #0xdcbc
+0000dca8 add x8, x8, #0x18
+0000dcac cmp x8, x9
+0000dcb0 b.lo #0xdc9c
+0000dcb4 mov x0, xzr
+0000dcb8 b #0xdccc
+0000dcbc ldr w9, [x8, #8]
+0000dcc0 and w9, w9, #0xf
+0000dcc4 cmp w9, #0xa
+0000dcc8 csel x0, xzr, x8, hi
+0000dccc ret
+0000dcd0 dsb sy
+0000dcd4 isb
+0000dcd8 bti c
+0000dcdc tbnz w0, #0x1f, #0xdce8
+
+# range 0x8d6b4+0xac
+0008d6b4 bti c
+0008d6b8 pacia x30, sp
+0008d6bc sub sp, sp, #0xc0
+0008d6c0 stp x29, x30, [sp, #0x80]
+0008d6c4 str x23, [sp, #0x90]
+0008d6c8 stp x22, x21, [sp, #0xa0]
+0008d6cc stp x20, x19, [sp, #0xb0]
+0008d6d0 add x29, sp, #0x80
+0008d6d4 adrp x8, #0x26e000
+0008d6d8 ldr x8, [x8, #0xfe8]
+0008d6dc add x9, sp, #8
+0008d6e0 mov w23, w4
+0008d6e4 mov x20, x3
+0008d6e8 mov x19, x2
+0008d6ec mov x21, x1
+0008d6f0 and x22, x0, #0xffffffff
+0008d6f4 add x0, x9, #8
+0008d6f8 mov w2, #0x30
+0008d6fc stur x8, [x29, #-8]
+0008d700 str x22, [sp, #8]
+0008d704 prfm pstl1keep, [sp, #0x10]
+0008d708 prfm pldl1strm, [x1]
+0008d70c tbnz w0, #3, #0x8d718
+0008d710 bl #0x48a20
+0008d714 b #0x8d71c
+0008d718 bl #0x489d8
+0008d71c mov w23, w23
+0008d720 add x1, sp, #8
+0008d724 mov w0, #0x20
+0008d728 mov w2, #8
+0008d72c str x23, [sp, #0x40]
+0008d730 bl #0x8b610
+0008d734 mov x0, x22
+0008d738 mov x7, x23
+0008d73c ldp x1, x2, [x21]
+0008d740 ldp x3, x4, [x21, #0x10]
+0008d744 ldp x5, x6, [x21, #0x20]
+0008d748 smc #0
+0008d74c mov x21, x6
+0008d750 stp x0, x1, [x19]
+0008d754 stp x2, x3, [x19, #0x10]
+0008d758 cbz x20, #0x8d760
+0008d75c str x21, [x20]

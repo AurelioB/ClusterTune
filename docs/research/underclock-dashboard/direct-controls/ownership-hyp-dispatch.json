@@ -1,0 +1,359 @@
+{
+  "table_start": "0x218000",
+  "table_end": "0x218420",
+  "entry_count": 44,
+  "entries": [
+    {
+      "va": "0x218000",
+      "mink_service": 0,
+      "smc_id": "0x2000403",
+      "param_id": "0x2",
+      "flags": "0x0",
+      "handler_va": "0x60d0"
+    },
+    {
+      "va": "0x218018",
+      "mink_service": 0,
+      "smc_id": "0x2000601",
+      "param_id": "0x1",
+      "flags": "0x0",
+      "handler_va": "0xdc10"
+    },
+    {
+      "va": "0x218030",
+      "mink_service": 0,
+      "smc_id": "0x32000105",
+      "param_id": "0x22",
+      "flags": "0x0",
+      "handler_va": "0xdbfc"
+    },
+    {
+      "va": "0x218048",
+      "mink_service": 0,
+      "smc_id": "0x32000106",
+      "param_id": "0x22",
+      "flags": "0x0",
+      "handler_va": "0xd670"
+    },
+    {
+      "va": "0x218060",
+      "mink_service": 0,
+      "smc_id": "0x2000c1f",
+      "param_id": "0x1",
+      "flags": "0x0",
+      "handler_va": "0xd614"
+    },
+    {
+      "va": "0x218078",
+      "mink_service": 0,
+      "smc_id": "0x2000c17",
+      "param_id": "0x225",
+      "flags": "0x0",
+      "handler_va": "0xd65c"
+    },
+    {
+      "va": "0x218090",
+      "mink_service": 0,
+      "smc_id": "0x2000c0f",
+      "param_id": "0x1",
+      "flags": "0x0",
+      "handler_va": "0xd65c"
+    },
+    {
+      "va": "0x2180a8",
+      "mink_service": 0,
+      "smc_id": "0x2000c19",
+      "param_id": "0x5",
+      "flags": "0x0",
+      "handler_va": "0xd65c"
+    },
+    {
+      "va": "0x2180c0",
+      "mink_service": 0,
+      "smc_id": "0x2000a02",
+      "param_id": "0x22",
+      "flags": "0x0",
+      "handler_va": "0xd65c"
+    },
+    {
+      "va": "0x2180d8",
+      "mink_service": 0,
+      "smc_id": "0x2001504",
+      "param_id": "0x0",
+      "flags": "0x0",
+      "handler_va": "0xd65c"
+    },
+    {
+      "va": "0x2180f0",
+      "mink_service": 0,
+      "smc_id": "0x200090b",
+      "param_id": "0x13",
+      "flags": "0x0",
+      "handler_va": "0xd65c"
+    },
+    {
+      "va": "0x218108",
+      "mink_service": 0,
+      "smc_id": "0x2000c26",
+      "param_id": "0x22",
+      "flags": "0x0",
+      "handler_va": "0xd65c"
+    },
+    {
+      "va": "0x218120",
+      "mink_service": 0,
+      "smc_id": "0x2001507",
+      "param_id": "0x1",
+      "flags": "0x0",
+      "handler_va": "0xd65c"
+    },
+    {
+      "va": "0x218138",
+      "mink_service": 0,
+      "smc_id": "0x2001506",
+      "param_id": "0x22200a",
+      "flags": "0x0",
+      "handler_va": "0x2555c"
+    },
+    {
+      "va": "0x218150",
+      "mink_service": 0,
+      "smc_id": "0x2000c18",
+      "param_id": "0x84",
+      "flags": "0x0",
+      "handler_va": "0x25a80"
+    },
+    {
+      "va": "0x218168",
+      "mink_service": 0,
+      "smc_id": "0x2000c08",
+      "param_id": "0x4",
+      "flags": "0x0",
+      "handler_va": "0x28f20"
+    },
+    {
+      "va": "0x218180",
+      "mink_service": 0,
+      "smc_id": "0x2002201",
+      "param_id": "0x4",
+      "flags": "0x0",
+      "handler_va": "0x2b62c"
+    },
+    {
+      "va": "0x218198",
+      "mink_service": 0,
+      "smc_id": "0x2000c16",
+      "param_id": "0x1117",
+      "flags": "0x80000000",
+      "handler_va": "0x356d4"
+    },
+    {
+      "va": "0x2181b0",
+      "mink_service": 0,
+      "smc_id": "0x2000c1a",
+      "param_id": "0x115",
+      "flags": "0x80000000",
+      "handler_va": "0x35fbc"
+    },
+    {
+      "va": "0x2181c8",
+      "mink_service": 0,
+      "smc_id": "0x2000c1e",
+      "param_id": "0x4",
+      "flags": "0x80000000",
+      "handler_va": "0x369d0"
+    },
+    {
+      "va": "0x2181e0",
+      "mink_service": 0,
+      "smc_id": "0x2000c1c",
+      "param_id": "0x0",
+      "flags": "0x80000000",
+      "handler_va": "0x36a9c"
+    },
+    {
+      "va": "0x2181f8",
+      "mink_service": 0,
+      "smc_id": "0x2000c1d",
+      "param_id": "0x1",
+      "flags": "0x80000000",
+      "handler_va": "0x36a54"
+    },
+    {
+      "va": "0x218210",
+      "mink_service": 0,
+      "smc_id": "0x2001901",
+      "param_id": "0x43",
+      "flags": "0x80000000",
+      "handler_va": "0x41040"
+    },
+    {
+      "va": "0x218228",
+      "mink_service": 0,
+      "smc_id": "0x2001902",
+      "param_id": "0x22",
+      "flags": "0x80000000",
+      "handler_va": "0x41004"
+    },
+    {
+      "va": "0x218240",
+      "mink_service": 0,
+      "smc_id": "0x2001904",
+      "param_id": "0x0",
+      "flags": "0x80000000",
+      "handler_va": "0x4102c"
+    },
+    {
+      "va": "0x218258",
+      "mink_service": 0,
+      "smc_id": "0x2001906",
+      "param_id": "0x1",
+      "flags": "0x80000000",
+      "handler_va": "0x40ff0"
+    },
+    {
+      "va": "0x218270",
+      "mink_service": 0,
+      "smc_id": "0x2001907",
+      "param_id": "0x2",
+      "flags": "0x80000000",
+      "handler_va": "0x413fc"
+    },
+    {
+      "va": "0x218288",
+      "mink_service": 0,
+      "smc_id": "0x2001903",
+      "param_id": "0x23",
+      "flags": "0x0",
+      "handler_va": "0xd65c"
+    },
+    {
+      "va": "0x2182a0",
+      "mink_service": 0,
+      "smc_id": "0x2001905",
+      "param_id": "0x0",
+      "flags": "0x80000000",
+      "handler_va": "0x41018"
+    },
+    {
+      "va": "0x2182b8",
+      "mink_service": 0,
+      "smc_id": "0x2000201",
+      "param_id": "0x82",
+      "flags": "0x0",
+      "handler_va": "0x46508"
+    },
+    {
+      "va": "0x2182d0",
+      "mink_service": 0,
+      "smc_id": "0x2000205",
+      "param_id": "0x1",
+      "flags": "0x0",
+      "handler_va": "0x46538"
+    },
+    {
+      "va": "0x2182e8",
+      "mink_service": 0,
+      "smc_id": "0x2000202",
+      "param_id": "0x3",
+      "flags": "0x0",
+      "handler_va": "0x46568"
+    },
+    {
+      "va": "0x218300",
+      "mink_service": 0,
+      "smc_id": "0x2000206",
+      "param_id": "0x1",
+      "flags": "0x0",
+      "handler_va": "0x46598"
+    },
+    {
+      "va": "0x218318",
+      "mink_service": 0,
+      "smc_id": "0x2000207",
+      "param_id": "0x1",
+      "flags": "0x0",
+      "handler_va": "0x465c8"
+    },
+    {
+      "va": "0x218330",
+      "mink_service": 0,
+      "smc_id": "0x2000208",
+      "param_id": "0x1",
+      "flags": "0x0",
+      "handler_va": "0x465f8"
+    },
+    {
+      "va": "0x218348",
+      "mink_service": 0,
+      "smc_id": "0x200010a",
+      "param_id": "0x2",
+      "flags": "0x0",
+      "handler_va": "0x46628"
+    },
+    {
+      "va": "0x218360",
+      "mink_service": 0,
+      "smc_id": "0x2001801",
+      "param_id": "0x0",
+      "flags": "0x0",
+      "handler_va": "0x46da8"
+    },
+    {
+      "va": "0x218378",
+      "mink_service": 0,
+      "smc_id": "0x2001802",
+      "param_id": "0x2",
+      "flags": "0x0",
+      "handler_va": "0x46e0c"
+    },
+    {
+      "va": "0x218390",
+      "mink_service": 0,
+      "smc_id": "0x2001803",
+      "param_id": "0x3",
+      "flags": "0x0",
+      "handler_va": "0x46e64"
+    },
+    {
+      "va": "0x2183a8",
+      "mink_service": 0,
+      "smc_id": "0x2001805",
+      "param_id": "0x2",
+      "flags": "0x0",
+      "handler_va": "0x46ebc"
+    },
+    {
+      "va": "0x2183c0",
+      "mink_service": 0,
+      "smc_id": "0x2001806",
+      "param_id": "0x2",
+      "flags": "0x0",
+      "handler_va": "0x46be8"
+    },
+    {
+      "va": "0x2183d8",
+      "mink_service": 0,
+      "smc_id": "0x2001807",
+      "param_id": "0x2",
+      "flags": "0x0",
+      "handler_va": "0x46cc8"
+    },
+    {
+      "va": "0x2183f0",
+      "mink_service": 0,
+      "smc_id": "0x2001808",
+      "param_id": "0x2",
+      "flags": "0x0",
+      "handler_va": "0x46f14"
+    },
+    {
+      "va": "0x218408",
+      "mink_service": 0,
+      "smc_id": "0x2001809",
+      "param_id": "0x2",
+      "flags": "0x0",
+      "handler_va": "0x46f98"
+    }
+  ]
+}

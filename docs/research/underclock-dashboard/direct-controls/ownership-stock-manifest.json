@@ -1,0 +1,14 @@
+{
+  "hyp_b.bin": {
+    "bytes": 8388608,
+    "sha256": "7e20634280c45c7bca5131f3a576e0a3a61198fc61af4d85a50102d1a2474857"
+  },
+  "uefisecapp_b.bin": {
+    "bytes": 2097152,
+    "sha256": "ac1004ff6719a36bc03438e3a0b9f9fe395e024ff037844c981809de113489cb"
+  },
+  "cpucp_b.bin": {
+    "bytes": 1048576,
+    "sha256": "19de4a8dd45eaa80ca2dd33d7a73661373805efd3970c994f2274e920b1d3808"
+  }
+}
