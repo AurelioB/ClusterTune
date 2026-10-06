@@ -1,0 +1,197 @@
+{
+  "firmware_sha256": "19de4a8dd45eaa80ca2dd33d7a73661373805efd3970c994f2274e920b1d3808",
+  "method": "Host-only Unicorn2.1.4; stock SCMI initializer with synthetic zero-valued MMIO pages, then stock registration helper invoked with four statically resolved registrations. This is not full boot emulation and cannot exclude external table mutation.",
+  "scmi_initializer": {
+    "instructions": 2201,
+    "a0": 0,
+    "advertised_count": 6,
+    "advertised_protocols": [
+      "0x13",
+      "0x83",
+      "0x86",
+      "0x87",
+      "0x80",
+      "0x84"
+    ],
+    "runtime_vendor_table_after_scmi_init": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "modeled_registrations": [
+    {
+      "protocol": "0x87",
+      "handler": "0x17d201a8"
+    },
+    {
+      "protocol": "0x86",
+      "handler": "0xd82e5736"
+    },
+    {
+      "protocol": "0x80",
+      "handler": "0xd82e60fe"
+    },
+    {
+      "protocol": "0x84",
+      "handler": "0xd82e714a"
+    }
+  ],
+  "runtime_vendor_table_after_modeled_registrations": [
+    "0x87",
+    "0x17d201a8",
+    "0x86",
+    "0xd82e5736",
+    "0x80",
+    "0xd82e60fe",
+    "0x84",
+    "0xd82e714a",
+    "0x0",
+    "0x0",
+    "0x0",
+    "0x0",
+    "0x0",
+    "0x0",
+    "0x0",
+    "0x0",
+    "0x0",
+    "0x0"
+  ],
+  "registration_table_writes": [
+    {
+      "pc": "0xd82e7606",
+      "address": "0x17d0d528",
+      "size": 4,
+      "value": "0x87"
+    },
+    {
+      "pc": "0xd82e7608",
+      "address": "0x17d0d52c",
+      "size": 4,
+      "value": "0x17d201a8"
+    },
+    {
+      "pc": "0xd82e7606",
+      "address": "0x17d0d530",
+      "size": 4,
+      "value": "0x86"
+    },
+    {
+      "pc": "0xd82e7608",
+      "address": "0x17d0d534",
+      "size": 4,
+      "value": "0xd82e5736"
+    },
+    {
+      "pc": "0xd82e7606",
+      "address": "0x17d0d538",
+      "size": 4,
+      "value": "0x80"
+    },
+    {
+      "pc": "0xd82e7608",
+      "address": "0x17d0d53c",
+      "size": 4,
+      "value": "0xd82e60fe"
+    },
+    {
+      "pc": "0xd82e7606",
+      "address": "0x17d0d540",
+      "size": 4,
+      "value": "0x84"
+    },
+    {
+      "pc": "0xd82e7608",
+      "address": "0x17d0d544",
+      "size": 4,
+      "value": "0xd82e714a"
+    }
+  ],
+  "protocol83_generic_responses": [
+    {
+      "command": 0,
+      "response_length": 12,
+      "status": 0,
+      "response_words": [
+        0,
+        65536
+      ],
+      "instructions": 48,
+      "a0": 0
+    },
+    {
+      "command": 1,
+      "response_length": 12,
+      "status": 0,
+      "response_words": [
+        0,
+        257
+      ],
+      "instructions": 48,
+      "a0": 0
+    },
+    {
+      "command": 2,
+      "response_length": 12,
+      "status": 0,
+      "response_words": [
+        0,
+        0
+      ],
+      "instructions": 51,
+      "a0": 0
+    }
+  ],
+  "protocol83_commands3_to255": {
+    "tested": 253,
+    "all_status_minus1": true,
+    "all_response_length8": true,
+    "examples": [
+      {
+        "command": 3,
+        "response_length": 8,
+        "status": -1,
+        "response_words": [
+          4294967295
+        ],
+        "instructions": 86,
+        "a0": 0
+      },
+      {
+        "command": 16,
+        "response_length": 8,
+        "status": -1,
+        "response_words": [
+          4294967295
+        ],
+        "instructions": 86,
+        "a0": 0
+      },
+      {
+        "command": 255,
+        "response_length": 8,
+        "status": -1,
+        "response_words": [
+          4294967295
+        ],
+        "instructions": 86,
+        "a0": 0
+      }
+    ]
+  }
+}

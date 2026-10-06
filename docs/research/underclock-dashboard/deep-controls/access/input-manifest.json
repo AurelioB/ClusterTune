@@ -1,0 +1,22 @@
+[
+  {
+    "file": "kernel.config",
+    "sha256": "1af0ac47839ef733ff35057ddb1bf86c0105083610420389b1b3afb04737b17e",
+    "bytes": 185377
+  },
+  {
+    "file": "qcom-scm.ko",
+    "sha256": "2133b5b828bef3a0051ae7821c418d689bb01813764a6c1ccb114163921b76b2",
+    "bytes": 218944
+  },
+  {
+    "file": "qcom-cpufreq-hw.ko",
+    "sha256": "30cc286cd8c2d17271330cd71ab44d789805e726be44ff41eeadcf3c85346cd7",
+    "bytes": 57400
+  },
+  {
+    "file": "msm_lmh_dcvs.ko",
+    "sha256": "47be7bfcca4ca81bf4f0250d46ba406ac49c2ce5b714594f97650783d25cb8e5",
+    "bytes": 26264
+  }
+]

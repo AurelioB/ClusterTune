@@ -1,0 +1,49 @@
+{
+  "inputs": [
+    {
+      "file_name": "cpucp_b.bin",
+      "sha256": "19de4a8dd45eaa80ca2dd33d7a73661373805efd3970c994f2274e920b1d3808",
+      "bytes": 1048576
+    },
+    {
+      "file_name": "vendor-ramdisk.bin",
+      "sha256": "68c8442230f2cba18d388a2a30d12e2cb44cc8cafd102f17f8531c1b7940346d",
+      "bytes": 9699328
+    },
+    {
+      "file_name": "vendor-boot-header.bin",
+      "sha256": "443af40c8a615e5c6b7aa66093b8863cab32024fc785bcd77a99f0848456f173",
+      "bytes": 4096
+    },
+    {
+      "file_name": "plh_vendor.ko",
+      "sha256": "25eb0c3c1b4cc3225e6becd44c7262b58fa8875df27c616f8769d519b0a2d00a",
+      "bytes": 17128
+    },
+    {
+      "file_name": "plh_scmi.ko",
+      "sha256": "8f3f3f9f2317f1970763c4e6da271ab6cdd26e3b1f594decb2a8866aa6ff6ad9",
+      "bytes": 13424
+    }
+  ],
+  "primary_related_sources": [
+    {
+      "source_path": "include/linux/scmi_plh.h",
+      "url": "https://github.com/LineageOS/android_kernel_ayn_qcs8550/blob/0d9a32622533fa6dbeeab60207977171c286c458/include/linux/scmi_plh.h",
+      "sha256": "2062c5d99b023b623ca3293120d74d69b0578060460b820050c9c928820ccb91",
+      "bytes": 1522
+    },
+    {
+      "source_path": "drivers/firmware/arm_scmi/plh_vendor.c",
+      "url": "https://github.com/LineageOS/android_kernel_ayn_qcs8550/blob/0d9a32622533fa6dbeeab60207977171c286c458/drivers/firmware/arm_scmi/plh_vendor.c",
+      "sha256": "d1d57f6ab9ad24b13116a3cc5ab12ae9bb6b3a21632dbb38969c56ae244d7711",
+      "bytes": 4942
+    },
+    {
+      "source_path": "drivers/soc/qcom/plh_scmi.c",
+      "url": "https://github.com/LineageOS/android_kernel_ayn_qcs8550/blob/0d9a32622533fa6dbeeab60207977171c286c458/drivers/soc/qcom/plh_scmi.c",
+      "sha256": "498321c2b363531176d84970be25f1a7227f496d986bee42aacc8606b1aec57f",
+      "bytes": 1305
+    }
+  ]
+}

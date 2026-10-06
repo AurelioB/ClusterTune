@@ -1,0 +1,120 @@
+{
+  "cpucp_domain_objects": [
+    {
+      "domain": 0,
+      "object_va": "0xd82f7a58",
+      "words": [
+        "0x17d0e080",
+        "0x17d0e084",
+        "0x0",
+        "0x0",
+        "0xff",
+        "0x17d90000"
+      ],
+      "epss_base_offset_0x14": "0x17d90000"
+    },
+    {
+      "domain": 1,
+      "object_va": "0xd82f7a70",
+      "words": [
+        "0x17d0e08c",
+        "0x17d0e084",
+        "0x1",
+        "0x0",
+        "0x0",
+        "0x17d91000"
+      ],
+      "epss_base_offset_0x14": "0x17d91000"
+    },
+    {
+      "domain": 2,
+      "object_va": "0xd82f7a88",
+      "words": [
+        "0x17d0e094",
+        "0x17d0e09c",
+        "0x2",
+        "0x0",
+        "0x0",
+        "0x17d92000"
+      ],
+      "epss_base_offset_0x14": "0x17d92000"
+    },
+    {
+      "domain": 3,
+      "object_va": "0xd82f7aa0",
+      "words": [
+        "0x17d0e0a4",
+        "0x17d0e09c",
+        "0x3",
+        "0x0",
+        "0x0",
+        "0x17d93000"
+      ],
+      "epss_base_offset_0x14": "0x17d93000"
+    }
+  ],
+  "epss_0xbc_initialization": [
+    {
+      "domain": 0,
+      "name": "L3",
+      "bit0": 0,
+      "store": "0xd82e0e00"
+    },
+    {
+      "domain": 1,
+      "name": "Silver",
+      "bit0": 0,
+      "store": "0xd82e108a"
+    },
+    {
+      "domain": 2,
+      "name": "Gold",
+      "bit0": 1,
+      "store": "0xd82e10a8"
+    },
+    {
+      "domain": 3,
+      "name": "Gold_Plus",
+      "bit0": 1,
+      "store": "0xd82e0de8"
+    }
+  ],
+  "ep88_file_initializer": {
+    "va": "0x17d0c37c",
+    "values": [
+      0,
+      3,
+      0,
+      0
+    ],
+    "note": "Static policy/file defaults, not measured or demonstrated sampled-register state."
+  },
+  "cpucp_boot_strings": [
+    {
+      "va": "0x1578273b",
+      "string": "/cpucp/cpucpcfg"
+    },
+    {
+      "va": "0x1578274b",
+      "string": "tgt_cpucp_config"
+    }
+  ],
+  "xbl_boot_error_filename": {
+    "va": "0x148ad2c8",
+    "string": "boot_cpucp.c"
+  },
+  "xbl_boot_function_table": [
+    {
+      "slot_va": "0x148bf018",
+      "function": "0x14832c4c"
+    },
+    {
+      "slot_va": "0x148bf020",
+      "function": "0x14832c90"
+    },
+    {
+      "slot_va": "0x148bf028",
+      "function": "0x14832c94"
+    }
+  ]
+}

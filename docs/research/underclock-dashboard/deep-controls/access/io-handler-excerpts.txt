@@ -1,0 +1,172 @@
+# range 0x156781b0+0x20
+156781b0 bti c
+156781b4 adrp x0, #0x157aa000
+156781b8 add x0, x0, #0x918
+156781bc ret
+156781c0 sb
+156781c4 bti c
+156781c8 mov w0, #0x35
+156781cc ret
+# range 0x1571cab8+0x288
+1571cab8 bti c
+1571cabc pacia x30, sp
+1571cac0 stp x29, x30, [sp, #-0x30]!
+1571cac4 stp x22, x21, [sp, #0x10]
+1571cac8 mov x29, sp
+1571cacc stp x20, x19, [sp, #0x20]
+1571cad0 lsr x8, x0, #0x20
+1571cad4 cbnz x8, #0x1571cc18
+1571cad8 mov w19, w1
+1571cadc mov x20, x0
+1571cae0 bl #0x156781b0
+1571cae4 mov x21, x0
+1571cae8 bl #0x156781c4
+1571caec mov w8, w0
+1571caf0 mov w0, #-1
+1571caf4 cbz x21, #0x1571cc1c
+1571caf8 cbz w8, #0x1571cc1c
+1571cafc and x22, x20, #0xffffffff
+1571cb00 mov w8, w8
+1571cb04 add x21, x21, #4
+1571cb08 mov w0, #-1
+1571cb0c ldur w9, [x21, #-4]
+1571cb10 cmp w9, w20
+1571cb14 b.eq #0x1571cb28
+1571cb18 add x21, x21, #0x10
+1571cb1c subs x8, x8, #1
+1571cb20 b.ne #0x1571cb0c
+1571cb24 b #0x1571cc1c
+1571cb28 ldrb w8, [x21, #2]
+1571cb2c lsl w8, w8, #0x10
+1571cb30 sub w8, w8, #0x800, lsl #12
+1571cb34 lsr w8, w8, #0x10
+1571cb38 cmp w8, #8
+1571cb3c b.hi #0x1571cbc8
+1571cb40 adrp x9, #0x15784000
+1571cb44 mov w20, #1
+1571cb48 add x9, x9, #0x168
+1571cb4c adr x10, #0x1571cb60
+1571cb50 ldrb w11, [x9, x8]
+1571cb54 add x10, x10, x11, lsl #2
+1571cb58 br x10
+1571cb5c sb
+1571cb60 bti j
+1571cb64 mov w0, #1
+1571cb68 bl #0x15681750
+1571cb6c tst w0, #0xff
+1571cb70 cset w20, eq
+1571cb74 b #0x1571cbd0
+1571cb78 bti j
+1571cb7c mov w0, #1
+1571cb80 bl #0x15681750
+1571cb84 tst w0, #0xff
+1571cb88 b.eq #0x1571cb98
+1571cb8c bl #0x1565709c
+1571cb90 tst w0, #0xff
+1571cb94 b.ne #0x1571cbc8
+1571cb98 mov w20, #1
+1571cb9c b #0x1571cbd0
+1571cba0 bti j
+1571cba4 bl #0x1567e184
+1571cba8 b #0x1571cbc0
+1571cbac bti j
+1571cbb0 ldur x8, [x21, #4]
+1571cbb4 cbz x8, #0x1571cbc8
+1571cbb8 mov w0, w19
+1571cbbc bl #0x15652d08
+1571cbc0 mov w20, w0
+1571cbc4 b #0x1571cbd0
+1571cbc8 bti j
+1571cbcc mov w20, wzr
+1571cbd0 bti j
+1571cbd4 ldrh w8, [x21]
+1571cbd8 adrp x9, #0x1571c000
+1571cbdc add x9, x9, #0xd84
+1571cbe0 adrp x10, #0x1567d000
+1571cbe4 add x10, x10, #0xdac
+1571cbe8 cmp w8, #2
+1571cbec csel x9, x9, xzr, eq
+1571cbf0 cmp w8, #1
+1571cbf4 csel x8, x10, x9, eq
+1571cbf8 cbz x8, #0x1571cc08
+1571cbfc mov w0, w19
+1571cc00 bl #0x15652d08
+1571cc04 mov w19, w0
+1571cc08 tbz w20, #0, #0x1571cc18
+1571cc0c mov w0, wzr
+1571cc10 str w19, [x22]
+1571cc14 b #0x1571cc1c
+1571cc18 mov w0, #-1
+1571cc1c ldp x20, x19, [sp, #0x20]
+1571cc20 ldp x22, x21, [sp, #0x10]
+1571cc24 ldp x29, x30, [sp], #0x30
+1571cc28 retaa
+1571cc2c sb
+1571cc30 bti c
+1571cc34 pacia x30, sp
+1571cc38 stp x29, x30, [sp, #-0x30]!
+1571cc3c stp x22, x21, [sp, #0x10]
+1571cc40 mov x29, sp
+1571cc44 stp x20, x19, [sp, #0x20]
+1571cc48 lsr x8, x0, #0x20
+1571cc4c cbnz x8, #0x1571ccf4
+1571cc50 mov x19, x1
+1571cc54 mov x20, x0
+1571cc58 bl #0x156781b0
+1571cc5c mov x21, x0
+1571cc60 bl #0x156781c4
+1571cc64 mov w8, w0
+1571cc68 mov w0, #-1
+1571cc6c cbz x21, #0x1571ccf8
+1571cc70 cbz w8, #0x1571ccf8
+1571cc74 and x22, x20, #0xffffffff
+1571cc78 mov w8, w8
+1571cc7c add x9, x21, #4
+1571cc80 mov w0, #-1
+1571cc84 ldur w10, [x9, #-4]
+1571cc88 cmp w10, w20
+1571cc8c b.eq #0x1571cca0
+1571cc90 add x9, x9, #0x10
+1571cc94 subs x8, x8, #1
+1571cc98 b.ne #0x1571cc84
+1571cc9c b #0x1571ccf8
+1571cca0 ldrb w8, [x9, #3]
+1571cca4 mov w9, #-0x80000000
+1571cca8 lsl w8, w8, #0x18
+1571ccac cmp w8, w9
+1571ccb0 b.eq #0x1571cd0c
+1571ccb4 mov w9, #-0x7e000000
+1571ccb8 cmp w8, w9
+1571ccbc b.eq #0x1571ccd8
+1571ccc0 mov w9, #-0x7f000000
+1571ccc4 cmp w8, w9
+1571ccc8 b.ne #0x1571ccf4
+1571cccc mov w0, #1
+1571ccd0 bl #0x15681750
+1571ccd4 b #0x1571ccec
+1571ccd8 mov w0, #1
+1571ccdc bl #0x15681750
+1571cce0 tst w0, #0xff
+1571cce4 b.eq #0x1571cd0c
+1571cce8 bl #0x1565709c
+1571ccec tst w0, #0xff
+1571ccf0 b.eq #0x1571cd0c
+1571ccf4 mov w0, #-1
+1571ccf8 ldp x20, x19, [sp, #0x20]
+1571ccfc ldp x22, x21, [sp, #0x10]
+1571cd00 ldp x29, x30, [sp], #0x30
+1571cd04 retaa
+1571cd08 sb
+1571cd0c mov w0, wzr
+1571cd10 cbz x19, #0x1571ccf8
+1571cd14 ldr w8, [x22]
+1571cd18 str xzr, [x19, #0x10]
+1571cd1c stp x8, xzr, [x19]
+1571cd20 b #0x1571ccf8
+1571cd24 bti c
+1571cd28 pacia x30, sp
+1571cd2c stp x29, x30, [sp, #-0x30]!
+1571cd30 str x21, [sp, #0x10]
+1571cd34 mov x29, sp
+1571cd38 stp x20, x19, [sp, #0x20]
+1571cd3c mov w19, w1

@@ -1,0 +1,20 @@
+[
+  {
+    "module": "plh_vendor.ko",
+    "sha256": "25eb0c3c1b4cc3225e6becd44c7262b58fa8875df27c616f8769d519b0a2d00a",
+    "symbol": "scmi_plh_vendor",
+    "symbol_section": 2,
+    "symbol_offset": "0x8",
+    "protocol_id": "0x81",
+    "initial_16_object_bytes": "81 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+  },
+  {
+    "module": "plh_scmi.ko",
+    "sha256": "8f3f3f9f2317f1970763c4e6da271ab6cdd26e3b1f594decb2a8866aa6ff6ad9",
+    "symbol": "scmi_id_table",
+    "symbol_section": 5,
+    "symbol_offset": "0x8",
+    "protocol_id": "0x81",
+    "initial_16_object_bytes": "81 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00"
+  }
+]

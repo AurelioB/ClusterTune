@@ -1,0 +1,86 @@
+[
+  {
+    "image": "CPUCP",
+    "path": "/tmp/ct-fcap-ownership/cpucp_b.bin",
+    "machine": 243,
+    "sha256": "19de4a8dd45eaa80ca2dd33d7a73661373805efd3970c994f2274e920b1d3808",
+    "ranges": [
+      {
+        "va": "0xd82e0968",
+        "size": "0x7e"
+      },
+      {
+        "va": "0xd82e0d04",
+        "size": "0x100"
+      },
+      {
+        "va": "0xd82e1074",
+        "size": "0x3a"
+      },
+      {
+        "va": "0xd82e0222",
+        "size": "0x11c"
+      },
+      {
+        "va": "0x17d0086e",
+        "size": "0x7a"
+      },
+      {
+        "va": "0xd82e5d6a",
+        "size": "0x3c"
+      },
+      {
+        "va": "0x17d24656",
+        "size": "0x6a"
+      },
+      {
+        "va": "0x17d0045c",
+        "size": "0x1c"
+      },
+      {
+        "va": "0xd82e01a2",
+        "size": "0x80"
+      },
+      {
+        "va": "0x17d20776",
+        "size": "0x18"
+      },
+      {
+        "va": "0x17d0316a",
+        "size": "0x28"
+      },
+      {
+        "va": "0x17d03ab2",
+        "size": "0x2c"
+      }
+    ]
+  },
+  {
+    "image": "TZ",
+    "path": "/tmp/ct-direct-controls-stock/tz_b.bin",
+    "machine": 183,
+    "sha256": "917e26b15114884cd54bc47fdb40ae43b63ee6281ce74f217d3990dcdfa1d206",
+    "ranges": [
+      {
+        "va": "0x1570f1dc",
+        "size": "0x180"
+      }
+    ]
+  },
+  {
+    "image": "XBL_ARM64",
+    "path": "/tmp/ct-fcap-ownership/xbl-embedded-0x55f94.elf",
+    "machine": 183,
+    "sha256": "1eaaddce7ea3c61c14da11949e53ece0189be1940ad4d3f2b9822f2827d11bfd",
+    "ranges": [
+      {
+        "va": "0x14832c4c",
+        "size": "0x4c"
+      },
+      {
+        "va": "0x1486f1a4",
+        "size": "0x8c"
+      }
+    ]
+  }
+]

@@ -1,0 +1,232 @@
+{
+  "sha256": "19de4a8dd45eaa80ca2dd33d7a73661373805efd3970c994f2274e920b1d3808",
+  "instructions": 29043,
+  "resolved_calls_to_selected_init_and_registration_targets": {
+    "0xd82e75d4": [
+      {
+        "call_va": "0x17d206fc",
+        "target": "0xd82e75d4",
+        "encoding": "jalr"
+      },
+      {
+        "call_va": "0xd82e588a",
+        "target": "0xd82e75d4",
+        "encoding": "jal"
+      },
+      {
+        "call_va": "0xd82e687e",
+        "target": "0xd82e75d4",
+        "encoding": "jal"
+      },
+      {
+        "call_va": "0xd82e71aa",
+        "target": "0xd82e75d4",
+        "encoding": "c.jal"
+      }
+    ],
+    "0xd82e5f5a": [
+      {
+        "call_va": "0x17d22fe2",
+        "target": "0xd82e5f5a",
+        "encoding": "jalr"
+      }
+    ],
+    "0xd82e5836": [
+      {
+        "call_va": "0x17d23026",
+        "target": "0xd82e5836",
+        "encoding": "jalr"
+      }
+    ],
+    "0xd82e6862": [
+      {
+        "call_va": "0x17d23040",
+        "target": "0xd82e6862",
+        "encoding": "jalr"
+      }
+    ],
+    "0xd82e7198": [
+      {
+        "call_va": "0x17d235dc",
+        "target": "0xd82e7198",
+        "encoding": "jalr"
+      }
+    ],
+    "0xd82e7270": [
+      {
+        "call_va": "0x17d235b8",
+        "target": "0xd82e7270",
+        "encoding": "jalr"
+      }
+    ],
+    "0x17d2067a": [
+      {
+        "call_va": "0xd82e731a",
+        "target": "0x17d2067a",
+        "encoding": "jalr"
+      }
+    ],
+    "0x17d22f92": [
+      {
+        "call_va": "0x17d23512",
+        "target": "0x17d22f92",
+        "encoding": "jal"
+      }
+    ],
+    "0x17d23492": [
+      {
+        "call_va": "0xd82e00d0",
+        "target": "0x17d23492",
+        "encoding": "jalr"
+      }
+    ]
+  },
+  "linear_constant_indirect_transfers_to_registration_helper": [
+    {
+      "call_va": "0x17d206fc",
+      "target": "0xd82e75d4",
+      "encoding": "jalr"
+    }
+  ],
+  "materialized_registration_helper_address": [],
+  "constant_0x83_materializations": [],
+  "table_and_advertisement_references": [
+    {
+      "instruction_va": "0x17d06112",
+      "instruction": "lbu a1, 0x664(a5)",
+      "effective_address": "0x17d28664",
+      "value_if_known": null
+    },
+    {
+      "instruction_va": "0x17d06838",
+      "instruction": "lw a5, 0x528(a5)",
+      "effective_address": "0x17d0d528",
+      "value_if_known": "0x17d0d000"
+    },
+    {
+      "instruction_va": "0x17d06844",
+      "instruction": "addi a5, a5, 0x528",
+      "materialized_address": "0x17d0d528"
+    },
+    {
+      "instruction_va": "0x17d0684c",
+      "instruction": "c.lw a3, 8(a5)",
+      "effective_address": "0x17d0d530",
+      "value_if_known": null
+    },
+    {
+      "instruction_va": "0x17d068aa",
+      "instruction": "addi a5, a5, 0x528",
+      "materialized_address": "0x17d0d528"
+    },
+    {
+      "instruction_va": "0x17d068ae",
+      "instruction": "c.add a4, a5",
+      "materialized_address": "0x17d0d528"
+    },
+    {
+      "instruction_va": "0x17d068b0",
+      "instruction": "c.lw a5, 4(a4)",
+      "effective_address": "0x17d0d52c",
+      "value_if_known": "0x17d0d528"
+    },
+    {
+      "instruction_va": "0x17d232cc",
+      "instruction": "lw a5, 0x660(a5)",
+      "effective_address": "0x17d28660",
+      "value_if_known": "0x17d28000"
+    },
+    {
+      "instruction_va": "0x17d23372",
+      "instruction": "lw a4, 0x660(a4)",
+      "effective_address": "0x17d28660",
+      "value_if_known": "0x17d28000"
+    },
+    {
+      "instruction_va": "0xd82e5ef6",
+      "instruction": "lw a4, 0x660(a4)",
+      "effective_address": "0x17d28660",
+      "value_if_known": "0x17d28000"
+    },
+    {
+      "instruction_va": "0xd82e5f64",
+      "instruction": "sb a4, 0x664(a5)",
+      "effective_address": "0x17d28664",
+      "value_if_known": "0x6"
+    },
+    {
+      "instruction_va": "0xd82e7468",
+      "instruction": "lbu a2, 0x664(a5)",
+      "effective_address": "0x17d28664",
+      "value_if_known": null
+    },
+    {
+      "instruction_va": "0xd82e747e",
+      "instruction": "addi a5, a5, 0x658",
+      "materialized_address": "0x17d28658"
+    },
+    {
+      "instruction_va": "0xd82e74ba",
+      "instruction": "lbu a0, 0x664(a5)",
+      "effective_address": "0x17d28664",
+      "value_if_known": null
+    },
+    {
+      "instruction_va": "0xd82e75d8",
+      "instruction": "lw a5, 0x52c(a5)",
+      "effective_address": "0x17d0d52c",
+      "value_if_known": "0x17d0d000"
+    },
+    {
+      "instruction_va": "0xd82e75e2",
+      "instruction": "addi a5, a5, 0x528",
+      "materialized_address": "0x17d0d528"
+    },
+    {
+      "instruction_va": "0xd82e75ea",
+      "instruction": "c.lw a3, 0xc(a5)",
+      "effective_address": "0x17d0d534",
+      "value_if_known": null
+    },
+    {
+      "instruction_va": "0xd82e7600",
+      "instruction": "addi a5, a5, 0x528",
+      "materialized_address": "0x17d0d528"
+    },
+    {
+      "instruction_va": "0xd82e7604",
+      "instruction": "c.add a4, a5",
+      "materialized_address": "0x17d0d528"
+    },
+    {
+      "instruction_va": "0xd82e7606",
+      "instruction": "c.sw a0, 0(a4)",
+      "effective_address": "0x17d0d528",
+      "value_if_known": null
+    },
+    {
+      "instruction_va": "0xd82e7608",
+      "instruction": "c.sw a1, 4(a4)",
+      "effective_address": "0x17d0d52c",
+      "value_if_known": null
+    }
+  ],
+  "literal_registration_helper_pointer_offsets": [],
+  "literal_registration_table_pointer_offsets": [],
+  "module_event_table": {
+    "0": "0x17d23590",
+    "1": "0x17d2358c",
+    "2": "0x17d23590",
+    "3": "0x17d23590",
+    "4": "0x17d23590",
+    "5": "0x17d23590",
+    "6": "0x17d235b4",
+    "7": "0x17d235d0",
+    "8": "0x17d235d8",
+    "9": "0x17d235f4",
+    "10": "0x17d2360e",
+    "11": "0x17d23628",
+    "12": "0x17d23642"
+  },
+  "limitations": "Conservative local constant tracking is not a whole-program pointer proof. Calls across branches, loaded runtime pointers, computed addresses and opaque firmware input can remain unresolved."
+}

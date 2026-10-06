@@ -1,0 +1,97 @@
+Range 1570f1dc+180
+1570f1dc bti c
+1570f1e0 pacia x30, sp
+1570f1e4 stp x29, x30, [sp, #-0x10]!
+1570f1e8 mov x29, sp
+1570f1ec adrp x0, #0x15782000
+1570f1f0 adrp x1, #0x157e6000
+1570f1f4 add x0, x0, #0x73b
+1570f1f8 add x1, x1, #0x500
+1570f1fc mov w2, #3
+1570f200 bl #0x156d8b18
+1570f204 cbnz w0, #0x1570f22c
+1570f208 adrp x0, #0x157e6000
+1570f20c adrp x1, #0x15782000
+1570f210 adrp x3, #0x157e6000
+1570f214 add x0, x0, #0x500
+1570f218 add x1, x1, #0x74b
+1570f21c add x3, x3, #0x510
+1570f220 mov w2, wzr
+1570f224 bl #0x156d8ca4
+1570f228 cbz w0, #0x1570f23c
+1570f22c mov w0, #-1
+1570f230 ldp x29, x30, [sp], #0x10
+1570f234 retaa
+1570f238 sb
+1570f23c adrp x8, #0x157e6000
+1570f240 adrp x9, #0x157e0000
+1570f244 ldr x8, [x8, #0x518]
+1570f248 str x8, [x9, #0xe8]
+1570f24c b #0x1570f230
+1570f250 bti c
+1570f254 pacia x30, sp
+1570f258 stp x29, x30, [sp, #-0x10]!
+1570f25c mov x29, sp
+1570f260 bl #0x1570f2bc
+1570f264 cbz w0, #0x1570f278
+1570f268 mov w0, #-1
+1570f26c ldp x29, x30, [sp], #0x10
+1570f270 retaa
+1570f274 sb
+1570f278 mov w8, #0x8004
+1570f27c movk w8, #0x17d9, lsl #16
+1570f280 ldr w9, [x8, #4]
+1570f284 tbnz w9, #0, #0x1570f294
+1570f288 ldr w9, [x8, #4]
+1570f28c orr w9, w9, #1
+1570f290 str w9, [x8, #4]
+1570f294 ldr w9, [x8]
+1570f298 tbnz w9, #1, #0x1570f2a8
+1570f29c ldr w9, [x8]
+1570f2a0 orr w9, w9, #2
+1570f2a4 str w9, [x8]
+1570f2a8 bl #0x1570f3bc
+1570f2ac ldp x29, x30, [sp], #0x10
+1570f2b0 autiasp
+1570f2b4 b #0x1570f7e4
+1570f2b8 sb
+1570f2bc bti c
+1570f2c0 pacia x30, sp
+1570f2c4 sub sp, sp, #0x30
+1570f2c8 stp x29, x30, [sp, #0x10]
+1570f2cc add x29, sp, #0x10
+1570f2d0 stp x20, x19, [sp, #0x20]
+1570f2d4 adrp x8, #0x15773000
+1570f2d8 mov w20, #0x8000
+1570f2dc movk w20, #0x17d0, lsl #16
+1570f2e0 ldr x8, [x8, #0x188]
+1570f2e4 str x8, [sp, #8]
+1570f2e8 bl #0x1570f1dc
+1570f2ec ldr w8, [x20]
+1570f2f0 cmp w8, #1
+1570f2f4 b.ne #0x1570f35c
+1570f2f8 mov w19, w0
+1570f2fc add x1, sp, #4
+1570f300 mov w0, #7
+1570f304 bl #0x1570e290
+1570f308 ldr w8, [sp, #4]
+1570f30c cmp w0, #0
+1570f310 mov w0, wzr
+1570f314 csinv w8, w8, wzr, eq
+1570f318 str w8, [x20, #0x14]
+1570f31c cbnz w19, #0x1570f360
+1570f320 adrp x8, #0x157e0000
+1570f324 mov w10, #0x8012
+1570f328 mov w12, #0x8011
+1570f32c mov w13, #0x8010
+1570f330 movk w10, #0x17d0, lsl #16
+1570f334 movk w12, #0x17d0, lsl #16
+1570f338 ldr x8, [x8, #0xe8]
+1570f33c movk w13, #0x17d0, lsl #16
+1570f340 ldrb w9, [x8, #2]
+1570f344 ldrb w11, [x8, #1]
+1570f348 ldrb w8, [x8]
+1570f34c strb w9, [x10]
+1570f350 strb w11, [x12]
+1570f354 strb w8, [x13]
+1570f358 b #0x1570f360
