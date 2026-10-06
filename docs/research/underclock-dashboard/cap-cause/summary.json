@@ -1,0 +1,1490 @@
+[
+  {
+    "phase": "baseline",
+    "observations": [
+      {
+        "sample": 1,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 2,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2f800c6d",
+        "status_index_inferred": 12,
+        "status_clock_khz": 2092800
+      },
+      {
+        "sample": 3,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 4,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2f800c6d",
+        "status_index_inferred": 12,
+        "status_clock_khz": 2092800
+      },
+      {
+        "sample": 5,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 556800
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 6,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 441600
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 7,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 556800
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 8,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 441600
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 9,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2f800c6d",
+        "status_index_inferred": 12,
+        "status_clock_khz": 2092800
+      },
+      {
+        "sample": 10,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 556800
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2f800c6d",
+        "status_index_inferred": 12,
+        "status_clock_khz": 2092800
+      },
+      {
+        "sample": 11,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 787200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 12,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 902400
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 13,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 556800
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 14,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2f800c6d",
+        "status_index_inferred": 12,
+        "status_clock_khz": 2092800
+      },
+      {
+        "sample": 15,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 672000
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 16,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 441600
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 17,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 1344000
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 18,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 19,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 556800
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 844800
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 20,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 556800
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      }
+    ],
+    "counter_windows": 5983,
+    "cycle_per_wall_ns_min": 1.718868877,
+    "cycle_per_wall_ns_max": 2.09126523,
+    "cycle_per_wall_ns_mean": 1.8537063548794919,
+    "over_cap_hardware_status_samples": 5,
+    "firmware_residency_delta": {
+      "1132800": 421,
+      "1843200": 5631604,
+      "2092800": 415083
+    },
+    "all_counters_unmultiplexed": true,
+    "all_windows_cpu7": true
+  },
+  {
+    "phase": "lower_middle",
+    "observations": [
+      {
+        "sample": 1,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 2,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 1056000
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 3,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 556800
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 4,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 556800
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 1056000
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 5,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 1056000
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 6,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 441600
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 1056000
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 7,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 672000
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 8,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 441600
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 9,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 10,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 441600
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 1056000
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 11,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 1344000
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 1056000
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 12,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 1344000
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 1056000
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 13,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 672000
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 1056000
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 14,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 556800
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 1056000
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 15,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 16,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 1344000
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 1056000
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 17,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 1344000
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 18,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 672000
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 19,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 441600
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 20,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 1344000
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1056000,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      }
+    ],
+    "counter_windows": 5983,
+    "cycle_per_wall_ns_min": 1.738586361,
+    "cycle_per_wall_ns_max": 1.841689105,
+    "cycle_per_wall_ns_mean": 1.8372991484389103,
+    "over_cap_hardware_status_samples": 0,
+    "firmware_residency_delta": {
+      "1843200": 6066461
+    },
+    "all_counters_unmultiplexed": true,
+    "all_windows_cpu7": true
+  },
+  {
+    "phase": "restored_middle",
+    "observations": [
+      {
+        "sample": 1,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 672000
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2f800c6d",
+        "status_index_inferred": 12,
+        "status_clock_khz": 2092800
+      },
+      {
+        "sample": 2,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 441600
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 3,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 441600
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 4,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 5,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 556800
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 6,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 556800
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2f800c6d",
+        "status_index_inferred": 12,
+        "status_clock_khz": 2092800
+      },
+      {
+        "sample": 7,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 8,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 556800
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 9,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 441600
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 10,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 11,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 12,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 441600
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 13,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 441600
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 14,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 441600
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2f800c6d",
+        "status_index_inferred": 12,
+        "status_clock_khz": 2092800
+      },
+      {
+        "sample": 15,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 787200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2f800c6d",
+        "status_index_inferred": 12,
+        "status_clock_khz": 2092800
+      },
+      {
+        "sample": 16,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 672000
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 17,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 18,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2f800c6d",
+        "status_index_inferred": 12,
+        "status_clock_khz": 2092800
+      },
+      {
+        "sample": 19,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 672000
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 499200
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      },
+      {
+        "sample": 20,
+        "policies": {
+          "0": {
+            "min_khz": 307200,
+            "max_khz": 1459200,
+            "driver_current_khz": 307200
+          },
+          "3": {
+            "min_khz": 499200,
+            "max_khz": 1785600,
+            "driver_current_khz": 1785600
+          },
+          "7": {
+            "min_khz": 595200,
+            "max_khz": 1843200,
+            "driver_current_khz": 1843200
+          }
+        },
+        "desired_index": 10,
+        "pstate_status_hex": "0x2cc00a60",
+        "status_index_inferred": 10,
+        "status_clock_khz": 1843200
+      }
+    ],
+    "counter_windows": 5983,
+    "cycle_per_wall_ns_min": 1.74251042,
+    "cycle_per_wall_ns_max": 2.091259635,
+    "cycle_per_wall_ns_mean": 1.8518502666695638,
+    "over_cap_hardware_status_samples": 5,
+    "firmware_residency_delta": {
+      "1843200": 5682717,
+      "2092800": 355028
+    },
+    "all_counters_unmultiplexed": true,
+    "all_windows_cpu7": true
+  }
+]
