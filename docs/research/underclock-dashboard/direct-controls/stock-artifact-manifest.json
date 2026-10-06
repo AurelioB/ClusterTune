@@ -1,0 +1,56 @@
+{
+  "firmware": "Thor_V1.0.0.377_20260206_165408_user",
+  "kernel": "5.15.123-android13-8-gafd857749d1f",
+  "active_slot": "_b",
+  "read_only": true,
+  "files": {
+    "vendor-boot-header.bin": {
+      "bytes": 4096,
+      "sha256": "443af40c8a615e5c6b7aa66093b8863cab32024fc785bcd77a99f0848456f173"
+    },
+    "vendor-ramdisk.bin": {
+      "bytes": 9699328,
+      "sha256": "68c8442230f2cba18d388a2a30d12e2cb44cc8cafd102f17f8531c1b7940346d"
+    },
+    "qcom-cpufreq-hw.ko": {
+      "bytes": 57400,
+      "sha256": "30cc286cd8c2d17271330cd71ab44d789805e726be44ff41eeadcf3c85346cd7"
+    },
+    "qcom-cpufreq-hw-debug.ko": {
+      "bytes": 21232,
+      "sha256": "4b096f6f1cf454c92041fd576877c2b84ba2b025a76819d2842b54574ccf577f"
+    },
+    "qcom-scm.ko": {
+      "bytes": 218944,
+      "sha256": "2133b5b828bef3a0051ae7821c418d689bb01813764a6c1ccb114163921b76b2"
+    },
+    "qti_cpufreq_cdev.ko": {
+      "bytes": 21280,
+      "sha256": "cd257bc5201ddfa25317d7e7aa019823b5a65b251e15553ebf2b06edc41d4bed"
+    },
+    "msm_lmh_dcvs.ko": {
+      "bytes": 26264,
+      "sha256": "47be7bfcca4ca81bf4f0250d46ba406ac49c2ce5b714594f97650783d25cb8e5"
+    },
+    "aop_b.bin": {
+      "bytes": 524288,
+      "sha256": "6aceb38f5ef10663ac5c29ffc4e9ee27b6339e8746ff3490485f8cf2640ef687"
+    },
+    "aop_config_b.bin": {
+      "bytes": 524288,
+      "sha256": "8df52d12686cde220849d8a8bb8b1251022231be16bd125f2c49013cc3d6ae43"
+    },
+    "tz_b.bin": {
+      "bytes": 4194304,
+      "sha256": "917e26b15114884cd54bc47fdb40ae43b63ee6281ce74f217d3990dcdfa1d206"
+    },
+    "xbl_b.bin": {
+      "bytes": 3670016,
+      "sha256": "d552d371ff17cc8618935d8fe95bcd3fb5f12e38a11c4c5b82ef30902114392a"
+    },
+    "xbl_config_b.bin": {
+      "bytes": 307200,
+      "sha256": "45d0893b1f83b4108d97a5aef2334bd489cfd20d2aa1a1e47f60d00bdc394e04"
+    }
+  }
+}

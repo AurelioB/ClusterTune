@@ -1,0 +1,66 @@
+0000000000000778 <cpufreq_cdev_set_state>:
+     778: d503233f     	paciasp
+     77c: f800865e     	str	x30, [x18], #0x8
+     780: a9bc7bfd     	stp	x29, x30, [sp, #-0x40]!
+     784: f9000bf7     	str	x23, [sp, #0x10]
+     788: 910003fd     	mov	x29, sp
+     78c: a90257f6     	stp	x22, x21, [sp, #0x20]
+     790: a9034ff4     	stp	x20, x19, [sp, #0x30]
+     794: f941d417     	ldr	x23, [x0, #0x3a8]
+     798: f94016e8     	ldr	x8, [x23, #0x28]
+     79c: eb01011f     	cmp	x8, x1
+     7a0: 54000062     	b.hs	0x7ac <cpufreq_cdev_set_state+0x34>
+     7a4: 128002b5     	mov	w21, #-0x16             // =-22
+     7a8: 14000017     	b	0x804 <cpufreq_cdev_set_state+0x8c>
+     7ac: f94012e8     	ldr	x8, [x23, #0x20]
+     7b0: aa0103f4     	mov	x20, x1
+     7b4: eb01011f     	cmp	x8, x1
+     7b8: 54000061     	b.ne	0x7c4 <cpufreq_cdev_set_state+0x4c>
+     7bc: 2a1f03f5     	mov	w21, wzr
+     7c0: 14000011     	b	0x804 <cpufreq_cdev_set_state+0x8c>
+     7c4: f9403ae8     	ldr	x8, [x23, #0x70]
+     7c8: b40001a8     	cbz	x8, 0x7fc <cpufreq_cdev_set_state+0x84>
+     7cc: b140051f     	cmn	x8, #0x1, lsl #12       // =0x1000
+     7d0: 54000168     	b.hi	0x7fc <cpufreq_cdev_set_state+0x84>
+     7d4: aa0003f3     	mov	x19, x0
+     7d8: f9401ae8     	ldr	x8, [x23, #0x30]
+     7dc: 910102e0     	add	x0, x23, #0x40
+     7e0: b4000068     	cbz	x8, 0x7ec <cpufreq_cdev_set_state+0x74>
+     7e4: b8747916     	ldr	w22, [x8, x20, lsl #2]
+     7e8: 14000002     	b	0x7f0 <cpufreq_cdev_set_state+0x78>
+     7ec: 12800016     	mov	w22, #-0x1              // =-1
+     7f0: 2a1603e1     	mov	w1, w22
+     7f4: 94000000     	bl	0x7f4 <cpufreq_cdev_set_state+0x7c>
+		00000000000007f4:  R_AARCH64_CALL26	freq_qos_update_request
+     7f8: 37f80160     	tbnz	w0, #0x1f, 0x824 <cpufreq_cdev_set_state+0xac>
+     7fc: 2a1f03f5     	mov	w21, wzr
+     800: f90012f4     	str	x20, [x23, #0x20]
+     804: 2a1503e0     	mov	w0, w21
+     808: f9400bf7     	ldr	x23, [sp, #0x10]
+     80c: a9434ff4     	ldp	x20, x19, [sp, #0x30]
+     810: a94257f6     	ldp	x22, x21, [sp, #0x20]
+     814: a8c47bfd     	ldp	x29, x30, [sp], #0x40
+     818: f85f8e5e     	ldr	x30, [x18, #-0x8]!
+     81c: d50323bf     	autiasp
+     820: d65f03c0     	ret
+     824: 2a0003f5     	mov	w21, w0
+     828: 90000000     	adrp	x0, 0x0 <__cfi_check>
+		0000000000000828:  R_AARCH64_ADR_PREL_PG_HI21	.rodata+0x32
+     82c: 90000001     	adrp	x1, 0x0 <__cfi_check>
+		000000000000082c:  R_AARCH64_ADR_PREL_PG_HI21	.rodata+0xe7
+     830: 90000002     	adrp	x2, 0x0 <__cfi_check>
+		0000000000000830:  R_AARCH64_ADR_PREL_PG_HI21	.rodata+0xd0
+     834: f9400664     	ldr	x4, [x19, #0x8]
+     838: 91000000     	add	x0, x0, #0x0
+		0000000000000838:  R_AARCH64_ADD_ABS_LO12_NC	.rodata+0x32
+     83c: 91000021     	add	x1, x1, #0x0
+		000000000000083c:  R_AARCH64_ADD_ABS_LO12_NC	.rodata+0xe7
+     840: 91000042     	add	x2, x2, #0x0
+		0000000000000840:  R_AARCH64_ADD_ABS_LO12_NC	.rodata+0xd0
+     844: 2a1603e3     	mov	w3, w22
+     848: 2a1503e5     	mov	w5, w21
+     84c: 94000000     	bl	0x84c <cpufreq_cdev_set_state+0xd4>
+		000000000000084c:  R_AARCH64_CALL26	_printk
+     850: 17ffffed     	b	0x804 <cpufreq_cdev_set_state+0x8c>
+     854: 00000000     	udf	#0x0
+

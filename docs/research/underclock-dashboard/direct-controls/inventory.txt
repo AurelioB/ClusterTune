@@ -1,0 +1,25 @@
+Linux version 5.15.123-android13-8-gafd857749d1f (build-user@build-host) (Android (8508608, based on r450784e) clang version 14.0.7 (https://android.googlesource.com/toolchain/llvm-project 4c603efb0cca074e9238af8b4106c30add4418f6), LLD 14.0.7) #1 SMP PREEMPT Thu Feb 5 07:59:03 UTC 2026
+4409.50 33407.37
+/vendor_dlkm/lib/modules/cpufreq_stats_scmi.ko
+/vendor_dlkm/lib/modules/cpufreq_stats_vendor.ko
+/vendor_dlkm/lib/modules/memlat_scmi.ko
+/vendor_dlkm/lib/modules/msm_lmh_dcvs.ko
+/vendor_dlkm/lib/modules/plh_scmi.ko
+/vendor_dlkm/lib/modules/qcom-cpufreq-hw-debug.ko
+/vendor_dlkm/lib/modules/qti_cpufreq_cdev.ko
+/sys/devices/system/cpu/cpu7/dcvsh_freq_limit
+/sys/devices/system/cpu/cpu3/dcvsh_freq_limit
+/sys/devices/system/cpu/vulnerabilities/srbds
+/sys/devices/system/cpu/cpufreq/boost
+/sys/devices/system/cpu/cpufreq/policy0/scaling_boost_frequencies
+/sys/devices/system/cpu/cpufreq/policy7/scaling_boost_frequencies
+/sys/devices/system/cpu/cpufreq/policy3/scaling_boost_frequencies
+/sys/devices/system/cpu/bus_dcvs
+/sys/devices/system/cpu/bus_dcvs/DDR/boost_freq
+/sys/devices/system/cpu/bus_dcvs/L3/boost_freq
+/sys/devices/system/cpu/bus_dcvs/DDRQOS/boost_freq
+/sys/devices/system/cpu/bus_dcvs/LLCC/boost_freq
+/sys/devices/system/cpu/c1dcvs
+/sys/devices/system/cpu/c1dcvs/c1dcvs_opt_mode
+/sys/devices/system/cpu/c1dcvs/enable_c1dcvs
+/sys/devices/system/cpu/cpu0/dcvsh_freq_limit

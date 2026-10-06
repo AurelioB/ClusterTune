@@ -1,0 +1,79 @@
+0000000000003fc8 <qcom_scm_lmh_limit_dcvsh>:
+    3fc8: d503233f     	paciasp
+    3fcc: d10243ff     	sub	sp, sp, #0x90
+    3fd0: f800865e     	str	x30, [x18], #0x8
+    3fd4: a9077bfd     	stp	x29, x30, [sp, #0x70]
+    3fd8: 9101c3fd     	add	x29, sp, #0x70
+    3fdc: f90043f3     	str	x19, [sp, #0x80]
+    3fe0: d5384108     	mrs	x8, SP_EL0
+    3fe4: d2800269     	mov	x9, #0x13               // =19
+    3fe8: f942f108     	ldr	x8, [x8, #0x5e0]
+    3fec: f2c00209     	movk	x9, #0x10, lsl #32
+    3ff0: f81f83a8     	stur	x8, [x29, #-0x8]
+    3ff4: 528002a8     	mov	w8, #0x15               // =21
+    3ff8: a9007fe9     	stp	x9, xzr, [sp]
+    3ffc: 2a0103e9     	mov	w9, w1
+    4000: a905ffff     	stp	xzr, xzr, [sp, #0x58]
+    4004: b9000be8     	str	w8, [sp, #0x8]
+    4008: 2a0303e8     	mov	w8, w3
+    400c: a90127e0     	stp	x0, x9, [sp, #0x10]
+    4010: 90000009     	adrp	x9, 0x4000 <qcom_scm_lmh_limit_dcvsh+0x38>
+		0000000000004010:  R_AARCH64_ADR_PREL_PG_HI21	.bss+0x10
+    4014: a904ffff     	stp	xzr, xzr, [sp, #0x48]
+    4018: a90223e2     	stp	x2, x8, [sp, #0x20]
+    401c: f9400128     	ldr	x8, [x9]
+		000000000000401c:  R_AARCH64_LDST64_ABS_LO12_NC	.bss+0x10
+    4020: 52800049     	mov	w9, #0x2                // =2
+    4024: a903ffff     	stp	xzr, xzr, [sp, #0x38]
+    4028: f9001be4     	str	x4, [sp, #0x30]
+    402c: f9400113     	ldr	x19, [x8]
+    4030: b90063e9     	str	w9, [sp, #0x60]
+    4034: 94000000     	bl	0x4034 <qcom_scm_lmh_limit_dcvsh+0x6c>
+		0000000000004034:  R_AARCH64_CALL26	.text+0xf6c
+    4038: 51000808     	sub	w8, w0, #0x2
+    403c: 7100091f     	cmp	w8, #0x2
+    4040: 54000122     	b.hs	0x4064 <qcom_scm_lmh_limit_dcvsh+0x9c>
+    4044: 90000008     	adrp	x8, 0x4000 <qcom_scm_lmh_limit_dcvsh+0x38>
+		0000000000004044:  R_AARCH64_ADR_PREL_PG_HI21	qcom_scm_convention
+    4048: 910003e1     	mov	x1, sp
+    404c: aa1303e0     	mov	x0, x19
+    4050: aa1f03e3     	mov	x3, xzr
+    4054: 2a1f03e4     	mov	w4, wzr
+    4058: b9400102     	ldr	w2, [x8]
+		0000000000004058:  R_AARCH64_LDST32_ABS_LO12_NC	qcom_scm_convention
+    405c: 94000000     	bl	0x405c <qcom_scm_lmh_limit_dcvsh+0x94>
+		000000000000405c:  R_AARCH64_CALL26	__scm_smc_call
+    4060: 14000007     	b	0x407c <qcom_scm_lmh_limit_dcvsh+0xb4>
+    4064: 7100041f     	cmp	w0, #0x1
+    4068: 54000201     	b.ne	0x40a8 <qcom_scm_lmh_limit_dcvsh+0xe0>
+    406c: 910003e1     	mov	x1, sp
+    4070: aa1303e0     	mov	x0, x19
+    4074: aa1f03e2     	mov	x2, xzr
+    4078: 94000000     	bl	0x4078 <qcom_scm_lmh_limit_dcvsh+0xb0>
+		0000000000004078:  R_AARCH64_CALL26	scm_legacy_call
+    407c: d5384108     	mrs	x8, SP_EL0
+    4080: f942f108     	ldr	x8, [x8, #0x5e0]
+    4084: f85f83a9     	ldur	x9, [x29, #-0x8]
+    4088: eb09011f     	cmp	x8, x9
+    408c: 540001c1     	b.ne	0x40c4 <qcom_scm_lmh_limit_dcvsh+0xfc>
+    4090: a9477bfd     	ldp	x29, x30, [sp, #0x70]
+    4094: f94043f3     	ldr	x19, [sp, #0x80]
+    4098: f85f8e5e     	ldr	x30, [x18, #-0x8]!
+    409c: 910243ff     	add	sp, sp, #0x90
+    40a0: d50323bf     	autiasp
+    40a4: d65f03c0     	ret
+    40a8: 90000000     	adrp	x0, 0x4000 <qcom_scm_lmh_limit_dcvsh+0x38>
+		00000000000040a8:  R_AARCH64_ADR_PREL_PG_HI21	.rodata+0xa26
+    40ac: 90000001     	adrp	x1, 0x4000 <qcom_scm_lmh_limit_dcvsh+0x38>
+		00000000000040ac:  R_AARCH64_ADR_PREL_PG_HI21	.rodata+0x234
+    40b0: 91000000     	add	x0, x0, #0x0
+		00000000000040b0:  R_AARCH64_ADD_ABS_LO12_NC	.rodata+0xa26
+    40b4: 91000021     	add	x1, x1, #0x0
+		00000000000040b4:  R_AARCH64_ADD_ABS_LO12_NC	.rodata+0x234
+    40b8: 94000000     	bl	0x40b8 <qcom_scm_lmh_limit_dcvsh+0xf0>
+		00000000000040b8:  R_AARCH64_CALL26	_printk
+    40bc: 128002a0     	mov	w0, #-0x16              // =-22
+    40c0: 17ffffef     	b	0x407c <qcom_scm_lmh_limit_dcvsh+0xb4>
+    40c4: 94000000     	bl	0x40c4 <qcom_scm_lmh_limit_dcvsh+0xfc>
+		00000000000040c4:  R_AARCH64_CALL26	__stack_chk_fail
+

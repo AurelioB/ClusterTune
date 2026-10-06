@@ -1,0 +1,44 @@
+Community/project investigation, 2026-10-06. Read-only research; no device access, installs, firmware changes, posts or repo edits.
+
+RESULT: No inspected project implements a verified direct Qualcomm Shared Rail Boost disable or programmable per-cluster physical ceiling. Existing underclock success claims mostly show useful performance/power reduction, not independently measured clocks never exceeding a requested cap. This is a scoped negative finding, not proof no private/unindexed solution exists.
+
+1. PULSE, latest commit 0d2893e67cee0497e3fe624237679d104dd9c472.
+https://github.com/keiretrogaming/pulse/blob/0d2893e67cee0497e3fe624237679d104dd9c472/app/src/main/java/com/kei/pulse/ui/TunerViewModel.kt#L304
+'Prime-core boost limit' chooses second highest supported frequency (line312) and uses applyFreqsToDevice (321). AutoTuneController.kt1084 onward uses ordinary scaling_min/max sysfs and permissions. No SRB, EPSS, DCVSH or C1DCVS interface anywhere in cloned sources. CPU telemetry SystemTuning.kt320 reads scaling_cur_freq. Thus tempting feature label is not a direct hardware boost control.
+
+2. Snapdragon8Gen2 Magisk Frequency Limiter, 4e03ceb40140bcfca48d8327650c55f2c3d12c3b.
+https://github.com/TatshSiow/8Gen2-Frequency-Limiter/blob/4e03ceb40140bcfca48d8327650c55f2c3d12c3b/service.sh
+service.sh simply chown root, chmod666, write scaling_max_freq, chmod444; caps902400/1651200/1708800. No physical measurement or SRB disable. Requirements claim all8Gen2 but cpu4 topology assumption is notThor policy3 layout.
+
+3. Kelvin, 3d342c79819d24a82c81e10e9447331610a6478f.
+https://github.com/Anonym0usWork1221/Kelvin/blob/3d342c79819d24a82c81e10e9447331610a6478f/daemon/soc/socutil.c#L130
+kv_cpu_set_range writes scaling_min_freq/scaling_max_freq in valid ordering. Clock telemetry at540 uses scaling_cur_freq. Claims SM8550 testbench, no SRB/EPSS/DCVSH interface. Not a new hardware limit path.
+
+4. JestyThorFix, bcfa03b99f53c90f5dbc7bf6b4ffd5570b173eba.
+https://github.com/JestyLabs/Jesty-Thor-Fix/blob/bcfa03b99f53c90f5dbc7bf6b4ffd5570b173eba/src/com/thor/displaypowertest/CpuFixController.java#L594
+CPUFix only vendor.display.disable_system_load_check plus compositor restart (417). Targets dashboard/display low-load LITTLE/BIG pinning. Does not write frequency, governor, thermal or firmware controls. Telemetry.java36-40 uses scaling_cur_freq. Distinct bug from prime hardware clock above unchanged cap. Do not test composer restart casually on userdevice (previous framework crash/recovery incident).
+
+5. Odin3-CPU-Underclock, f1235b2e6ee1a2b91568eb6a4e7fa1ebb5d052ec.
+https://github.com/TheOldTaylor/Odin3-CPU-Underclock/blob/f1235b2e6ee1a2b91568eb6a4e7fa1ebb5d052ec/Basic%20Presets/largeUnderclock.sh
+Stop perf daemon/HAL then standard max write+chmod444. No hardware ceilings. Associated Reddit contains Thor port with normal policy0/3/7 ceilings:
+https://www.reddit.com/r/OdinHandheld/comments/1snp9xd/easy_way_to_improved_odin_3_temps_battery_life/
+Power/temperature testimonials are not high-resolution physical clock validation.
+
+6. Pico4 SM8250 EPSS investigation.
+https://github.com/hhhbwc/pico4-cpu-dvfs-investigation/blob/main/source/cpu_oc_k1.c
+Only write is speculative LUT-word to EPSS desired-Pstate register0x320; ineffective attempt to3GHz, readback0x1c. Read-only epss_lut_probe.c dumps table/undocumentedoffsets. No direct clamp/SRB setter. README says dcvsh_freq_limit readonly. Their nonzero0x34c/0x3c0 'active clamp' conclusion lacks independently documented bit meanings; do not transplant offsets/values toSM8550 nor present this as successful limiter.
+
+7. OnePlus13/rootFKM underclocking reports.
+https://www.reddit.com/r/oneplus/comments/1i8tp0c/root_oneplus_13_cpugpu_tuning_guides/
+https://xdaforums.com/t/8-elite-cpu-underclocking-guide-and-measurements.4714831/
+Normal FKM frequency caps2400/2841MHz, Geekbench/power measurements. No direct SRB toggle. DifferentOryon8Elite architecture.
+
+8. MotorolaEdge+2023 softwareboost disable.
+https://xdaforums.com/t/guide-for-rooted-edge-2023-on-how-to-reduce-performance-and-increase-battery-life.4732243/
+Claims ro.vendor.perf.enable.procomp=false disables performance-process companion; targets software boost requests, does not show hardware SRB control or strict physicalcapvalidation. Not enough rationale to apply it toThor.
+
+9. ArmadaThor ordinarycap discussion:
+https://github.com/armada-os/armada/issues/175
+cpu_max_policy values and thermalfan tuning, noSRBdirectcontrol.
+
+Searchcoverage: GitHub code 'shared rail boost' (nohits), srb_enable (nohits), SRB_DISABLE (SCSIonly), EPSS_DEBUG_SRB (vendorreadonlydumpdriver acrossSM8550 andadjacentLineageOS/crDroid/arter97/freak07customkernels), issues SRBQualcomm/sharedrailcpufreq(noapplicable), SM8550underclock(Armada175). WebReddit/XDA8Gen2/8Elite/Thor. SomeXDAfullpagefetch502; indexedauthoredsource excerpts and Redditlinks available. Searchnegative cannotprove absence.

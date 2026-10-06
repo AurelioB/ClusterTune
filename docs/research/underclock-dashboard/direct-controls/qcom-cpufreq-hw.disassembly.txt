@@ -1,0 +1,57 @@
+0000000000001648 <qcom_cpufreq_hw_get>:
+    1648: d503233f     	paciasp
+    164c: f800865e     	str	x30, [x18], #0x8
+    1650: a9be7bfd     	stp	x29, x30, [sp, #-0x20]!
+    1654: f9000bf3     	str	x19, [sp, #0x10]
+    1658: 910003fd     	mov	x29, sp
+    165c: 94000000     	bl	0x165c <qcom_cpufreq_hw_get+0x14>
+		000000000000165c:  R_AARCH64_CALL26	cpufreq_cpu_get_raw
+    1660: b40001e0     	cbz	x0, 0x169c <qcom_cpufreq_hw_get+0x54>
+    1664: f9415c08     	ldr	x8, [x0, #0x2b8]
+    1668: aa0003f3     	mov	x19, x0
+    166c: f9400909     	ldr	x9, [x8, #0x10]
+    1670: f9400108     	ldr	x8, [x8]
+    1674: b9401529     	ldr	w9, [x9, #0x14]
+    1678: 8b090100     	add	x0, x8, x9
+    167c: 94000000     	bl	0x167c <qcom_cpufreq_hw_get+0x34>
+		000000000000167c:  R_AARCH64_CALL26	.text+0xba4
+    1680: 528004e8     	mov	w8, #0x27               // =39
+    1684: 71009c1f     	cmp	w0, #0x27
+    1688: f940ca69     	ldr	x9, [x19, #0x190]
+    168c: 1a883008     	csel	w8, w0, w8, lo
+    1690: 5280018a     	mov	w10, #0xc               // =12
+    1694: 9baa2508     	umaddl	x8, w8, w10, x9
+    1698: b9400900     	ldr	w0, [x8, #0x8]
+    169c: f9400bf3     	ldr	x19, [sp, #0x10]
+    16a0: a8c27bfd     	ldp	x29, x30, [sp], #0x20
+    16a4: f85f8e5e     	ldr	x30, [x18, #-0x8]!
+    16a8: d50323bf     	autiasp
+    16ac: d65f03c0     	ret
+
+
+00000000000015ec <qcom_cpufreq_hw_fast_switch>:
+    15ec: d503233f     	paciasp
+    15f0: f800865e     	str	x30, [x18], #0x8
+    15f4: a9be7bfd     	stp	x29, x30, [sp, #-0x20]!
+    15f8: a9014ff4     	stp	x20, x19, [sp, #0x10]
+    15fc: 910003fd     	mov	x29, sp
+    1600: f9415c08     	ldr	x8, [x0, #0x2b8]
+    1604: aa0003f3     	mov	x19, x0
+    1608: b9428014     	ldr	w20, [x0, #0x280]
+    160c: f9400909     	ldr	x9, [x8, #0x10]
+    1610: f9400108     	ldr	x8, [x8]
+    1614: 2a1403e0     	mov	w0, w20
+    1618: b9401529     	ldr	w9, [x9, #0x14]
+    161c: 8b090101     	add	x1, x8, x9
+    1620: 94000000     	bl	0x1620 <qcom_cpufreq_hw_fast_switch+0x34>
+		0000000000001620:  R_AARCH64_CALL26	.text+0x18b8
+    1624: f940ca68     	ldr	x8, [x19, #0x190]
+    1628: 52800189     	mov	w9, #0xc                // =12
+    162c: 9b092288     	madd	x8, x20, x9, x8
+    1630: a9414ff4     	ldp	x20, x19, [sp, #0x10]
+    1634: b9400900     	ldr	w0, [x8, #0x8]
+    1638: a8c27bfd     	ldp	x29, x30, [sp], #0x20
+    163c: f85f8e5e     	ldr	x30, [x18, #-0x8]!
+    1640: d50323bf     	autiasp
+    1644: d65f03c0     	ret
+

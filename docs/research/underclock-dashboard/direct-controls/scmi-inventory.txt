@@ -1,0 +1,76 @@
+/sys/bus/scmi_protocol/devices/scmi_dev.1
+total 0
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 driver -> ../../../../../bus/scmi_protocol/drivers/scmi-pmu-driver
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 of_node -> ../../../../../firmware/devicetree/base/soc/qcom,scmi/protocol@86
+drwxr-xr-x 2 root root    0 2026-10-06 15:47 power
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 subsystem -> ../../../../../bus/scmi_protocol
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 supplier:platform:soc:qcom,scmi -> ../../../../virtual/devlink/platform:soc:qcom,scmi--scmi_protocol:scmi_dev.1
+-rw-r--r-- 1 root root 4096 2026-10-06 15:47 uevent
+DRIVER=scmi-pmu-driver
+OF_NAME=protocol
+OF_FULLNAME=/soc/qcom,scmi/protocol@86
+OF_COMPATIBLE_N=0
+/sys/bus/scmi_protocol/devices/scmi_dev.2
+total 0
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 driver -> ../../../../../bus/scmi_protocol/drivers/scmi-c1dcvs-driver
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 of_node -> ../../../../../firmware/devicetree/base/soc/qcom,scmi/protocol@87
+drwxr-xr-x 2 root root    0 2026-10-06 15:47 power
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 subsystem -> ../../../../../bus/scmi_protocol
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 supplier:platform:soc:qcom,scmi -> ../../../../virtual/devlink/platform:soc:qcom,scmi--scmi_protocol:scmi_dev.2
+-rw-r--r-- 1 root root 4096 2026-10-06 15:47 uevent
+DRIVER=scmi-c1dcvs-driver
+OF_NAME=protocol
+OF_FULLNAME=/soc/qcom,scmi/protocol@87
+OF_COMPATIBLE_N=0
+/sys/bus/scmi_protocol/devices/scmi_dev.3
+total 0
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 driver -> ../../../../../bus/scmi_protocol/drivers/scmi-memlat-driver
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 of_node -> ../../../../../firmware/devicetree/base/soc/qcom,scmi/protocol@80
+drwxr-xr-x 2 root root    0 2026-10-06 15:47 power
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 subsystem -> ../../../../../bus/scmi_protocol
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 supplier:platform:soc:qcom,scmi -> ../../../../virtual/devlink/platform:soc:qcom,scmi--scmi_protocol:scmi_dev.3
+-rw-r--r-- 1 root root 4096 2026-10-06 15:47 uevent
+DRIVER=scmi-memlat-driver
+OF_NAME=protocol
+OF_FULLNAME=/soc/qcom,scmi/protocol@80
+OF_COMPATIBLE_N=0
+/sys/bus/scmi_protocol/devices/scmi_dev.4
+total 0
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 driver -> ../../../../../bus/scmi_protocol/drivers/scmi-cpufreq-stats-driver
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 of_node -> ../../../../../firmware/devicetree/base/soc/qcom,scmi/protocol@84
+drwxr-xr-x 2 root root    0 2026-10-06 15:47 power
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 subsystem -> ../../../../../bus/scmi_protocol
+lrwxrwxrwx 1 root root    0 2026-10-06 15:47 supplier:platform:soc:qcom,scmi -> ../../../../virtual/devlink/platform:soc:qcom,scmi--scmi_protocol:scmi_dev.4
+-rw-r--r-- 1 root root 4096 2026-10-06 15:47 uevent
+DRIVER=scmi-cpufreq-stats-driver
+OF_NAME=protocol
+OF_FULLNAME=/soc/qcom,scmi/protocol@84
+OF_COMPATIBLE_N=0
+/sys/firmware/devicetree/base/soc/qcom,scmi/shmem
+/sys/firmware/devicetree/base/soc/qcom,scmi/#address-cells
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@81/#clock-cells
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@81/reg
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@81/phandle
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@81/name
+/sys/firmware/devicetree/base/soc/qcom,scmi/#size-cells
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@86/#clock-cells
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@86/reg
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@86/phandle
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@86/name
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@84/#clock-cells
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@84/reg
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@84/phandle
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@84/name
+/sys/firmware/devicetree/base/soc/qcom,scmi/compatible
+/sys/firmware/devicetree/base/soc/qcom,scmi/phandle
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@80/#clock-cells
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@80/reg
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@80/phandle
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@80/name
+/sys/firmware/devicetree/base/soc/qcom,scmi/mboxes
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@87/#clock-cells
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@87/reg
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@87/phandle
+/sys/firmware/devicetree/base/soc/qcom,scmi/protocol@87/name
+/sys/firmware/devicetree/base/soc/qcom,scmi/mbox-names
+/sys/firmware/devicetree/base/soc/qcom,scmi/name

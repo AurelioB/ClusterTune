@@ -1,0 +1,20 @@
+0000000000000a5c <lmh_freq_limit_show>:
+     a5c: d503233f     	paciasp
+     a60: f800865e     	str	x30, [x18], #0x8
+     a64: a9bf7bfd     	stp	x29, x30, [sp, #-0x10]!
+     a68: 910003fd     	mov	x29, sp
+     a6c: aa0203e0     	mov	x0, x2
+     a70: 90000002     	adrp	x2, 0x0 <__cfi_check>
+		0000000000000a70:  R_AARCH64_ADR_PREL_PG_HI21	.rodata+0x24d
+     a74: f85f8023     	ldur	x3, [x1, #-0x8]
+     a78: 91000042     	add	x2, x2, #0x0
+		0000000000000a78:  R_AARCH64_ADD_ABS_LO12_NC	.rodata+0x24d
+     a7c: 52820001     	mov	w1, #0x1000             // =4096
+     a80: 94000000     	bl	0xa80 <lmh_freq_limit_show+0x24>
+		0000000000000a80:  R_AARCH64_CALL26	scnprintf
+     a84: 93407c00     	sxtw	x0, w0
+     a88: a8c17bfd     	ldp	x29, x30, [sp], #0x10
+     a8c: f85f8e5e     	ldr	x30, [x18, #-0x8]!
+     a90: d50323bf     	autiasp
+     a94: d65f03c0     	ret
+
