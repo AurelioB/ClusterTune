@@ -1,0 +1,20 @@
+Measuring dashboard-stock
+dashboard-stock policy0 min ['2016000'] max ['2016000'] current range 2016000 2016000 over-cap 0 minmode ['660']
+dashboard-stock policy3 min ['2707200'] max ['2803200'] current range 2707200 2707200 over-cap 0 minmode ['660']
+dashboard-stock policy7 min ['1843200'] max ['3187200'] current range 1843200 3187200 over-cap 0 minmode ['660']
+Measuring dashboard-small
+dashboard-small policy0 min ['1785600', '2016000'] max ['1785600', '2016000'] current range 1785600 2016000 over-cap 0 minmode ['440']
+dashboard-small policy3 min ['2323200', '2707200'] max ['2323200', '2803200'] current range 2323200 2803200 over-cap 0 minmode ['440', '660']
+dashboard-small policy7 min ['1843200', '595200'] max ['2476800', '3187200'] current range 595200 3187200 over-cap 0 minmode ['440', '660']
+Measuring dashboard-medium
+dashboard-medium policy0 min ['1555200'] max ['1555200'] current range 1555200 1555200 over-cap 0 minmode ['440']
+dashboard-medium policy3 min ['2054400'] max ['2054400'] current range 2054400 2054400 over-cap 0 minmode ['440']
+dashboard-medium policy7 min ['595200'] max ['2092800'] current range 595200 2092800 over-cap 0 minmode ['440']
+Measuring dashboard-large
+dashboard-large policy0 min ['1459200'] max ['1459200'] current range 1459200 1459200 over-cap 0 minmode ['440']
+dashboard-large policy3 min ['1785600'] max ['1785600'] current range 1785600 1785600 over-cap 0 minmode ['440']
+dashboard-large policy7 min ['595200'] max ['1843200', '2092800'] current range 595200 2092800 over-cap 0 minmode ['440']
+Measuring dashboard-medium-repeat
+dashboard-medium-repeat policy0 min ['1555200'] max ['1555200'] current range 1555200 1555200 over-cap 0 minmode ['440']
+dashboard-medium-repeat policy3 min ['2054400'] max ['2054400'] current range 2054400 2054400 over-cap 0 minmode ['440']
+dashboard-medium-repeat policy7 min ['595200'] max ['2092800'] current range 595200 2092800 over-cap 0 minmode ['440']

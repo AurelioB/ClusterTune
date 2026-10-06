@@ -1,0 +1,16 @@
+Releasing minimum write protection; keeping current Medium ceilings
+Measuring comparison-writable
+comparison-writable policy0 min ['1555200'] max ['1555200'] current range 1555200 1555200 over-cap 0 minmode ['660']
+comparison-writable policy3 min ['2054400'] max ['2054400'] current range 2054400 2054400 over-cap 0 minmode ['660']
+comparison-writable policy7 min ['1843200', '595200'] max ['2092800'] current range 595200 2092800 over-cap 0 minmode ['660']
+Protecting minima, with prime floor 1228.8 MHz
+Measuring comparison-protected-above-1ghz
+comparison-protected-above-1ghz policy0 min ['1555200'] max ['1555200'] current range 1555200 1555200 over-cap 0 minmode ['440']
+comparison-protected-above-1ghz policy3 min ['2054400'] max ['2054400'] current range 2054400 2054400 over-cap 0 minmode ['440']
+comparison-protected-above-1ghz policy7 min ['1248000'] max ['2092800'] current range 1248000 2092800 over-cap 0 minmode ['440']
+Protecting minima, with prime floor 595.2 MHz
+Measuring comparison-protected-below-1ghz
+comparison-protected-below-1ghz policy0 min ['1555200'] max ['1555200'] current range 1555200 1555200 over-cap 0 minmode ['440']
+comparison-protected-below-1ghz policy3 min ['2054400'] max ['2054400'] current range 2054400 2054400 over-cap 0 minmode ['440']
+comparison-protected-below-1ghz policy7 min ['595200'] max ['2092800'] current range 595200 2092800 over-cap 0 minmode ['440']
+All original low protected floors restored

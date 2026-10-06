@@ -1,0 +1,4 @@
+Measuring verification-stock-restored
+verification-stock-restored policy0 min ['2016000'] max ['2016000'] current range 2016000 2016000 over-cap 0 minmode ['440', '660']
+verification-stock-restored policy3 min ['2707200'] max ['2803200'] current range 2707200 2707200 over-cap 0 minmode ['440', '660']
+verification-stock-restored policy7 min ['1843200', '595200'] max ['3187200'] current range 595200 1843200 over-cap 0 minmode ['440', '660']
