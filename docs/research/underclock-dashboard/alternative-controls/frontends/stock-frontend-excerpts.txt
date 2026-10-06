@@ -1,0 +1,242 @@
+0000000000004ee0 <show_cpucp_log_level>:
+    4ee0: d503233f     	paciasp
+    4ee4: f800865e     	str	x30, [x18], #0x8
+    4ee8: a9bf7bfd     	stp	x29, x30, [sp, #-0x10]!
+    4eec: 910003fd     	mov	x29, sp
+    4ef0: 90000008     	adrp	x8, 0x4000 <calculate_mon_sampling_freq+0x138>
+		0000000000004ef0:  R_AARCH64_ADR_PREL_PG_HI21	.bss
+    4ef4: aa0203e0     	mov	x0, x2
+    4ef8: 90000002     	adrp	x2, 0x4000 <calculate_mon_sampling_freq+0x138>
+		0000000000004ef8:  R_AARCH64_ADR_PREL_PG_HI21	.rodata+0x7e1
+    4efc: 52820001     	mov	w1, #0x1000             // =4096
+    4f00: 91000042     	add	x2, x2, #0x0
+		0000000000004f00:  R_AARCH64_ADD_ABS_LO12_NC	.rodata+0x7e1
+    4f04: f9400108     	ldr	x8, [x8]
+		0000000000004f04:  R_AARCH64_LDST64_ABS_LO12_NC	.bss
+    4f08: b9416503     	ldr	w3, [x8, #0x164]
+    4f0c: 94000000     	bl	0x4f0c <show_cpucp_log_level+0x2c>
+		0000000000004f0c:  R_AARCH64_CALL26	scnprintf
+    4f10: 93407c00     	sxtw	x0, w0
+    4f14: a8c17bfd     	ldp	x29, x30, [sp], #0x10
+    4f18: f85f8e5e     	ldr	x30, [x18, #-0x8]!
+    4f1c: d50323bf     	autiasp
+    4f20: d65f03c0     	ret
+
+
+000000000000505c <show_cpucp_sample_ms>:
+    505c: d503233f     	paciasp
+    5060: f800865e     	str	x30, [x18], #0x8
+    5064: a9bf7bfd     	stp	x29, x30, [sp, #-0x10]!
+    5068: 910003fd     	mov	x29, sp
+    506c: 90000008     	adrp	x8, 0x5000 <store_cpucp_log_level+0xdc>
+		000000000000506c:  R_AARCH64_ADR_PREL_PG_HI21	.bss
+    5070: aa0203e0     	mov	x0, x2
+    5074: 90000002     	adrp	x2, 0x5000 <store_cpucp_log_level+0xdc>
+		0000000000005074:  R_AARCH64_ADR_PREL_PG_HI21	.rodata+0x7e1
+    5078: 52820001     	mov	w1, #0x1000             // =4096
+    507c: 91000042     	add	x2, x2, #0x0
+		000000000000507c:  R_AARCH64_ADD_ABS_LO12_NC	.rodata+0x7e1
+    5080: f9400108     	ldr	x8, [x8]
+		0000000000005080:  R_AARCH64_LDST64_ABS_LO12_NC	.bss
+    5084: b9416103     	ldr	w3, [x8, #0x160]
+    5088: 94000000     	bl	0x5088 <show_cpucp_sample_ms+0x2c>
+		0000000000005088:  R_AARCH64_CALL26	scnprintf
+    508c: 93407c00     	sxtw	x0, w0
+    5090: a8c17bfd     	ldp	x29, x30, [sp], #0x10
+    5094: f85f8e5e     	ldr	x30, [x18, #-0x8]!
+    5098: d50323bf     	autiasp
+    509c: d65f03c0     	ret
+
+
+0000000000004e0c <show_flush_cpucp_log>:
+    4e0c: d503233f     	paciasp
+    4e10: f800865e     	str	x30, [x18], #0x8
+    4e14: a9bf7bfd     	stp	x29, x30, [sp, #-0x10]!
+    4e18: 910003fd     	mov	x29, sp
+    4e1c: aa0203e0     	mov	x0, x2
+    4e20: 90000002     	adrp	x2, 0x4000 <calculate_mon_sampling_freq+0x138>
+		0000000000004e20:  R_AARCH64_ADR_PREL_PG_HI21	.rodata+0x79f
+    4e24: 91000042     	add	x2, x2, #0x0
+		0000000000004e24:  R_AARCH64_ADD_ABS_LO12_NC	.rodata+0x79f
+    4e28: 52820001     	mov	w1, #0x1000             // =4096
+    4e2c: 94000000     	bl	0x4e2c <show_flush_cpucp_log+0x20>
+		0000000000004e2c:  R_AARCH64_CALL26	scnprintf
+    4e30: 93407c00     	sxtw	x0, w0
+    4e34: a8c17bfd     	ldp	x29, x30, [sp], #0x10
+    4e38: f85f8e5e     	ldr	x30, [x18, #-0x8]!
+    4e3c: d50323bf     	autiasp
+    4e40: d65f03c0     	ret
+
+
+0000000000004d00 <show_hlos_cpucp_offset>:
+    4d00: d503233f     	paciasp
+    4d04: d10103ff     	sub	sp, sp, #0x40
+    4d08: f800865e     	str	x30, [x18], #0x8
+    4d0c: a9017bfd     	stp	x29, x30, [sp, #0x10]
+    4d10: 910043fd     	add	x29, sp, #0x10
+    4d14: f90013f5     	str	x21, [sp, #0x20]
+    4d18: a9034ff4     	stp	x20, x19, [sp, #0x30]
+    4d1c: d5384108     	mrs	x8, SP_EL0
+    4d20: 90000015     	adrp	x21, 0x4000 <calculate_mon_sampling_freq+0x138>
+		0000000000004d20:  R_AARCH64_ADR_PREL_PG_HI21	.bss
+    4d24: f942f108     	ldr	x8, [x8, #0x5e0]
+    4d28: f90007e8     	str	x8, [sp, #0x8]
+    4d2c: f94002a8     	ldr	x8, [x21]
+		0000000000004d2c:  R_AARCH64_LDST64_ABS_LO12_NC	.bss
+    4d30: f90003ff     	str	xzr, [sp]
+    4d34: f940a908     	ldr	x8, [x8, #0x150]
+    4d38: b4000428     	cbz	x8, 0x4dbc <show_hlos_cpucp_offset+0xbc>
+    4d3c: f9406114     	ldr	x20, [x8, #0xc0]
+    4d40: d288b360     	mov	x0, #0x459b             // =17819
+    4d44: f2bbc040     	movk	x0, #0xde02, lsl #16
+    4d48: aa0203f3     	mov	x19, x2
+    4d4c: 90000002     	adrp	x2, 0x4000 <calculate_mon_sampling_freq+0x138>
+		0000000000004d4c:  R_AARCH64_ADR_PREL_PG_HI21	.data+0x9e0
+    4d50: f2cc7a20     	movk	x0, #0x63d1, lsl #32
+    4d54: 91000042     	add	x2, x2, #0x0
+		0000000000004d54:  R_AARCH64_ADD_ABS_LO12_NC	.data+0x9e0
+    4d58: f2e6ed00     	movk	x0, #0x3768, lsl #48
+    4d5c: aa1403e1     	mov	x1, x20
+    4d60: 94000000     	bl	0x4d60 <show_hlos_cpucp_offset+0x60>
+		0000000000004d60:  R_AARCH64_CALL26	__cfi_slowpath_diag
+    4d64: f94002a8     	ldr	x8, [x21]
+		0000000000004d64:  R_AARCH64_LDST64_ABS_LO12_NC	.bss
+    4d68: 910003e1     	mov	x1, sp
+    4d6c: f940ad00     	ldr	x0, [x8, #0x158]
+    4d70: d63f0280     	blr	x20
+    4d74: 37f803e0     	tbnz	w0, #0x1f, 0x4df0 <show_hlos_cpucp_offset+0xf0>
+    4d78: 94000000     	bl	0x4d78 <show_hlos_cpucp_offset+0x78>
+		0000000000004d78:  R_AARCH64_CALL26	ktime_get
+    4d7c: d2810628     	mov	x8, #0x831              // =2097
+    4d80: f94003e9     	ldr	x9, [sp]
+    4d84: f2a39588     	movk	x8, #0x1cac, lsl #16
+    4d88: 90000002     	adrp	x2, 0x4000 <calculate_mon_sampling_freq+0x138>
+		0000000000004d88:  R_AARCH64_ADR_PREL_PG_HI21	.rodata+0xc2
+    4d8c: f2cc8b48     	movk	x8, #0x645a, lsl #32
+    4d90: 91000042     	add	x2, x2, #0x0
+		0000000000004d90:  R_AARCH64_ADD_ABS_LO12_NC	.rodata+0xc2
+    4d94: f2fbe768     	movk	x8, #0xdf3b, lsl #48
+    4d98: 52820001     	mov	w1, #0x1000             // =4096
+    4d9c: 9b487c08     	smulh	x8, x0, x8
+    4da0: aa1303e0     	mov	x0, x19
+    4da4: 9347fd0a     	asr	x10, x8, #7
+    4da8: 8b48fd48     	add	x8, x10, x8, lsr #63
+    4dac: 8b090103     	add	x3, x8, x9
+    4db0: 94000000     	bl	0x4db0 <show_hlos_cpucp_offset+0xb0>
+		0000000000004db0:  R_AARCH64_CALL26	scnprintf
+    4db4: 93407c00     	sxtw	x0, w0
+    4db8: 14000002     	b	0x4dc0 <show_hlos_cpucp_offset+0xc0>
+    4dbc: 92800240     	mov	x0, #-0x13              // =-19
+    4dc0: d5384108     	mrs	x8, SP_EL0
+    4dc4: f942f108     	ldr	x8, [x8, #0x5e0]
+    4dc8: f94007e9     	ldr	x9, [sp, #0x8]
+    4dcc: eb09011f     	cmp	x8, x9
+    4dd0: 540001c1     	b.ne	0x4e08 <show_hlos_cpucp_offset+0x108>
+    4dd4: a9434ff4     	ldp	x20, x19, [sp, #0x30]
+    4dd8: a9417bfd     	ldp	x29, x30, [sp, #0x10]
+    4ddc: f94013f5     	ldr	x21, [sp, #0x20]
+    4de0: f85f8e5e     	ldr	x30, [x18, #-0x8]!
+    4de4: 910103ff     	add	sp, sp, #0x40
+    4de8: d50323bf     	autiasp
+    4dec: d65f03c0     	ret
+    4df0: 2a0003f4     	mov	w20, w0
+    4df4: 90000000     	adrp	x0, 0x4000 <calculate_mon_sampling_freq+0x138>
+		0000000000004df4:  R_AARCH64_ADR_PREL_PG_HI21	.rodata+0xbcd
+    4df8: 91000000     	add	x0, x0, #0x0
+		0000000000004df8:  R_AARCH64_ADD_ABS_LO12_NC	.rodata+0xbcd
+    4dfc: 94000000     	bl	0x4dfc <show_hlos_cpucp_offset+0xfc>
+		0000000000004dfc:  R_AARCH64_CALL26	_printk
+    4e00: 93407e80     	sxtw	x0, w20
+    4e04: 17ffffef     	b	0x4dc0 <show_hlos_cpucp_offset+0xc0>
+    4e08: 94000000     	bl	0x4e08 <show_hlos_cpucp_offset+0x108>
+		0000000000004e08:  R_AARCH64_CALL26	__stack_chk_fail
+
+
+0000000000003350 <store_max_freq>:
+    3350: d503233f     	paciasp
+    3354: d10143ff     	sub	sp, sp, #0x50
+    3358: f800865e     	str	x30, [x18], #0x8
+    335c: a9017bfd     	stp	x29, x30, [sp, #0x10]
+    3360: 910043fd     	add	x29, sp, #0x10
+    3364: f90013f7     	str	x23, [sp, #0x20]
+    3368: a90357f6     	stp	x22, x21, [sp, #0x30]
+    336c: a9044ff4     	stp	x20, x19, [sp, #0x40]
+    3370: d5384109     	mrs	x9, SP_EL0
+    3374: 90000017     	adrp	x23, 0x3000 <store_ipm_ceil+0x14>
+		0000000000003374:  R_AARCH64_ADR_PREL_PG_HI21	.bss
+    3378: f942f129     	ldr	x9, [x9, #0x5e0]
+    337c: aa0203e8     	mov	x8, x2
+    3380: aa0003f4     	mov	x20, x0
+    3384: 910013e2     	add	x2, sp, #0x4
+    3388: 52800141     	mov	w1, #0xa                // =10
+    338c: aa0303f3     	mov	x19, x3
+    3390: f90007e9     	str	x9, [sp, #0x8]
+    3394: f94002e9     	ldr	x9, [x23]
+		0000000000003394:  R_AARCH64_LDST64_ABS_LO12_NC	.bss
+    3398: b90007ff     	str	wzr, [sp, #0x4]
+    339c: f85a8016     	ldur	x22, [x0, #-0x58]
+    33a0: aa0803e0     	mov	x0, x8
+    33a4: f940a935     	ldr	x21, [x9, #0x150]
+    33a8: 94000000     	bl	0x33a8 <store_max_freq+0x58>
+		00000000000033a8:  R_AARCH64_CALL26	kstrtouint
+    33ac: 37f804a0     	tbnz	w0, #0x1f, 0x3440 <store_max_freq+0xf0>
+    33b0: b94007e8     	ldr	w8, [sp, #0x4]
+    33b4: b85ec289     	ldur	w9, [x20, #-0x14]
+    33b8: b85f828a     	ldur	w10, [x20, #-0x8]
+    33bc: 6b09011f     	cmp	w8, w9
+    33c0: 1a898108     	csel	w8, w8, w9, hi
+    33c4: b85b0289     	ldur	w9, [x20, #-0x50]
+    33c8: 6b0a011f     	cmp	w8, w10
+    33cc: 1a8a3108     	csel	w8, w8, w10, lo
+    33d0: 7100113f     	cmp	w9, #0x4
+    33d4: b90007e8     	str	w8, [sp, #0x4]
+    33d8: b81f0288     	stur	w8, [x20, #-0x10]
+    33dc: 54000341     	b.ne	0x3444 <store_max_freq+0xf4>
+    33e0: b4000335     	cbz	x21, 0x3444 <store_max_freq+0xf4>
+    33e4: f9404ab5     	ldr	x21, [x21, #0x90]
+    33e8: d296c200     	mov	x0, #0xb610             // =46608
+    33ec: f2ab9e80     	movk	x0, #0x5cf4, lsl #16
+    33f0: 90000002     	adrp	x2, 0x3000 <store_ipm_ceil+0x14>
+		00000000000033f0:  R_AARCH64_ADR_PREL_PG_HI21	.data+0xa80
+    33f4: f2d707a0     	movk	x0, #0xb83d, lsl #32
+    33f8: 91000042     	add	x2, x2, #0x0
+		00000000000033f8:  R_AARCH64_ADD_ABS_LO12_NC	.data+0xa80
+    33fc: f2faf700     	movk	x0, #0xd7b8, lsl #48
+    3400: aa1503e1     	mov	x1, x21
+    3404: 94000000     	bl	0x3404 <store_max_freq+0xb4>
+		0000000000003404:  R_AARCH64_CALL26	__cfi_slowpath_diag
+    3408: f94002e8     	ldr	x8, [x23]
+		0000000000003408:  R_AARCH64_LDST64_ABS_LO12_NC	.bss
+    340c: b85f0283     	ldur	w3, [x20, #-0x10]
+    3410: b94012c1     	ldr	w1, [x22, #0x10]
+    3414: f940ad00     	ldr	x0, [x8, #0x158]
+    3418: b9406682     	ldr	w2, [x20, #0x64]
+    341c: d63f02a0     	blr	x21
+    3420: 36f80120     	tbz	w0, #0x1f, 0x3444 <store_max_freq+0xf4>
+    3424: 2a0003f4     	mov	w20, w0
+    3428: 90000000     	adrp	x0, 0x3000 <store_ipm_ceil+0x14>
+		0000000000003428:  R_AARCH64_ADR_PREL_PG_HI21	.rodata+0x9fa
+    342c: 91000000     	add	x0, x0, #0x0
+		000000000000342c:  R_AARCH64_ADD_ABS_LO12_NC	.rodata+0x9fa
+    3430: 2a1403e1     	mov	w1, w20
+    3434: 94000000     	bl	0x3434 <store_max_freq+0xe4>
+		0000000000003434:  R_AARCH64_CALL26	_printk
+    3438: 93407e93     	sxtw	x19, w20
+    343c: 14000002     	b	0x3444 <store_max_freq+0xf4>
+    3440: 93407c13     	sxtw	x19, w0
+    3444: d5384108     	mrs	x8, SP_EL0
+    3448: f942f108     	ldr	x8, [x8, #0x5e0]
+    344c: f94007e9     	ldr	x9, [sp, #0x8]
+    3450: eb09011f     	cmp	x8, x9
+    3454: 54000141     	b.ne	0x347c <store_max_freq+0x12c>
+    3458: aa1303e0     	mov	x0, x19
+    345c: f94013f7     	ldr	x23, [sp, #0x20]
+    3460: a9444ff4     	ldp	x20, x19, [sp, #0x40]
+    3464: a94357f6     	ldp	x22, x21, [sp, #0x30]
+    3468: a9417bfd     	ldp	x29, x30, [sp, #0x10]
+    346c: f85f8e5e     	ldr	x30, [x18, #-0x8]!
+    3470: 910143ff     	add	sp, sp, #0x50
+    3474: d50323bf     	autiasp
+    3478: d65f03c0     	ret
+    347c: 94000000     	bl	0x347c <store_max_freq+0x12c>
+		000000000000347c:  R_AARCH64_CALL26	__stack_chk_fail

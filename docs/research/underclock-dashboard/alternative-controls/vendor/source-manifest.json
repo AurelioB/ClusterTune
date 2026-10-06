@@ -1,0 +1,38 @@
+[
+  {
+    "path": "include/linux/scmi_memlat.h",
+    "url": "https://github.com/LineageOS/android_kernel_ayn_qcs8550/blob/0d9a32622533fa6dbeeab60207977171c286c458/include/linux/scmi_memlat.h",
+    "sha256": "c91c3fb66193f075371b1ccefcc98e194b0ae2cf80f83d6acfa080d4fe284d1b",
+    "bytes": 4001
+  },
+  {
+    "path": "include/linux/scmi_pmu.h",
+    "url": "https://github.com/LineageOS/android_kernel_ayn_qcs8550/blob/0d9a32622533fa6dbeeab60207977171c286c458/include/linux/scmi_pmu.h",
+    "sha256": "979ac81dd25dbfe5e68b2d5eaa5de43d821a273b07a0f55e371755eab85235bb",
+    "bytes": 1001
+  },
+  {
+    "path": "include/linux/scmi_cpufreq_stats.h",
+    "url": "https://github.com/LineageOS/android_kernel_ayn_qcs8550/blob/0d9a32622533fa6dbeeab60207977171c286c458/include/linux/scmi_cpufreq_stats.h",
+    "sha256": "2fbfa1bf7b56d2078ea5910069d917200074b573216de9edca7fb643418499ca",
+    "bytes": 1126
+  },
+  {
+    "path": "drivers/firmware/arm_scmi/memlat_vendor.c",
+    "url": "https://github.com/LineageOS/android_kernel_ayn_qcs8550/blob/0d9a32622533fa6dbeeab60207977171c286c458/drivers/firmware/arm_scmi/memlat_vendor.c",
+    "sha256": "49640d5fd3fdde7797ae55bd5f1db6b6c28bec5ae2b8f31315799b318f83ef7b",
+    "bytes": 10006
+  },
+  {
+    "path": "drivers/firmware/arm_scmi/pmu_vendor.c",
+    "url": "https://github.com/LineageOS/android_kernel_ayn_qcs8550/blob/0d9a32622533fa6dbeeab60207977171c286c458/drivers/firmware/arm_scmi/pmu_vendor.c",
+    "sha256": "a886377b318432c87f42c13b8ca4582a59a346742ce8a976e472711beba48e2c",
+    "bytes": 2394
+  },
+  {
+    "path": "drivers/soc/qcom/dcvs/memlat_scmi.c",
+    "url": "https://github.com/LineageOS/android_kernel_ayn_qcs8550/blob/0d9a32622533fa6dbeeab60207977171c286c458/drivers/soc/qcom/dcvs/memlat_scmi.c",
+    "sha256": "8c4115abce2e88db32bee5581714fa4ee8f879ab878dbf102a660f9b6bf6a816",
+    "bytes": 993
+  }
+]

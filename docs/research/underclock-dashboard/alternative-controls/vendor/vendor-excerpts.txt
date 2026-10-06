@@ -1,0 +1,723 @@
+[vendor outer dispatch: 0x17d06210..0x17d06258)
+17d06210 c.addi sp, -0x10
+17d06212 c.swsp ra, 0xc(sp)
+17d06214 c.lw a5, 0x18(a0)
+17d06216 c.srli a5, 0xa
+17d06218 andi a5, a5, 0xff
+17d0621c c.li a4, 0x14
+17d0621e beq a5, a4, 0x30
+17d06222 bltu a4, a5, 0x14
+17d06226 c.li a4, 0x10
+17d06228 beq a5, a4, 0x1c
+17d0622c c.li a4, 0x13
+17d0622e bne a5, a4, 0x24
+17d06232 c.jal 0x58
+17d06234 c.j 0x14
+17d06236 addi a5, a5, -0x80
+17d0623a c.li a4, 8
+17d0623c bltu a4, a5, 0x16
+17d06240 c.jal 0x5c8
+17d06242 c.j 6
+17d06244 jal -0x18a
+17d06248 c.lwsp ra, 0xc(sp)
+17d0624a c.addi sp, 0x10
+17d0624c c.jr ra
+17d0624e c.jal 0x4f6
+17d06250 c.j -8
+17d06252 jal 0x6b4
+17d06256 c.j -0xe
+
+[vendor dispatcher and response helpers: 0x17d06808..0x17d06906)
+17d06808 c.addi sp, -0x10
+17d0680a c.swsp ra, 0xc(sp)
+17d0680c c.swsp s0, 8(sp)
+17d0680e c.swsp s1, 4(sp)
+17d06810 c.swsp s2, 0(sp)
+17d06812 c.mv s1, a0
+17d06814 lbu s2, 0x18(a0)
+17d06818 c.lw a5, 0x18(a0)
+17d0681a c.srli a5, 0xa
+17d0681c andi s0, a5, 0xff
+17d06820 c.jal 0xe0
+17d06822 c.li a5, 1
+17d06824 beq s2, a5, 0x5c
+17d06828 beqz s2, 0x3e
+17d0682c c.li a5, 2
+17d0682e beq s2, a5, 0x64
+17d06832 c.mv a2, s0
+17d06834 lui a5, 0x17d0d
+17d06838 lw a5, 0x528(a5)
+17d0683c beq s0, a5, 0x66
+17d06840 lui a5, 0x17d0d
+17d06844 addi a5, a5, 0x528
+17d06848 c.li a4, 1
+17d0684a c.li a1, 9
+17d0684c c.lw a3, 8(a5)
+17d0684e beq a2, a3, 0x56
+17d06852 c.addi a4, 1
+17d06854 c.addi a5, 8
+17d06856 bne a4, a1, -0xa
+17d0685a c.li a2, 0
+17d0685c c.li a1, -1
+17d0685e c.mv a0, s1
+17d06860 c.jal 0x72
+17d06862 c.li a0, 0
+17d06864 c.j 0x10
+17d06866 c.li a1, 0
+17d06868 c.mv a0, s1
+17d0686a c.jal 0x76
+17d0686c c.lui a1, 0x10
+17d0686e c.mv a0, s1
+17d06870 c.jal 0x70
+17d06872 c.li a0, 0
+17d06874 c.lwsp ra, 0xc(sp)
+17d06876 c.lwsp s0, 8(sp)
+17d06878 c.lwsp s1, 4(sp)
+17d0687a c.lwsp s2, 0(sp)
+17d0687c c.addi sp, 0x10
+17d0687e c.jr ra
+17d06880 c.li a1, 0
+17d06882 c.mv a0, s1
+17d06884 c.jal 0x5c
+17d06886 addi a1, zero, 0x101
+17d0688a c.mv a0, s1
+17d0688c c.jal 0x54
+17d0688e c.li a0, 0
+17d06890 c.j -0x1c
+17d06892 c.li a1, 0
+17d06894 c.mv a0, s1
+17d06896 c.jal 0x4a
+17d06898 c.li a1, 0
+17d0689a c.mv a0, s1
+17d0689c c.jal 0x44
+17d0689e c.li a0, 0
+17d068a0 c.j -0x2c
+17d068a2 c.li a4, 0
+17d068a4 c.slli a4, 3
+17d068a6 lui a5, 0x17d0d
+17d068aa addi a5, a5, 0x528
+17d068ae c.add a4, a5
+17d068b0 c.lw a5, 4(a4)
+17d068b2 c.beqz a5, -0x58
+17d068b4 addi a2, s1, 0x1c
+17d068b8 c.mv a1, s2
+17d068ba c.mv a0, s0
+17d068bc c.jalr a5
+17d068be c.li a5, -1
+17d068c0 beq a0, a5, 0xe
+17d068c4 c.lw a5, 0x14(s1)
+17d068c6 c.add a0, a5
+17d068c8 c.sw a0, 0x14(s1)
+17d068ca c.li a0, 0
+17d068cc c.j -0x58
+17d068ce c.li a0, -1
+17d068d0 c.j -0x5c
+17d068d2 c.slli a2, 2
+17d068d4 c.add a2, a0
+17d068d6 c.sw a1, 0x1c(a2)
+17d068d8 c.lw a5, 0x14(a0)
+17d068da c.addi a5, 4
+17d068dc c.sw a5, 0x14(a0)
+17d068de c.jr ra
+17d068e0 c.lw a5, 0x14(a0)
+17d068e2 c.addi a5, -1
+17d068e4 c.andi a5, -4
+17d068e6 c.add a5, a0
+17d068e8 c.sw a1, 0x1c(a5)
+17d068ea c.lw a5, 0x14(a0)
+17d068ec c.addi a5, 4
+17d068ee c.sw a5, 0x14(a0)
+17d068f0 c.jr ra
+17d068f2 c.add a1, a0
+17d068f4 c.lw a0, 0x1c(a1)
+17d068f6 c.jr ra
+17d068f8 c.slli a1, 2
+17d068fa c.add a1, a0
+17d068fc c.lw a0, 0x1c(a1)
+17d068fe c.jr ra
+17d06900 c.li a5, 4
+17d06902 c.sw a5, 0x14(a0)
+17d06904 c.jr ra
+
+[registration helper: 0xd82e75d4..0xd82e760c)
+d82e75d4 lui a5, 0x17d0d
+d82e75d8 lw a5, 0x52c(a5)
+d82e75dc c.beqz a5, 0x1c
+d82e75de lui a5, 0x17d0d
+d82e75e2 addi a5, a5, 0x528
+d82e75e6 c.li a4, 1
+d82e75e8 c.li a2, 9
+d82e75ea c.lw a3, 0xc(a5)
+d82e75ec c.beqz a3, 0xe
+d82e75ee c.addi a4, 1
+d82e75f0 c.addi a5, 8
+d82e75f2 bne a4, a2, -8
+d82e75f6 c.jr ra
+d82e75f8 c.li a4, 0
+d82e75fa c.slli a4, 3
+d82e75fc lui a5, 0x17d0d
+d82e7600 addi a5, a5, 0x528
+d82e7604 c.add a4, a5
+d82e7606 c.sw a0, 0(a4)
+d82e7608 c.sw a1, 4(a4)
+d82e760a c.jr ra
+
+[PMU handler and registration: 0xd82e5736..0xd82e588e)
+d82e5736 c.addi16sp sp, -0x30
+d82e5738 c.swsp ra, 0x2c(sp)
+d82e573a c.swsp s0, 0x28(sp)
+d82e573c c.swsp s1, 0x24(sp)
+d82e573e c.swsp s2, 0x20(sp)
+d82e5740 c.swsp s3, 0x1c(sp)
+d82e5742 c.swsp s4, 0x18(sp)
+d82e5744 c.swsp s5, 0x14(sp)
+d82e5746 c.swsp s6, 0x10(sp)
+d82e5748 c.swsp s7, 0xc(sp)
+d82e574a c.swsp s8, 8(sp)
+d82e574c c.swsp s9, 4(sp)
+d82e574e c.swsp s10, 0(sp)
+d82e5750 c.mv s9, a2
+d82e5752 c.lw a4, 0(a2)
+d82e5754 c.li a5, 0xc
+d82e5756 beq a1, a5, 0xaa
+d82e575a c.li a5, 0xd
+d82e575c beq a1, a5, 0xbe
+d82e5760 c.li a5, 0xb
+d82e5762 beq a1, a5, 0xa
+d82e5766 c.li a5, -1
+d82e5768 c.sw a5, 0(a2)
+d82e576a c.j 0x78
+d82e576c c.mv s8, a2
+d82e576e c.li s3, 0
+d82e5770 c.lui s10, 0x10
+d82e5772 addi s2, zero, 0xff
+d82e5776 c.li s5, 3
+d82e5778 c.li s6, 8
+d82e577a c.li s4, 9
+d82e577c c.j 0x3e
+d82e577e c.li a2, 1
+d82e5780 c.li a1, 0
+d82e5782 c.jal -0x148
+d82e5784 c.addi s0, 1
+d82e5786 c.addi s1, 1
+d82e5788 beq s0, s4, 0x2a
+d82e578c lbu a1, 0(s1)
+d82e5790 beq a1, s2, -0xc
+d82e5794 andi a5, s0, 0xff
+d82e5798 bgeu s5, a5, -0x14
+d82e579c beq a5, s6, 0x16
+d82e57a0 or a0, s7, s0
+d82e57a4 c.beqz a1, -0x26
+d82e57a6 c.addi a1, -1
+d82e57a8 c.li a2, 0
+d82e57aa andi a1, a1, 0xff
+d82e57ae c.jal -0x174
+d82e57b0 c.j -0x2c
+d82e57b2 c.addi s3, 1
+d82e57b4 c.addi s8, 9
+d82e57b6 beq s3, s6, 0x1e
+d82e57ba c.mv a0, s3
+d82e57bc auipc ra, 0x3fa1b
+d82e57c0 jalr ra, ra, 0x26a
+d82e57c4 c.beqz a0, -0x12
+d82e57c6 slli s7, s3, 8
+d82e57ca or s7, s7, s10
+d82e57ce c.mv s1, s8
+d82e57d0 c.li s0, 0
+d82e57d2 c.j -0x46
+d82e57d4 lui a5, 0x17d2a
+d82e57d8 c.li a4, 1
+d82e57da sw a4, 0x90(a5)
+d82e57de sw zero, 0(s9)
+d82e57e2 c.li a0, 4
+d82e57e4 c.lwsp ra, 0x2c(sp)
+d82e57e6 c.lwsp s0, 0x28(sp)
+d82e57e8 c.lwsp s1, 0x24(sp)
+d82e57ea c.lwsp s2, 0x20(sp)
+d82e57ec c.lwsp s3, 0x1c(sp)
+d82e57ee c.lwsp s4, 0x18(sp)
+d82e57f0 c.lwsp s5, 0x14(sp)
+d82e57f2 c.lwsp s6, 0x10(sp)
+d82e57f4 c.lwsp s7, 0xc(sp)
+d82e57f6 c.lwsp s8, 8(sp)
+d82e57f8 c.lwsp s9, 4(sp)
+d82e57fa c.lwsp s10, 0(sp)
+d82e57fc c.addi16sp sp, 0x30
+d82e57fe c.jr ra
+d82e5800 c.beqz a4, 0x10
+d82e5802 auipc ra, 0x3fa3f
+d82e5806 jalr ra, ra, 0x51c
+d82e580a sw zero, 0(s9)
+d82e580e c.j -0x2c
+d82e5810 auipc ra, 0x3fa3f
+d82e5814 jalr ra, ra, 0x53a
+d82e5818 c.j -0xe
+d82e581a c.beqz a4, 0x12
+d82e581c lui a5, 0x17d2a
+d82e5820 c.li a4, 1
+d82e5822 sb a4, 0x400(a5)
+d82e5826 sw zero, 0(s9)
+d82e582a c.j -0x48
+d82e582c lui a5, 0x17d2a
+d82e5830 sb zero, 0x400(a5)
+d82e5834 c.j -0xe
+d82e5836 c.addi16sp sp, -0x30
+d82e5838 c.swsp ra, 0x2c(sp)
+d82e583a c.swsp s0, 0x28(sp)
+d82e583c c.swsp s1, 0x24(sp)
+d82e583e c.swsp s2, 0x20(sp)
+d82e5840 c.swsp s3, 0x1c(sp)
+d82e5842 c.swsp s4, 0x18(sp)
+d82e5844 c.swsp s5, 0x14(sp)
+d82e5846 c.swsp s6, 0x10(sp)
+d82e5848 c.swsp s7, 0xc(sp)
+d82e584a c.swsp s8, 8(sp)
+d82e584c c.swsp s9, 4(sp)
+d82e584e auipc ra, 0x3fa1b
+d82e5852 jalr ra, ra, 0x1aa
+d82e5856 lui s1, 0x17d2a
+d82e585a addi s1, s1, 0x7c
+d82e585e c.sw a0, 0xc(s1)
+d82e5860 addi a5, zero, 0x5d
+d82e5864 c.sw a5, 0x10(s1)
+d82e5866 sw zero, 0x14(s1)
+d82e586a c.li a5, 3
+d82e586c c.sw a5, 8(s1)
+d82e586e addi s0, s1, 0x24
+d82e5872 c.sw s0, 0x20(s1)
+d82e5874 lui a5, 0x17d09
+d82e5878 c.li a4, 1
+d82e587a sw a4, -0x378(a5)
+d82e587e lui a1, 0xd82e5
+d82e5882 addi a1, a1, 0x736
+d82e5886 addi a0, zero, 0x86
+d82e588a jal 0x1d4a
+
+[memlat registration: 0xd82e6862..0xd82e6890)
+d82e6862 c.addi sp, -0x10
+d82e6864 c.swsp ra, 0xc(sp)
+d82e6866 c.li a1, 1
+d82e6868 c.li a0, 0xa
+d82e686a auipc ra, 0x3fa3b
+d82e686e jalr ra, ra, -0x794
+d82e6872 lui a1, 0xd82e6
+d82e6876 addi a1, a1, 0xfe
+d82e687a addi a0, zero, 0x80
+d82e687e jal 0xd56
+d82e6882 lui a5, 0x17d29
+d82e6886 addi a4, zero, 0x64
+d82e688a sh a4, 0x358(a5)
+d82e688e c.lwsp ra, 0xc(sp)
+
+[memlat group/monitor lookup: 0xd82e6022..0xd82e60fe)
+d82e6022 lui a5, 0x17d29
+d82e6026 addi a5, a5, 0x35c
+d82e602a c.li a4, 0
+d82e602c c.li a2, 4
+d82e602e c.j 0xc
+d82e6030 c.addi a4, 1
+d82e6032 addi a5, a5, 0x348
+d82e6036 beq a4, a2, 0x26
+d82e603a lbu a3, 2(a5)
+d82e603e bne a3, a0, -0xe
+d82e6042 lbu a3, 0(a5)
+d82e6046 c.beqz a3, -0x16
+d82e6048 addi a0, zero, 0x348
+d82e604c mul a4, a4, a0
+d82e6050 lui a0, 0x17d29
+d82e6054 addi a0, a0, 0x35c
+d82e6058 c.add a0, a4
+d82e605a c.jr ra
+d82e605c c.addi sp, -0x10
+d82e605e c.swsp ra, 0xc(sp)
+d82e6060 lui a2, 0x17d28
+d82e6064 addi a2, a2, 0x318
+d82e6068 c.li a1, 0xa
+d82e606a c.li a0, 1
+d82e606c auipc ra, 0x3fa3b
+d82e6070 jalr ra, ra, 0x2a0
+d82e6074 c.li a0, 0
+d82e6076 c.lwsp ra, 0xc(sp)
+d82e6078 c.addi sp, 0x10
+d82e607a c.jr ra
+d82e607c lui a6, 0x17d29
+d82e6080 addi a6, a6, 0x424
+d82e6084 c.li a7, 0
+d82e6086 c.li t1, 4
+d82e6088 c.j 0x4a
+d82e608a c.addi a4, 1
+d82e608c addi a5, a5, 0x7c
+d82e6090 andi a3, a4, 0xff
+d82e6094 bgeu a3, a2, 0x34
+d82e6098 c.lw a3, 0(a5)
+d82e609a bne a3, a0, -0x10
+d82e609e lbu a3, 0x19(a5)
+d82e60a2 bne a3, a1, -0x18
+d82e60a6 slli a0, a4, 5
+d82e60aa c.sub a0, a4
+d82e60ac c.slli a0, 2
+d82e60ae addi a5, zero, 0x348
+d82e60b2 mul a7, a7, a5
+d82e60b6 c.add a0, a7
+d82e60b8 addi a0, a0, 0xc8
+d82e60bc lui a5, 0x17d29
+d82e60c0 addi a5, a5, 0x35c
+d82e60c4 c.add a0, a5
+d82e60c6 c.jr ra
+d82e60c8 c.addi a7, 1
+d82e60ca addi a6, a6, 0x348
+d82e60ce beq a7, t1, 0x10
+d82e60d2 lbu a2, -0xc7(a6)
+d82e60d6 c.mv a5, a6
+d82e60d8 c.li a4, 0
+d82e60da c.bnez a2, -0x42
+d82e60dc c.j -0x14
+d82e60de c.addi sp, -0x10
+d82e60e0 c.swsp ra, 0xc(sp)
+d82e60e2 lui a2, 0x17d28
+d82e60e6 addi a2, a2, 0x330
+d82e60ea c.li a1, 0xa
+d82e60ec c.li a0, 1
+d82e60ee auipc ra, 0x3fa3b
+d82e60f2 jalr ra, ra, 0x21e
+d82e60f6 c.li a0, 0
+d82e60f8 c.lwsp ra, 0xc(sp)
+d82e60fa c.addi sp, 0x10
+d82e60fc c.jr ra
+
+[memlat minimum and maximum: 0xd82e65f4..0xd82e66d4)
+d82e65f4 c.lw a0, 0(a2)
+d82e65f6 c.jal -0x5d4
+d82e65f8 c.mv s1, a0
+d82e65fa lbu a1, 4(s0)
+d82e65fe c.lw a0, 0(s0)
+d82e6600 c.jal -0x584
+d82e6602 c.beqz s1, 0x2e
+d82e6604 c.beqz a0, 0x2c
+d82e6606 c.lw a4, 0(s0)
+d82e6608 c.li a5, 3
+d82e660a beq a4, a5, 0x2e
+d82e660e c.lw a5, 8(s0)
+d82e6610 addi a4, zero, 0x3e8
+d82e6614 divu a5, a5, a4
+d82e6618 sh a5, 0x24(a0)
+d82e661c lhu a5, 0x24(a0)
+d82e6620 lhu a4, 0x38(a0)
+d82e6624 bltu a4, a5, 0x1c
+d82e6628 sw zero, 0(s0)
+d82e662c c.li a0, 4
+d82e662e c.j -0x478
+d82e6630 c.li a5, -2
+d82e6632 c.sw a5, 0(s0)
+d82e6634 c.li a0, 4
+d82e6636 c.j -0x480
+d82e6638 c.lw a5, 8(s0)
+d82e663a sh a5, 0x24(a0)
+d82e663e c.j -0x22
+d82e6640 sh a5, 0x38(a0)
+d82e6644 c.mv a0, s1
+d82e6646 auipc ra, 0x3fa3d
+d82e664a jalr ra, ra, 0xe4
+d82e664e c.j -0x26
+d82e6650 c.lw a0, 0(a2)
+d82e6652 c.jal -0x630
+d82e6654 c.mv s1, a0
+d82e6656 lbu a1, 4(s0)
+d82e665a c.lw a0, 0(s0)
+d82e665c c.jal -0x5e0
+d82e665e c.beqz s1, 0x2e
+d82e6660 c.beqz a0, 0x2c
+d82e6662 c.lw a4, 0(s0)
+d82e6664 c.li a5, 3
+d82e6666 beq a4, a5, 0x2e
+d82e666a c.lw a5, 8(s0)
+d82e666c addi a4, zero, 0x3e8
+d82e6670 divu a5, a5, a4
+d82e6674 sh a5, 0x26(a0)
+d82e6678 lhu a5, 0x26(a0)
+d82e667c lhu a4, 0x38(a0)
+d82e6680 bltu a5, a4, 0x1c
+d82e6684 sw zero, 0(s0)
+d82e6688 c.li a0, 4
+d82e668a c.j -0x4d4
+d82e668c c.li a5, -2
+d82e668e c.sw a5, 0(s0)
+d82e6690 c.li a0, 4
+d82e6692 c.j -0x4dc
+d82e6694 c.lw a5, 8(s0)
+d82e6696 sh a5, 0x26(a0)
+d82e669a c.j -0x22
+d82e669c sh a5, 0x38(a0)
+d82e66a0 c.mv a0, s1
+d82e66a2 auipc ra, 0x3fa3d
+d82e66a6 jalr ra, ra, 0x88
+d82e66aa c.j -0x26
+d82e66ac lbu a1, 4(a2)
+d82e66b0 c.lw a0, 0(a2)
+d82e66b2 c.jal -0x636
+d82e66b4 c.beqz a0, 0x18
+d82e66b6 lhu a5, 0x38(a0)
+d82e66ba addi a4, zero, 0x3e8
+d82e66be mul a5, a5, a4
+d82e66c2 c.sw a5, 4(s0)
+d82e66c4 sw zero, 0(s0)
+d82e66c8 c.li a0, 8
+d82e66ca c.j -0x514
+d82e66cc c.li a5, -2
+d82e66ce c.sw a5, 0(s0)
+d82e66d0 c.li a0, 4
+d82e66d2 c.j -0x51c
+
+[memlat apply arbitration: 0x17d2372a..0x17d2379c)
+17d2372a lui a5, 0x17d29
+17d2372e lbu a5, 0x320(a5)
+17d23732 beqz a5, 0x2fc
+17d23736 lbu a3, 1(a0)
+17d2373a beqz a3, 0x2f4
+17d2373e c.addi16sp sp, -0x30
+17d23740 c.swsp ra, 0x2c(sp)
+17d23742 c.swsp s0, 0x28(sp)
+17d23744 c.swsp s1, 0x24(sp)
+17d23746 c.swsp s2, 0x20(sp)
+17d23748 addi a5, a0, 0xc8
+17d2374c c.addi a3, -1
+17d2374e andi a4, a3, 0xff
+17d23752 slli a3, a4, 5
+17d23756 c.sub a3, a4
+17d23758 c.slli a3, 2
+17d2375a addi a4, a0, 0x144
+17d2375e c.add a3, a4
+17d23760 c.li a2, 0
+17d23762 c.li s1, 0
+17d23764 c.j 0xa
+17d23766 addi a5, a5, 0x7c
+17d2376a beq a3, a5, 0x12
+17d2376e lhu a4, 0x38(a5)
+17d23772 bltu a4, a2, -0xc
+17d23776 c.mv a2, a4
+17d23778 c.mv s1, a5
+17d2377a c.j -0x14
+17d2377c beqz s1, 0x116
+17d23780 lbu a4, 0x42(s1)
+17d23784 addi a5, zero, 0xff
+17d23788 beq a4, a5, 0x2e
+17d2378c c.mv s0, a0
+17d2378e lw s2, 0x33c(a0)
+17d23792 bnez s2, 0x54
+17d23796 lw a5, 0x340(a0)
+17d2379a c.bnez a5, 0xa
+
+[memlat apply output branches: 0x17d23872..0x17d239a0)
+17d23872 lw a5, 0x338(s0)
+17d23876 beq a5, s2, 0x1c
+17d2387a sw s2, 0x338(s0)
+17d2387e lbu a5, 2(s0)
+17d23882 c.li a4, 2
+17d23884 beq a5, a4, 0xb0
+17d23888 bltu a5, a4, 0x1e
+17d2388c c.li a4, 3
+17d2388e beq a5, a4, 0x18
+17d23892 c.lwsp ra, 0x2c(sp)
+17d23894 c.lwsp s0, 0x28(sp)
+17d23896 c.lwsp s1, 0x24(sp)
+17d23898 c.lwsp s2, 0x20(sp)
+17d2389a c.addi16sp sp, 0x30
+17d2389c c.jr ra
+17d2389e sw s2, 0x344(s0)
+17d238a2 c.mv s2, a2
+17d238a4 c.j -0xb2
+17d238a6 c.li a3, 0
+17d238a8 c.li a4, 0
+17d238aa c.swsp a3, 0x10(sp)
+17d238ac c.swsp a4, 0x14(sp)
+17d238ae lui a4, 0x17d28
+17d238b2 addi a4, a4, 0x4a4
+17d238b6 c.add a5, a4
+17d238b8 lbu a5, 0(a5)
+17d238bc mul s2, a5, s2
+17d238c0 lui a5, 0xf4
+17d238c4 addi a5, a5, 0x240
+17d238c8 mul a4, s2, a5
+17d238cc mulhu s2, s2, a5
+17d238d0 c.swsp a4, 0x18(sp)
+17d238d2 c.swsp s2, 0x1c(sp)
+17d238d4 c.li a2, 0
+17d238d6 c.addi4spn a1, sp, 0x10
+17d238d8 lw a0, 0x334(s0)
+17d238dc jal -0xf42
+17d238e0 c.mv s1, a0
+17d238e2 lbu a5, 2(s0)
+17d238e6 slli a4, a5, 2
+17d238ea lui a5, 0x17d28
+17d238ee addi a5, a5, 0x178
+17d238f2 c.add a5, a4
+17d238f4 lw a6, 0(a5)
+17d238f8 c.lwsp a4, 0x18(sp)
+17d238fa c.lwsp a5, 0x1c(sp)
+17d238fc lui a2, 0x17d28
+17d23900 addi a2, a2, 0x394
+17d23904 c.li a1, 0xa
+17d23906 c.li a0, 0xf
+17d23908 jal -0x25fc
+17d2390c c.bnez s1, -0x7a
+17d2390e lbu a5, 2(s0)
+17d23912 slli a4, a5, 2
+17d23916 lui a5, 0x17d28
+17d2391a addi a5, a5, 0x178
+17d2391e c.add a5, a4
+17d23920 c.lw a3, 0(a5)
+17d23922 lui a2, 0x17d28
+17d23926 addi a2, a2, 0x3a8
+17d2392a c.li a1, 0xa
+17d2392c c.li a0, 1
+17d2392e jal -0x2622
+17d23932 c.j -0xa0
+17d23934 lui a5, 0x17d29
+17d23938 lbu a5, 0x321(a5)
+17d2393c c.beqz a5, 0x64
+17d2393e lui a5, 0x17d29
+17d23942 lhu a5, 0x324(a5)
+17d23946 c.beqz a5, 0xce
+17d23948 bgeu a5, s2, 0xd0
+17d2394c lui a4, 0x17d29
+17d23950 addi a4, a4, 0x326
+17d23954 c.li a5, 1
+17d23956 c.li a2, 0xe
+17d23958 lhu a3, 0(a4)
+17d2395c c.beqz a3, 0x12
+17d2395e bgeu a3, s2, 0xc8
+17d23962 c.addi a5, 1
+17d23964 andi a5, a5, 0xff
+17d23968 c.addi a4, 2
+17d2396a bne a5, a2, -0x12
+17d2396e c.addi a5, -1
+17d23970 andi a5, a5, 0xff
+17d23974 lui a4, 0x17d29
+17d23978 lhu a4, 0x340(a4)
+17d2397c beq a4, s2, -0xea
+17d23980 lui a4, 0x17d29
+17d23984 sh s2, 0x340(a4)
+17d23988 lui a3, 0x17d90
+17d2398c lw a4, 0x470(a3)
+17d23990 andi a4, a4, -0x40
+17d23994 andi a5, a5, 0x3f
+17d23998 c.or a5, a4
+17d2399a sw a5, 0x470(a3)
+17d2399e c.j -0x10c
+
+[stats handler and registration: 0xd82e714a..0xd82e71b0)
+d82e714a c.li a5, 3
+d82e714c beq a1, a5, 0x12
+d82e7150 c.li a5, 0x10
+d82e7152 beq a1, a5, 0x14
+d82e7156 c.li a5, -1
+d82e7158 c.sw a5, 0(a2)
+d82e715a c.li a0, 0
+d82e715c c.jr ra
+d82e715e sw zero, 0(a2)
+d82e7162 c.li a0, 4
+d82e7164 c.jr ra
+d82e7166 c.addi sp, -0x20
+d82e7168 c.swsp ra, 0x1c(sp)
+d82e716a c.swsp s0, 0x18(sp)
+d82e716c c.mv s0, a2
+d82e716e lui a5, 0x17d0d
+d82e7172 lw a5, 0x518(a5)
+d82e7176 c.li a1, 1
+d82e7178 c.addi4spn a0, sp, 0xc
+d82e717a c.jalr a5
+d82e717c c.sw a0, 8(s0)
+d82e717e sw zero, 0xc(s0)
+d82e7182 c.lwsp a5, 0xc(sp)
+d82e7184 c.sw a5, 0x10(s0)
+d82e7186 sw zero, 4(s0)
+d82e718a sw zero, 0(s0)
+d82e718e c.li a0, 0x14
+d82e7190 c.lwsp ra, 0x1c(sp)
+d82e7192 c.lwsp s0, 0x18(sp)
+d82e7194 c.addi16sp sp, 0x20
+d82e7196 c.jr ra
+d82e7198 c.addi sp, -0x10
+d82e719a c.swsp ra, 0xc(sp)
+d82e719c c.jal 0x39a
+d82e719e lui a1, 0xd82e7
+d82e71a2 addi a1, a1, 0x14a
+d82e71a6 addi a0, zero, 0x84
+d82e71aa c.jal 0x42a
+d82e71ac lui a1, 0x17d0c
+
+[stats buffer callback: 0x17d07712..0x17d07726)
+17d07712 c.beqz a0, 0xa
+17d07714 c.lui a5, 1
+17d07716 addi a5, a5, -0x800
+17d0771a c.sw a5, 0(a0)
+17d0771c lui a0, 0x17d0b
+17d07720 addi a0, a0, -0x800
+17d07724 c.jr ra
+
+[perf domain flags: 0x17d06322..0x17d06354)
+17d06322 c.li a1, 0
+17d06324 c.mv a0, s0
+17d06326 c.jal 0x5d2
+17d06328 c.mv s1, a0
+17d0632a c.li a1, 0
+17d0632c c.mv a0, s0
+17d0632e c.jal 0x5b2
+17d06330 c.mv a0, s0
+17d06332 c.jal -0xac
+17d06334 slli a1, a0, 0x1f
+17d06338 lui a5, 0x4c0c0
+17d0633c c.or a1, a5
+17d0633e c.mv a0, s0
+17d06340 c.jal 0x5a0
+17d06342 c.li a1, 0
+17d06344 c.mv a0, s0
+17d06346 c.jal 0x59a
+17d06348 c.li a1, 1
+17d0634a c.mv a0, s0
+17d0634c c.jal 0x594
+17d0634e c.li a1, 1
+17d06350 c.mv a0, s0
+17d06352 c.jal 0x58e
+
+[perf fastchannel command: 0x17d064d4..0x17d0652a)
+17d064d4 c.li a1, 0
+17d064d6 c.mv a0, s0
+17d064d8 c.jal 0x420
+17d064da c.mv s1, a0
+17d064dc c.li a1, 1
+17d064de c.mv a0, s0
+17d064e0 c.jal 0x418
+17d064e2 lui a5, 0x17d0d
+17d064e6 lw a5, 0x524(a5)
+17d064ea bgeu s1, a5, 0x38
+17d064ee lui a5, 0x17d0d
+17d064f2 lw a5, 0x50c(a5)
+17d064f6 c.addi4spn a2, sp, 4
+17d064f8 c.mv a1, a0
+17d064fa c.mv a0, s1
+17d064fc c.jalr a5
+17d064fe c.beqz a0, 0xa
+17d06500 c.li a1, -1
+17d06502 c.mv a0, s0
+17d06504 c.jal 0x3dc
+17d06506 c.j -0x23a
+17d06508 c.li a1, 0
+17d0650a c.mv a0, s0
+17d0650c c.jal 0x3d4
+17d0650e c.addi4spn s1, sp, 4
+17d06510 addi s2, sp, 0x30
+17d06514 c.lw a1, 0(s1)
+17d06516 c.mv a0, s0
+17d06518 c.jal 0x3c8
+17d0651a c.addi s1, 4
+17d0651c bne s2, s1, -8
+17d06520 c.j -0x254
+17d06522 c.li a1, -2
+17d06524 c.mv a0, s0
+17d06526 c.jal 0x3ba
+17d06528 c.j -0x25c
+
+[perf fastchannel callback: 0x17d20dc6..0x17d20dca)
+17d20dc6 c.li a0, 0
+17d20dc8 c.jr ra

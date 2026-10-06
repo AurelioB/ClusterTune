@@ -1,0 +1,30 @@
+{
+  "lib/modules/dcvs_fp.ko": {
+    "bytes": 18904,
+    "sha256": "f4efccaa9ec42da59e3ee6bb691bd107b64bd578c5e4976fb7df88f0cf907485"
+  },
+  "lib/modules/msm_performance.ko": {
+    "bytes": 72608,
+    "sha256": "7768ac3397879aa767907d48e2a81700e88b6e7f75978723eba6b81ce9873e49"
+  },
+  "lib/modules/pmu_scmi.ko": {
+    "bytes": 11784,
+    "sha256": "af009744315539e5d1351ccdecd5721d963118bf43dea18f8afce1b053632bc4"
+  },
+  "lib/modules/pmu_vendor.ko": {
+    "bytes": 15848,
+    "sha256": "e05bc5801f463c96b2eaed9d104ec4336a3f2b54923151185ce72cee45d7813f"
+  },
+  "lib/modules/qcom-dcvs.ko": {
+    "bytes": 123216,
+    "sha256": "43b2ba772f451a71adf49939b03b79cb9d098bfdcc01024e9f87a11e43c47706"
+  },
+  "lib/modules/qcom-pmu-lib.ko": {
+    "bytes": 60480,
+    "sha256": "e84dcf30b5067cad7cd05854df442620c71c9928cf184b714174b481efb88c24"
+  },
+  "lib/modules/sched-walt.ko": {
+    "bytes": 829976,
+    "sha256": "118f493995e2736f918433fb5deb76511f0dc8501b60cc9aa7c35378e5e1a19c"
+  }
+}

@@ -1,0 +1,1798 @@
+{
+  "image_sha256": "19de4a8dd45eaa80ca2dd33d7a73661373805efd3970c994f2274e920b1d3808",
+  "scope": "Host-only SCMI0x87 handler simulation; scratch state and platform existence callee substitution. No transport or MMIO executed.",
+  "cases": [
+    {
+      "case": "ipc_set",
+      "message": 15,
+      "request_words": [
+        1,
+        123
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        4294967295,
+        123,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d2030c",
+        "0x17d2030e",
+        "0x17d20310",
+        "0x17d20312",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 4294967295
+        }
+      ]
+    },
+    {
+      "case": "ipc_get",
+      "message": 16,
+      "request_words": [
+        0,
+        0
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        4294967295,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d2030c",
+        "0x17d2030e",
+        "0x17d20310",
+        "0x17d20312",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 4294967295
+        }
+      ]
+    },
+    {
+      "case": "efreq_cluster0",
+      "message": 17,
+      "request_words": [
+        0,
+        456
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        456,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d2024a",
+        "0x17d2024e",
+        "0x17d20250",
+        "0x17d20254",
+        "0x17d20258",
+        "0x17d2025a",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "case": "efreq_cluster1",
+      "message": 17,
+      "request_words": [
+        1,
+        456
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        456,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          456,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [
+        {
+          "address": "0xd82e5e82",
+          "a0": 1,
+          "a1": 399671464,
+          "substitute": "platform exists=1"
+        }
+      ],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d2024a",
+        "0x17d2024e",
+        "0x17d20250",
+        "0x17d2025c",
+        "0x17d20260",
+        "0xd82e5e82",
+        "0x17d20264",
+        "0x17d20266",
+        "0x17d20268",
+        "0x17d2026a",
+        "0x17d2026c",
+        "0x17d20270",
+        "0x17d20274",
+        "0x17d20276",
+        "0x17d20278",
+        "0x17d20254",
+        "0x17d20258",
+        "0x17d2025a",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x17d2814c",
+          "size": 4,
+          "value": 456
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "case": "efreq_cluster3",
+      "message": 17,
+      "request_words": [
+        3,
+        789
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        789,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          789
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [
+        {
+          "address": "0xd82e5e82",
+          "a0": 3,
+          "a1": 399671464,
+          "substitute": "platform exists=1"
+        }
+      ],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d2024a",
+        "0x17d2024e",
+        "0x17d20250",
+        "0x17d2025c",
+        "0x17d20260",
+        "0xd82e5e82",
+        "0x17d20264",
+        "0x17d20266",
+        "0x17d20268",
+        "0x17d2026a",
+        "0x17d2026c",
+        "0x17d20270",
+        "0x17d20274",
+        "0x17d20276",
+        "0x17d20278",
+        "0x17d20254",
+        "0x17d20258",
+        "0x17d2025a",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x17d28154",
+          "size": 4,
+          "value": 789
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "case": "efreq_cluster4",
+      "message": 17,
+      "request_words": [
+        4,
+        100
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        100,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d2024a",
+        "0x17d2024e",
+        "0x17d20250",
+        "0x17d20254",
+        "0x17d20258",
+        "0x17d2025a",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "case": "efreq_get",
+      "message": 18,
+      "request_words": [
+        0,
+        0
+      ],
+      "return_bytes": 16,
+      "response_words": [
+        0,
+        1400000,
+        1500000,
+        1600000
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [
+        {
+          "address": "0xd82e5e82",
+          "a0": 1,
+          "a1": 399671468,
+          "substitute": "platform exists=1"
+        },
+        {
+          "address": "0xd82e5e82",
+          "a0": 2,
+          "a1": 399671468,
+          "substitute": "platform exists=1"
+        },
+        {
+          "address": "0xd82e5e82",
+          "a0": 3,
+          "a1": 399671468,
+          "substitute": "platform exists=1"
+        }
+      ],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d2027a",
+        "0x17d2027e",
+        "0x17d20280",
+        "0x17d20284",
+        "0x17d20288",
+        "0x17d2028a",
+        "0x17d202a0",
+        "0x17d202a2",
+        "0x17d202a6",
+        "0xd82e5e82",
+        "0x17d202aa",
+        "0x17d2028c",
+        "0x17d20290",
+        "0x17d20292",
+        "0x17d20294",
+        "0x17d20298",
+        "0x17d2029a",
+        "0x17d2029c",
+        "0x17d202a0",
+        "0x17d202a2",
+        "0x17d202a6",
+        "0xd82e5e82",
+        "0x17d202aa",
+        "0x17d2028c",
+        "0x17d20290",
+        "0x17d20292",
+        "0x17d20294",
+        "0x17d20298",
+        "0x17d2029a",
+        "0x17d2029c",
+        "0x17d202a0",
+        "0x17d202a2",
+        "0x17d202a6",
+        "0xd82e5e82",
+        "0x17d202aa",
+        "0x17d2028c",
+        "0x17d20290",
+        "0x17d20292",
+        "0x17d20294",
+        "0x17d20298",
+        "0x17d2029a",
+        "0x17d2029c",
+        "0x17d202b2",
+        "0x17d202b6",
+        "0x17d202b8",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10000004",
+          "size": 4,
+          "value": 1400000
+        },
+        {
+          "address": "0x10000008",
+          "size": 4,
+          "value": 1500000
+        },
+        {
+          "address": "0x1000000c",
+          "size": 4,
+          "value": 1600000
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "case": "hysteresis49",
+      "message": 19,
+      "request_words": [
+        49,
+        0
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d202ba",
+        "0x17d202bc",
+        "0x17d202c0",
+        "0x17d202c4",
+        "0x17d202c8",
+        "0x17d202ca",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x17d28158",
+          "size": 4,
+          "value": 6
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "case": "hysteresis_get",
+      "message": 20,
+      "request_words": [
+        0,
+        0
+      ],
+      "return_bytes": 8,
+      "response_words": [
+        0,
+        48,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d202cc",
+        "0x17d202d0",
+        "0x17d202d4",
+        "0x17d202d6",
+        "0x17d202d8",
+        "0x17d202dc",
+        "0x17d202de",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10000004",
+          "size": 4,
+          "value": 48
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "case": "mode0",
+      "message": 21,
+      "request_words": [
+        0,
+        0
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d202e0",
+        "0x17d202e4",
+        "0x17d202e8",
+        "0x17d202ea",
+        "0x17d202ee",
+        "0x17d202f2",
+        "0x17d202f6",
+        "0x17d202f8",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x17d28164",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x17d28168",
+          "size": 1,
+          "value": 0
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "case": "mode1",
+      "message": 21,
+      "request_words": [
+        1,
+        0
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 1,
+        "mode_flag": 1,
+        "trace": 0
+      },
+      "external_substitutions": [],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d202e0",
+        "0x17d202e4",
+        "0x17d202e8",
+        "0x17d202ea",
+        "0x17d202ee",
+        "0x17d202f2",
+        "0x17d202f6",
+        "0x17d202f8",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x17d28164",
+          "size": 4,
+          "value": 1
+        },
+        {
+          "address": "0x17d28168",
+          "size": 1,
+          "value": 1
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "case": "mode2",
+      "message": 21,
+      "request_words": [
+        2,
+        0
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 2,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d202e0",
+        "0x17d202e4",
+        "0x17d202e8",
+        "0x17d202ea",
+        "0x17d202ee",
+        "0x17d202f2",
+        "0x17d202f6",
+        "0x17d202f8",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x17d28164",
+          "size": 4,
+          "value": 2
+        },
+        {
+          "address": "0x17d28168",
+          "size": 1,
+          "value": 0
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "case": "mode3",
+      "message": 21,
+      "request_words": [
+        3,
+        0
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 3,
+        "mode_flag": 1,
+        "trace": 0
+      },
+      "external_substitutions": [],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d202e0",
+        "0x17d202e4",
+        "0x17d202e8",
+        "0x17d202ea",
+        "0x17d202ee",
+        "0x17d202f2",
+        "0x17d202f6",
+        "0x17d202f8",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x17d28164",
+          "size": 4,
+          "value": 3
+        },
+        {
+          "address": "0x17d28168",
+          "size": 1,
+          "value": 1
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "case": "mode_get",
+      "message": 22,
+      "request_words": [
+        0,
+        0
+      ],
+      "return_bytes": 8,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d202fa",
+        "0x17d202fe",
+        "0x17d20302",
+        "0x17d20304",
+        "0x17d20308",
+        "0x17d2030a",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10000004",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "case": "trace_enable",
+      "message": 13,
+      "request_words": [
+        1,
+        0
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 1
+      },
+      "external_substitutions": [],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d20210",
+        "0x17d20214",
+        "0x17d20218",
+        "0x17d2021c",
+        "0x17d2021e",
+        "0x17d20220",
+        "0x17d20222",
+        "0x17d210d6",
+        "0x17d210d8",
+        "0x17d210de",
+        "0x17d210e2",
+        "0x17d210e6",
+        "0x17d210ea",
+        "0x17d210ec",
+        "0x17d210ee",
+        "0x17d20226",
+        "0x17d2022a",
+        "0x17d2022c",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x17d28160",
+          "size": 4,
+          "value": 1
+        },
+        {
+          "address": "0x17d2868c",
+          "size": 4,
+          "value": 15
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "case": "trace_get",
+      "message": 14,
+      "request_words": [
+        0,
+        0
+      ],
+      "return_bytes": 8,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [],
+      "steps": [
+        "0x17d201a8",
+        "0x17d201aa",
+        "0x17d201ac",
+        "0x17d201ae",
+        "0x17d201b2",
+        "0x17d201b4",
+        "0x17d201b6",
+        "0x17d201b8",
+        "0x17d201ba",
+        "0x17d201bc",
+        "0x17d201be",
+        "0x17d201c0",
+        "0x17d201c2",
+        "0x17d201c4",
+        "0x17d201c8",
+        "0x17d201cc",
+        "0x17d201ce",
+        "0x17d201d0",
+        "0x17d20238",
+        "0x17d2023c",
+        "0x17d20240",
+        "0x17d20242",
+        "0x17d20246",
+        "0x17d20248",
+        "0x17d201e8",
+        "0x17d201ea",
+        "0x17d201ec",
+        "0x17d201ee",
+        "0x17d201f0",
+        "0x17d201f2",
+        "0x17d201f4",
+        "0x17d201f6",
+        "0x10020000"
+      ],
+      "writes": [
+        {
+          "address": "0x10010ffc",
+          "size": 4,
+          "value": 268566528
+        },
+        {
+          "address": "0x10010ff8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff4",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010ff0",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fec",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10010fe8",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10000004",
+          "size": 4,
+          "value": 0
+        },
+        {
+          "address": "0x10000000",
+          "size": 4,
+          "value": 0
+        }
+      ]
+    }
+  ]
+}

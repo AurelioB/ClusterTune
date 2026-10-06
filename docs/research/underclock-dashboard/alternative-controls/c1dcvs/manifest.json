@@ -1,0 +1,14 @@
+{
+  "/tmp/ct-fcap-ownership/cpucp_b.bin": {
+    "bytes": 1048576,
+    "sha256": "19de4a8dd45eaa80ca2dd33d7a73661373805efd3970c994f2274e920b1d3808"
+  },
+  "/tmp/ct-direct-controls-stock/c1dcvs_vendor.ko": {
+    "bytes": 19480,
+    "sha256": "12cafc4945a70444169d190805efcf32e03f5d5580a47a87cd78deedb8d36da8"
+  },
+  "/tmp/ct-direct-controls-stock/c1dcvs_scmi.ko": {
+    "bytes": 30672,
+    "sha256": "26c4af49a8017b877e20faa8d39b410cf2265434b9c10eb5ada25ba587f88a1e"
+  }
+}

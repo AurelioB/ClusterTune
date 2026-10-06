@@ -1,0 +1,34 @@
+uptime
+9822.71 75245.77
+firmware
+Thor_V1.0.0.377_20260206_165408_user
+slot
+_b
+cpu_boost
+1
+policy0: min_mode max_mode min_kHz max_kHz governor
+440
+440
+307200
+1459200
+walt
+policy3: min_mode max_mode min_kHz max_kHz governor
+440
+444
+499200
+1785600
+walt
+policy7: min_mode max_mode min_kHz max_kHz governor
+440
+444
+595200
+1843200
+walt
+gpu_max_Hz
+680000000
+performance_mode
+0
+screen_state
+1
+msm_min_votes
+0:0 1:0 2:0 3:0 4:0 5:0 6:0 7:0

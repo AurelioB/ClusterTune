@@ -1,0 +1,183 @@
+{
+  "firmware_sha256": "19de4a8dd45eaa80ca2dd33d7a73661373805efd3970c994f2274e920b1d3808",
+  "method": "offline Unicorn 2.1.4 RV32; loaded ELF segments; synthetic request; callback table initialized from image; stack fill controls descriptor data",
+  "start": "0x17d0628a",
+  "request_protocol": "0x13",
+  "command": 11,
+  "payload": [
+    0,
+    5
+  ],
+  "poison_byte": "0x3c",
+  "reached_return": true,
+  "instructions": 228,
+  "callback_visited": "0x17d20dc6",
+  "a0": 0,
+  "response_length": 52,
+  "response_words": [
+    0,
+    1010580540,
+    1010580540,
+    1010580540,
+    1010580540,
+    1010580540,
+    1010580540,
+    1010580540,
+    1010580540,
+    1010580540,
+    1010580540,
+    1010580540
+  ],
+  "response_writes": [
+    {
+      "pc": "0x17d06902",
+      "address": "0x10010014",
+      "size": 4,
+      "value": "0x4"
+    },
+    {
+      "pc": "0x17d068e8",
+      "address": "0x1001001c",
+      "size": 4,
+      "value": "0x0"
+    },
+    {
+      "pc": "0x17d068ee",
+      "address": "0x10010014",
+      "size": 4,
+      "value": "0x8"
+    },
+    {
+      "pc": "0x17d068e8",
+      "address": "0x10010020",
+      "size": 4,
+      "value": "0x3c3c3c3c"
+    },
+    {
+      "pc": "0x17d068ee",
+      "address": "0x10010014",
+      "size": 4,
+      "value": "0xc"
+    },
+    {
+      "pc": "0x17d068e8",
+      "address": "0x10010024",
+      "size": 4,
+      "value": "0x3c3c3c3c"
+    },
+    {
+      "pc": "0x17d068ee",
+      "address": "0x10010014",
+      "size": 4,
+      "value": "0x10"
+    },
+    {
+      "pc": "0x17d068e8",
+      "address": "0x10010028",
+      "size": 4,
+      "value": "0x3c3c3c3c"
+    },
+    {
+      "pc": "0x17d068ee",
+      "address": "0x10010014",
+      "size": 4,
+      "value": "0x14"
+    },
+    {
+      "pc": "0x17d068e8",
+      "address": "0x1001002c",
+      "size": 4,
+      "value": "0x3c3c3c3c"
+    },
+    {
+      "pc": "0x17d068ee",
+      "address": "0x10010014",
+      "size": 4,
+      "value": "0x18"
+    },
+    {
+      "pc": "0x17d068e8",
+      "address": "0x10010030",
+      "size": 4,
+      "value": "0x3c3c3c3c"
+    },
+    {
+      "pc": "0x17d068ee",
+      "address": "0x10010014",
+      "size": 4,
+      "value": "0x1c"
+    },
+    {
+      "pc": "0x17d068e8",
+      "address": "0x10010034",
+      "size": 4,
+      "value": "0x3c3c3c3c"
+    },
+    {
+      "pc": "0x17d068ee",
+      "address": "0x10010014",
+      "size": 4,
+      "value": "0x20"
+    },
+    {
+      "pc": "0x17d068e8",
+      "address": "0x10010038",
+      "size": 4,
+      "value": "0x3c3c3c3c"
+    },
+    {
+      "pc": "0x17d068ee",
+      "address": "0x10010014",
+      "size": 4,
+      "value": "0x24"
+    },
+    {
+      "pc": "0x17d068e8",
+      "address": "0x1001003c",
+      "size": 4,
+      "value": "0x3c3c3c3c"
+    },
+    {
+      "pc": "0x17d068ee",
+      "address": "0x10010014",
+      "size": 4,
+      "value": "0x28"
+    },
+    {
+      "pc": "0x17d068e8",
+      "address": "0x10010040",
+      "size": 4,
+      "value": "0x3c3c3c3c"
+    },
+    {
+      "pc": "0x17d068ee",
+      "address": "0x10010014",
+      "size": 4,
+      "value": "0x2c"
+    },
+    {
+      "pc": "0x17d068e8",
+      "address": "0x10010044",
+      "size": 4,
+      "value": "0x3c3c3c3c"
+    },
+    {
+      "pc": "0x17d068ee",
+      "address": "0x10010014",
+      "size": 4,
+      "value": "0x30"
+    },
+    {
+      "pc": "0x17d068e8",
+      "address": "0x10010048",
+      "size": 4,
+      "value": "0x3c3c3c3c"
+    },
+    {
+      "pc": "0x17d068ee",
+      "address": "0x10010014",
+      "size": 4,
+      "value": "0x34"
+    }
+  ]
+}

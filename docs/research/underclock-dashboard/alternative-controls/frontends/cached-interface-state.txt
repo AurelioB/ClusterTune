@@ -1,0 +1,21 @@
+cpucp_log_level
+0
+cpucp_sample_ms
+8
+total 0
+-rw-r--r-- 1 root root 4096 2026-10-06 17:09 be_stall_floor
+-r--r--r-- 1 root root 4096 2026-10-06 17:09 cur_freq
+-rw-r--r-- 1 root root 4096 2026-10-06 17:09 fe_stall_floor
+-r--r--r-- 1 root root 4096 2026-10-06 17:09 freq_map
+-rw-r--r-- 1 root root 4096 2026-10-06 17:09 freq_scale_ceil_mhz
+-rw-r--r-- 1 root root 4096 2026-10-06 17:09 freq_scale_floor_mhz
+-rw-r--r-- 1 root root 4096 2026-10-06 17:09 freq_scale_pct
+-rw-r--r-- 1 root root 4096 2026-10-06 14:33 ipm_ceil
+-rw-r--r-- 1 root root 4096 2026-10-06 17:09 max_freq
+-rw-r--r-- 1 root root 4096 2026-10-06 16:55 min_freq
+-rw-r--r-- 1 root root 4096 2026-10-06 17:09 spm_drop_pct
+-rw-r--r-- 1 root root 4096 2026-10-06 17:09 spm_max_vote
+-rw-r--r-- 1 root root 4096 2026-10-06 17:09 spm_thres
+-rw-r--r-- 1 root root 4096 2026-10-06 17:09 spm_window_size
+-rw-r--r-- 1 root root 4096 2026-10-06 17:09 wb_filter_ipm
+-rw-r--r-- 1 root root 4096 2026-10-06 17:09 wb_pct_thres

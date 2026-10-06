@@ -1,0 +1,36 @@
+ImageXBL_ARM64;range1486f1a4+8c
+1486f1a4 mov w8, #0x8004
+1486f1a8 movk w8, #0x17d9, lsl #16
+1486f1ac ldr w9, [x8, #4]
+1486f1b0 orr w9, w9, #1
+1486f1b4 str w9, [x8, #4]
+1486f1b8 ldr w9, [x8]
+1486f1bc orr w9, w9, #1
+1486f1c0 str w9, [x8]
+1486f1c4 ldur w9, [x8, #-4]
+1486f1c8 orr w9, w9, #1
+1486f1cc stur w9, [x8, #-4]
+1486f1d0 ldr w8, [x8]
+1486f1d4 and w0, w8, #1
+1486f1d8 ret
+1486f1dc mov w8, #0x8000
+1486f1e0 movk w8, #0x17d9, lsl #16
+1486f1e4 ldr w9, [x8, #8]
+1486f1e8 and w9, w9, #0xfffffffe
+1486f1ec str w9, [x8, #8]
+1486f1f0 ldr w9, [x8, #4]
+1486f1f4 and w9, w9, #0xfffffffe
+1486f1f8 str w9, [x8, #4]
+1486f1fc ldr w9, [x8]
+1486f200 and w9, w9, #0xfffffffe
+1486f204 str w9, [x8]
+1486f208 ret
+1486f20c mov w8, #0x8004
+1486f210 movk w8, #0x17d9, lsl #16
+1486f214 ldr w9, [x8, #4]
+1486f218 orr w9, w9, #1
+1486f21c str w9, [x8, #4]
+1486f220 ldr w9, [x8]
+1486f224 orr w9, w9, #2
+1486f228 str w9, [x8]
+1486f22c ret

@@ -1,0 +1,217 @@
+{
+  "saved_ep88_table": {
+    "va": "0x17d0c37c",
+    "file_values": [
+      0,
+      3,
+      0,
+      0
+    ],
+    "note": "File initializer only. Runtime modifications not excluded. Cluster1..3consumers use indexes1..3."
+  },
+  "init_separate_algorithm_gates": {
+    "c1": "0x17d2a718",
+    "second": "0x17d2a71c",
+    "both_initialized_to": 1,
+    "instruction_vas": [
+      "0xd82e72c0",
+      "0xd82e72c2"
+    ]
+  },
+  "tz_domain_table": [
+    {
+      "entry_va": "0x157afc00",
+      "name": "L3",
+      "domain": 0,
+      "epss_base": "0x17d90000",
+      "pll_base": "0x17a84000",
+      "other_addresses": [
+        "0x17aa0024",
+        "0x17aa0144",
+        "0x0"
+      ]
+    },
+    {
+      "entry_va": "0x157afc38",
+      "name": "Silver",
+      "domain": 1,
+      "epss_base": "0x17d91000",
+      "pll_base": "0x17a80000",
+      "other_addresses": [
+        "0x17aa0004",
+        "0x17aa013c",
+        "0x0"
+      ]
+    },
+    {
+      "entry_va": "0x157afc70",
+      "name": "Gold",
+      "domain": 2,
+      "epss_base": "0x17d92000",
+      "pll_base": "0x17a82000",
+      "other_addresses": [
+        "0x17aa0014",
+        "0x17aa0140",
+        "0x0"
+      ]
+    },
+    {
+      "entry_va": "0x157afca8",
+      "name": "Gold_Plus",
+      "domain": 3,
+      "epss_base": "0x17d93000",
+      "pll_base": "0x17a86000",
+      "other_addresses": [
+        "0x17aa0034",
+        "0x17aa0148",
+        "0x0"
+      ]
+    }
+  ],
+  "tz_request_midr_dispatch": {
+    "entry_va": "0xd8317c94",
+    "mask": "0xffffffffff0ffff0",
+    "targets": [
+      {
+        "midr": "0x410fd460",
+        "consumer": "0xd8319dac"
+      },
+      {
+        "midr": "0x410fd470",
+        "consumer": "0xd831a870"
+      },
+      {
+        "midr": "0x410fd480",
+        "consumer": "0xd831ba78"
+      },
+      {
+        "midr": "0x410fd4e0",
+        "consumer": "0xd831b7bc"
+      },
+      {
+        "midr": "0x410fd820",
+        "consumer": "0xd831ba78"
+      }
+    ]
+  },
+  "consumer_address_literals": [
+    {
+      "literal_va": "0xd831a358",
+      "value": "0x17d08c48"
+    },
+    {
+      "literal_va": "0xd831a360",
+      "value": "0x17d08c50"
+    },
+    {
+      "literal_va": "0xd831a368",
+      "value": "0xd8328648"
+    },
+    {
+      "literal_va": "0xd831a370",
+      "value": "0xd8328640"
+    },
+    {
+      "literal_va": "0xd831ab70",
+      "value": "0x17d08c58"
+    },
+    {
+      "literal_va": "0xd831ab78",
+      "value": "0x17d08c60"
+    },
+    {
+      "literal_va": "0xd831ab80",
+      "value": "0x17d08c68"
+    },
+    {
+      "literal_va": "0xd831ab88",
+      "value": "0x17d08c70"
+    },
+    {
+      "literal_va": "0xd831ab90",
+      "value": "0x17d08c78"
+    },
+    {
+      "literal_va": "0xd831ba20",
+      "value": "0x17d08c58"
+    },
+    {
+      "literal_va": "0xd831ba28",
+      "value": "0x17d08c78"
+    },
+    {
+      "literal_va": "0xd831ba30",
+      "value": "0x17d08d10"
+    },
+    {
+      "literal_va": "0xd831ba38",
+      "value": "0x17d08d18"
+    },
+    {
+      "literal_va": "0xd831ba40",
+      "value": "0xd8328658"
+    },
+    {
+      "literal_va": "0xd831ba48",
+      "value": "0xd8328650"
+    }
+  ],
+  "core_distinctions": [
+    {
+      "cpu": "Cortex-A510",
+      "masked_midr": "0x410fd460",
+      "consumer": "0xd8319dac",
+      "request_type": 0,
+      "register_encoding": "S3_0_C15_C1_4",
+      "field": "16:6",
+      "field_semantics": "Not established in bounded source pass"
+    },
+    {
+      "cpu": "Cortex-A710",
+      "masked_midr": "0x410fd470",
+      "consumer": "0xd831a870",
+      "request_type": 1,
+      "register_encoding": "S3_0_C15_C1_4",
+      "field": "63:61",
+      "field_semantics": "No A710-specific field source obtained; do not transfer X3 definition"
+    },
+    {
+      "cpu": "Cortex-A715",
+      "masked_midr": "0x410fd4d0",
+      "consumer": null,
+      "note": "Absent from this exact request dispatch. No A715-specific request consumer established."
+    },
+    {
+      "cpu": "Cortex-X3",
+      "masked_midr": "0x410fd4e0",
+      "consumer": "0xd831b7bc",
+      "request_types": [
+        1,
+        2
+      ],
+      "field_semantics": "Arm X3 TRM proves CMC_MIN_WAYS and PF_MODE, as below"
+    }
+  ],
+  "prime_adaptive_effects": [
+    {
+      "type": 1,
+      "selector_address": "0x17d08c58",
+      "payload_address": "0x17d08c78",
+      "consumer": "0xd831b7bc",
+      "register_encoding": "S3_0_C15_C1_4",
+      "field": "63:61",
+      "documented_name": "IMP_CPUECTLR_EL1.CMC_MIN_WAYS",
+      "write_va": "0xd831b7f4"
+    },
+    {
+      "type": 2,
+      "selector_address": "0x17d08d10",
+      "payload_address": "0x17d08d18",
+      "consumer": "0xd831b804",
+      "register_encoding": "S3_0_C15_C1_5",
+      "field": "14:11",
+      "documented_name": "IMP_CPUECTLR2_EL1.PF_MODE",
+      "write_va": "0xd831b830"
+    }
+  ]
+}

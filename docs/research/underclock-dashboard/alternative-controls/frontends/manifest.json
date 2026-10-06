@@ -1,0 +1,18 @@
+{
+  "memlat.ko": {
+    "bytes": 98696,
+    "sha256": "57ac5a24c9a582b1e04645a132e70efb9e0632a8937792e7810766f6f6039f26"
+  },
+  "qcom-dcvs.ko": {
+    "bytes": 123216,
+    "sha256": "43b2ba772f451a71adf49939b03b79cb9d098bfdcc01024e9f87a11e43c47706"
+  },
+  "memlat.c": {
+    "bytes": 57522,
+    "sha256": "605a67542f70ff426a0137bfeb2448c479be51f5db46b5615d02daf38cdf51ac"
+  },
+  "dcvs.c": {
+    "bytes": 22219,
+    "sha256": "94b472d0e56674654cb7a1911581223ad3b31fc45d4cf4c4266cd8a55e76ebd9"
+  }
+}

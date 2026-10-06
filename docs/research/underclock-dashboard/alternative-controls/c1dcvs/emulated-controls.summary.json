@@ -1,0 +1,476 @@
+{
+  "image_sha256": "19de4a8dd45eaa80ca2dd33d7a73661373805efd3970c994f2274e920b1d3808",
+  "scope": "Host-only SCMI0x87 handler simulation; scratch state and platform existence callee substitution. No transport or MMIO executed.",
+  "synthetic_initial_thresholds": [
+    1400000,
+    1500000,
+    1600000
+  ],
+  "cases": [
+    {
+      "case": "ipc_set",
+      "message": 15,
+      "request_words": [
+        1,
+        123
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        4294967295,
+        123,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": []
+    },
+    {
+      "case": "ipc_get",
+      "message": 16,
+      "request_words": [
+        0,
+        0
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        4294967295,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": []
+    },
+    {
+      "case": "efreq_cluster0",
+      "message": 17,
+      "request_words": [
+        0,
+        456
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        456,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": []
+    },
+    {
+      "case": "efreq_cluster1",
+      "message": 17,
+      "request_words": [
+        1,
+        456
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        456,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          456,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [
+        {
+          "address": "0xd82e5e82",
+          "a0": 1,
+          "a1": 399671464,
+          "substitute": "platform exists=1"
+        }
+      ]
+    },
+    {
+      "case": "efreq_cluster3",
+      "message": 17,
+      "request_words": [
+        3,
+        789
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        789,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          789
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [
+        {
+          "address": "0xd82e5e82",
+          "a0": 3,
+          "a1": 399671464,
+          "substitute": "platform exists=1"
+        }
+      ]
+    },
+    {
+      "case": "efreq_cluster4",
+      "message": 17,
+      "request_words": [
+        4,
+        100
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        100,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": []
+    },
+    {
+      "case": "efreq_get",
+      "message": 18,
+      "request_words": [
+        0,
+        0
+      ],
+      "return_bytes": 16,
+      "response_words": [
+        0,
+        1400000,
+        1500000,
+        1600000
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": [
+        {
+          "address": "0xd82e5e82",
+          "a0": 1,
+          "a1": 399671468,
+          "substitute": "platform exists=1"
+        },
+        {
+          "address": "0xd82e5e82",
+          "a0": 2,
+          "a1": 399671468,
+          "substitute": "platform exists=1"
+        },
+        {
+          "address": "0xd82e5e82",
+          "a0": 3,
+          "a1": 399671468,
+          "substitute": "platform exists=1"
+        }
+      ]
+    },
+    {
+      "case": "hysteresis49",
+      "message": 19,
+      "request_words": [
+        49,
+        0
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": []
+    },
+    {
+      "case": "hysteresis_get",
+      "message": 20,
+      "request_words": [
+        0,
+        0
+      ],
+      "return_bytes": 8,
+      "response_words": [
+        0,
+        48,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": []
+    },
+    {
+      "case": "mode0",
+      "message": 21,
+      "request_words": [
+        0,
+        0
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": []
+    },
+    {
+      "case": "mode1",
+      "message": 21,
+      "request_words": [
+        1,
+        0
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 1,
+        "mode_flag": 1,
+        "trace": 0
+      },
+      "external_substitutions": []
+    },
+    {
+      "case": "mode2",
+      "message": 21,
+      "request_words": [
+        2,
+        0
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 2,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": []
+    },
+    {
+      "case": "mode3",
+      "message": 21,
+      "request_words": [
+        3,
+        0
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 3,
+        "mode_flag": 1,
+        "trace": 0
+      },
+      "external_substitutions": []
+    },
+    {
+      "case": "mode_get",
+      "message": 22,
+      "request_words": [
+        0,
+        0
+      ],
+      "return_bytes": 8,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": []
+    },
+    {
+      "case": "trace_enable",
+      "message": 13,
+      "request_words": [
+        1,
+        0
+      ],
+      "return_bytes": 4,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 1
+      },
+      "external_substitutions": []
+    },
+    {
+      "case": "trace_get",
+      "message": 14,
+      "request_words": [
+        0,
+        0
+      ],
+      "return_bytes": 8,
+      "response_words": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "fields": {
+        "thresholds": [
+          1400000,
+          1500000,
+          1600000
+        ],
+        "hysteresis_internal": 6,
+        "mode_full": 0,
+        "mode_flag": 0,
+        "trace": 0
+      },
+      "external_substitutions": []
+    }
+  ]
+}

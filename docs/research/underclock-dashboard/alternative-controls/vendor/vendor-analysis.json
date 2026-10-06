@@ -1,0 +1,253 @@
+{
+  "firmware_sha256": "19de4a8dd45eaa80ca2dd33d7a73661373805efd3970c994f2274e920b1d3808",
+  "decoded_instructions": 29043,
+  "advertised_protocols": [
+    "0x13",
+    "0x83",
+    "0x86",
+    "0x87",
+    "0x80",
+    "0x84"
+  ],
+  "vendor_dispatcher": "0x17d06808",
+  "registration_helper": "0xd82e75d4",
+  "registration_table": {
+    "va": "0x17d0d528",
+    "slots": 9,
+    "entry_format": "u32 protocol; u32 handler",
+    "initial_words": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "statically_resolved_registration_calls": [
+    {
+      "call_va": "0x17d206fc",
+      "encoding": "jalr",
+      "destination": "0xd82e75d4",
+      "preceding_instructions": [
+        "17d206ec lui a1, 0x17d20",
+        "17d206f0 addi a1, a1, 0x1a8",
+        "17d206f4 addi a0, zero, 0x87",
+        "17d206f8 auipc ra, 0xc05c7",
+        "17d206fc jalr ra, ra, -0x124"
+      ]
+    },
+    {
+      "call_va": "0xd82e588a",
+      "encoding": "jal",
+      "destination": "0xd82e75d4",
+      "preceding_instructions": [
+        "d82e587a sw a4, -0x378(a5)",
+        "d82e587e lui a1, 0xd82e5",
+        "d82e5882 addi a1, a1, 0x736",
+        "d82e5886 addi a0, zero, 0x86",
+        "d82e588a jal 0x1d4a"
+      ]
+    },
+    {
+      "call_va": "0xd82e687e",
+      "encoding": "jal",
+      "destination": "0xd82e75d4",
+      "preceding_instructions": [
+        "d82e686e jalr ra, ra, -0x794",
+        "d82e6872 lui a1, 0xd82e6",
+        "d82e6876 addi a1, a1, 0xfe",
+        "d82e687a addi a0, zero, 0x80",
+        "d82e687e jal 0xd56"
+      ]
+    },
+    {
+      "call_va": "0xd82e71aa",
+      "encoding": "c.jal",
+      "destination": "0xd82e75d4",
+      "preceding_instructions": [
+        "d82e719c c.jal 0x39a",
+        "d82e719e lui a1, 0xd82e7",
+        "d82e71a2 addi a1, a1, 0x14a",
+        "d82e71a6 addi a0, zero, 0x84",
+        "d82e71aa c.jal 0x42a"
+      ]
+    }
+  ],
+  "registrations": [
+    {
+      "protocol": "0x87",
+      "handler": "0x17d201a8",
+      "call_va": "0x17d206fc"
+    },
+    {
+      "protocol": "0x86",
+      "handler": "0xd82e5736",
+      "call_va": "0xd82e588a"
+    },
+    {
+      "protocol": "0x80",
+      "handler": "0xd82e60fe",
+      "call_va": "0xd82e687e"
+    },
+    {
+      "protocol": "0x84",
+      "handler": "0xd82e714a",
+      "call_va": "0xd82e71aa"
+    }
+  ],
+  "registration_limit": "No additional direct JAL/c.JAL or adjacent AUIPC/JALR calls found. This is not a proof against arbitrary computed calls, later initialization, or runtime-loaded code. Protocol 0x83 is advertised, but its handler remains unidentified.",
+  "memlat_dispatch_table": "0x17d28288",
+  "memlat_commands": [
+    {
+      "command": 3,
+      "name_from_related_source": "LOG_LEVEL",
+      "handler_branch": "0xd82e67a2"
+    },
+    {
+      "command": 4,
+      "name_from_related_source": "FLUSH_LOG",
+      "handler_branch": "0xd82e67d8"
+    },
+    {
+      "command": 16,
+      "name_from_related_source": "MEM_GROUP",
+      "handler_branch": "0xd82e6164"
+    },
+    {
+      "command": 17,
+      "name_from_related_source": "MONITOR",
+      "handler_branch": "0xd82e6246"
+    },
+    {
+      "command": 18,
+      "name_from_related_source": "COMMON_EVENT_MAP",
+      "handler_branch": "0xd82e6132"
+    },
+    {
+      "command": 19,
+      "name_from_related_source": "GROUP_EVENT_MAP",
+      "handler_branch": "0xd82e63e0"
+    },
+    {
+      "command": 20,
+      "name_from_related_source": "ADAPTIVE_LOW_FREQ",
+      "handler_branch": "0xd82e6422"
+    },
+    {
+      "command": 21,
+      "name_from_related_source": "ADAPTIVE_HIGH_FREQ",
+      "handler_branch": "0xd82e6446"
+    },
+    {
+      "command": 22,
+      "name_from_related_source": "ADAPTIVE_CURRENT_FREQ",
+      "handler_branch": "0xd82e646a"
+    },
+    {
+      "command": 23,
+      "name_from_related_source": "IPM_CEIL",
+      "handler_branch": "0xd82e648e"
+    },
+    {
+      "command": 24,
+      "name_from_related_source": "FE_STALL_FLOOR",
+      "handler_branch": "0xd82e64ac"
+    },
+    {
+      "command": 25,
+      "name_from_related_source": "BE_STALL_FLOOR",
+      "handler_branch": "0xd82e64cc"
+    },
+    {
+      "command": 26,
+      "name_from_related_source": "WB_PCT",
+      "handler_branch": "0xd82e64ec"
+    },
+    {
+      "command": 27,
+      "name_from_related_source": "IPM_FILTER",
+      "handler_branch": "0xd82e650c"
+    },
+    {
+      "command": 28,
+      "name_from_related_source": "FREQ_SCALE_PCT",
+      "handler_branch": "0xd82e652a"
+    },
+    {
+      "command": 29,
+      "name_from_related_source": "FREQ_SCALE_CEIL_MHZ",
+      "handler_branch": "0xd82e654a"
+    },
+    {
+      "command": 30,
+      "name_from_related_source": "FREQ_SCALE_FLOOR_MHZ",
+      "handler_branch": "0xd82e656a"
+    },
+    {
+      "command": 31,
+      "name_from_related_source": "SAMPLE_MS",
+      "handler_branch": "0xd82e6342"
+    },
+    {
+      "command": 32,
+      "name_from_related_source": "MON_FREQ_MAP",
+      "handler_branch": "0xd82e658a"
+    },
+    {
+      "command": 33,
+      "name_from_related_source": "MIN_FREQ",
+      "handler_branch": "0xd82e65f4"
+    },
+    {
+      "command": 34,
+      "name_from_related_source": "MAX_FREQ",
+      "handler_branch": "0xd82e6650"
+    },
+    {
+      "command": 35,
+      "name_from_related_source": "CURRENT_FREQ",
+      "handler_branch": "0xd82e66ac"
+    },
+    {
+      "command": 36,
+      "name_from_related_source": "START_TIMER",
+      "handler_branch": "0xd82e66d4"
+    },
+    {
+      "command": 37,
+      "name_from_related_source": "STOP_TIMER",
+      "handler_branch": "0xd82e6776"
+    },
+    {
+      "command": 38,
+      "name_from_related_source": "TIMESTAMP",
+      "handler_branch": "0xd82e67e8"
+    }
+  ],
+  "perf_callbacks": {
+    "initial_table": "0x17d28610",
+    "runtime_table": "0x17d0d4dc",
+    "fastchannel_table_offset": "0x30",
+    "fastchannel_callback": "0x17d20dc6",
+    "fastchannel_callback_instructions": [
+      "17d20dc6 c.li a0, 0",
+      "17d20dc8 c.jr ra"
+    ]
+  },
+  "domain_flags": "0x4c0c0000",
+  "limits_supported_bit31": false,
+  "fastchannels_advertised_bit27": true
+}

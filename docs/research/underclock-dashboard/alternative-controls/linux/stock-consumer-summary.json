@@ -1,0 +1,99 @@
+{
+  "c1dcvs_scmi.symbols.txt": {
+    "irq_registration_imports": [],
+    "cpucp_c1_symbols": [
+      "0000000000000170 T c1dcvs_enable",
+      "0000000000001048 t c1dcvs_enable.cfi_jt",
+      "000000000000025c t scmi_c1dcvs_probe",
+      "0000000000001058 t scmi_c1dcvs_probe.cfi_jt",
+      "0000000000000340 t show_c1dcvs_opt_mode",
+      "0000000000001060 t show_c1dcvs_opt_mode.cfi_jt",
+      "0000000000000d3c t show_enable_c1dcvs",
+      "0000000000001088 t show_enable_c1dcvs.cfi_jt",
+      "0000000000000404 t store_c1dcvs_opt_mode",
+      "0000000000001098 t store_c1dcvs_opt_mode.cfi_jt",
+      "0000000000000e00 t store_enable_c1dcvs",
+      "00000000000010c0 t store_enable_c1dcvs.cfi_jt"
+    ],
+    "physical_map_imports": []
+  },
+  "c1dcvs_vendor.symbols.txt": {
+    "irq_registration_imports": [],
+    "cpucp_c1_symbols": [
+      "000000000000012c t scmi_c1dcvs_protocol_init",
+      "0000000000000768 t scmi_c1dcvs_protocol_init.cfi_jt",
+      "0000000000000394 t scmi_get_c1dcvs_opt_mode",
+      "00000000000007c8 t scmi_get_c1dcvs_opt_mode.cfi_jt",
+      "0000000000000204 t scmi_get_enable_c1dcvs",
+      "0000000000000778 t scmi_get_enable_c1dcvs.cfi_jt",
+      "00000000000003bc t scmi_get_tunable_c1dcvs",
+      "0000000000000624 t scmi_send_thresh_c1dcvs",
+      "00000000000004f0 t scmi_send_tunable_c1dcvs",
+      "000000000000036c t scmi_set_c1dcvs_opt_mode",
+      "00000000000007c0 t scmi_set_c1dcvs_opt_mode.cfi_jt",
+      "00000000000001dc t scmi_set_enable_c1dcvs",
+      "0000000000000770 t scmi_set_enable_c1dcvs.cfi_jt"
+    ],
+    "physical_map_imports": []
+  },
+  "dcvs_fp.symbols.txt": {
+    "irq_registration_imports": [],
+    "cpucp_c1_symbols": [],
+    "physical_map_imports": []
+  },
+  "msm_performance.symbols.txt": {
+    "irq_registration_imports": [],
+    "cpucp_c1_symbols": [
+      "0000000000000388 T cpucp_plh_init",
+      "0000000000002900 t cpucp_plh_init.cfi_jt"
+    ],
+    "physical_map_imports": []
+  },
+  "pmu_scmi.symbols.txt": {
+    "irq_registration_imports": [],
+    "cpucp_c1_symbols": [
+      "U rimps_pmu_init"
+    ],
+    "physical_map_imports": []
+  },
+  "pmu_vendor.symbols.txt": {
+    "irq_registration_imports": [],
+    "cpucp_c1_symbols": [],
+    "physical_map_imports": []
+  },
+  "qcom-cpufreq-hw.symbols.txt": {
+    "irq_registration_imports": [
+      "U request_threaded_irq"
+    ],
+    "cpucp_c1_symbols": [],
+    "physical_map_imports": [
+      "U devm_ioremap"
+    ]
+  },
+  "qcom-dcvs.symbols.txt": {
+    "irq_registration_imports": [],
+    "cpucp_c1_symbols": [],
+    "physical_map_imports": [
+      "U __ioremap",
+      "U devm_ioremap"
+    ]
+  },
+  "qcom-pmu-lib.symbols.txt": {
+    "irq_registration_imports": [],
+    "cpucp_c1_symbols": [
+      "0000000000000564 t configure_cpucp_map",
+      "000000000000118c T qcom_get_cpucp_id",
+      "0000000000003008 t qcom_get_cpucp_id.cfi_jt",
+      "000000000000039c T rimps_pmu_init",
+      "0000000000002fb8 t rimps_pmu_init.cfi_jt"
+    ],
+    "physical_map_imports": [
+      "U devm_ioremap"
+    ]
+  },
+  "sched-walt.symbols.txt": {
+    "irq_registration_imports": [],
+    "cpucp_c1_symbols": [],
+    "physical_map_imports": []
+  }
+}
