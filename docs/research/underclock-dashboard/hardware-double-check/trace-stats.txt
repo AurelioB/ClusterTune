@@ -1,0 +1,73 @@
+/sys/kernel/tracing/instances/clustertune_double_check/per_cpu/cpu0/stats
+entries: 0
+overrun: 0
+commit overrun: 0
+bytes: 2913272
+oldest event ts: 233279.600197
+now ts: 233279.613526
+dropped events: 0
+read events: 37979
+/sys/kernel/tracing/instances/clustertune_double_check/per_cpu/cpu1/stats
+entries: 0
+overrun: 0
+commit overrun: 0
+bytes: 5154712
+oldest event ts: 233279.391590
+now ts: 233279.635772
+dropped events: 0
+read events: 67146
+/sys/kernel/tracing/instances/clustertune_double_check/per_cpu/cpu2/stats
+entries: 0
+overrun: 0
+commit overrun: 0
+bytes: 3731932
+oldest event ts: 233279.310423
+now ts: 233279.654317
+dropped events: 0
+read events: 48664
+/sys/kernel/tracing/instances/clustertune_double_check/per_cpu/cpu3/stats
+entries: 0
+overrun: 0
+commit overrun: 0
+bytes: 364924
+oldest event ts: 233269.873621
+now ts: 233279.661780
+dropped events: 0
+read events: 4784
+/sys/kernel/tracing/instances/clustertune_double_check/per_cpu/cpu4/stats
+entries: 0
+overrun: 0
+commit overrun: 0
+bytes: 458472
+oldest event ts: 233278.576050
+now ts: 233279.669247
+dropped events: 0
+read events: 6029
+/sys/kernel/tracing/instances/clustertune_double_check/per_cpu/cpu5/stats
+entries: 0
+overrun: 0
+commit overrun: 0
+bytes: 594232
+oldest event ts: 233277.041456
+now ts: 233279.689233
+dropped events: 0
+read events: 7725
+/sys/kernel/tracing/instances/clustertune_double_check/per_cpu/cpu6/stats
+entries: 0
+overrun: 0
+commit overrun: 0
+bytes: 221728
+oldest event ts: 232994.128056
+now ts: 233279.711163
+dropped events: 0
+read events: 2945
+/sys/kernel/tracing/instances/clustertune_double_check/per_cpu/cpu7/stats
+entries: 0
+overrun: 0
+commit overrun: 0
+bytes: 162100
+oldest event ts: 233245.344025
+now ts: 233279.733518
+dropped events: 0
+read events: 2120
+11693

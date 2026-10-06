@@ -1,6 +1,6 @@
 # AYN dashboard's false 3.19 GHz reading below 1 GHz
 
-Status: the dashboard symptom was reproduced on the available Thor. CPU driver readings remained within the selected limits. The extracted dashboard has a unit-conversion bug that explains the symptom; no ClusterTune runtime workaround was applied.
+Status: the dashboard symptom was reproduced on the available Thor. The extracted dashboard has a confirmed unit-conversion bug. **Independent hardware measurements also found above-cap clock rates that driver readings and 3C do not reveal**, in both public 1.3.0 and 1.2.2. The display bug does not establish that frequency enforcement is perfect. No ClusterTune runtime workaround was applied.
 
 ## Confirmed result
 
@@ -32,7 +32,7 @@ Stock → Small → Medium → Large → Medium and the three minimum comparison
 
 There was also an independent MSM performance vote of 2,016,000 kHz on the efficiency cluster and 2,707,200 kHz on the middle cluster while the dashboard was active. Those clusters' effective minimums were clamped to the selected maximums. Minimum-node protection does not suppress separate system QoS votes. The prime-core MSM vote was zero when checked. This separate behavior is not evidence that the prime core operated at 3.19 GHz under an underclock.
 
-The tests do not measure battery life, physical cycle-counter frequency, or sustained gaming performance, and do not establish that every user's battery complaint has the same cause. The reporter's firmware was not available. The supplied symptom and its unit-conversion mechanism are nevertheless reproduced on the tested firmware.
+These initial sampled tests did not measure battery life, physical cycle-counter frequency, or sustained gaming performance, and do not establish that every user's battery complaint has the same cause. The reporter's firmware was not available. The supplied symptom and its unit-conversion mechanism are nevertheless reproduced on the tested firmware. The independent measurements below supersede any inference that these readbacks prove a strict physical ceiling.
 
 The older public 1.2.2 lets firmware restore the prime floor above 1 GHz, which explains why returning to it can remove the false display reading. Forcing ClusterTune's floor above 1 GHz would hide this display bug by giving up the lower operating range; it is not a fix for the dashboard's conversion.
 
@@ -43,6 +43,54 @@ The older public 1.2.2 lets firmware restore the prime floor above 1 GHz, which 
 Stock restored maximums to 2,016,000 / 2,803,200 / 3,187,200 kHz and released every minimum node to its original 0660 mode. Thirty additional observations per cluster cover that transition; the combined dataset contains 810 policy observations with no current readback above its contemporaneous maximum.
 
 The original pre-test development APK was then reinstalled with data preserved, and the original Large Underclock profile reapplied. The dashboard was closed, the 60-second screen timeout restored, and the Thor returned to its initial sleeping state. [Final verification](research/underclock-dashboard/final-restoration.txt) confirmed minimums 307,200 / 499,200 / 595,200 kHz, maximums 1,459,200 / 1,785,600 / 1,843,200 kHz, original minimum/maximum permissions, `walt` on all policies, GPU maximum 680 MHz, Standard performance mode, and cleared MSM performance minimum votes. No governor, thermal setting, display performance property, or persistent experimental frequency was left changed. Profile test switches remain in the app's history.
+
+## Independent double-check: driver diagnostics miss physical excursions
+
+The user's concern about fast changes was justified. This pass checked the installed 3C All-in-One Toolbox (3.2.3b), continuous kernel events, a hardware cycle counter, and Qualcomm's hardware clock measurement. It used the **published production APKs**, re-signed with the existing installation's debug key to preserve app data; both retained their production, non-debuggable manifests. The original release APK hashes were:
+
+- 1.3.0: `daa6730ae9f756a2773289cecf0f2395ff0b584ac12fa8e367758ad2653c6391`.
+- 1.2.2: `3e18505e1ce709324a3e8c85478cb1d2cd3ea6326a90fd49a77f8b6e09026ac5`, matching the release's published checksum.
+
+### Independent UI and continuous driver events
+
+With Large Underclock selected, [3C showed the prime core at 595 MHz and its maximum at 1.84 GHz](research/underclock-dashboard/hardware-double-check/large-idle-3c.png), while [AYN's dashboard showed 3.19 GHz](research/underclock-dashboard/hardware-double-check/large-idle-ayn.png). This is an independent UI comparison, not an independent measurement of the physical clock.
+
+A dedicated trace instance streamed `power/cpu_frequency`, `power/cpu_frequency_limits`, WALT demands, and DCVSH events for 344.283 seconds. It captured 1,017 driver frequency records, 31 limit records, and 176,319 WALT demand records. Every CPU's trace buffer reported **zero overruns and zero dropped events**. There were 743 driver frequency records in settled Stock/Small/Medium/Large windows, with no recorded frequency above the corresponding cap. The first 0.628 seconds include Stock application without its start marker; they are not interpreted against an assumed initial cap. Later application windows are also excluded until their explicit `SETTLED` marker.
+
+WALT demands frequently exceed the cap, but the [related governor source](https://github.com/LineageOS/android_kernel_ayn_qcs8550/blob/0d9a32622533fa6dbeeab60207977171c286c458/kernel/sched/walt/cpufreq_walt.c) emits `waltgov_next_freq` before resolving/clamping the demand. Those records must not be labelled committed over-cap transitions. Likewise, driver transition events do not record every autonomous hardware clock change. No DCVSH events were emitted during this capture; that is not proof that hardware never changed the clock independently.
+
+[Driver/limit events and markers](research/underclock-dashboard/hardware-double-check/driver-events.csv), [trace summary](research/underclock-dashboard/hardware-double-check/trace-summary.json), and [all-CPU buffer statistics](research/underclock-dashboard/hardware-double-check/trace-stats.txt) are retained. The full 42 MB stream remains in `/tmp/ct-double-check/frequency-events.txt`; its SHA-256 is recorded in the summary. The checked-in CSV omits the bulk pre-clamp demands and process names.
+
+### Hardware counters and clock measurement
+
+Initial `simpleperf` cycle/task-clock estimates were above the underclock caps. A separate [native probe](research/underclock-dashboard/hardware-double-check/cycle_probe.c) then opened its own `PERF_COUNT_HW_CPU_CYCLES` counter, pinned itself to CPU7, and measured counter differences against both thread CPU time and monotonic wall time during an eight-second arithmetic workload. This eliminates the initial command's inherited child counters as the explanation. Each probe produced 32 approximately 250 ms windows; the counter's enabled/running times matched. Repeating with tracing disabled retained the discrepancy.
+
+During separate probe runs, root read `/sys/kernel/debug/clk/measure_only_apcs_goldplus_post_acd_clk/clk_measure` ten times per profile, alongside minimum, maximum and `cpuinfo_cur_freq`. This is a different hardware measurement from the driver's requested performance-state readback. The [related Qualcomm measurement implementation](https://github.com/LineageOS/android_kernel_ayn_qcs8550/blob/0d9a32622533fa6dbeeab60207977171c286c458/drivers/clk/qcom/clk-debug.c) counts a clock against a reference oscillator over an approximately 27 ms window; it is not an instantaneous sample. That implementation and the [Kalama clock wiring](https://github.com/LineageOS/android_kernel_ayn_qcs8550/blob/0d9a32622533fa6dbeeab60207977171c286c458/drivers/clk/qcom/debugcc-kalama.c) provide context; neither is established to be byte-identical to the stock kernel. These tests did not change governors or thermal controls. The measurement node internally switches and enables debug clocks temporarily. The counter-only repeats reproduced the discrepancy without reading that node.
+
+| Release | Profile | Configured prime cap (GHz) | Cycle/wall-time average (GHz) | Hardware clock measurement range (GHz) |
+| --- | --- | ---: | ---: | ---: |
+| 1.3.0 | Stock | 3.1872 | 3.1107 | 2.9568–3.1872 |
+| 1.3.0 | Medium | 2.0928 | 2.1876 | 2.0927–2.3424 |
+| 1.3.0 | Large | 1.8432 | 1.9581 | 1.8836–2.0928 |
+| 1.2.2 | Stock | 3.1872 | 3.1074 | 2.9849–3.1872 |
+| 1.2.2 | Medium | 2.0928 | 2.1981 | 2.0928–2.3424 |
+| 1.2.2 | Large | 1.8432 | 1.9534 | 1.8566–2.0928 |
+
+Every driver's current-frequency read in these 60 comparisons equalled the selected cap, while the independent hardware measurement often exceeded it. The two methods have different measurement windows; their numbers should not be compared as simultaneous instantaneous samples. Small differences around a nominal frequency can be measurement precision, but the roughly **250 MHz excursions** under Medium/Large and the elevated integrated cycle rates cannot be dismissed that way.
+
+Making 1.3.0's minimum nodes writable, waiting eleven seconds for firmware to restore the 1.8432 GHz prime floor, and repeating the native probe also retained above-cap estimates. Public 1.2.2 kept writable minimum nodes and showed the same behavior. This points away from the new minimum permission protection as the cause; it does not identify the hardware/firmware mechanism or exclude a pre-existing app limitation. Original-probe affinity failures were retried after a bounded warm-up; failed attempts were not used as measurements.
+
+[All 60 hardware comparisons](research/underclock-dashboard/hardware-double-check/hardware-clock-comparison.csv), per-release cycle CSVs, policy states, the no-trace repeats, and the writable-minimum repeat are retained in [the evidence directory](research/underclock-dashboard/hardware-double-check).
+
+### What is and is not established
+
+- The AYN 3.19 GHz display error is confirmed independently of the clock-enforcement discrepancy.
+- Underclock profiles materially reduce measured prime-core clock rates compared with Stock in both releases.
+- Neither the sampled frequency files, 3C's matching readings, nor the lossless driver trace establishes a strict physical cap. The hardware measurements directly contradict that stronger claim on this Thor.
+- The discrepancy occurs in public 1.2.2 as well as 1.3.0 and with writable minimums. A regression caused by the new minimum protection was not demonstrated.
+- These bounded measurements do not exclude arbitrarily brief 3.19 GHz pulses between hardware measurement windows, establish sustained gaming behavior or battery impact, or identify the mechanism causing the above-cap clock rates. That remains open.
+
+The original development APK was reinstalled with app data preserved. [Stock was applied to release minimum ownership](research/underclock-dashboard/hardware-double-check/restore-stock.txt), then [the original Large profile was reapplied](research/underclock-dashboard/hardware-double-check/restore-large.txt), restoring the protected low prime minimum. Trace recording and its dedicated instance were removed before restoration. Wireless ADB disconnected while returning the device to sleep. Removal of the inactive temporary probe and a final post-sleep verification remain pending reconnection; this is not a fully verified cleanup yet.
 
 ## Report and recording
 

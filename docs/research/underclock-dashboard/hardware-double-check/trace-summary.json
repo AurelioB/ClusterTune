@@ -1,0 +1,37 @@
+{
+  "duration_seconds": 344.28336599998875,
+  "events": {
+    "tracing_mark_write": 25,
+    "waltgov_next_freq": 176319,
+    "cpu_frequency_limits": 31,
+    "cpu_frequency": 1017
+  },
+  "driver_events_in_settled_profiles": {
+    "stock": 412,
+    "small": 44,
+    "medium": 42,
+    "large": 245
+  },
+  "max_driver_frequency_khz_by_profile_cpu": {
+    "stock": {
+      "7": 3187200,
+      "3": 2803200,
+      "4": 2803200,
+      "5": 2803200,
+      "6": 2803200
+    },
+    "small": {
+      "7": 2476800
+    },
+    "medium": {
+      "7": 2092800
+    },
+    "large": {
+      "7": 1843200
+    }
+  },
+  "over_cap_driver_events": [],
+  "shortest_same_cpu_transition_gap_seconds": 4.999979864805937e-06,
+  "raw_trace_sha256": "0aeb0f574b3d072e436535a07873acb1052420214c9dbf50a80195519cbc33a8",
+  "initial_context": "First 0.628 seconds contain Stock application before its SETTLED marker; no initial cap is inferred for these records."
+}
