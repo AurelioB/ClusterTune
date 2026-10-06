@@ -22,6 +22,8 @@ The three CPU EPSS domains' `+0x88`, `+0xbc` and first LUT word `+0x100` are all
 
 The existing CPUFreq debug module supplies a read-only dump including `EPSS_DEBUG_SRB`. It does not provide a store operation. That permits observing the candidate's current value, not changing it or establishing the effect of clearing it.
 
+**Subsequent stock-kernel inspection:** the [next pass](../runtime/report.md) resolved these particular signature checks in the actual kernel Image: `is_module_sig_enforced` returns zero, and both GKI protected-symbol searches pass zero entries. All 23 CRCs from the accepted stock debug module match the kernel exports. Those checks therefore do not preclude a compatible unsigned helper on this build. Genuine build/CFI compatibility, successful loading and direct register-write permissions remain untested.
+
 ## Software tables, hardware LUT and thermal limits
 
 Stock CPUFreq target/fast-switch paths write the requested performance index; readback resolves that same request through the software frequency table. The stock initialization reads frequency and voltage LUTs, then builds Linux OPP/table entries. Filtering those Linux entries would not, by itself, remove higher states from the hardware's autonomous selection logic. This is the relevant distinction for an independent physical ceiling.

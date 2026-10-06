@@ -8,6 +8,8 @@ The subsequent [parallel investigation of vendor, EPSS and C1 controls](research
 
 The [deeper follow-up](research/underclock-dashboard/deep-controls/README.md) identifies CPUCP's exact startup writes to **EPSS `+0xbc` bit 0**, the register the Linux debug driver labels SRB. This is now the strongest concrete configuration candidate; its meaning and permitted runtime changes remain unproved. The deeper registration audit substantially weakens `0x83` as a hidden command route. Generic SCM register access also excludes the examined EPSS addresses.
 
+The [subsequent ownership/access pass](research/underclock-dashboard/deep-controls/runtime/report.md) confirms the Thor's live SRB-labelled words match startup values and narrows the traced initializer ownership. Inspection of the actual stock kernel resolves an access uncertainty: signature enforcement is false and both GKI protected-symbol lists are empty. All 23 stock debug-module import CRCs match the kernel exports. A legitimately compatible unsigned helper remains plausible; no helper was built/loaded, no register was changed, and the candidate field's effect remains unproved.
+
 ## Confirmed result
 
 Testing a debug-signed build from the exact 1.3.0 source reproduced the supplied video: selecting underclock profiles made AYN's dashboard show 3.19 GHz while direct prime-core frequency reads repeatedly returned 595,200 kHz. The new low minimum exposes an existing dashboard bug.

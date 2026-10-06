@@ -1,0 +1,521 @@
+{
+  "firmware_sha256": "19de4a8dd45eaa80ca2dd33d7a73661373805efd3970c994f2274e920b1d3808",
+  "method": "Native stock instructions run only on host. Guard cases map no EPSS MMIO pages. Field cases model isolated startup RMW fragments with synthetic memory. Strict PC/write bounds and instruction budgets apply.",
+  "limits": "Does not simulate full CPUCP boot, live register protection, register side effects, synchronization, resume, or another firmware writer. A passing RMW model does not justify a runtime register write.",
+  "already_initialized_cases": [
+    {
+      "domain": 0,
+      "return_value": 0,
+      "mmio_pages_mapped": false,
+      "instruction_trace": [
+        "0xd82e0d04",
+        "0xd82e0d06",
+        "0xd82e0d08",
+        "0xd82e0d0a",
+        "0xd82e0d0c",
+        "0xd82e0d0e",
+        "0xd82e0d10",
+        "0xd82e0d12",
+        "0xd82e09bc",
+        "0xd82e09c0",
+        "0xd82e09c4",
+        "0xd82e09c8",
+        "0xd82e09ca",
+        "0xd82e09ce",
+        "0xd82e09d2",
+        "0xd82e09d4",
+        "0xd82e09d6",
+        "0xd82e09da",
+        "0xd82e09de",
+        "0xd82e09e0",
+        "0xd82e0d14",
+        "0xd82e0d16",
+        "0xd82e0d18",
+        "0xd82e0d1c",
+        "0xd82e0d20",
+        "0xd82e0d22",
+        "0xd82e0d24",
+        "0xd82e0d26",
+        "0xd82e0d28",
+        "0xd82e0d2a",
+        "0xd82e0d2c",
+        "0xd82e0d2e"
+      ],
+      "stack_writes": [
+        {
+          "pc": "0xd82e0d06",
+          "address": "0x10000ffc",
+          "size": 4,
+          "value": "0x10002000"
+        },
+        {
+          "pc": "0xd82e0d08",
+          "address": "0x10000ff8",
+          "size": 4,
+          "value": "0x0"
+        },
+        {
+          "pc": "0xd82e0d0a",
+          "address": "0x10000ff4",
+          "size": 4,
+          "value": "0x0"
+        },
+        {
+          "pc": "0xd82e0d0c",
+          "address": "0x10000ff0",
+          "size": 4,
+          "value": "0x0"
+        },
+        {
+          "pc": "0xd82e0d0e",
+          "address": "0x10000fec",
+          "size": 4,
+          "value": "0x0"
+        }
+      ]
+    },
+    {
+      "domain": 1,
+      "return_value": 0,
+      "mmio_pages_mapped": false,
+      "instruction_trace": [
+        "0xd82e0d04",
+        "0xd82e0d06",
+        "0xd82e0d08",
+        "0xd82e0d0a",
+        "0xd82e0d0c",
+        "0xd82e0d0e",
+        "0xd82e0d10",
+        "0xd82e0d12",
+        "0xd82e09bc",
+        "0xd82e09c0",
+        "0xd82e09c4",
+        "0xd82e09c8",
+        "0xd82e09ca",
+        "0xd82e09ce",
+        "0xd82e09d2",
+        "0xd82e09d4",
+        "0xd82e09d6",
+        "0xd82e09da",
+        "0xd82e09de",
+        "0xd82e09e0",
+        "0xd82e0d14",
+        "0xd82e0d16",
+        "0xd82e0d18",
+        "0xd82e0d1c",
+        "0xd82e0d20",
+        "0xd82e0d22",
+        "0xd82e0d24",
+        "0xd82e0d26",
+        "0xd82e0d28",
+        "0xd82e0d2a",
+        "0xd82e0d2c",
+        "0xd82e0d2e"
+      ],
+      "stack_writes": [
+        {
+          "pc": "0xd82e0d06",
+          "address": "0x10000ffc",
+          "size": 4,
+          "value": "0x10002000"
+        },
+        {
+          "pc": "0xd82e0d08",
+          "address": "0x10000ff8",
+          "size": 4,
+          "value": "0x0"
+        },
+        {
+          "pc": "0xd82e0d0a",
+          "address": "0x10000ff4",
+          "size": 4,
+          "value": "0x0"
+        },
+        {
+          "pc": "0xd82e0d0c",
+          "address": "0x10000ff0",
+          "size": 4,
+          "value": "0x0"
+        },
+        {
+          "pc": "0xd82e0d0e",
+          "address": "0x10000fec",
+          "size": 4,
+          "value": "0x0"
+        }
+      ]
+    },
+    {
+      "domain": 2,
+      "return_value": 0,
+      "mmio_pages_mapped": false,
+      "instruction_trace": [
+        "0xd82e0d04",
+        "0xd82e0d06",
+        "0xd82e0d08",
+        "0xd82e0d0a",
+        "0xd82e0d0c",
+        "0xd82e0d0e",
+        "0xd82e0d10",
+        "0xd82e0d12",
+        "0xd82e09bc",
+        "0xd82e09c0",
+        "0xd82e09c4",
+        "0xd82e09c8",
+        "0xd82e09ca",
+        "0xd82e09ce",
+        "0xd82e09d2",
+        "0xd82e09d4",
+        "0xd82e09d6",
+        "0xd82e09da",
+        "0xd82e09de",
+        "0xd82e09e0",
+        "0xd82e0d14",
+        "0xd82e0d16",
+        "0xd82e0d18",
+        "0xd82e0d1c",
+        "0xd82e0d20",
+        "0xd82e0d22",
+        "0xd82e0d24",
+        "0xd82e0d26",
+        "0xd82e0d28",
+        "0xd82e0d2a",
+        "0xd82e0d2c",
+        "0xd82e0d2e"
+      ],
+      "stack_writes": [
+        {
+          "pc": "0xd82e0d06",
+          "address": "0x10000ffc",
+          "size": 4,
+          "value": "0x10002000"
+        },
+        {
+          "pc": "0xd82e0d08",
+          "address": "0x10000ff8",
+          "size": 4,
+          "value": "0x0"
+        },
+        {
+          "pc": "0xd82e0d0a",
+          "address": "0x10000ff4",
+          "size": 4,
+          "value": "0x0"
+        },
+        {
+          "pc": "0xd82e0d0c",
+          "address": "0x10000ff0",
+          "size": 4,
+          "value": "0x0"
+        },
+        {
+          "pc": "0xd82e0d0e",
+          "address": "0x10000fec",
+          "size": 4,
+          "value": "0x0"
+        }
+      ]
+    },
+    {
+      "domain": 3,
+      "return_value": 0,
+      "mmio_pages_mapped": false,
+      "instruction_trace": [
+        "0xd82e0d04",
+        "0xd82e0d06",
+        "0xd82e0d08",
+        "0xd82e0d0a",
+        "0xd82e0d0c",
+        "0xd82e0d0e",
+        "0xd82e0d10",
+        "0xd82e0d12",
+        "0xd82e09bc",
+        "0xd82e09c0",
+        "0xd82e09c4",
+        "0xd82e09c8",
+        "0xd82e09ca",
+        "0xd82e09ce",
+        "0xd82e09d2",
+        "0xd82e09d4",
+        "0xd82e09d6",
+        "0xd82e09da",
+        "0xd82e09de",
+        "0xd82e09e0",
+        "0xd82e0d14",
+        "0xd82e0d16",
+        "0xd82e0d18",
+        "0xd82e0d1c",
+        "0xd82e0d20",
+        "0xd82e0d22",
+        "0xd82e0d24",
+        "0xd82e0d26",
+        "0xd82e0d28",
+        "0xd82e0d2a",
+        "0xd82e0d2c",
+        "0xd82e0d2e"
+      ],
+      "stack_writes": [
+        {
+          "pc": "0xd82e0d06",
+          "address": "0x10000ffc",
+          "size": 4,
+          "value": "0x10002000"
+        },
+        {
+          "pc": "0xd82e0d08",
+          "address": "0x10000ff8",
+          "size": 4,
+          "value": "0x0"
+        },
+        {
+          "pc": "0xd82e0d0a",
+          "address": "0x10000ff4",
+          "size": 4,
+          "value": "0x0"
+        },
+        {
+          "pc": "0xd82e0d0c",
+          "address": "0x10000ff0",
+          "size": 4,
+          "value": "0x0"
+        },
+        {
+          "pc": "0xd82e0d0e",
+          "address": "0x10000fec",
+          "size": 4,
+          "value": "0x0"
+        }
+      ]
+    }
+  ],
+  "isolated_field_cases": [
+    {
+      "domain": 0,
+      "synthetic_address": "0x17d900bc",
+      "before": "0x0",
+      "after": "0x0",
+      "other_bits_preserved": true,
+      "writes": [
+        {
+          "pc": "0xd82e0e00",
+          "value": "0x0"
+        }
+      ],
+      "trace": [
+        "0xd82e0df8",
+        "0xd82e0dfa",
+        "0xd82e0dfe",
+        "0xd82e0e00"
+      ]
+    },
+    {
+      "domain": 0,
+      "synthetic_address": "0x17d900bc",
+      "before": "0xffffffff",
+      "after": "0xfffffffe",
+      "other_bits_preserved": true,
+      "writes": [
+        {
+          "pc": "0xd82e0e00",
+          "value": "0xfffffffe"
+        }
+      ],
+      "trace": [
+        "0xd82e0df8",
+        "0xd82e0dfa",
+        "0xd82e0dfe",
+        "0xd82e0e00"
+      ]
+    },
+    {
+      "domain": 0,
+      "synthetic_address": "0x17d900bc",
+      "before": "0xa5a5a5a5",
+      "after": "0xa5a5a5a4",
+      "other_bits_preserved": true,
+      "writes": [
+        {
+          "pc": "0xd82e0e00",
+          "value": "0xa5a5a5a4"
+        }
+      ],
+      "trace": [
+        "0xd82e0df8",
+        "0xd82e0dfa",
+        "0xd82e0dfe",
+        "0xd82e0e00"
+      ]
+    },
+    {
+      "domain": 1,
+      "synthetic_address": "0x17d910bc",
+      "before": "0x0",
+      "after": "0x0",
+      "other_bits_preserved": true,
+      "writes": [
+        {
+          "pc": "0xd82e108a",
+          "value": "0x0"
+        }
+      ],
+      "trace": [
+        "0xd82e1082",
+        "0xd82e1084",
+        "0xd82e1088",
+        "0xd82e108a"
+      ]
+    },
+    {
+      "domain": 1,
+      "synthetic_address": "0x17d910bc",
+      "before": "0xffffffff",
+      "after": "0xfffffffe",
+      "other_bits_preserved": true,
+      "writes": [
+        {
+          "pc": "0xd82e108a",
+          "value": "0xfffffffe"
+        }
+      ],
+      "trace": [
+        "0xd82e1082",
+        "0xd82e1084",
+        "0xd82e1088",
+        "0xd82e108a"
+      ]
+    },
+    {
+      "domain": 1,
+      "synthetic_address": "0x17d910bc",
+      "before": "0xa5a5a5a5",
+      "after": "0xa5a5a5a4",
+      "other_bits_preserved": true,
+      "writes": [
+        {
+          "pc": "0xd82e108a",
+          "value": "0xa5a5a5a4"
+        }
+      ],
+      "trace": [
+        "0xd82e1082",
+        "0xd82e1084",
+        "0xd82e1088",
+        "0xd82e108a"
+      ]
+    },
+    {
+      "domain": 2,
+      "synthetic_address": "0x17d920bc",
+      "before": "0x0",
+      "after": "0x1",
+      "other_bits_preserved": true,
+      "writes": [
+        {
+          "pc": "0xd82e10a8",
+          "value": "0x1"
+        }
+      ],
+      "trace": [
+        "0xd82e109e",
+        "0xd82e10a0",
+        "0xd82e10a4",
+        "0xd82e10a8"
+      ]
+    },
+    {
+      "domain": 2,
+      "synthetic_address": "0x17d920bc",
+      "before": "0xffffffff",
+      "after": "0xffffffff",
+      "other_bits_preserved": true,
+      "writes": [
+        {
+          "pc": "0xd82e10a8",
+          "value": "0xffffffff"
+        }
+      ],
+      "trace": [
+        "0xd82e109e",
+        "0xd82e10a0",
+        "0xd82e10a4",
+        "0xd82e10a8"
+      ]
+    },
+    {
+      "domain": 2,
+      "synthetic_address": "0x17d920bc",
+      "before": "0xa5a5a5a5",
+      "after": "0xa5a5a5a5",
+      "other_bits_preserved": true,
+      "writes": [
+        {
+          "pc": "0xd82e10a8",
+          "value": "0xa5a5a5a5"
+        }
+      ],
+      "trace": [
+        "0xd82e109e",
+        "0xd82e10a0",
+        "0xd82e10a4",
+        "0xd82e10a8"
+      ]
+    },
+    {
+      "domain": 3,
+      "synthetic_address": "0x17d930bc",
+      "before": "0x0",
+      "after": "0x1",
+      "other_bits_preserved": true,
+      "writes": [
+        {
+          "pc": "0xd82e0de8",
+          "value": "0x1"
+        }
+      ],
+      "trace": [
+        "0xd82e0dde",
+        "0xd82e0de0",
+        "0xd82e0de4",
+        "0xd82e0de8"
+      ]
+    },
+    {
+      "domain": 3,
+      "synthetic_address": "0x17d930bc",
+      "before": "0xffffffff",
+      "after": "0xffffffff",
+      "other_bits_preserved": true,
+      "writes": [
+        {
+          "pc": "0xd82e0de8",
+          "value": "0xffffffff"
+        }
+      ],
+      "trace": [
+        "0xd82e0dde",
+        "0xd82e0de0",
+        "0xd82e0de4",
+        "0xd82e0de8"
+      ]
+    },
+    {
+      "domain": 3,
+      "synthetic_address": "0x17d930bc",
+      "before": "0xa5a5a5a5",
+      "after": "0xa5a5a5a5",
+      "other_bits_preserved": true,
+      "writes": [
+        {
+          "pc": "0xd82e0de8",
+          "value": "0xa5a5a5a5"
+        }
+      ],
+      "trace": [
+        "0xd82e0dde",
+        "0xd82e0de0",
+        "0xd82e0de4",
+        "0xd82e0de8"
+      ]
+    }
+  ]
+}

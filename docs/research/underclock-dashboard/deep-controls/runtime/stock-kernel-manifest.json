@@ -1,0 +1,7 @@
+{
+  "method": "Read-only extraction of active boot_b kernel payload via adb exec-out and dd. No writes, reboot, firmware calls or module load.",
+  "slot": "_b",
+  "bytes": 56048128,
+  "sha256": "b53c6063332f1d7057416cb708e443d008634752ec578c56d68040b2af9bcdf3",
+  "prefix_hex": "4d5a40faffff901400000000000000000000a003000000000a0000000000000000000000000000000000000000000000000000000000000041524d6440000000"
+}

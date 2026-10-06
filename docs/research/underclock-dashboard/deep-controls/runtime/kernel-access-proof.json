@@ -1,0 +1,337 @@
+{
+  "kernel_sha256": "b53c6063332f1d7057416cb708e443d008634752ec578c56d68040b2af9bcdf3",
+  "kernel_base": "0xffffffc008000000",
+  "protected_checks": [
+    {
+      "name": "gki_is_module_protected_symbol",
+      "address": "0xffffffc008242c8c",
+      "search_entry_count": 0,
+      "count_instruction": "0xffffffc008242cac",
+      "search_call": "0xffffffc008242cb4"
+    },
+    {
+      "name": "gki_is_module_exported_symbol",
+      "address": "0xffffffc008242ce8",
+      "search_entry_count": 0,
+      "count_instruction": "0xffffffc008242d08",
+      "search_call": "0xffffffc008242d10"
+    }
+  ],
+  "signature_enforcement_constant_false": true,
+  "debug_module": {
+    "module_sha256": "4b096f6f1cf454c92041fd576877c2b84ba2b025a76819d2842b54574ccf577f",
+    "version_entries": [
+      {
+        "symbol": "module_layout",
+        "crc": "0x222dd63"
+      },
+      {
+        "symbol": "__stack_chk_fail",
+        "crc": "0xc2c193d2"
+      },
+      {
+        "symbol": "panic_notifier_list",
+        "crc": "0x7ceeac9"
+      },
+      {
+        "symbol": "kernel_kobj",
+        "crc": "0x38995cd2"
+      },
+      {
+        "symbol": "__ubsan_handle_cfi_check_fail_abort",
+        "crc": "0xdf7a4c69"
+      },
+      {
+        "symbol": "platform_driver_unregister",
+        "crc": "0xb68b66dd"
+      },
+      {
+        "symbol": "sysfs_remove_file_ns",
+        "crc": "0xd1fd9abb"
+      },
+      {
+        "symbol": "sysfs_create_file_ns",
+        "crc": "0xa8f73ef5"
+      },
+      {
+        "symbol": "scnprintf",
+        "crc": "0x96848186"
+      },
+      {
+        "symbol": "log_post_read_mmio",
+        "crc": "0x461806e7"
+      },
+      {
+        "symbol": "log_read_mmio",
+        "crc": "0x630c7ed8"
+      },
+      {
+        "symbol": "_printk",
+        "crc": "0x92997ed8"
+      },
+      {
+        "symbol": "devm_kmalloc",
+        "crc": "0x8dbcad91"
+      },
+      {
+        "symbol": "atomic_notifier_chain_register",
+        "crc": "0x2b9997fb"
+      },
+      {
+        "symbol": "devm_ioremap",
+        "crc": "0x31f4adef"
+      },
+      {
+        "symbol": "of_address_to_resource",
+        "crc": "0x761b06be"
+      },
+      {
+        "symbol": "of_parse_phandle_with_fixed_args",
+        "crc": "0x89104b27"
+      },
+      {
+        "symbol": "of_find_property",
+        "crc": "0xba82ac8f"
+      },
+      {
+        "symbol": "of_device_get_match_data",
+        "crc": "0x14d7a873"
+      },
+      {
+        "symbol": "kobject_put",
+        "crc": "0xfe6b276a"
+      },
+      {
+        "symbol": "kobject_create_and_add",
+        "crc": "0xe2f2ac01"
+      },
+      {
+        "symbol": "_dev_err",
+        "crc": "0xfb83a2a6"
+      },
+      {
+        "symbol": "__platform_driver_register",
+        "crc": "0xfc45e713"
+      }
+    ],
+    "modinfo": [
+      "description=QTI clock driver for CPUFREQ HW debug",
+      "license=GPL v2",
+      "vermagic=5.15.123-gafd857749d1f SMP preempt mod_unload modversions aarch64",
+      "name=qcom_cpufreq_hw_debug",
+      "intree=Y",
+      "depends=",
+      "scmversion=gafd857749d1f"
+    ]
+  },
+  "crc_comparison": [
+    {
+      "symbol": "module_layout",
+      "export_group": "ordinary",
+      "index": 1930,
+      "crc_word_address": "0xffffffc009e7d7c4",
+      "kernel_crc": "0x222dd63",
+      "module_crc": "0x222dd63",
+      "match": true
+    },
+    {
+      "symbol": "__stack_chk_fail",
+      "export_group": "ordinary",
+      "index": 227,
+      "crc_word_address": "0xffffffc009e7bd28",
+      "kernel_crc": "0xc2c193d2",
+      "module_crc": "0xc2c193d2",
+      "match": true
+    },
+    {
+      "symbol": "panic_notifier_list",
+      "export_group": "ordinary",
+      "index": 2126,
+      "crc_word_address": "0xffffffc009e7dad4",
+      "kernel_crc": "0x7ceeac9",
+      "module_crc": "0x7ceeac9",
+      "match": true
+    },
+    {
+      "symbol": "kernel_kobj",
+      "export_group": "_gpl",
+      "index": 2562,
+      "crc_word_address": "0xffffffc009e813a4",
+      "kernel_crc": "0x38995cd2",
+      "module_crc": "0x38995cd2",
+      "match": true
+    },
+    {
+      "symbol": "__ubsan_handle_cfi_check_fail_abort",
+      "export_group": "ordinary",
+      "index": 259,
+      "crc_word_address": "0xffffffc009e7bda8",
+      "kernel_crc": "0xdf7a4c69",
+      "module_crc": "0xdf7a4c69",
+      "match": true
+    },
+    {
+      "symbol": "platform_driver_unregister",
+      "export_group": "_gpl",
+      "index": 3112,
+      "crc_word_address": "0xffffffc009e81c3c",
+      "kernel_crc": "0xb68b66dd",
+      "module_crc": "0xb68b66dd",
+      "match": true
+    },
+    {
+      "symbol": "sysfs_remove_file_ns",
+      "export_group": "_gpl",
+      "index": 3846,
+      "crc_word_address": "0xffffffc009e827b4",
+      "kernel_crc": "0xd1fd9abb",
+      "module_crc": "0xd1fd9abb",
+      "match": true
+    },
+    {
+      "symbol": "sysfs_create_file_ns",
+      "export_group": "_gpl",
+      "index": 3834,
+      "crc_word_address": "0xffffffc009e82784",
+      "kernel_crc": "0xa8f73ef5",
+      "module_crc": "0xa8f73ef5",
+      "match": true
+    },
+    {
+      "symbol": "scnprintf",
+      "export_group": "ordinary",
+      "index": 2525,
+      "crc_word_address": "0xffffffc009e7e110",
+      "kernel_crc": "0x96848186",
+      "module_crc": "0x96848186",
+      "match": true
+    },
+    {
+      "symbol": "log_post_read_mmio",
+      "export_group": "_gpl",
+      "index": 2661,
+      "crc_word_address": "0xffffffc009e81530",
+      "kernel_crc": "0x461806e7",
+      "module_crc": "0x461806e7",
+      "match": true
+    },
+    {
+      "symbol": "log_read_mmio",
+      "export_group": "_gpl",
+      "index": 2663,
+      "crc_word_address": "0xffffffc009e81538",
+      "kernel_crc": "0x630c7ed8",
+      "module_crc": "0x630c7ed8",
+      "match": true
+    },
+    {
+      "symbol": "_printk",
+      "export_group": "ordinary",
+      "index": 298,
+      "crc_word_address": "0xffffffc009e7be44",
+      "kernel_crc": "0x92997ed8",
+      "module_crc": "0x92997ed8",
+      "match": true
+    },
+    {
+      "symbol": "devm_kmalloc",
+      "export_group": "_gpl",
+      "index": 1823,
+      "crc_word_address": "0xffffffc009e80818",
+      "kernel_crc": "0x8dbcad91",
+      "module_crc": "0x8dbcad91",
+      "match": true
+    },
+    {
+      "symbol": "atomic_notifier_chain_register",
+      "export_group": "_gpl",
+      "index": 1182,
+      "crc_word_address": "0xffffffc009e7fe14",
+      "kernel_crc": "0x2b9997fb",
+      "module_crc": "0x2b9997fb",
+      "match": true
+    },
+    {
+      "symbol": "devm_ioremap",
+      "export_group": "ordinary",
+      "index": 670,
+      "crc_word_address": "0xffffffc009e7c414",
+      "kernel_crc": "0x31f4adef",
+      "module_crc": "0x31f4adef",
+      "match": true
+    },
+    {
+      "symbol": "of_address_to_resource",
+      "export_group": "_gpl",
+      "index": 2799,
+      "crc_word_address": "0xffffffc009e81758",
+      "kernel_crc": "0x761b06be",
+      "module_crc": "0x761b06be",
+      "match": true
+    },
+    {
+      "symbol": "of_parse_phandle_with_fixed_args",
+      "export_group": "ordinary",
+      "index": 2091,
+      "crc_word_address": "0xffffffc009e7da48",
+      "kernel_crc": "0x89104b27",
+      "module_crc": "0x89104b27",
+      "match": true
+    },
+    {
+      "symbol": "of_find_property",
+      "export_group": "ordinary",
+      "index": 2057,
+      "crc_word_address": "0xffffffc009e7d9c0",
+      "kernel_crc": "0xba82ac8f",
+      "module_crc": "0xba82ac8f",
+      "match": true
+    },
+    {
+      "symbol": "of_device_get_match_data",
+      "export_group": "ordinary",
+      "index": 2038,
+      "crc_word_address": "0xffffffc009e7d974",
+      "kernel_crc": "0x14d7a873",
+      "module_crc": "0x14d7a873",
+      "match": true
+    },
+    {
+      "symbol": "kobject_put",
+      "export_group": "ordinary",
+      "index": 1743,
+      "crc_word_address": "0xffffffc009e7d4d8",
+      "kernel_crc": "0xfe6b276a",
+      "module_crc": "0xfe6b276a",
+      "match": true
+    },
+    {
+      "symbol": "kobject_create_and_add",
+      "export_group": "_gpl",
+      "index": 2579,
+      "crc_word_address": "0xffffffc009e813e8",
+      "kernel_crc": "0xe2f2ac01",
+      "module_crc": "0xe2f2ac01",
+      "match": true
+    },
+    {
+      "symbol": "_dev_err",
+      "export_group": "ordinary",
+      "index": 289,
+      "crc_word_address": "0xffffffc009e7be20",
+      "kernel_crc": "0xfb83a2a6",
+      "module_crc": "0xfb83a2a6",
+      "match": true
+    },
+    {
+      "symbol": "__platform_driver_register",
+      "export_group": "_gpl",
+      "index": 90,
+      "crc_word_address": "0xffffffc009e7ed04",
+      "kernel_crc": "0xfc45e713",
+      "module_crc": "0xfc45e713",
+      "match": true
+    }
+  ],
+  "limits": "Stock-image static analysis only. Empty compiled lists do not establish another firmware's policy, new-module compatibility, successful loading, HLOS register-write permission, or register semantics. CRCs are comparison evidence, never a recipe to force mismatched modules to load."
+}

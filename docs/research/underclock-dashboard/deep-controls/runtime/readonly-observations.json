@@ -1,0 +1,102 @@
+{
+  "method": "Read-only queries against authorized Thor 192.168.8.183:5555. No frequency changes, governor changes, hotplug, suspend, tracing, firmware call, module loading, debug-clock measurement, reboot, flashing or device-file write. Active boot_b kernel payload was read separately.",
+  "kernel_release": "5.15.123-android13-8-gafd857749d1f",
+  "modules_disabled": 0,
+  "kernel_taint_before": 12804,
+  "kernel_taint_after": 12804,
+  "loaded_debug_module": [
+    "qcom_cpufreq_hw_debug 16384 0 - Live 0x0000000000000000 (E)"
+  ],
+  "debug_module_taint": "E",
+  "security_query": [
+    "u:r:magisk:s0",
+    "Permissive",
+    "CapInh:\t0000000000000000",
+    "CapPrm:\t000001ffffffffff",
+    "CapEff:\t000001ffffffffff",
+    "CapBnd:\t000001ffffffffff",
+    "CapAmb:\t0000000000000000",
+    "Seccomp:\t0",
+    "Seccomp_filters:\t0"
+  ],
+  "initial_debug_domains": [
+    {
+      "linux_debug_domain": 0,
+      "registers": {
+        "PERF_STATE_DESIRED": "0x0000000a",
+        "PSTATE_STATUS": "0x2c800a4c",
+        "EPSS_DEBUG_STATUS": "0x2c810a4c",
+        "EPSS_DEBUG_SRB": "0x00000000"
+      }
+    },
+    {
+      "linux_debug_domain": 1,
+      "registers": {
+        "PERF_STATE_DESIRED": "0x00000000",
+        "PSTATE_STATUS": "0x30800b5d",
+        "EPSS_DEBUG_STATUS": "0x2c010849",
+        "EPSS_DEBUG_SRB": "0x00000001"
+      }
+    },
+    {
+      "linux_debug_domain": 2,
+      "registers": {
+        "PERF_STATE_DESIRED": "0x0000000a",
+        "PSTATE_STATUS": "0x2cc00a60",
+        "EPSS_DEBUG_STATUS": "0x2cc10a60",
+        "EPSS_DEBUG_SRB": "0x00000001"
+      }
+    }
+  ],
+  "final_debug_domains": [
+    {
+      "linux_debug_domain": 0,
+      "registers": {
+        "PERF_STATE_DESIRED": "0x00000009",
+        "PSTATE_STATUS": "0x2b000946",
+        "EPSS_DEBUG_STATUS": "0x2b010946",
+        "EPSS_DEBUG_SRB": "0x00000000"
+      }
+    },
+    {
+      "linux_debug_domain": 1,
+      "registers": {
+        "PERF_STATE_DESIRED": "0x0000000b",
+        "PSTATE_STATUS": "0x30800b5d",
+        "EPSS_DEBUG_STATUS": "0x30810b5d",
+        "EPSS_DEBUG_SRB": "0x00000001"
+      }
+    },
+    {
+      "linux_debug_domain": 2,
+      "registers": {
+        "PERF_STATE_DESIRED": "0x00000000",
+        "PSTATE_STATUS": "0x22c0001f",
+        "EPSS_DEBUG_STATUS": "0x2f810c6d",
+        "EPSS_DEBUG_SRB": "0x00000001"
+      }
+    }
+  ],
+  "final_policy_limits_khz": [
+    {
+      "policy": 0,
+      "min": 307200,
+      "max": 1459200,
+      "governor": "walt"
+    },
+    {
+      "policy": 3,
+      "min": 499200,
+      "max": 1785600,
+      "governor": "walt"
+    },
+    {
+      "policy": 7,
+      "min": 595200,
+      "max": 1843200,
+      "governor": "walt"
+    }
+  ],
+  "epss_named_regmap_directory_found": false,
+  "limits": "Two ordinary snapshots are not a suspend/resume or periodic ownership test. No hardware ceiling or field-disable effect was measured in this pass."
+}

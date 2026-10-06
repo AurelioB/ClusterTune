@@ -1,0 +1,3610 @@
+{
+  "firmware_sha256": "19de4a8dd45eaa80ca2dd33d7a73661373805efd3970c994f2274e920b1d3808",
+  "method": "CFG-local abstract pointer tracking seeded after direct getter returns; assumes a valid returned object. Callees are not entered. Branches explored both ways; unequal facts merge to unknown.",
+  "limitations": "Not a whole-program alias proof. Indirect object construction, unresolved jumps, helper-mediated writes, firmware input, other processors and hardware effects are outside this scan. Numeric and pointer facts are deliberately dropped for unsupported operations. No device or firmware execution.",
+  "getter_runs": [
+    {
+      "getter_call": "0x17d01000",
+      "getter": "0xd82e09bc",
+      "visited_states": 22,
+      "worklist_steps": 35,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0x17d0103a",
+      "getter": "0xd82e09bc",
+      "visited_states": 23,
+      "worklist_steps": 24,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0x17d20114",
+      "getter": "0xd82e09bc",
+      "visited_states": 40,
+      "worklist_steps": 74,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0x17d20180",
+      "getter": "0xd82e09bc",
+      "visited_states": 22,
+      "worklist_steps": 24,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0x17d203da",
+      "getter": "0xd82e09bc",
+      "visited_states": 262,
+      "worklist_steps": 583,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0x17d2042e",
+      "getter": "0xd82e09bc",
+      "visited_states": 262,
+      "worklist_steps": 648,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0x17d20478",
+      "getter": "0xd82e09bc",
+      "visited_states": 262,
+      "worklist_steps": 737,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0x17d2074c",
+      "getter": "0xd82e09bc",
+      "visited_states": 51,
+      "worklist_steps": 83,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0x17d235fa",
+      "getter": "0xd82e09bc",
+      "visited_states": 18,
+      "worklist_steps": 18,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0x17d23614",
+      "getter": "0xd82e09bc",
+      "visited_states": 18,
+      "worklist_steps": 18,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0x17d2362e",
+      "getter": "0xd82e09bc",
+      "visited_states": 18,
+      "worklist_steps": 18,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0x17d24668",
+      "getter": "0xd82e09bc",
+      "visited_states": 30,
+      "worklist_steps": 36,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0x17d24c02",
+      "getter": "0xd82e09bc",
+      "visited_states": 38,
+      "worklist_steps": 60,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0xd82e00e4",
+      "getter": "0xd82e09bc",
+      "visited_states": 38,
+      "worklist_steps": 65,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0xd82e018c",
+      "getter": "0xd82e09bc",
+      "visited_states": 9,
+      "worklist_steps": 9,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0xd82e01b4",
+      "getter": "0xd82e09bc",
+      "visited_states": 42,
+      "worklist_steps": 49,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0xd82e022e",
+      "getter": "0xd82e09bc",
+      "visited_states": 158,
+      "worklist_steps": 181,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0xd82e0286",
+      "getter": "0xd82e09bc",
+      "visited_states": 48,
+      "worklist_steps": 67,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0xd82e0346",
+      "getter": "0xd82e09bc",
+      "visited_states": 75,
+      "worklist_steps": 98,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0xd82e0438",
+      "getter": "0xd82e09bc",
+      "visited_states": 411,
+      "worklist_steps": 1339,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0xd82e0d12",
+      "getter": "0xd82e09bc",
+      "visited_states": 422,
+      "worklist_steps": 617,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0xd82e124c",
+      "getter": "0xd82e09bc",
+      "visited_states": 118,
+      "worklist_steps": 161,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0xd82e71fa",
+      "getter": "0xd82e09bc",
+      "visited_states": 40,
+      "worklist_steps": 56,
+      "budget_exhausted": false
+    },
+    {
+      "getter_call": "0xd82e7298",
+      "getter": "0xd82e09bc",
+      "visited_states": 61,
+      "worklist_steps": 83,
+      "budget_exhausted": false
+    }
+  ],
+  "domain_and_epss_accesses": [
+    {
+      "pc": "0x17d01008",
+      "kind": "object",
+      "offset": "0x10",
+      "access": "read",
+      "instruction": "c.lw a0, 0x10(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d01000",
+        "0x17d0103a"
+      ]
+    },
+    {
+      "pc": "0x17d200f0",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d20114"
+      ]
+    },
+    {
+      "pc": "0x17d200f2",
+      "kind": "epss",
+      "offset": "0x84",
+      "access": "read",
+      "instruction": "lw a4, 0x84(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d20114"
+      ]
+    },
+    {
+      "pc": "0x17d200f6",
+      "kind": "epss",
+      "offset": "0x84",
+      "access": "write",
+      "instruction": "sw s1, 0x84(a5)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0x17d20114"
+      ]
+    },
+    {
+      "pc": "0x17d20372",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d203da"
+      ]
+    },
+    {
+      "pc": "0x17d20374",
+      "kind": "epss",
+      "offset": "0x1c",
+      "access": "read",
+      "instruction": "c.lw a5, 0x1c(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d203da"
+      ]
+    },
+    {
+      "pc": "0x17d20490",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "lw a5, 0x14(s9)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d2042e",
+        "0x17d20478"
+      ]
+    },
+    {
+      "pc": "0x17d20494",
+      "kind": "epss",
+      "offset": "0x1c",
+      "access": "read",
+      "instruction": "c.lw a5, 0x1c(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d2042e",
+        "0x17d20478"
+      ]
+    },
+    {
+      "pc": "0x17d23606",
+      "kind": "object",
+      "offset": "0x10",
+      "access": "read",
+      "instruction": "c.lw a0, 0x10(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d235fa"
+      ]
+    },
+    {
+      "pc": "0x17d23620",
+      "kind": "object",
+      "offset": "0x10",
+      "access": "read",
+      "instruction": "c.lw a0, 0x10(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d23614"
+      ]
+    },
+    {
+      "pc": "0x17d2363a",
+      "kind": "object",
+      "offset": "0x10",
+      "access": "read",
+      "instruction": "c.lw a0, 0x10(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d2362e"
+      ]
+    },
+    {
+      "pc": "0x17d24682",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d24668"
+      ]
+    },
+    {
+      "pc": "0x17d24684",
+      "kind": "epss",
+      "offset": "0x88",
+      "access": "read",
+      "instruction": "lw a5, 0x88(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d24668"
+      ]
+    },
+    {
+      "pc": "0x17d2468c",
+      "kind": "epss",
+      "offset": "0x88",
+      "access": "write",
+      "instruction": "sw a5, 0x88(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0x17d24668"
+      ]
+    },
+    {
+      "pc": "0x17d2469c",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a3, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d24668"
+      ]
+    },
+    {
+      "pc": "0x17d2469e",
+      "kind": "epss",
+      "offset": "0x88",
+      "access": "read",
+      "instruction": "lw a4, 0x88(a3)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d24668"
+      ]
+    },
+    {
+      "pc": "0x17d246ba",
+      "kind": "epss",
+      "offset": "0x88",
+      "access": "write",
+      "instruction": "sw a5, 0x88(a3)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0x17d24668"
+      ]
+    },
+    {
+      "pc": "0x17d24c08",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d24c02"
+      ]
+    },
+    {
+      "pc": "0x17d24c0a",
+      "kind": "epss",
+      "offset": "0x1c",
+      "access": "read",
+      "instruction": "c.lw a5, 0x1c(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0x17d24c02"
+      ]
+    },
+    {
+      "pc": "0xd82e0112",
+      "kind": "object",
+      "offset": "0x10",
+      "access": "read",
+      "instruction": "lw a4, 0x10(s2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e00e4"
+      ]
+    },
+    {
+      "pc": "0xd82e0192",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e018c"
+      ]
+    },
+    {
+      "pc": "0xd82e0194",
+      "kind": "epss",
+      "offset": "0x0",
+      "access": "read",
+      "instruction": "c.lw a5, 0(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e018c"
+      ]
+    },
+    {
+      "pc": "0xd82e0198",
+      "kind": "epss",
+      "offset": "0x0",
+      "access": "write",
+      "instruction": "c.sw a5, 0(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e018c"
+      ]
+    },
+    {
+      "pc": "0xd82e01bc",
+      "kind": "object",
+      "offset": "0xc",
+      "access": "read",
+      "instruction": "c.lw a0, 0xc(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e01b4"
+      ]
+    },
+    {
+      "pc": "0xd82e01de",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e01b4"
+      ]
+    },
+    {
+      "pc": "0xd82e01e0",
+      "kind": "epss",
+      "offset": "0x90",
+      "access": "write",
+      "instruction": "sw s2, 0x90(a5)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e01b4"
+      ]
+    },
+    {
+      "pc": "0xd82e01e6",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e01b4"
+      ]
+    },
+    {
+      "pc": "0xd82e01e8",
+      "kind": "epss",
+      "offset": "0x320",
+      "access": "write",
+      "instruction": "sw s2, 0x320(a5)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e01b4"
+      ]
+    },
+    {
+      "pc": "0xd82e01f0",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a3, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e01b4"
+      ]
+    },
+    {
+      "pc": "0xd82e01f2",
+      "kind": "epss",
+      "offset": "0xb0",
+      "access": "read",
+      "instruction": "lw a5, 0xb0(a3)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e01b4"
+      ]
+    },
+    {
+      "pc": "0xd82e01fc",
+      "kind": "epss",
+      "offset": "0x320",
+      "access": "write",
+      "instruction": "sw s2, 0x320(a3)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e01b4"
+      ]
+    },
+    {
+      "pc": "0xd82e024c",
+      "kind": "object",
+      "offset": "0xc",
+      "access": "read",
+      "instruction": "c.lw a0, 0xc(s1)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e022e"
+      ]
+    },
+    {
+      "pc": "0xd82e0272",
+      "kind": "object",
+      "offset": "0xc",
+      "access": "write",
+      "instruction": "c.sw a5, 0xc(s1)",
+      "source_values": [
+        "1"
+      ],
+      "getter_calls": [
+        "0xd82e022e"
+      ]
+    },
+    {
+      "pc": "0xd82e028c",
+      "kind": "object",
+      "offset": "0x0",
+      "access": "read",
+      "instruction": "c.lw a1, 0(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0286"
+      ]
+    },
+    {
+      "pc": "0xd82e028e",
+      "kind": "object",
+      "offset": "0x4",
+      "access": "read",
+      "instruction": "c.lw a0, 4(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0286"
+      ]
+    },
+    {
+      "pc": "0xd82e02dc",
+      "kind": "object",
+      "offset": "0xc",
+      "access": "read",
+      "instruction": "c.lw a0, 0xc(s1)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e022e"
+      ]
+    },
+    {
+      "pc": "0xd82e02fc",
+      "kind": "object",
+      "offset": "0xc",
+      "access": "write",
+      "instruction": "c.sw a5, 0xc(s1)",
+      "source_values": [
+        "1"
+      ],
+      "getter_calls": [
+        "0xd82e022e"
+      ]
+    },
+    {
+      "pc": "0xd82e0324",
+      "kind": "object",
+      "offset": "0xc",
+      "access": "write",
+      "instruction": "c.sw a5, 0xc(s1)",
+      "source_values": [
+        "1"
+      ],
+      "getter_calls": [
+        "0xd82e022e"
+      ]
+    },
+    {
+      "pc": "0xd82e034c",
+      "kind": "object",
+      "offset": "0x0",
+      "access": "read",
+      "instruction": "c.lw a1, 0(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0346"
+      ]
+    },
+    {
+      "pc": "0xd82e034e",
+      "kind": "object",
+      "offset": "0x4",
+      "access": "read",
+      "instruction": "c.lw a0, 4(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0346"
+      ]
+    },
+    {
+      "pc": "0xd82e044e",
+      "kind": "object",
+      "offset": "0x0",
+      "access": "read",
+      "instruction": "c.lw a1, 0(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0438"
+      ]
+    },
+    {
+      "pc": "0xd82e0450",
+      "kind": "object",
+      "offset": "0x4",
+      "access": "read",
+      "instruction": "c.lw a0, 4(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0438"
+      ]
+    },
+    {
+      "pc": "0xd82e0462",
+      "kind": "object",
+      "offset": "0x0",
+      "access": "read",
+      "instruction": "lw a1, 0(s2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0438"
+      ]
+    },
+    {
+      "pc": "0xd82e0466",
+      "kind": "object",
+      "offset": "0x4",
+      "access": "read",
+      "instruction": "lw a0, 4(s2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0438"
+      ]
+    },
+    {
+      "pc": "0xd82e046e",
+      "kind": "object",
+      "offset": "0x0",
+      "access": "read",
+      "instruction": "lw a1, 0(s2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0438"
+      ]
+    },
+    {
+      "pc": "0xd82e0472",
+      "kind": "object",
+      "offset": "0x4",
+      "access": "read",
+      "instruction": "lw a0, 4(s2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0438"
+      ]
+    },
+    {
+      "pc": "0xd82e0880",
+      "kind": "object",
+      "offset": "0x0",
+      "access": "read",
+      "instruction": "lw a1, 0(s2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0438"
+      ]
+    },
+    {
+      "pc": "0xd82e0884",
+      "kind": "object",
+      "offset": "0x4",
+      "access": "read",
+      "instruction": "lw a0, 4(s2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0438"
+      ]
+    },
+    {
+      "pc": "0xd82e0d18",
+      "kind": "object",
+      "offset": "0xc",
+      "access": "read",
+      "instruction": "lw s2, 0xc(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0d38",
+      "kind": "object",
+      "offset": "0x0",
+      "access": "read",
+      "instruction": "c.lw a1, 0(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0d3a",
+      "kind": "object",
+      "offset": "0x4",
+      "access": "read",
+      "instruction": "c.lw a0, 4(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0d7e",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0d80",
+      "kind": "epss",
+      "offset": "0x4",
+      "access": "read",
+      "instruction": "c.lw a4, 4(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0d82",
+      "kind": "epss",
+      "offset": "0x4",
+      "access": "write",
+      "instruction": "sw zero, 4(a5)",
+      "source_values": [
+        "0"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0d86",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0d88",
+      "kind": "epss",
+      "offset": "0x8",
+      "access": "read",
+      "instruction": "c.lw a4, 8(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0d8a",
+      "kind": "epss",
+      "offset": "0x8",
+      "access": "write",
+      "instruction": "sw zero, 8(a5)",
+      "source_values": [
+        "0"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0db0",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0db2",
+      "kind": "epss",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0dba",
+      "kind": "epss",
+      "offset": "0x14",
+      "access": "write",
+      "instruction": "c.sw a5, 0x14(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0dde",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0de0",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "read",
+      "instruction": "lw a5, 0xbc(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0de8",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "write",
+      "instruction": "sw a5, 0xbc(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0dee",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0df0",
+      "kind": "epss",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0df4",
+      "kind": "epss",
+      "offset": "0x14",
+      "access": "write",
+      "instruction": "c.sw a5, 0x14(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0df8",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0dfa",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "read",
+      "instruction": "lw a5, 0xbc(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e00",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "write",
+      "instruction": "sw a5, 0xbc(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e04",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e06",
+      "kind": "epss",
+      "offset": "0xc",
+      "access": "read",
+      "instruction": "c.lw a5, 0xc(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e0a",
+      "kind": "epss",
+      "offset": "0xc",
+      "access": "write",
+      "instruction": "c.sw a5, 0xc(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e0c",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e0e",
+      "kind": "epss",
+      "offset": "0xd8",
+      "access": "read",
+      "instruction": "lw a5, 0xd8(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e14",
+      "kind": "epss",
+      "offset": "0xd8",
+      "access": "write",
+      "instruction": "sw a5, 0xd8(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e18",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a3, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e1a",
+      "kind": "epss",
+      "offset": "0xd8",
+      "access": "read",
+      "instruction": "lw a5, 0xd8(a3)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e28",
+      "kind": "epss",
+      "offset": "0xd8",
+      "access": "write",
+      "instruction": "sw a5, 0xd8(a3)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e2c",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a3, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e2e",
+      "kind": "epss",
+      "offset": "0x4c",
+      "access": "read",
+      "instruction": "c.lw a5, 0x4c(a3)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e38",
+      "kind": "epss",
+      "offset": "0x4c",
+      "access": "write",
+      "instruction": "c.sw a5, 0x4c(a3)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e3a",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a2, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e3c",
+      "kind": "epss",
+      "offset": "0x4c",
+      "access": "read",
+      "instruction": "c.lw a4, 0x4c(a2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e48",
+      "kind": "epss",
+      "offset": "0x4c",
+      "access": "write",
+      "instruction": "c.sw a5, 0x4c(a2)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e4a",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e4c",
+      "kind": "epss",
+      "offset": "0x4c",
+      "access": "read",
+      "instruction": "c.lw a5, 0x4c(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e52",
+      "kind": "epss",
+      "offset": "0x4c",
+      "access": "write",
+      "instruction": "c.sw a5, 0x4c(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e54",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e56",
+      "kind": "epss",
+      "offset": "0x48",
+      "access": "read",
+      "instruction": "c.lw a5, 0x48(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e5a",
+      "kind": "epss",
+      "offset": "0x48",
+      "access": "write",
+      "instruction": "c.sw a5, 0x48(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e5c",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e5e",
+      "kind": "epss",
+      "offset": "0x48",
+      "access": "read",
+      "instruction": "c.lw a5, 0x48(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e62",
+      "kind": "epss",
+      "offset": "0x48",
+      "access": "write",
+      "instruction": "c.sw a5, 0x48(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e64",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e66",
+      "kind": "epss",
+      "offset": "0x48",
+      "access": "read",
+      "instruction": "c.lw a5, 0x48(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e6a",
+      "kind": "epss",
+      "offset": "0x48",
+      "access": "write",
+      "instruction": "c.sw a5, 0x48(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e6c",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e6e",
+      "kind": "epss",
+      "offset": "0x40",
+      "access": "read",
+      "instruction": "c.lw a4, 0x40(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e70",
+      "kind": "epss",
+      "offset": "0x40",
+      "access": "write",
+      "instruction": "sw zero, 0x40(a5)",
+      "source_values": [
+        "0"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e74",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e76",
+      "kind": "epss",
+      "offset": "0x44",
+      "access": "read",
+      "instruction": "c.lw a4, 0x44(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e78",
+      "kind": "epss",
+      "offset": "0x44",
+      "access": "write",
+      "instruction": "sw zero, 0x44(a5)",
+      "source_values": [
+        "0"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e7c",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e7e",
+      "kind": "epss",
+      "offset": "0x38",
+      "access": "read",
+      "instruction": "c.lw a4, 0x38(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e80",
+      "kind": "epss",
+      "offset": "0x38",
+      "access": "write",
+      "instruction": "sw zero, 0x38(a5)",
+      "source_values": [
+        "0"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e84",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e86",
+      "kind": "epss",
+      "offset": "0x3c",
+      "access": "read",
+      "instruction": "c.lw a4, 0x3c(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e88",
+      "kind": "epss",
+      "offset": "0x3c",
+      "access": "write",
+      "instruction": "sw zero, 0x3c(a5)",
+      "source_values": [
+        "0"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e8c",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e8e",
+      "kind": "epss",
+      "offset": "0x30",
+      "access": "read",
+      "instruction": "c.lw a4, 0x30(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e90",
+      "kind": "epss",
+      "offset": "0x30",
+      "access": "write",
+      "instruction": "sw zero, 0x30(a5)",
+      "source_values": [
+        "0"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e94",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e96",
+      "kind": "epss",
+      "offset": "0x34",
+      "access": "read",
+      "instruction": "c.lw a4, 0x34(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e98",
+      "kind": "epss",
+      "offset": "0x34",
+      "access": "write",
+      "instruction": "sw zero, 0x34(a5)",
+      "source_values": [
+        "0"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e9c",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e9e",
+      "kind": "epss",
+      "offset": "0xd0",
+      "access": "read",
+      "instruction": "lw a4, 0xd0(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ea2",
+      "kind": "epss",
+      "offset": "0xd0",
+      "access": "write",
+      "instruction": "sw zero, 0xd0(a5)",
+      "source_values": [
+        "0"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ea6",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ea8",
+      "kind": "epss",
+      "offset": "0xd4",
+      "access": "read",
+      "instruction": "lw a4, 0xd4(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0eac",
+      "kind": "epss",
+      "offset": "0xd4",
+      "access": "write",
+      "instruction": "sw zero, 0xd4(a5)",
+      "source_values": [
+        "0"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0eb0",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a2, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0eb2",
+      "kind": "epss",
+      "offset": "0x28",
+      "access": "read",
+      "instruction": "c.lw a5, 0x28(a2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ebe",
+      "kind": "epss",
+      "offset": "0x28",
+      "access": "write",
+      "instruction": "c.sw a5, 0x28(a2)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ec0",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ec2",
+      "kind": "epss",
+      "offset": "0x28",
+      "access": "read",
+      "instruction": "c.lw a4, 0x28(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ed0",
+      "kind": "epss",
+      "offset": "0x28",
+      "access": "write",
+      "instruction": "sw s3, 0x28(a5)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ed4",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ed6",
+      "kind": "epss",
+      "offset": "0x28",
+      "access": "read",
+      "instruction": "c.lw a5, 0x28(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ede",
+      "kind": "epss",
+      "offset": "0x28",
+      "access": "write",
+      "instruction": "c.sw a5, 0x28(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ee0",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ee2",
+      "kind": "epss",
+      "offset": "0x24",
+      "access": "read",
+      "instruction": "c.lw a5, 0x24(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ee8",
+      "kind": "epss",
+      "offset": "0x24",
+      "access": "write",
+      "instruction": "c.sw a5, 0x24(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0eea",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a2, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0eec",
+      "kind": "epss",
+      "offset": "0x24",
+      "access": "read",
+      "instruction": "c.lw a5, 0x24(a2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ef8",
+      "kind": "epss",
+      "offset": "0x24",
+      "access": "write",
+      "instruction": "c.sw a5, 0x24(a2)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0efa",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0efc",
+      "kind": "epss",
+      "offset": "0x24",
+      "access": "read",
+      "instruction": "c.lw a5, 0x24(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f02",
+      "kind": "epss",
+      "offset": "0x24",
+      "access": "write",
+      "instruction": "c.sw a5, 0x24(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f04",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f06",
+      "kind": "epss",
+      "offset": "0xd8",
+      "access": "read",
+      "instruction": "lw a5, 0xd8(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f12",
+      "kind": "epss",
+      "offset": "0xd8",
+      "access": "write",
+      "instruction": "sw a5, 0xd8(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f16",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f18",
+      "kind": "epss",
+      "offset": "0xe4",
+      "access": "read",
+      "instruction": "lw a5, 0xe4(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f24",
+      "kind": "epss",
+      "offset": "0xe4",
+      "access": "write",
+      "instruction": "sw a5, 0xe4(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f30",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f34",
+      "kind": "epss",
+      "offset": "0x370",
+      "access": "write",
+      "instruction": "sw zero, 0(a4)",
+      "source_values": [
+        "0"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f3e",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f40",
+      "kind": "epss",
+      "offset": "0x308",
+      "access": "read",
+      "instruction": "lw a5, 0x308(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f48",
+      "kind": "epss",
+      "offset": "0x308",
+      "access": "write",
+      "instruction": "sw a5, 0x308(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f4c",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f4e",
+      "kind": "epss",
+      "offset": "0x308",
+      "access": "read",
+      "instruction": "lw a5, 0x308(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f56",
+      "kind": "epss",
+      "offset": "0x308",
+      "access": "write",
+      "instruction": "sw a5, 0x308(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f5a",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f5c",
+      "kind": "epss",
+      "offset": "0x308",
+      "access": "read",
+      "instruction": "lw a5, 0x308(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f64",
+      "kind": "epss",
+      "offset": "0x308",
+      "access": "write",
+      "instruction": "sw a5, 0x308(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f68",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f6a",
+      "kind": "epss",
+      "offset": "0x308",
+      "access": "read",
+      "instruction": "lw a5, 0x308(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f72",
+      "kind": "epss",
+      "offset": "0x308",
+      "access": "write",
+      "instruction": "sw a5, 0x308(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f76",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f78",
+      "kind": "epss",
+      "offset": "0x310",
+      "access": "read",
+      "instruction": "lw a5, 0x310(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f7e",
+      "kind": "epss",
+      "offset": "0x310",
+      "access": "write",
+      "instruction": "sw a5, 0x310(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f82",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f84",
+      "kind": "epss",
+      "offset": "0x304",
+      "access": "read",
+      "instruction": "lw a5, 0x304(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f8c",
+      "kind": "epss",
+      "offset": "0x304",
+      "access": "write",
+      "instruction": "sw a5, 0x304(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f90",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f92",
+      "kind": "epss",
+      "offset": "0x304",
+      "access": "read",
+      "instruction": "lw a5, 0x304(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f9a",
+      "kind": "epss",
+      "offset": "0x304",
+      "access": "write",
+      "instruction": "sw a5, 0x304(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0f9e",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fa0",
+      "kind": "epss",
+      "offset": "0x304",
+      "access": "read",
+      "instruction": "lw a5, 0x304(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fa6",
+      "kind": "epss",
+      "offset": "0x304",
+      "access": "write",
+      "instruction": "sw a5, 0x304(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0faa",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fac",
+      "kind": "epss",
+      "offset": "0x304",
+      "access": "read",
+      "instruction": "lw a5, 0x304(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fb2",
+      "kind": "epss",
+      "offset": "0x304",
+      "access": "write",
+      "instruction": "sw a5, 0x304(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fb6",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fb8",
+      "kind": "epss",
+      "offset": "0x470",
+      "access": "read",
+      "instruction": "lw a5, 0x470(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fc0",
+      "kind": "epss",
+      "offset": "0x470",
+      "access": "write",
+      "instruction": "sw a5, 0x470(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fc4",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fc6",
+      "kind": "epss",
+      "offset": "0x470",
+      "access": "read",
+      "instruction": "lw a5, 0x470(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fce",
+      "kind": "epss",
+      "offset": "0x470",
+      "access": "write",
+      "instruction": "sw a5, 0x470(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fd2",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fd4",
+      "kind": "epss",
+      "offset": "0x2c",
+      "access": "read",
+      "instruction": "c.lw a5, 0x2c(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fda",
+      "kind": "epss",
+      "offset": "0x2c",
+      "access": "write",
+      "instruction": "c.sw a5, 0x2c(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fdc",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fde",
+      "kind": "epss",
+      "offset": "0x2c",
+      "access": "read",
+      "instruction": "c.lw a5, 0x2c(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fe4",
+      "kind": "epss",
+      "offset": "0x2c",
+      "access": "write",
+      "instruction": "c.sw a5, 0x2c(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fe6",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0fe8",
+      "kind": "epss",
+      "offset": "0x18",
+      "access": "read",
+      "instruction": "c.lw a5, 0x18(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ff2",
+      "kind": "epss",
+      "offset": "0x18",
+      "access": "write",
+      "instruction": "c.sw a5, 0x18(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ff4",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ff6",
+      "kind": "epss",
+      "offset": "0xb8",
+      "access": "read",
+      "instruction": "lw a5, 0xb8(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0ffe",
+      "kind": "epss",
+      "offset": "0xb8",
+      "access": "write",
+      "instruction": "sw a5, 0xb8(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1002",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1004",
+      "kind": "epss",
+      "offset": "0xb8",
+      "access": "read",
+      "instruction": "lw a5, 0xb8(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e100c",
+      "kind": "epss",
+      "offset": "0xb8",
+      "access": "write",
+      "instruction": "sw a5, 0xb8(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1010",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1012",
+      "kind": "epss",
+      "offset": "0xb0",
+      "access": "read",
+      "instruction": "lw a5, 0xb0(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e101e",
+      "kind": "epss",
+      "offset": "0xb0",
+      "access": "write",
+      "instruction": "sw a5, 0xb0(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1022",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1024",
+      "kind": "epss",
+      "offset": "0xb0",
+      "access": "read",
+      "instruction": "lw a5, 0xb0(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e102a",
+      "kind": "epss",
+      "offset": "0xb0",
+      "access": "write",
+      "instruction": "sw a5, 0xb0(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e102e",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a3, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1030",
+      "kind": "epss",
+      "offset": "0x60",
+      "access": "read",
+      "instruction": "c.lw a5, 0x60(a3)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e103a",
+      "kind": "epss",
+      "offset": "0x60",
+      "access": "write",
+      "instruction": "c.sw a5, 0x60(a3)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e103c",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e103e",
+      "kind": "epss",
+      "offset": "0x60",
+      "access": "read",
+      "instruction": "c.lw a5, 0x60(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1046",
+      "kind": "epss",
+      "offset": "0x60",
+      "access": "write",
+      "instruction": "c.sw a5, 0x60(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1048",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e104a",
+      "kind": "epss",
+      "offset": "0x60",
+      "access": "read",
+      "instruction": "c.lw a5, 0x60(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1050",
+      "kind": "epss",
+      "offset": "0x60",
+      "access": "write",
+      "instruction": "c.sw a5, 0x60(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1052",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1054",
+      "kind": "epss",
+      "offset": "0x3e0",
+      "access": "read",
+      "instruction": "lw a5, 0x3e0(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e105a",
+      "kind": "epss",
+      "offset": "0x3e0",
+      "access": "write",
+      "instruction": "sw a5, 0x3e0(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1082",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1084",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "read",
+      "instruction": "lw a5, 0xbc(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e108a",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "write",
+      "instruction": "sw a5, 0xbc(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e109e",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e10a0",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "read",
+      "instruction": "lw a5, 0xbc(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e10a8",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "write",
+      "instruction": "sw a5, 0xbc(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e10dc",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e10e0",
+      "kind": "epss",
+      "offset": "0x3e4",
+      "access": "read",
+      "instruction": "c.lw a4, 0(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e10e4",
+      "kind": "epss",
+      "offset": "0x3e4",
+      "access": "write",
+      "instruction": "c.sw a4, 0(a5)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e10e6",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e10ea",
+      "kind": "epss",
+      "offset": "0x3e4",
+      "access": "read",
+      "instruction": "c.lw a4, 0(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e10ee",
+      "kind": "epss",
+      "offset": "0x3e4",
+      "access": "write",
+      "instruction": "c.sw a4, 0(a5)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e10f0",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e10f4",
+      "kind": "epss",
+      "offset": "0x3e4",
+      "access": "read",
+      "instruction": "c.lw a5, 0(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e10fc",
+      "kind": "epss",
+      "offset": "0x3e4",
+      "access": "write",
+      "instruction": "c.sw a5, 0(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e10fe",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1102",
+      "kind": "epss",
+      "offset": "0x3e4",
+      "access": "read",
+      "instruction": "c.lw a5, 0(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e110a",
+      "kind": "epss",
+      "offset": "0x3e4",
+      "access": "write",
+      "instruction": "c.sw a5, 0(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e110e",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1110",
+      "kind": "epss",
+      "offset": "0xb0",
+      "access": "read",
+      "instruction": "lw a5, 0xb0(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1118",
+      "kind": "epss",
+      "offset": "0xb0",
+      "access": "write",
+      "instruction": "sw a5, 0xb0(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e111c",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a3, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e111e",
+      "kind": "epss",
+      "offset": "0xb0",
+      "access": "read",
+      "instruction": "lw a5, 0xb0(a3)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1132",
+      "kind": "epss",
+      "offset": "0xb0",
+      "access": "write",
+      "instruction": "sw a5, 0xb0(a3)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1136",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1138",
+      "kind": "epss",
+      "offset": "0x5c",
+      "access": "read",
+      "instruction": "c.lw a5, 0x5c(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e113e",
+      "kind": "epss",
+      "offset": "0x5c",
+      "access": "write",
+      "instruction": "c.sw a5, 0x5c(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1140",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1142",
+      "kind": "epss",
+      "offset": "0x5c",
+      "access": "read",
+      "instruction": "c.lw a5, 0x5c(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1148",
+      "kind": "epss",
+      "offset": "0x5c",
+      "access": "write",
+      "instruction": "c.sw a5, 0x5c(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e114a",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e114c",
+      "kind": "epss",
+      "offset": "0x5c",
+      "access": "read",
+      "instruction": "c.lw a5, 0x5c(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1150",
+      "kind": "epss",
+      "offset": "0x5c",
+      "access": "write",
+      "instruction": "c.sw a5, 0x5c(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1152",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1154",
+      "kind": "epss",
+      "offset": "0x58",
+      "access": "read",
+      "instruction": "c.lw a5, 0x58(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e115a",
+      "kind": "epss",
+      "offset": "0x58",
+      "access": "write",
+      "instruction": "c.sw a5, 0x58(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e115c",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e115e",
+      "kind": "epss",
+      "offset": "0x54",
+      "access": "read",
+      "instruction": "c.lw a5, 0x54(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1164",
+      "kind": "epss",
+      "offset": "0x54",
+      "access": "write",
+      "instruction": "c.sw a5, 0x54(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1166",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1168",
+      "kind": "epss",
+      "offset": "0x54",
+      "access": "read",
+      "instruction": "c.lw a5, 0x54(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e116e",
+      "kind": "epss",
+      "offset": "0x54",
+      "access": "write",
+      "instruction": "c.sw a5, 0x54(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1170",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1172",
+      "kind": "epss",
+      "offset": "0x50",
+      "access": "read",
+      "instruction": "c.lw a5, 0x50(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1178",
+      "kind": "epss",
+      "offset": "0x50",
+      "access": "write",
+      "instruction": "c.sw a5, 0x50(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e117a",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e117c",
+      "kind": "epss",
+      "offset": "0x50",
+      "access": "read",
+      "instruction": "c.lw a5, 0x50(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1182",
+      "kind": "epss",
+      "offset": "0x50",
+      "access": "write",
+      "instruction": "c.sw a5, 0x50(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1184",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1186",
+      "kind": "epss",
+      "offset": "0xd8",
+      "access": "read",
+      "instruction": "lw a5, 0xd8(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e118e",
+      "kind": "epss",
+      "offset": "0xd8",
+      "access": "write",
+      "instruction": "sw a5, 0xd8(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1192",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1194",
+      "kind": "epss",
+      "offset": "0x0",
+      "access": "read",
+      "instruction": "c.lw a5, 0(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e119a",
+      "kind": "epss",
+      "offset": "0x0",
+      "access": "write",
+      "instruction": "c.sw a5, 0(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e119c",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a4, 0x14(s0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e119e",
+      "kind": "epss",
+      "offset": "0x0",
+      "access": "read",
+      "instruction": "c.lw a5, 0(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e11a4",
+      "kind": "epss",
+      "offset": "0x0",
+      "access": "write",
+      "instruction": "c.sw a5, 0(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e126e",
+      "kind": "object",
+      "offset": "0x0",
+      "access": "read",
+      "instruction": "lw a1, 0(s2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e124c"
+      ]
+    },
+    {
+      "pc": "0xd82e1272",
+      "kind": "object",
+      "offset": "0x4",
+      "access": "read",
+      "instruction": "lw a0, 4(s2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e124c"
+      ]
+    },
+    {
+      "pc": "0xd82e12ac",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "lw a0, 0x14(s2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e124c"
+      ]
+    },
+    {
+      "pc": "0xd82e12be",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "lw a4, 0x14(s2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e124c"
+      ]
+    },
+    {
+      "pc": "0xd82e1312",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "lw a4, 0x14(s2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e124c"
+      ]
+    },
+    {
+      "pc": "0xd82e1352",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "lw a0, 0x14(s2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e124c"
+      ]
+    },
+    {
+      "pc": "0xd82e1368",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "lw a5, 0x14(s2)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e124c"
+      ]
+    },
+    {
+      "pc": "0xd82e136c",
+      "kind": "epss",
+      "offset": "0x418",
+      "access": "read",
+      "instruction": "lw a4, 0x418(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e124c"
+      ]
+    },
+    {
+      "pc": "0xd82e137c",
+      "kind": "epss",
+      "offset": "0x414",
+      "access": "read",
+      "instruction": "lw a4, 0x414(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e124c"
+      ]
+    },
+    {
+      "pc": "0xd82e138c",
+      "kind": "epss",
+      "offset": "0x410",
+      "access": "read",
+      "instruction": "lw a4, 0x410(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e124c"
+      ]
+    },
+    {
+      "pc": "0xd82e139c",
+      "kind": "epss",
+      "offset": "0x40c",
+      "access": "read",
+      "instruction": "lw a5, 0x40c(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e124c"
+      ]
+    },
+    {
+      "pc": "0xd82e7200",
+      "kind": "object",
+      "offset": "0x0",
+      "access": "read",
+      "instruction": "c.lw a1, 0(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e71fa"
+      ]
+    },
+    {
+      "pc": "0xd82e7202",
+      "kind": "object",
+      "offset": "0x4",
+      "access": "read",
+      "instruction": "c.lw a0, 4(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e71fa"
+      ]
+    },
+    {
+      "pc": "0xd82e729c",
+      "kind": "object",
+      "offset": "0x14",
+      "access": "read",
+      "instruction": "c.lw a5, 0x14(a0)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e7298"
+      ]
+    },
+    {
+      "pc": "0xd82e729e",
+      "kind": "epss",
+      "offset": "0x19c",
+      "access": "read",
+      "instruction": "lw a4, 0x19c(a5)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e7298"
+      ]
+    }
+  ],
+  "domain_flag_writes": [
+    {
+      "pc": "0xd82e0272",
+      "kind": "object",
+      "offset": "0xc",
+      "access": "write",
+      "instruction": "c.sw a5, 0xc(s1)",
+      "source_values": [
+        "1"
+      ],
+      "getter_calls": [
+        "0xd82e022e"
+      ]
+    },
+    {
+      "pc": "0xd82e02fc",
+      "kind": "object",
+      "offset": "0xc",
+      "access": "write",
+      "instruction": "c.sw a5, 0xc(s1)",
+      "source_values": [
+        "1"
+      ],
+      "getter_calls": [
+        "0xd82e022e"
+      ]
+    },
+    {
+      "pc": "0xd82e0324",
+      "kind": "object",
+      "offset": "0xc",
+      "access": "write",
+      "instruction": "c.sw a5, 0xc(s1)",
+      "source_values": [
+        "1"
+      ],
+      "getter_calls": [
+        "0xd82e022e"
+      ]
+    }
+  ],
+  "srb_register_accesses": [
+    {
+      "pc": "0xd82e0de0",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "read",
+      "instruction": "lw a5, 0xbc(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0de8",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "write",
+      "instruction": "sw a5, 0xbc(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0dfa",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "read",
+      "instruction": "lw a5, 0xbc(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e0e00",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "write",
+      "instruction": "sw a5, 0xbc(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e1084",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "read",
+      "instruction": "lw a5, 0xbc(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e108a",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "write",
+      "instruction": "sw a5, 0xbc(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e10a0",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "read",
+      "instruction": "lw a5, 0xbc(a4)",
+      "source_values": [],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    },
+    {
+      "pc": "0xd82e10a8",
+      "kind": "epss",
+      "offset": "0xbc",
+      "access": "write",
+      "instruction": "sw a5, 0xbc(a4)",
+      "source_values": [
+        "None"
+      ],
+      "getter_calls": [
+        "0xd82e0d12"
+      ]
+    }
+  ],
+  "unresolved_exits": []
+}

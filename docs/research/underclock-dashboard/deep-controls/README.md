@@ -30,3 +30,7 @@ The vendor model is not full-boot emulation and does not exclude externally supp
 4. Only then perform a bounded A/B test using the same independent hardware-state and cycle measurements that detected the original overshoot, with unchanged requested cluster caps. Verify restoration and thermal behavior too.
 
 No raw register-write experiment or ClusterTune workaround was added. The boot code is now a concrete place to investigate; the candidate's effect is still a hypothesis.
+
+## Subsequent ownership and kernel-access pass
+
+The [follow-up report](runtime/report.md) adds read-only Thor observations, a new domain-pointer inventory, native initializer-guard/field simulations, and inspection of the actual stock kernel Image. The kernel's signature-enforcement function returns false and both compiled GKI protected-symbol searches have zero entries. All 23 stock debug-module import CRCs match the recovered kernel export tables. A compatible unsigned helper is therefore a plausible route, with legitimate build/CFI compatibility and actual register-write permission still untested. The register's exact meaning and valid runtime restoration remain unresolved; no helper was loaded and no setting changed.

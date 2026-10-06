@@ -1,0 +1,129 @@
+{
+  "sources": [
+    {
+      "url": "https://raw.githubusercontent.com/LineageOS/android_kernel_ayn_qcs8550/0d9a32622533fa6dbeeab60207977171c286c458/kernel/module.c",
+      "file": "kernel__module.c",
+      "sha256": "a4df6f5102c0c52c1260f8f957dc6fa38979693ef700cf21f0e170230705f195",
+      "bytes": 127324
+    },
+    {
+      "url": "https://raw.githubusercontent.com/LineageOS/android_kernel_ayn_qcs8550/0d9a32622533fa6dbeeab60207977171c286c458/kernel/module_signing.c",
+      "file": "kernel__module_signing.c",
+      "sha256": "10473a9ce0657107b9a0c50b663bb1d668fd6755bf13b6d55bde567aa28ca763",
+      "bytes": 1084
+    },
+    {
+      "url": "https://raw.githubusercontent.com/LineageOS/android_kernel_ayn_qcs8550/0d9a32622533fa6dbeeab60207977171c286c458/kernel/gki_module.c",
+      "file": "kernel__gki_module.c",
+      "sha256": "65dce4ceec0d7ba82dea6f6598bfd1287c5769e3b1a2f8ad08c1d19672922f16",
+      "bytes": 1446
+    },
+    {
+      "url": "https://raw.githubusercontent.com/LineageOS/android_kernel_ayn_qcs8550/0d9a32622533fa6dbeeab60207977171c286c458/include/linux/module.h",
+      "file": "include__linux__module.h",
+      "sha256": "317033febc3429dc418c16e2b63453db10ea1b20cec75803bc7b2dd44ec94309",
+      "bytes": 24866
+    },
+    {
+      "url": "https://raw.githubusercontent.com/LineageOS/android_kernel_ayn_qcs8550/0d9a32622533fa6dbeeab60207977171c286c458/android/abi_gki_aarch64",
+      "file": "android__abi_gki_aarch64",
+      "sha256": "a44808f6087c35d3de5f9ee895fcd5a02745819962050981706f2b5eb1ed98d6",
+      "bytes": 2535
+    },
+    {
+      "url": "https://raw.githubusercontent.com/LineageOS/android_kernel_ayn_qcs8550/0d9a32622533fa6dbeeab60207977171c286c458/arch/arm64/mm/ioremap.c",
+      "file": "arch__arm64__mm__ioremap.c",
+      "sha256": "ddb87439ca0b7332a90eeed66085d6cd3d3bde749136fca39a162e9e6d8c7f46",
+      "bytes": 6483
+    },
+    {
+      "url": "https://raw.githubusercontent.com/LineageOS/android_kernel_ayn_qcs8550/0d9a32622533fa6dbeeab60207977171c286c458/arch/arm64/kernel/module.c",
+      "file": "arch__arm64__kernel__module.c",
+      "sha256": "d6e943bb0c2f4f735df3522dfe102f4d192b58254bd31da14bdae7cd59ec67a8",
+      "bytes": 14480
+    },
+    {
+      "url": "https://raw.githubusercontent.com/LineageOS/android_kernel_ayn_qcs8550/0d9a32622533fa6dbeeab60207977171c286c458/scripts/gen_autoksyms.sh",
+      "file": "scripts__gen_autoksyms.sh",
+      "sha256": "a6cb5b9ddef03273c5b8f5aaad1ecb7d8a1e9e20e569331e1ec35054b8882919",
+      "bytes": 1655
+    },
+    {
+      "url": "https://raw.githubusercontent.com/LineageOS/android_kernel_ayn_qcs8550/0d9a32622533fa6dbeeab60207977171c286c458/Makefile",
+      "file": "Makefile",
+      "sha256": "65eb9a4213edaed32b1158d56c98aaa85aca1182eb036fb4d587c98e5c92ac0d",
+      "bytes": 71143
+    },
+    {
+      "url": "https://raw.githubusercontent.com/LineageOS/android_kernel_ayn_qcs8550/0d9a32622533fa6dbeeab60207977171c286c458/build.config.common",
+      "file": "build.config.common",
+      "sha256": "36c744b5a07629e3c9a0852ebab0740af33d8f4e5502fcaf4128c76c24258372",
+      "bytes": 550
+    },
+    {
+      "url": "https://raw.githubusercontent.com/LineageOS/android_kernel_ayn_qcs8550/0d9a32622533fa6dbeeab60207977171c286c458/build.config.gki.aarch64",
+      "file": "build.config.gki.aarch64",
+      "sha256": "c32652ab90a3fbcaf9184a3852e21b882edbabd21bdb8f2f1e123fe6fba29ce6",
+      "bytes": 2175
+    },
+    {
+      "url": "https://raw.githubusercontent.com/LineageOS/android_kernel_ayn_qcs8550/0d9a32622533fa6dbeeab60207977171c286c458/arch/arm64/include/asm/io.h",
+      "file": "arch__arm64__include__asm__io.h",
+      "sha256": "f936c50e333f3d3185c23fe5362bbd4c9a8529f0a3cb5c4ea705de5da10b2a90",
+      "bytes": 5226
+    }
+  ],
+  "tool": {
+    "name": "vmlinux-to-elf",
+    "version": "1.3.6",
+    "repository": "https://github.com/marin-m/vmlinux-to-elf",
+    "operation": "kallsyms-finder on cached kernel Image only"
+  },
+  "module_documentation": "https://source.android.com/docs/core/architecture/kernel/loadable-kernel-modules",
+  "bounded_searches": [
+    {
+      "query": "SRB path:drivers/cpufreq repo:OnePlusOSS/android_kernel_oneplus_sm8550",
+      "endpoint": "search/code",
+      "count": 1,
+      "urls": [
+        "https://github.com/OnePlusOSS/android_kernel_oneplus_sm8550/blob/c462ef8ffab7a58e035ee04705b16cdfced494b1/drivers/cpufreq/qcom-cpufreq-hw-debug.c"
+      ]
+    },
+    {
+      "query": "SRB path:drivers/clk/qcom repo:OnePlusOSS/android_kernel_oneplus_sm8550",
+      "endpoint": "search/code",
+      "count": 0,
+      "urls": []
+    },
+    {
+      "query": "SRB path:drivers/soc/qcom repo:OnePlusOSS/android_kernel_oneplus_sm8550",
+      "endpoint": "search/code",
+      "count": 0,
+      "urls": []
+    },
+    {
+      "query": "EPSS_SRB path:boot_images",
+      "endpoint": "search/code",
+      "count": 0,
+      "urls": []
+    },
+    {
+      "query": "afd857749d1f",
+      "endpoint": "search/commits",
+      "count": 0,
+      "urls": []
+    }
+  ],
+  "additional_lookup": [
+    {
+      "url": "https://android.googlesource.com/kernel/common/+/afd857749d1f?format=JSON",
+      "error": "HTTP Error 404: Not Found",
+      "commit": null
+    },
+    {
+      "url": "https://api.github.com/repos/LineageOS/android_kernel_ayn_qcs8550/commits/afd857749d1f",
+      "error": "HTTP Error 422: Unprocessable Entity",
+      "commit": null
+    }
+  ]
+}
