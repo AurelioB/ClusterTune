@@ -1,0 +1,83 @@
+[
+  {
+    "file": "tz_b.bin",
+    "sha256": "917e26b15114884cd54bc47fdb40ae43b63ee6281ce74f217d3990dcdfa1d206",
+    "raw_constant_hits": {
+      "FCAP": [],
+      "DCVS": [],
+      "THML": [],
+      "LMH_SIP_DCVSH": [],
+      "LMH_SMC64_DCVSH": [],
+      "LMH_FAST64_DCVSH": [],
+      "ENBL_calibration": []
+    },
+    "code_constant_hits": [
+      {
+        "constant": "ENBL_calibration",
+        "virtual_address": "0x15703f48",
+        "file_offset": "0xfaf48",
+        "instruction": "movk w8, #0x454e, lsl #16"
+      },
+      {
+        "constant": "ENBL_calibration",
+        "virtual_address": "0x15704244",
+        "file_offset": "0xfb244",
+        "instruction": "movk w9, #0x454e, lsl #16"
+      },
+      {
+        "constant": "ENBL_calibration",
+        "virtual_address": "0x15704ca8",
+        "file_offset": "0xfbca8",
+        "instruction": "movk w9, #0x454e, lsl #16"
+      }
+    ],
+    "elf_machine": 183,
+    "search_limitations": "Literal bytes and selected immediate constructions only; absence does not establish unsupported commands. No complete control-flow or firmware dispatch analysis.",
+    "code_scan": "AArch64 executable segments",
+    "decoded_instructions": 609709
+  },
+  {
+    "file": "aop_b.bin",
+    "sha256": "6aceb38f5ef10663ac5c29ffc4e9ee27b6339e8746ff3490485f8cf2640ef687",
+    "raw_constant_hits": {
+      "FCAP": [],
+      "DCVS": [],
+      "THML": [],
+      "LMH_SIP_DCVSH": [],
+      "LMH_SMC64_DCVSH": [],
+      "LMH_FAST64_DCVSH": [],
+      "ENBL_calibration": []
+    },
+    "code_constant_hits": [],
+    "elf_machine": 40,
+    "search_limitations": "Literal bytes and selected immediate constructions only; absence does not establish unsupported commands. No complete control-flow or firmware dispatch analysis.",
+    "code_scan": "Thumb executable segments (mode inferred from AOP entry point)",
+    "decoded_instructions": 60872
+  },
+  {
+    "file": "xbl_b.bin",
+    "sha256": "d552d371ff17cc8618935d8fe95bcd3fb5f12e38a11c4c5b82ef30902114392a",
+    "raw_constant_hits": {
+      "FCAP": [],
+      "DCVS": [],
+      "THML": [],
+      "LMH_SIP_DCVSH": [],
+      "LMH_SMC64_DCVSH": [],
+      "LMH_FAST64_DCVSH": [],
+      "ENBL_calibration": [
+        {
+          "file_offset": "0xedc18",
+          "virtual_addresses": []
+        },
+        {
+          "file_offset": "0xedcc8",
+          "virtual_addresses": []
+        }
+      ]
+    },
+    "code_constant_hits": [],
+    "elf_machine": 1,
+    "search_limitations": "Literal bytes and selected immediate constructions only; absence does not establish unsupported commands. No complete control-flow or firmware dispatch analysis.",
+    "code_scan": "skipped: unrecognized code architecture/container"
+  }
+]

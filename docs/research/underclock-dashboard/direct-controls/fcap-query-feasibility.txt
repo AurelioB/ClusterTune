@@ -1,0 +1,29 @@
+LMH/FCAP query feasibility — read-only source + actualstock binary analysis
+
+Actualstock qcom-scm.ko ABI matches relevant public helpers:
+* qcom_scm_lmh_dcvsh_available @0x4590: INFO service6/command1 check of LMH service0x13/command0x10. This establishes only command-handler availability, not supported algorithms/settings/nodes nor SRB enforcement.
+* qcom_scm_is_lmh_debug_get_type_available @0x4ac4: LMH service0x13/command0x0b handler availability.
+* qcom_scm_lmh_get_type @0x40c8: command0x0b; args [physical DMA output buffer, byte capacity, debug_type, starting index], 4-argument descriptor0x24 (RW,VAL,VAL,VAL); optional returned totalcount pointer.
+* qcom_get_scm_device @0x82e4 is exported. A correctlybuilt kernel query bridge can allocate/free coherent DMA against SCM's actual device; no raw pointer/virt_to_phys buffer or direct register/SMC code necessary.
+
+Known LMH GET_TYPE enumeration semantics from older Qualcomm lmh_dbg.c:
+https://android.googlesource.com/kernel/msm.git/+/d616c9a54122060c1d23b0de1302746b362dd4b2/drivers/thermal/qcom/lmh_dbg.c
+* debug_type0 = read/data types; debug_type1 = config types.
+* buffer10 u32 entries; query starts index0; firmware return gives total entries; paginate starting10,20,...
+* this enumeration calls GET_TYPE only. It neither changes limits nor invokes DEBUG_SET.
+* legacy read-only debugfs endpoints /sys/kernel/debug/lmh_monitor/data_types and config_types would be ready-made if present. Modern related source has no lmh_dbg.c frontend; existenceofexportedhelpers doesnotprovideuserspaceentrypoint.
+* these are LMH debug-interface command categories. DEBUG_SET uses service0x13/command0x08. FCAP is a DCVSH setting in separate service0x13/command0x10 payload. No guarantee that GET_TYPE enumerates FCAP setting itself. An enumlistcannotproveFCAPworks orSRBisclamped.
+
+No supported nonmutating FCAP-read/query-priorvote operation found.
+* qcom_scm_lmh_limit_dcvsh accepts arbitrarypayload but is setter interface, not safe discovery query.
+* old frequencycap payload [THML,0,FCAP,2,max_kHz,enabled]. Clear sets max=U32_MAX and enabled0. This is evidenceofanexplicitreleaseoperation onolderfirmware; NOT stockThorvalidated guarantee.
+* old code has noper-clientownership token/priorcapread. Kernel softwareaggregatesthermalvotes before singlefirmwarevote. Independentbridge couldoverwriteexistingcap; even release0 couldclearcapownedbyanotheractor. Treat write/releaseasmutating untilactualfirmwarecontract verified.
+* /sys/devices/system/cpu/cpu7/dcvsh_freq_limit read-only state reports hardwarethrottlelimit derivedbydriver, not firmware FCAP-owned vote snapshot.
+
+Bridge constraints:
+* stockvermagic5.15.123-gafd857749d1f, clang14.0.7(r450784e), strictCFI,MODVERSIONS,CONFIG_MODULE_SIG_PROTECT; matchingkernelbuild/config/symbolversions required. No force-loadorCFIbypass.
+* bridge couldreturnavailability booleans and boundeddebugtypes only; it should notlink/callFCAPsetter,profile_change,DEBUG_SET,arbitrarySCM passthrough.
+* query must validatecounts/bounds,stopatfinitepagebudget,freeDMAeveryerrorpath; API availabilityfalse conflatesabsenthandlerandcommunicationfailure.
+* positiveDCVSHavailability wouldjustifyfurtherstaticfirmwareABIresearch, not user-facing hard-cap claim.
+
+No module loaded, no deviceaccess, no firmwarecall, no repoedits.
