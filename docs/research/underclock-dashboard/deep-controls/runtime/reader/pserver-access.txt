@@ -1,0 +1,26 @@
+PATH /proc/self/status
+Uid:	0	0	0	0
+CapInh:	0000000000000000
+CapPrm:	000001ffffffffff
+CapEff:	000001ffffffffff
+CapBnd:	000001ffffffffff
+CapAmb:	0000000000000000
+NoNewPrivs:	0
+Seccomp:	0
+Seccomp_filters:	0
+
+PATH /proc/self/attr/current
+u:r:pservice:s0
+PATH /sys/fs/selinux/enforce
+0
+PATH /proc/sys/kernel/tainted
+12804
+
+PATH /proc/sys/kernel/modules_disabled
+0
+
+init_module invalid-zero-header rc=-1 errno=8 (Exec format error)
+finit_module invalid-fd rc=-1 errno=9 (Bad file descriptor)
+PATH /proc/sys/kernel/tainted
+12804
+

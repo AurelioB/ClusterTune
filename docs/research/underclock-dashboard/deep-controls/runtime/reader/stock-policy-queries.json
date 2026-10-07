@@ -1,0 +1,70 @@
+[
+  {
+    "query": "permissive_domains",
+    "arguments": [
+      "seinfo",
+      "--permissive",
+      "-x"
+    ],
+    "stdout": "\nPermissive Types: 0\n",
+    "stderr": ""
+  },
+  {
+    "query": "sys_module",
+    "arguments": [
+      "sesearch",
+      "--allow",
+      "-s",
+      "pservice",
+      "-t",
+      "pservice",
+      "-c",
+      "capability",
+      "-p",
+      "sys_module"
+    ],
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "query": "module_load",
+    "arguments": [
+      "sesearch",
+      "--allow",
+      "-s",
+      "pservice",
+      "-c",
+      "system",
+      "-p",
+      "module_load"
+    ],
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "query": "setenforce",
+    "arguments": [
+      "sesearch",
+      "--allow",
+      "-s",
+      "pservice",
+      "-c",
+      "security",
+      "-p",
+      "setenforce"
+    ],
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "query": "domain_attributes",
+    "arguments": [
+      "seinfo",
+      "-t",
+      "pservice",
+      "-x"
+    ],
+    "stdout": "\nTypes: 1\n   type pservice, domain, mlstrustedsubject;\n",
+    "stderr": ""
+  }
+]

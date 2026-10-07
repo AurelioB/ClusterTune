@@ -1,0 +1,103 @@
+SNAPSHOT before
+6cec412a-1148-47ce-8aa8-fb4f2da97729
+12804
+0u:r:pservice:s0 [NUL] POLICY 0
+scaling_min_freq 307200
+scaling_max_freq 1459200
+scaling_governor walt
+POLICY 3
+scaling_min_freq 499200
+scaling_max_freq 1785600
+scaling_governor walt
+POLICY 7
+scaling_min_freq 595200
+scaling_max_freq 1843200
+scaling_governor walt
+FREQUENCY DOMAIN 0
+       PERF_STATE_DESIRED: 0x0000000a
+           CYCLE_CNTR_VAL: 0xd21a768a
+            PSTATE_STATUS: 0x2c800a4c
+        EPSS_DEBUG_STATUS: 0x2c810a4c
+           EPSS_DEBUG_SRB: 0x00000000
+           EPSS_DEBUG_LUT: 0x40030010
+FREQUENCY DOMAIN 1
+       PERF_STATE_DESIRED: 0x00000000
+           CYCLE_CNTR_VAL: 0x19959320
+            PSTATE_STATUS: 0x2340001a
+        EPSS_DEBUG_STATUS: 0x2341001a
+           EPSS_DEBUG_SRB: 0x00000001
+           EPSS_DEBUG_LUT: 0x4005001a
+FREQUENCY DOMAIN 2
+       PERF_STATE_DESIRED: 0x00000000
+           CYCLE_CNTR_VAL: 0x0fead39b
+            PSTATE_STATUS: 0x2f800c6d
+        EPSS_DEBUG_STATUS: 0x22c1001f
+           EPSS_DEBUG_SRB: 0x00000001
+           EPSS_DEBUG_LUT: 0x4005001f
+CYCLE 1 LOAD
+ct_srb_reader 16384 0 - Live 0x0000000000000000 (OE)
+OE
+CYCLE 1 UNLOAD
+CYCLE 1 PASS
+CYCLE 2 LOAD
+ct_srb_reader 16384 0 - Live 0x0000000000000000 (OE)
+OE
+CYCLE 2 UNLOAD
+CYCLE 2 PASS
+CYCLE 3 LOAD
+ct_srb_reader 16384 0 - Live 0x0000000000000000 (OE)
+OE
+CYCLE 3 UNLOAD
+CYCLE 3 PASS
+SNAPSHOT after
+6cec412a-1148-47ce-8aa8-fb4f2da97729
+12804
+0u:r:pservice:s0 [NUL] POLICY 0
+scaling_min_freq 307200
+scaling_max_freq 1459200
+scaling_governor walt
+POLICY 3
+scaling_min_freq 499200
+scaling_max_freq 1785600
+scaling_governor walt
+POLICY 7
+scaling_min_freq 595200
+scaling_max_freq 1843200
+scaling_governor walt
+FREQUENCY DOMAIN 0
+       PERF_STATE_DESIRED: 0x00000000
+           CYCLE_CNTR_VAL: 0xfb117691
+            PSTATE_STATUS: 0x22c00010
+        EPSS_DEBUG_STATUS: 0x22c10010
+           EPSS_DEBUG_SRB: 0x00000000
+           EPSS_DEBUG_LUT: 0x40030010
+FREQUENCY DOMAIN 1
+       PERF_STATE_DESIRED: 0x0000000b
+           CYCLE_CNTR_VAL: 0x2de53cc2
+            PSTATE_STATUS: 0x30800b5d
+        EPSS_DEBUG_STATUS: 0x30810b5d
+           EPSS_DEBUG_SRB: 0x00000001
+           EPSS_DEBUG_LUT: 0x4005001a
+FREQUENCY DOMAIN 2
+       PERF_STATE_DESIRED: 0x00000000
+           CYCLE_CNTR_VAL: 0x101c6db8
+            PSTATE_STATUS: 0x2f800c6d
+        EPSS_DEBUG_STATUS: 0x2f810c6d
+           EPSS_DEBUG_SRB: 0x00000001
+           EPSS_DEBUG_LUT: 0x4005001f
+[14847.741392] ct_srb_reader: domain=0 base=0x17d91000 offset=0xbc value=0x00000000
+[14847.741416] ct_srb_reader: domain=1 base=0x17d92000 offset=0xbc value=0x00000001
+[14847.741427] ct_srb_reader: domain=2 base=0x17d93000 offset=0xbc value=0x00000001
+[14847.741432] ct_srb_reader: read-only probe complete; no mappings retained
+[14847.834290] ct_srb_reader: unloaded
+[14847.861585] ct_srb_reader: domain=0 base=0x17d91000 offset=0xbc value=0x00000000
+[14847.861617] ct_srb_reader: domain=1 base=0x17d92000 offset=0xbc value=0x00000001
+[14847.861636] ct_srb_reader: domain=2 base=0x17d93000 offset=0xbc value=0x00000001
+[14847.861642] ct_srb_reader: read-only probe complete; no mappings retained
+[14847.972742] ct_srb_reader: unloaded
+[14847.999991] ct_srb_reader: domain=0 base=0x17d91000 offset=0xbc value=0x00000000
+[14848.000009] ct_srb_reader: domain=1 base=0x17d92000 offset=0xbc value=0x00000001
+[14848.000013] ct_srb_reader: domain=2 base=0x17d93000 offset=0xbc value=0x00000001
+[14848.000015] ct_srb_reader: read-only probe complete; no mappings retained
+[14848.103364] ct_srb_reader: unloaded
+PASS three load/read/unload cycles through PServer

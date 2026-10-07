@@ -1,0 +1,32 @@
+[
+  {
+    "file": "stock-kheaders.tar.xz",
+    "origin": "Authorized device /sys/kernel/kheaders.tar.xz",
+    "bytes": 3714852,
+    "sha256": "8e624ea9ad32057d1419156e23b1391f8c75ca045cb933bee1687acc84471285"
+  },
+  {
+    "file": "ayn-kernel-source.tar.gz",
+    "origin": "https://codeload.github.com/LineageOS/android_kernel_ayn_qcs8550/tar.gz/0d9a32622533fa6dbeeab60207977171c286c458",
+    "bytes": 204475374,
+    "sha256": "4484bb11d64ab5d61a5b765ad8085ea9dc0e6408a7ad7505b87219d82ec504ea"
+  },
+  {
+    "file": "clang-r450784e.tar.gz",
+    "origin": "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/android14-release/clang-r450784e.tar.gz",
+    "bytes": 581240654,
+    "sha256": "045f9d987ab5092136c6082f208703aba5940e67f815beddeaa51e46a44668d1"
+  },
+  {
+    "file": "reader/ct_srb_reader.ko",
+    "origin": "Local Kbuild output; no post-link CRC/vermagic edits",
+    "bytes": 244448,
+    "sha256": "be20860cfbb1b3a82b5653823068625062d4701de109b730232caf6a4e7df55f"
+  },
+  {
+    "file": "pserver-access/odm-precompiled-sepolicy",
+    "origin": "Authorized device /odm/etc/selinux/precompiled_sepolicy",
+    "bytes": 1058710,
+    "sha256": "52173b139f9aa5b462343f46aeb93c601d502ee937bc669c87b0e7461133fe84"
+  }
+]

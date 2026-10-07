@@ -1,0 +1,126 @@
+{
+  "test": "read-only helper loaded and unloaded through PServer",
+  "cycles_passed": 3,
+  "boot_id_unchanged": true,
+  "requested_cpu_state_unchanged": true,
+  "register_samples": [
+    {
+      "domain": 0,
+      "base": "0x17d91000",
+      "offset": "0xbc",
+      "value": 0
+    },
+    {
+      "domain": 1,
+      "base": "0x17d92000",
+      "offset": "0xbc",
+      "value": 1
+    },
+    {
+      "domain": 2,
+      "base": "0x17d93000",
+      "offset": "0xbc",
+      "value": 1
+    },
+    {
+      "domain": 0,
+      "base": "0x17d91000",
+      "offset": "0xbc",
+      "value": 0
+    },
+    {
+      "domain": 1,
+      "base": "0x17d92000",
+      "offset": "0xbc",
+      "value": 1
+    },
+    {
+      "domain": 2,
+      "base": "0x17d93000",
+      "offset": "0xbc",
+      "value": 1
+    },
+    {
+      "domain": 0,
+      "base": "0x17d91000",
+      "offset": "0xbc",
+      "value": 0
+    },
+    {
+      "domain": 1,
+      "base": "0x17d92000",
+      "offset": "0xbc",
+      "value": 1
+    },
+    {
+      "domain": 2,
+      "base": "0x17d93000",
+      "offset": "0xbc",
+      "value": 1
+    }
+  ],
+  "before": {
+    "boot_id": "6cec412a-1148-47ce-8aa8-fb4f2da97729",
+    "taint": 12804,
+    "selinux_enforcing": false,
+    "context": "u:r:pservice:s0",
+    "policies": [
+      {
+        "policy": 0,
+        "minimum_khz": 307200,
+        "maximum_khz": 1459200,
+        "governor": "walt"
+      },
+      {
+        "policy": 3,
+        "minimum_khz": 499200,
+        "maximum_khz": 1785600,
+        "governor": "walt"
+      },
+      {
+        "policy": 7,
+        "minimum_khz": 595200,
+        "maximum_khz": 1843200,
+        "governor": "walt"
+      }
+    ],
+    "stock_reader_srb": [
+      0,
+      1,
+      1
+    ]
+  },
+  "after": {
+    "boot_id": "6cec412a-1148-47ce-8aa8-fb4f2da97729",
+    "taint": 12804,
+    "selinux_enforcing": false,
+    "context": "u:r:pservice:s0",
+    "policies": [
+      {
+        "policy": 0,
+        "minimum_khz": 307200,
+        "maximum_khz": 1459200,
+        "governor": "walt"
+      },
+      {
+        "policy": 3,
+        "minimum_khz": 499200,
+        "maximum_khz": 1785600,
+        "governor": "walt"
+      },
+      {
+        "policy": 7,
+        "minimum_khz": 595200,
+        "maximum_khz": 1843200,
+        "governor": "walt"
+      }
+    ],
+    "stock_reader_srb": [
+      0,
+      1,
+      1
+    ]
+  },
+  "kernel_module_unloaded": true,
+  "scope": "No MMIO writes or CPU control writes. SELinux remained permissive; factory enforcing-policy eligibility not established by this runtime test."
+}

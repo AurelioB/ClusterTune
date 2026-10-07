@@ -24,8 +24,10 @@ The vendor model is not full-boot emulation and does not exclude externally supp
 
 ## Next proof required for the candidate
 
+**Access update:** a [restricted reader](runtime/reader/report.md) now passes three live load/read/unload cycles through PServer without rebooting. It agrees with the stock reader and leaves requested CPU settings unchanged. This proves read access on the currently permissive Thor, not register-write permission or factory enforcing-policy eligibility.
+
 1. Establish the meaning of `EPSS+0xbc[0]`, including whether clearing it affects only shared-rail boosting. The name of the debug register and its boot initialization do not establish that alone.
-2. Establish a compatible kernel access path. `/dev/mem` is disabled, the stock debug frontend only reads the register, and the SCM IO allowlist rejects it. Direct kernel mapping/writing permissions remain untested. Module versions, CFI and signature protection also need compatibility checks; Android root is not enough to assume loading will work.
+2. Extend the established read-only kernel access path to justified runtime writes. `/dev/mem` is disabled, the stock debug frontend only reads the register, and the SCM IO allowlist rejects it. The compatible helper passes module version/CFI checks and reads the candidate field, but write permission remains untested. Factory-device SELinux eligibility also needs establishing.
 3. Establish runtime ownership and sequencing: whether a domain must be quiesced, which firmware path can rewrite the field during resume/reactivation, and how to preserve all other bits and restore the original configuration. Merely saving a word does not establish safe concurrency.
 4. Only then perform a bounded A/B test using the same independent hardware-state and cycle measurements that detected the original overshoot, with unchanged requested cluster caps. Verify restoration and thermal behavior too.
 
