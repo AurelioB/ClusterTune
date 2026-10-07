@@ -1,5 +1,7 @@
 # Deeper investigation of independent clock controls
 
+**Later runtime result:** the [isolated write experiment](runtime/write-probe/report.md) failed after attempting to write the prime SRB-labelled field's existing value back unchanged. Successful read access did not translate into safe runtime writes. The direct-write route is unsafe on the tested firmware; no bit-clearing or boost-suppression test was performed. The host-only findings below predate that experiment.
+
 2026-10-06. The objective is a real independent CPU ceiling or SRB control, without changing the other clusters' requested caps. This pass used host analysis only: no device access, firmware invocation, setting change, module load, reboot or flashing.
 
 **The strongest remaining candidate is bit 0 at EPSS offset `0xbc`.** Stock CPUCP deliberately clears it for L3/Silver and sets it for Gold/Gold_Plus during guarded domain initialization. The exact register bases match the Linux debug driver's `EPSS_DEBUG_SRB`. This gives us a real firmware owner and writer, rather than an address inferred from a patent. Its precise effect and a safe runtime transaction remain unproved.

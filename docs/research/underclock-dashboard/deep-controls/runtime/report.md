@@ -1,5 +1,7 @@
 # SRB candidate ownership and stock-kernel access
 
+**Runtime write update:** an [isolated same-value write experiment](write-probe/report.md) subsequently reached `write_begin` (`1 → 1`), failed to reach successful readback, and was followed by loss of responsiveness and a new boot ID. Direct writing is unsafe on this tested firmware. No clear-bit test or overshoot A/B result exists. The earlier analysis below remains historical; read access does not imply safe write access.
+
 **Later same-day update:** the [restricted read-only helper](reader/report.md) was built from the running kernel's headers and passed three load/read/unload cycles through PServer without rebooting. All 12 generated import CRCs match. CPU settings and SRB-labelled values remained unchanged. The initial analysis below predates that experiment; runtime writes and field semantics remain unproved. Factory enforcing SELinux is a separate eligibility constraint.
 
 2026-10-06. **The stock kernel's signature/protected-symbol checks are no longer an unexplained obstacle to a helper. The candidate register's runtime semantics remain unproved.** This pass combined deeper host analysis with read-only observations and kernel extraction from the authorized Thor. No device setting, register, firmware vote, module, boot configuration or ClusterTune behavior was changed.

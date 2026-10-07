@@ -1,0 +1,41 @@
+4e04bda7-a156-4cd0-bd13-7437f67c31f3
+12292
+0POLICY0
+scaling_min_freq 307200
+scaling_max_freq 1459200
+scaling_governor walt
+440 1000:1000 /sys/devices/system/cpu/cpufreq/policy0/scaling_min_freq
+POLICY3
+scaling_min_freq 499200
+scaling_max_freq 1785600
+scaling_governor walt
+440 1000:1000 /sys/devices/system/cpu/cpufreq/policy3/scaling_min_freq
+POLICY7
+scaling_min_freq 595200
+scaling_max_freq 1843200
+scaling_governor walt
+440 1000:1000 /sys/devices/system/cpu/cpufreq/policy7/scaling_min_freq
+FREQUENCY DOMAIN 0
+       PERF_STATE_DESIRED: 0x00000007
+           CYCLE_CNTR_VAL: 0xd71072b8
+            PSTATE_STATUS: 0x2880073a
+        EPSS_DEBUG_STATUS: 0x2881073a
+           EPSS_DEBUG_SRB: 0x00000000
+           EPSS_DEBUG_LUT: 0x40030010
+FREQUENCY DOMAIN 1
+       PERF_STATE_DESIRED: 0x00000000
+           CYCLE_CNTR_VAL: 0xd6b971ee
+            PSTATE_STATUS: 0x2340001a
+        EPSS_DEBUG_STATUS: 0x2341001a
+           EPSS_DEBUG_SRB: 0x00000001
+           EPSS_DEBUG_LUT: 0x4005001a
+FREQUENCY DOMAIN 2
+       PERF_STATE_DESIRED: 0x00000000
+           CYCLE_CNTR_VAL: 0x8f6d48ab
+            PSTATE_STATUS: 0x2f800c6d
+        EPSS_DEBUG_STATUS: 0x22c1001f
+           EPSS_DEBUG_SRB: 0x00000001
+           EPSS_DEBUG_LUT: 0x4005001f
+680000000
+MODULE_ABSENT
+260

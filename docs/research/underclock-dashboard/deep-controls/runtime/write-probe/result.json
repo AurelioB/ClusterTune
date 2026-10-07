@@ -1,0 +1,97 @@
+{
+  "date": "2026-10-06",
+  "device": "AYN Thor",
+  "firmware": "Thor_V1.0.0.377_20260206_165408_user",
+  "kernel": "5.15.123-android13-8-gafd857749d1f",
+  "selinux": "permissive throughout",
+  "loader": "PServerBinder, u:r:pservice:s0, no su for insmod",
+  "candidate_physical_address": "0x17d930bc",
+  "write_mode": "same value only, 1 -> 1",
+  "hold_ms_requested": 50,
+  "clear_bit_test_attempted": false,
+  "first_combined_run": {
+    "before_boot_id": "6cec412a-1148-47ce-8aa8-fb4f2da97729",
+    "after_boot_id": "23997567-8094-4969-9e00-8a4680fe9816",
+    "stage": "unknown; output lost, no saved kernel crash log"
+  },
+  "isolated_write": {
+    "before_boot_id": "23997567-8094-4969-9e00-8a4680fe9816",
+    "after_boot_id": "4e04bda7-a156-4cd0-bd13-7437f67c31f3",
+    "durable_stage": "before_same_value_insmod",
+    "kernel_last_helper_stage": "write_begin",
+    "monotonic_ns": 555457995359,
+    "before": 1,
+    "target": 1,
+    "write_confirmed": false,
+    "restoration_confirmed_before_reboot": false,
+    "unload_confirmed_before_reboot": false,
+    "observable_outcome": "launcher timed out; ADB commands stopped responding; later became unreachable and returned with new boot ID",
+    "pstore": "empty after reboot",
+    "panic_or_fault_stack": "not captured",
+    "manual_reboot_intervention": "not established; user question unanswered at time of report"
+  },
+  "stable_controls": [
+    {
+      "artifact": "counter-only-post-reboot.csv",
+      "sha256": "d0cc70fddaf7d293abef1c1bd65d4779ec29b238d6b704717d5adfac986beebd",
+      "counter_rows": 1959,
+      "hardware_rows": [],
+      "exit_code": 0,
+      "errors": "",
+      "boot_id": "23997567-8094-4969-9e00-8a4680fe9816",
+      "seconds": 2,
+      "profile": "Stock after first reboot"
+    },
+    {
+      "artifact": "slow-clock-stock.txt",
+      "sha256": "3af580a4da2764df3ac22b0899918b41415898377d2f3d1ebe9464a8ae881c18",
+      "counter_rows": 1924,
+      "hardware_rows": [
+        "H,484168527261,484197156949,1882514176,1",
+        "H,484697562261,484727441011,1843198784,1",
+        "H,485227930959,485258493615,1843203456,1",
+        "H,485759427000,485789006531,1843210496,1"
+      ],
+      "exit_code": 0,
+      "errors": "",
+      "boot_id": "23997567-8094-4969-9e00-8a4680fe9816",
+      "seconds": 2,
+      "profile": "Stock after first reboot"
+    }
+  ],
+  "post_reboot_registers": [
+    0,
+    1,
+    1
+  ],
+  "restored_profile": {
+    "name": "Large Underclock",
+    "min_khz": [
+      307200,
+      499200,
+      595200
+    ],
+    "max_khz": [
+      1459200,
+      1785600,
+      1843200
+    ],
+    "governor": [
+      "walt",
+      "walt",
+      "walt"
+    ],
+    "minimum_permissions": [
+      "0440",
+      "0440",
+      "0440"
+    ],
+    "gpu_max_hz": 680000000
+  },
+  "cleanup": {
+    "module_absent": true,
+    "device_temporary_files_removed": true,
+    "boot_id_unchanged_during_restoration": true
+  },
+  "conclusion": "Direct same-value MMIO writing is unsafe on this tested firmware. No SRB disable or overshoot A/B test was completed. Other firmware-mediated routes are not disproved."
+}

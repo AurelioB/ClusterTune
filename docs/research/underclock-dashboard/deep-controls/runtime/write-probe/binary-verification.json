@@ -1,0 +1,96 @@
+{
+  "sha256": "cc08ea184abb3d7d1566a312b9c715fd09c23b1f0c8e1f10fc612a4aa210bbd6",
+  "bytes": 248944,
+  "imports": [
+    {
+      "symbol": "module_layout",
+      "crc": "0x222dd63",
+      "match": true
+    },
+    {
+      "symbol": "__stack_chk_fail",
+      "crc": "0xc2c193d2",
+      "match": true
+    },
+    {
+      "symbol": "memset",
+      "crc": "0xdcb764ad",
+      "match": true
+    },
+    {
+      "symbol": "arm64_use_ng_mappings",
+      "crc": "0xaf56600a",
+      "match": true
+    },
+    {
+      "symbol": "__ubsan_handle_cfi_check_fail_abort",
+      "crc": "0xdf7a4c69",
+      "match": true
+    },
+    {
+      "symbol": "log_post_write_mmio",
+      "crc": "0x82bdaa44",
+      "match": true
+    },
+    {
+      "symbol": "log_write_mmio",
+      "crc": "0xb03b751c",
+      "match": true
+    },
+    {
+      "symbol": "ktime_get",
+      "crc": "0xb43f9365",
+      "match": true
+    },
+    {
+      "symbol": "log_post_read_mmio",
+      "crc": "0x461806e7",
+      "match": true
+    },
+    {
+      "symbol": "log_read_mmio",
+      "crc": "0x630c7ed8",
+      "match": true
+    },
+    {
+      "symbol": "iounmap",
+      "crc": "0xedc03953",
+      "match": true
+    },
+    {
+      "symbol": "msleep",
+      "crc": "0xf9a482f9",
+      "match": true
+    },
+    {
+      "symbol": "_printk",
+      "crc": "0x92997ed8",
+      "match": true
+    },
+    {
+      "symbol": "__ioremap",
+      "crc": "0x6b4b2933",
+      "match": true
+    },
+    {
+      "symbol": "of_address_to_resource",
+      "crc": "0x761b06be",
+      "match": true
+    },
+    {
+      "symbol": "of_find_compatible_node",
+      "crc": "0x3ab39c72",
+      "match": true
+    }
+  ],
+  "module_struct_bytes": 960,
+  "metadata": [
+    "license=GPL v2",
+    "description=Bounded fixed-prime EPSS bit0 pulse with synchronous restoration",
+    "vermagic=5.15.123-android13-8-gafd857749d1f SMP preempt mod_unload modversions aarch64",
+    "name=ct_srb_pulse",
+    "depends="
+  ],
+  "mode": "same-value-write",
+  "hold_ms": 50
+}

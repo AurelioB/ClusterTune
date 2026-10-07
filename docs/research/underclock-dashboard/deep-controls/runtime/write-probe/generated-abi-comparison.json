@@ -1,0 +1,114 @@
+[
+  {
+    "symbol": "module_layout",
+    "generated_crc": "0x222dd63",
+    "kernel_crc": "0x222dd63",
+    "match": true,
+    "derivation_unit": "module_abi"
+  },
+  {
+    "symbol": "__stack_chk_fail",
+    "generated_crc": "0xc2c193d2",
+    "kernel_crc": "0xc2c193d2",
+    "match": true,
+    "derivation_unit": "header_abi"
+  },
+  {
+    "symbol": "__ubsan_handle_cfi_check_fail_abort",
+    "generated_crc": "0xdf7a4c69",
+    "kernel_crc": "0xdf7a4c69",
+    "match": true,
+    "derivation_unit": "header_abi"
+  },
+  {
+    "symbol": "_printk",
+    "generated_crc": "0x92997ed8",
+    "kernel_crc": "0x92997ed8",
+    "match": true,
+    "derivation_unit": "header_abi"
+  },
+  {
+    "symbol": "memset",
+    "generated_crc": "0xdcb764ad",
+    "kernel_crc": "0xdcb764ad",
+    "match": true,
+    "derivation_unit": "header_abi"
+  },
+  {
+    "symbol": "__ioremap",
+    "generated_crc": "0x6b4b2933",
+    "kernel_crc": "0x6b4b2933",
+    "match": true,
+    "derivation_unit": "header_abi"
+  },
+  {
+    "symbol": "arm64_use_ng_mappings",
+    "generated_crc": "0xaf56600a",
+    "kernel_crc": "0xaf56600a",
+    "match": true,
+    "derivation_unit": "header_abi"
+  },
+  {
+    "symbol": "iounmap",
+    "generated_crc": "0xedc03953",
+    "kernel_crc": "0xedc03953",
+    "match": true,
+    "derivation_unit": "header_abi"
+  },
+  {
+    "symbol": "of_find_compatible_node",
+    "generated_crc": "0x3ab39c72",
+    "kernel_crc": "0x3ab39c72",
+    "match": true,
+    "derivation_unit": "base_abi"
+  },
+  {
+    "symbol": "of_address_to_resource",
+    "generated_crc": "0x761b06be",
+    "kernel_crc": "0x761b06be",
+    "match": true,
+    "derivation_unit": "address_abi"
+  },
+  {
+    "symbol": "log_read_mmio",
+    "generated_crc": "0x630c7ed8",
+    "kernel_crc": "0x630c7ed8",
+    "match": true,
+    "derivation_unit": "header_abi"
+  },
+  {
+    "symbol": "log_post_read_mmio",
+    "generated_crc": "0x461806e7",
+    "kernel_crc": "0x461806e7",
+    "match": true,
+    "derivation_unit": "header_abi"
+  },
+  {
+    "symbol": "log_write_mmio",
+    "generated_crc": "0xb03b751c",
+    "kernel_crc": "0xb03b751c",
+    "match": true,
+    "derivation_unit": "header_abi"
+  },
+  {
+    "symbol": "log_post_write_mmio",
+    "generated_crc": "0x82bdaa44",
+    "kernel_crc": "0x82bdaa44",
+    "match": true,
+    "derivation_unit": "header_abi"
+  },
+  {
+    "symbol": "msleep",
+    "generated_crc": "0xf9a482f9",
+    "kernel_crc": "0xf9a482f9",
+    "match": true,
+    "derivation_unit": "header_abi"
+  },
+  {
+    "symbol": "ktime_get",
+    "generated_crc": "0xb43f9365",
+    "kernel_crc": "0xb43f9365",
+    "match": true,
+    "derivation_unit": "header_abi"
+  }
+]
