@@ -13,6 +13,11 @@ ClusterTune sets maximum CPU and GPU frequencies on Android handhelds.
 > [!WARNING]
 > Changing CPU or GPU limits can affect stability, performance, temperature, and battery life. Start with tested values and use **Stock** to restore normal limits.
 
+> [!NOTE]
+> **Note for AYN users**
+>
+> The AYN Thor performance overlay can incorrectly display **3.19 GHz** when the CPU drops below **1 GHz**. ClusterTune 1.3.0 and later keep lower frequencies available under light load, making this display bug more noticeable. Check CPU-Z’s individual CPU readings before assuming underclocking has failed. See [issue #32](https://github.com/AurelioB/ClusterTune/issues/32) for details.
+
 ## Why underclock?
 
 Lower CPU limits can reduce power use, heat, fan noise, and battery drain. Games limited by the GPU may also gain thermal or power headroom. This only caps clock speed and does not undervolt the CPU or replace its governor.
