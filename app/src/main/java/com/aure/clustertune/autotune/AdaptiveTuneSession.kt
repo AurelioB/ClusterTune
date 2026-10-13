@@ -53,6 +53,7 @@ interface AdaptiveTuneBackend {
         packageName: String,
         targetFps: Int,
         generation: Long,
+        displayRefreshPeriodNanos: Long? = null,
     ): AdaptiveTuneBackendSession
 
     suspend fun heartbeat(session: AdaptiveTuneBackendSession)
@@ -95,6 +96,7 @@ class AdaptiveTuneSessionRunner(
         targetFps: Int,
         retryAfterGeneration: Long? = null,
         coordinatorLease: Long? = null,
+        displayRefreshRateFps: Int? = null,
         onSessionStarted: suspend () -> Unit = {},
     ): AdaptiveTuneRunResult {
         currentCoroutineContext().ensureActive()
@@ -133,7 +135,10 @@ class AdaptiveTuneSessionRunner(
         var outcomeMessage: String? = null
         var termination = AdaptiveTuneTermination.SUPERSEDED
         try {
-            session = callBackend("start") { backend.start(packageName, targetFps, generation) }
+            session = callBackend("start") {
+                backend.start(packageName, targetFps, generation,
+                    displayRefreshRateFps?.takeIf { it > 0 }?.let { (1_000_000_000L / it).coerceAtLeast(1_000_000L) })
+            }
             sessionStarted = true
             check(session.generation == generation) { "Auto Tune backend generation mismatch" }
             if (!AdaptiveTuneRuntime.isCurrent(generation)) {

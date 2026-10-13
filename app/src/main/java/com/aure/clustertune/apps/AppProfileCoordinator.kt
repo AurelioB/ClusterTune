@@ -382,6 +382,7 @@ class AppProfileCoordinator(
                 targetFps = run.signature.targetFps,
                 retryAfterGeneration = retryAfterGeneration,
                 coordinatorLease = coordinatorLease,
+                displayRefreshRateFps = run.signature.displayRefreshRateFps,
                 onSessionStarted = { markAutoTuneStarted(run) },
             )
             if (result.sessionStarted || !result.isRetryableFrameStartupFailure()) return result

@@ -579,11 +579,12 @@ public final class ClusterTuneHostEntry {
                             ApplyRequest baseline = hasBaseline == 1
                                     ? readApplyRequest(data, ensureCapabilities())
                                     : null;
+                            Long displayRefreshPeriod = readOptionalLong(data);
                             stopTelemetry(
                                     HostTelemetrySessionStatus.UNAVAILABLE,
                                     "performance telemetry is held by Auto Tune");
                             HostAutoSessionSnapshot snapshot = autoController().start(
-                                    new AutoSessionRequest(packageName, targetFps, heartbeatTimeoutMs, baseline));
+                                    new AutoSessionRequest(packageName, targetFps, heartbeatTimeoutMs, baseline, displayRefreshPeriod));
                             writeAutoSnapshot(reply, snapshot);
                             return true;
                         }
@@ -1018,6 +1019,12 @@ public final class ClusterTuneHostEntry {
             reply.writeInt(value.getFrameWindowComplete() ? 1 : 0);
             reply.writeLong(value.getFrameMeasurementEpoch());
             writeOptionalInt(reply, value.getTimelineJankRatioPermille());
+        }
+
+        private Long readOptionalLong(Parcel data) {
+            int present = data.readInt();
+            if (present != 0 && present != 1) throw new IllegalArgumentException("invalid optional long flag");
+            return present == 1 ? data.readLong() : null;
         }
 
         private void writeHostStateValue(Parcel reply, HostState value) {

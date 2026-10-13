@@ -316,6 +316,7 @@ class PerformanceRepository(
         packageName: String,
         targetFps: Int,
         generation: Long,
+        displayRefreshPeriodNanos: Long?,
     ): AdaptiveTuneBackendSession {
         var startedHandle: HostAutoSessionHandle? = null
         var hostStartAttempted = false
@@ -382,6 +383,7 @@ class PerformanceRepository(
                             targetFps = targetFps,
                             heartbeatTimeoutMs = AUTO_TUNE_HEARTBEAT_TIMEOUT_MS,
                             baseline = normalBaseline,
+                            displayRefreshPeriodNanos = displayRefreshPeriodNanos,
                         ),
                     ).getOrThrow().also { snapshot ->
                         startedHandle = snapshot.handle

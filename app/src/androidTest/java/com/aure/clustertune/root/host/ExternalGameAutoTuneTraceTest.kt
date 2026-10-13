@@ -50,6 +50,7 @@ class ExternalGameAutoTuneTraceTest {
         val packageName = requireNotNull(targetPackage)
 
         val targetFps = arguments.getString("targetFps")?.toIntOrNull() ?: 60
+        val displayRefreshRateFps = arguments.getString("displayRefreshRateFps")?.toIntOrNull()?.takeIf { it > 0 }
         val sampleCount = arguments.getString("sampleCount")?.toIntOrNull()?.coerceIn(10, 360) ?: 300
         val sampleIntervalMs = arguments.getString("sampleIntervalMs")
             ?.toLongOrNull()
@@ -106,6 +107,7 @@ class ExternalGameAutoTuneTraceTest {
                         .put("wallTimeMillis", System.currentTimeMillis())
                         .put("package", packageName)
                         .put("targetFps", targetFps)
+                        .putNullable("displayRefreshRateFps", displayRefreshRateFps)
                         .put("sampleCount", sampleCount)
                         .put("sampleIntervalMs", sampleIntervalMs)
                         .put("method", method)
@@ -120,6 +122,7 @@ class ExternalGameAutoTuneTraceTest {
                         packageName = packageName,
                         targetFps = targetFps,
                         heartbeatTimeoutMs = 15_000L,
+                        displayRefreshPeriodNanos = displayRefreshRateFps?.let { (1_000_000_000L / it).coerceAtLeast(1_000_000L) },
                     ),
                 ).getOrThrow()
                 assertEquals(HostAutoSessionStatus.ACTIVE, started.status)

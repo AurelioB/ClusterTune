@@ -22,6 +22,16 @@ class AdaptiveTuneSessionRunnerTest {
     fun tearDown() = AdaptiveTuneRuntime.resetForTest()
 
     @Test
+    fun `focused display rate is passed to the privileged backend`() = runTest {
+        val backend = FakeBackend(samples = listOf(telemetry(1L, false)))
+        val runner = AdaptiveTuneSessionRunner(backend, sampleIntervalMillis = 100L)
+        val job = launch { runner.run("game.app", "Game", 90, displayRefreshRateFps = 120) }
+        runCurrent()
+        assertEquals(8_333_333L, backend.receivedDisplayPeriod)
+        job.cancelAndJoin()
+    }
+
+    @Test
     fun `missing and stale frames wait then resume without restarting the backend`() = runTest {
         val backend = FakeBackend(
             samples = buildList {
@@ -344,6 +354,7 @@ class AdaptiveTuneSessionRunnerTest {
         private val hangOnStop: Boolean = false,
         private val onStop: () -> Unit = {},
     ) : AdaptiveTuneBackend {
+        var receivedDisplayPeriod: Long? = null
         var startCalls = 0
             private set
         var heartbeatCalls = 0
@@ -363,7 +374,9 @@ class AdaptiveTuneSessionRunnerTest {
             packageName: String,
             targetFps: Int,
             generation: Long,
+            displayRefreshPeriodNanos: Long?,
         ): AdaptiveTuneBackendSession {
+            receivedDisplayPeriod = displayRefreshPeriodNanos
             startCalls += 1
             startFailure?.let { throw it }
             return AdaptiveTuneBackendSession(

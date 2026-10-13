@@ -407,6 +407,7 @@ interface HostTelemetrySource {
     fun end() = Unit
     /** Called only after a changed ceiling has been applied and verified. */
     fun onFrequencyChange() = Unit
+    fun setDisplayRefreshPeriodNanos(periodNanos: Long?) = Unit
 }
 
 /** Privileged, package-agnostic telemetry backed by SurfaceFlinger and allowlisted kernel nodes. */
@@ -438,6 +439,7 @@ class SystemHostTelemetrySource(
     private var refreshPeriodNanos: Long? = null
     private var measurementEpoch = 0L
     private var resetTimeStatsBaseline = false
+    private var appDisplayRefreshPeriodNanos: Long? = null
 
     override fun capabilities(): HostAutoCapabilities {
         val frameSupported = File(dumpsys).canExecute()
@@ -461,7 +463,7 @@ class SystemHostTelemetrySource(
         previousTimeStats = emptyMap()
         previousTimeStatsSampleNanos = null
         presentedHistory.clear()
-        refreshPeriodNanos = null
+        refreshPeriodNanos = appDisplayRefreshPeriodNanos
         measurementEpoch++
         resetTimeStatsBaseline = false
         val layers = listLayers(packageName)
@@ -489,6 +491,12 @@ class SystemHostTelemetrySource(
         previousTimeStatsSampleNanos = null
         presentedHistory.clear()
         refreshPeriodNanos = null
+        appDisplayRefreshPeriodNanos = null
+    }
+
+    override fun setDisplayRefreshPeriodNanos(periodNanos: Long?) {
+        require(periodNanos == null || periodNanos in 1_000_000L..1_000_000_000L) { "invalid display refresh period" }
+        appDisplayRefreshPeriodNanos = periodNanos
     }
 
     override fun onFrequencyChange() {
@@ -596,13 +604,16 @@ class SystemHostTelemetrySource(
         val window = HostTelemetryParsers.surfaceLatency(result.stdout)
         val now = clock.nanoTime()
         val oldRefresh = refreshPeriodNanos
-        if (oldRefresh != null && window.refreshPeriodNanos != null &&
-            kotlin.math.abs(window.refreshPeriodNanos - oldRefresh) > oldRefresh / 100L
+        // AOSP's latency header describes the scheduler's pacesetter, which may be another
+        // display. The focused app's rate is authoritative when its coordinator knows it.
+        val displayRefresh = appDisplayRefreshPeriodNanos ?: window.refreshPeriodNanos
+        if (oldRefresh != null && displayRefresh != null &&
+            kotlin.math.abs(displayRefresh - oldRefresh) > oldRefresh / 100L
         ) {
             measurementEpoch++
             onFrequencyChange()
         }
-        refreshPeriodNanos = window.refreshPeriodNanos
+        refreshPeriodNanos = displayRefresh
         val sessionFrames = window.presentedNanos.filter { it >= frameSessionStartedNanos && it <= now }
         val added = sessionFrames.filter { it > lastPresentedNanos }
         // No overlap with an existing history means SurfaceFlinger's bounded ring may have

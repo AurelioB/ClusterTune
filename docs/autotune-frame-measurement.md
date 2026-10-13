@@ -6,6 +6,11 @@ requires telemetry supplied by the emulator; SurfaceFlinger cannot identify gene
 
 ## Pacing and confidence
 
+The coordinator supplies the focused application display's refresh period. This takes precedence
+over SurfaceFlinger's latency header, which can describe the main/pacesetter display. Display
+changes replace the app session with an updated rate. Callers without a known display rate use
+the header as a fallback; device traces on a secondary screen should supply the actual rate.
+
 The latency backend uses actual presentation timestamps, deduplicates them, excludes future and
 pre-session timestamps, and accumulates up to two seconds of history (512 entries maximum).
 Overlapping polls preserve history beyond SurfaceFlinger's own ring. If a new dump no longer
@@ -39,7 +44,7 @@ When the target exceeds a known live refresh rate and output is already near tha
 controller reports the display limit and holds. Lower throughput still permits recovery.
 This does not infer an application cap or thermal limit from low FPS alone.
 
-The additional fields use host protocol version 14. The normal host version check replaces an
+The additional fields use host protocol version 15. The normal host version check replaces an
 older privileged host before these fields are read.
 
 ## Device validation
@@ -53,6 +58,7 @@ automation. Run it on a dedicated test device with Auto Tune enabled.
   -Pandroid.testInstrumentationRunnerArguments.class=com.aure.clustertune.root.host.ExternalGameAutoTuneTraceTest \
   -Pandroid.testInstrumentationRunnerArguments.externalPackage=YOUR_GAME_PACKAGE \
   -Pandroid.testInstrumentationRunnerArguments.targetFps=45 \
+  -Pandroid.testInstrumentationRunnerArguments.displayRefreshRateFps=60 \
   -Pandroid.testInstrumentationRunnerArguments.sampleCount=120 \
   -Pandroid.testInstrumentationRunnerArguments.requireBoundary=false
 ```

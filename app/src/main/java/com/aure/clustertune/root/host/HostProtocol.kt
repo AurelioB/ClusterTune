@@ -3,7 +3,7 @@ package com.aure.clustertune.root.host
 /** Private wire contract between ClusterTune and its persistent privileged host. */
 object HostProtocol {
     const val DESCRIPTOR = "com.aure.clustertune.root.host.IClusterTuneHost"
-    const val VERSION = 14
+    const val VERSION = 15
     const val SERVICE_PREFIX = "clustertune.host."
     const val PING = 1
     const val HOST_IDENTITY = 2
@@ -148,6 +148,8 @@ data class AutoSessionRequest(
      * evidence to reconcile an indeterminate partial apply before it returns to the client.
      */
     val baseline: ApplyRequest? = null,
+    /** Refresh period of the focused app's display, when known by the coordinator. */
+    val displayRefreshPeriodNanos: Long? = null,
 )
 
 data class HostAutoSessionHandle(val sessionId: String, val hostEpoch: Long)

@@ -471,6 +471,28 @@ class HostTelemetrySourceTest {
         assertEquals(active, source.sample().frameLayer)
     }
 
+    @Test
+    fun `focused display period overrides the main display latency header`() {
+        val clock = FakeClock(SECOND)
+        var header = 16_666_666L
+        val source = source(latencyRunner("com.game/com.game.Main#1") {
+            "$header\n1 ${clock.now} 1\n"
+        }, clock)
+        source.setDisplayRefreshPeriodNanos(8_333_333L)
+        source.begin("com.game", 90).getOrThrow()
+        clock.now = 2 * SECOND
+        val before = source.sample()
+        assertEquals(8_333_333L, before.refreshPeriodNanos)
+        header = 33_333_333L
+        clock.now = 3 * SECOND
+        val after = source.sample()
+        assertEquals(8_333_333L, after.refreshPeriodNanos)
+        assertEquals(before.frameMeasurementEpoch, after.frameMeasurementEpoch)
+        source.end()
+        source.begin("com.game", 30).getOrThrow()
+        assertEquals(header, source.sample().refreshPeriodNanos)
+    }
+
     private fun latencyRunner(layer: String, dump: () -> String) = RecordingRunner { arguments ->
         when {
             arguments.last() == "--list" -> success(layer)

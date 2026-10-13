@@ -197,6 +197,9 @@ class ClusterTuneHostClient(
                 require(baseline.maximumsOnly) { "Auto Tune baseline must be maximums-only" }
                 writeApplyRequest(p, baseline)
             }
+            require(request.displayRefreshPeriodNanos == null || request.displayRefreshPeriodNanos in 1_000_000L..1_000_000_000L)
+            p.writeInt(if (request.displayRefreshPeriodNanos == null) 0 else 1)
+            request.displayRefreshPeriodNanos?.let(p::writeLong)
         }, reader = ::readAutoSnapshot)
 
     /** A null session ID addresses the current owner session. */

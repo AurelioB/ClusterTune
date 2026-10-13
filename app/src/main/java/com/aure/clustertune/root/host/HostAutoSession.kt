@@ -436,6 +436,9 @@ class HostAutoSessionController(
         expireLocked()
         require(HostTelemetryParsers.isValidPackageName(request.packageName)) { "invalid target package" }
         require(request.targetFps > 0) { "target FPS must be positive" }
+        require(request.displayRefreshPeriodNanos == null || request.displayRefreshPeriodNanos in 1_000_000L..1_000_000_000L) {
+            "invalid display refresh period"
+        }
         require(request.heartbeatTimeoutMs in MIN_HEARTBEAT_TIMEOUT_MS..MAX_HEARTBEAT_TIMEOUT_MS) {
             "heartbeat timeout must be between $MIN_HEARTBEAT_TIMEOUT_MS and $MAX_HEARTBEAT_TIMEOUT_MS ms"
         }
@@ -456,6 +459,7 @@ class HostAutoSessionController(
         if (!support.autoSessionSupported) {
             return unsupported(support.unsupportedReason ?: "automatic telemetry is unavailable")
         }
+        telemetrySource.setDisplayRefreshPeriodNanos(request.displayRefreshPeriodNanos)
         val telemetryStart = telemetrySource.begin(request.packageName, request.targetFps)
         if (telemetryStart.isFailure) {
             runCatching(telemetrySource::end)
