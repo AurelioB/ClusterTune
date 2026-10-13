@@ -8,6 +8,12 @@ import org.junit.Test
 
 class HostTelemetryParserTest {
     @Test
+    fun `malformed latency columns never shift a ready time into actual presentation`() {
+        val parsed = HostTelemetryParsers.surfaceLatency("16666666\nbad 40 900\n1 missing 901\n")
+        assertEquals(listOf(40L), parsed.presentedNanos)
+    }
+
+    @Test
     fun `surface layer matching is bounded deterministic and package exact`() {
         val text = """
             com.game.other/com.game.other.Main#1

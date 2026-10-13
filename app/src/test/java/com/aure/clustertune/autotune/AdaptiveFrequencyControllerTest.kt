@@ -611,6 +611,23 @@ class AdaptiveFrequencyControllerTest {
         assertEquals(AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY, assertApply(controller.step(sample(5, capped.copy(fps = 40.0), cpu0 = 0.95))).reason)
     }
 
+    @Test
+    fun `small refresh rounding differences do not invalidate a trial`() {
+        val controller = controller(warmup = 0)
+        assertApply(controller.step(sample(1, frame(60.0).copy(refreshPeriodNanos = 16_666_666L))))
+        assertEquals(AdaptiveTuneReason.TRIAL_WATCH, assertHold(controller.step(sample(2, frame(60.0).copy(refreshPeriodNanos = 16_666_667L)))).reason)
+        assertEquals(AdaptiveTuneReason.TRIAL_ACCEPTED, assertHold(controller.step(sample(3, frame(60.0).copy(refreshPeriodNanos = 16_666_666L)))).reason)
+    }
+
+    @Test
+    fun `display limit does not suppress recovery for poor pacing`() {
+        val controller = controller(targetFps = 90, warmup = 0)
+        settleHealthyTrim(controller, startSecond = 1, targetFps = 90)
+        val metrics = frame(60.0, targetFps = 90, p95 = 16.67, slow = 0.2)
+            .copy(refreshPeriodNanos = 16_666_666L)
+        assertEquals(AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY, assertApply(controller.step(sample(4, metrics, cpu0 = 0.95))).reason)
+    }
+
     private fun controller(
         targetFps: Int = 60,
         warmup: Int = 5,

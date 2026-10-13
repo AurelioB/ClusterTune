@@ -140,8 +140,8 @@ object HostTelemetryParsers {
         val refresh = first.singleOrNull()?.toLongOrNull()?.takeIf { it in 1L..1_000_000_000L }
         val presented = mutableListOf<Long>()
         while (lines.hasNext() && presented.size < 512) {
-            val values = lines.next().split(Regex("\\s+")).mapNotNull(String::toLongOrNull)
-            val actualPresent = values.getOrNull(1)?.takeIf { it > 0L && it != Long.MAX_VALUE }
+            val values = lines.next().split(Regex("\\s+"))
+            val actualPresent = values.getOrNull(1)?.toLongOrNull()?.takeIf { it > 0L && it != Long.MAX_VALUE }
             if (actualPresent != null) presented += actualPresent
         }
         return HostFrameWindow(refresh, presented.distinct().sorted())
@@ -732,7 +732,10 @@ class SystemHostTelemetrySource(
         return layers.map { layer ->
             val result = runCatching { runner.run(listOf(dumpsys, "SurfaceFlinger", "--latency", layer)) }.getOrNull()
             val latest = result?.takeIf { it.exitCode == 0 && !it.timedOut && !it.truncated }
-                ?.let { HostTelemetryParsers.surfaceLatency(it.stdout).presentedNanos.lastOrNull() } ?: Long.MIN_VALUE
+                ?.let {
+                    val now = clock.nanoTime()
+                    HostTelemetryParsers.surfaceLatency(it.stdout).presentedNanos.lastOrNull { timestamp -> timestamp <= now }
+                } ?: Long.MIN_VALUE
             layer to latest
         }.filter { (_, latest) ->
             latest != Long.MIN_VALUE && (newerThanNanos == null || latest > newerThanNanos)
@@ -753,6 +756,7 @@ class SystemHostTelemetrySource(
         presentedHistory.clear()
         previousTimeStats = existing.associate { it.layerName to it.counters() }
         previousTimeStatsSampleNanos = if (existing.isEmpty()) clock.nanoTime() else dumpTimestampNanos
+        resetTimeStatsBaseline = false
         staleFrameSamples = 0
         return true
     }

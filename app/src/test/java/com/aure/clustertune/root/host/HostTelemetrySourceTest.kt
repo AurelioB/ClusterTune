@@ -317,7 +317,7 @@ class HostTelemetrySourceTest {
             maxPath = "/sys/class/kgsl/kgsl-3d0/max_gpuclk",
             curPath = null,
         )
-        val source = source(runner, FakeClock(1_000_000_000L), fs, HostCapabilities(emptyList(), gpu))
+        val source = source(runner, FakeClock(1_100_000_000L), fs, HostCapabilities(emptyList(), gpu))
 
         source.begin("com.game", 60).getOrThrow()
         val sample = source.sample()
@@ -452,6 +452,23 @@ class HostTelemetrySourceTest {
         val reset = source.sample()
         assertNull(reset.frameTimeP95Nanos)
         assertFalse(reset.frameWindowComplete)
+    }
+
+    @Test
+    fun `future timestamps cannot win layer selection`() {
+        val clock = FakeClock(SECOND)
+        val active = "SurfaceView[com.game/com.game.Active]#1"
+        val future = "SurfaceView[com.game/com.game.Future]#2"
+        val runner = RecordingRunner { arguments ->
+            when {
+                arguments.last() == "--list" -> success("$active\n$future")
+                "--latency" in arguments -> success(latency(if (arguments.last() == active) SECOND else 10 * SECOND))
+                else -> error("unexpected command: $arguments")
+            }
+        }
+        val source = source(runner, clock)
+        source.begin("com.game", 60).getOrThrow()
+        assertEquals(active, source.sample().frameLayer)
     }
 
     private fun latencyRunner(layer: String, dump: () -> String) = RecordingRunner { arguments ->

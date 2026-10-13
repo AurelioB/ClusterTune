@@ -113,7 +113,14 @@ class AdaptiveFrequencyController(
 
         val metrics = sample.frames!!
         val identity = metrics.measurementEpoch to metrics.refreshPeriodNanos
-        val measurementChanged = lastMeasurementIdentity != null && identity != lastMeasurementIdentity
+        val previousIdentity = lastMeasurementIdentity
+        val previousRefresh = previousIdentity?.second
+        val refresh = identity.second
+        val refreshChanged = if (previousRefresh != null && refresh != null) {
+            kotlin.math.abs(refresh - previousRefresh) > previousRefresh / 100L
+        } else previousRefresh != refresh
+        val measurementChanged = previousIdentity != null &&
+            (identity.first != previousIdentity.first || refreshChanged)
         lastMeasurementIdentity = identity
         if (measurementChanged) {
             warmupSamplesSeen = 0
@@ -151,7 +158,8 @@ class AdaptiveFrequencyController(
         val displayFps = metrics.refreshPeriodNanos?.takeIf { it in 1_000_000L..1_000_000_000L }
             ?.let { 1_000_000_000.0 / it }
         if (displayFps != null && config.targetFps > displayFps * 1.01 &&
-            frame.fps >= displayFps * config.recoveryFpsRatio
+            frame.fps >= displayFps * config.recoveryFpsRatio &&
+            frame.slowFrameRatio?.let { it > config.recoverySlowFrameRatio } != true
         ) {
             healthyQualificationSamplesSeen = 0
             return hold(AdaptiveTuneStatus.MONITORING, AdaptiveTuneReason.DISPLAY_RATE_LIMIT)
@@ -426,7 +434,7 @@ class AdaptiveFrequencyController(
 
     private fun isFreshFrame(frame: AdaptiveFrameMetrics): Boolean =
         !frame.isStale && frame.fps.isFinite() && frame.fps > 0.0 &&
-            frame.confidence.isFinite() && frame.confidence >= 0.25
+            frame.confidence.isFinite() && frame.confidence in 0.25..1.0
 
     private fun isReliableForTrim(frame: AdaptiveFrameMetrics): Boolean =
         frame.windowComplete && frame.confidence >= config.minimumTrimConfidence &&
