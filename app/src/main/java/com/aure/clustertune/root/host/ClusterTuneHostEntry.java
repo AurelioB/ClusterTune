@@ -1012,6 +1012,12 @@ public final class ClusterTuneHostEntry {
             for (int index = 0; index < unsupportedCount; index++) {
                 reply.writeString(bounded(unsupported.get(index)));
             }
+            writeOptionalLong(reply, value.getRefreshPeriodNanos());
+            writeOptionalLong(reply, value.getFrameWindowStartNanos());
+            writeOptionalLong(reply, value.getFrameWindowEndNanos());
+            reply.writeInt(value.getFrameWindowComplete() ? 1 : 0);
+            reply.writeLong(value.getFrameMeasurementEpoch());
+            writeOptionalInt(reply, value.getTimelineJankRatioPermille());
         }
 
         private void writeHostStateValue(Parcel reply, HostState value) {

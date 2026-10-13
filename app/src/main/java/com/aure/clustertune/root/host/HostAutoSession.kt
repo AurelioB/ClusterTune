@@ -637,6 +637,12 @@ class HostAutoSessionController(
             },
             unsupportedMetrics = raw.unsupportedMetrics.map { it.take(HostProtocol.MAX_METADATA_LENGTH) }
                 .distinct().take(HostProtocol.MAX_UNSUPPORTED_METRICS),
+            refreshPeriodNanos = raw.refreshPeriodNanos,
+            frameWindowStartNanos = raw.frameWindowStartNanos,
+            frameWindowEndNanos = raw.frameWindowEndNanos,
+            frameWindowComplete = raw.frameWindowComplete,
+            frameMeasurementEpoch = raw.frameMeasurementEpoch,
+            timelineJankRatioPermille = raw.timelineJankRatioPermille,
         )
         session.latestTelemetry = telemetry
         return activeSnapshot(session, telemetry = telemetry)
@@ -831,6 +837,7 @@ class HostAutoSessionController(
                 observedState = appliedState,
             )
         }
+        if (!alreadyApplied) telemetrySource.onFrequencyChange()
         return activeSnapshot(session, state = appliedState)
     }
 

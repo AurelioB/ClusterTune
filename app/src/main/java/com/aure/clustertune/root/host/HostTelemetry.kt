@@ -1,5 +1,6 @@
 package com.aure.clustertune.root.host
 
+import com.aure.clustertune.autotune.FramePacing
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -88,6 +89,7 @@ data class HostTimeStatsLayer(
     val totalTimelineFrames: Long?,
     val averageFpsMilli: Int?,
     val jankyFrames: Long?,
+    val presentHistogram: Map<Int, Long>? = null,
 )
 
 object HostTelemetryParsers {
@@ -161,6 +163,8 @@ object HostTelemetryParsers {
     fun surfaceTimeStats(text: String): List<HostTimeStatsLayer> {
         val result = mutableListOf<HostTimeStatsLayer>()
         var fields = linkedMapOf<String, String>()
+        var presentHistogram: Map<Int, Long>? = null
+        var readingPresentHistogram = false
         fun flush() {
             val layer = fields["layername"]?.trim()?.takeIf(String::isNotEmpty)
             if (layer != null && layer.length <= HostProtocol.MAX_METADATA_LENGTH && layer.none(Char::isISOControl)) {
@@ -173,13 +177,25 @@ object HostTelemetryParsers {
                     averageFpsMilli = average?.takeIf { it in 0..1_000_000 },
                     jankyFrames = fields["jankyframes"]?.let(::nonNegativeFirstLong)
                         ?: fields["totaljankyframes"]?.let(::nonNegativeFirstLong),
+                    presentHistogram = presentHistogram,
                 )
             }
             fields = linkedMapOf()
+            presentHistogram = null
+            readingPresentHistogram = false
         }
         text.lineSequence().forEach { raw ->
             if (raw.isBlank()) {
                 if (fields.isNotEmpty()) flush()
+                return@forEach
+            }
+            if (raw.trim() == "present2present histogram is as below:") {
+                readingPresentHistogram = true
+                return@forEach
+            }
+            if (readingPresentHistogram) {
+                presentHistogram = parseHistogram(raw)
+                readingPresentHistogram = false
                 return@forEach
             }
             val delimiter = raw.indexOf('=').takeIf { it > 0 } ?: raw.indexOf(':').takeIf { it > 0 } ?: return@forEach
@@ -329,6 +345,15 @@ object HostTelemetryParsers {
             totalTimelineFrames = sumNullable(slices.map(HostTimeStatsLayer::totalTimelineFrames)),
             averageFpsMilli = averageFps,
             jankyFrames = sumNullable(slices.map(HostTimeStatsLayer::jankyFrames)),
+            presentHistogram = if (slices.all { it.presentHistogram != null }) {
+                buildMap {
+                    slices.forEach { slice ->
+                        slice.presentHistogram!!.forEach { (bucket, count) ->
+                            put(bucket, saturatingAdd(get(bucket) ?: 0L, count))
+                        }
+                    }
+                }
+            } else null,
         )
     }
 
@@ -339,6 +364,14 @@ object HostTelemetryParsers {
     }
 
     private fun firstLong(value: String): Long? = Regex("-?[0-9]+").find(value)?.value?.toLongOrNull()
+    private fun parseHistogram(value: String): Map<Int, Long>? {
+        val entries = Regex("([0-9]+)ms=([0-9]+)").findAll(value).take(256).mapNotNull { match ->
+            val bucket = match.groupValues[1].toIntOrNull()?.takeIf { it in 0..1000 } ?: return@mapNotNull null
+            val count = match.groupValues[2].toLongOrNull() ?: return@mapNotNull null
+            bucket to count
+        }.toList()
+        return entries.takeIf { it.isNotEmpty() && it.map { entry -> entry.first }.distinct().size == it.size }?.toMap()
+    }
     private fun nonNegativeFirstLong(value: String): Long? = firstLong(value)?.takeIf { it >= 0L }
     private fun firstDecimal(value: String): Double? = Regex("[0-9]+(?:\\.[0-9]+)?").find(value)?.value?.toDoubleOrNull()
 }
@@ -359,6 +392,12 @@ data class HostRawTelemetry(
     val gpuClockHz: Long?,
     val thermal: List<HostThermalReading>,
     val unsupportedMetrics: List<String>,
+    val refreshPeriodNanos: Long? = null,
+    val frameWindowStartNanos: Long? = null,
+    val frameWindowEndNanos: Long? = null,
+    val frameWindowComplete: Boolean = false,
+    val frameMeasurementEpoch: Long = 0L,
+    val timelineJankRatioPermille: Int? = null,
 )
 
 interface HostTelemetrySource {
@@ -366,6 +405,8 @@ interface HostTelemetrySource {
     fun begin(packageName: String, targetFps: Int): Result<Unit>
     fun sample(): HostRawTelemetry
     fun end() = Unit
+    /** Called only after a changed ceiling has been applied and verified. */
+    fun onFrequencyChange() = Unit
 }
 
 /** Privileged, package-agnostic telemetry backed by SurfaceFlinger and allowlisted kernel nodes. */
@@ -393,6 +434,10 @@ class SystemHostTelemetrySource(
     private var previousTimeStatsSampleNanos: Long? = null
     private var staleFrameSamples = 0
     private var previousCpu = emptyMap<Int?, HostCpuTicks>()
+    private val presentedHistory = mutableListOf<Long>()
+    private var refreshPeriodNanos: Long? = null
+    private var measurementEpoch = 0L
+    private var resetTimeStatsBaseline = false
 
     override fun capabilities(): HostAutoCapabilities {
         val frameSupported = File(dumpsys).canExecute()
@@ -415,6 +460,10 @@ class SystemHostTelemetrySource(
         frameSessionStartedNanos = clock.nanoTime()
         previousTimeStats = emptyMap()
         previousTimeStatsSampleNanos = null
+        presentedHistory.clear()
+        refreshPeriodNanos = null
+        measurementEpoch++
+        resetTimeStatsBaseline = false
         val layers = listLayers(packageName)
         this.packageName = packageName
         this.targetFps = targetFps
@@ -438,11 +487,22 @@ class SystemHostTelemetrySource(
         lastPresentedNanos = 0L
         previousTimeStats = emptyMap()
         previousTimeStatsSampleNanos = null
+        presentedHistory.clear()
+        refreshPeriodNanos = null
+    }
+
+    override fun onFrequencyChange() {
+        // The host clock is shared with SurfaceFlinger's presentation timestamps. Exclude frames
+        // from before the verified write, without changing the identity of the measurement source.
+        frameSessionStartedNanos = clock.nanoTime()
+        lastPresentedNanos = frameSessionStartedNanos
+        presentedHistory.clear()
+        resetTimeStatsBaseline = true
     }
 
     override fun sample(): HostRawTelemetry {
-        val now = clock.nanoTime()
         val frame = sampleFrames()
+        val now = clock.nanoTime()
         val cpuNow = HostTelemetryParsers.procStat(fs.read("/proc/stat").orEmpty())
         val aggregateLoad = HostTelemetryParsers.cpuLoadPermille(previousCpu[null], cpuNow[null])
         val cpuLoads = hostCapabilities.cpus.mapIndexed { index, _ ->
@@ -482,6 +542,12 @@ class SystemHostTelemetrySource(
             gpuClockHz = gpuClock,
             thermal = thermals,
             unsupportedMetrics = unsupported,
+            refreshPeriodNanos = refreshPeriodNanos,
+            frameWindowStartNanos = frame.windowStartNanos,
+            frameWindowEndNanos = frame.windowEndNanos,
+            frameWindowComplete = frame.windowComplete,
+            frameMeasurementEpoch = measurementEpoch,
+            timelineJankRatioPermille = frame.timelineJankRatioPermille,
         )
     }
 
@@ -495,6 +561,10 @@ class SystemHostTelemetrySource(
         val slowRatioPermille: Int?,
         val stale: Boolean,
         val reason: String? = null,
+        val windowStartNanos: Long? = null,
+        val windowEndNanos: Long? = null,
+        val windowComplete: Boolean = false,
+        val timelineJankRatioPermille: Int? = null,
     )
 
     private fun sampleFrames(): FrameReading {
@@ -502,9 +572,14 @@ class SystemHostTelemetrySource(
         if (frameBackend == "surfaceflinger-timestats") return sampleTimeStats(targetPackage)
         if (frameLayer == null || staleFrameSamples >= 3) {
             val layers = listLayers(targetPackage)
+            val previousLayer = frameLayer
             frameLayer = chooseLatencyLayer(layers, newerThanNanos = lastPresentedNanos)
             if (frameLayer != null) {
                 staleFrameSamples = 0
+                if (frameLayer != previousLayer) {
+                    measurementEpoch++
+                    onFrequencyChange()
+                }
             } else if (switchToTimeStats(targetPackage, layers)) {
                 // The activation dump is the new counter baseline. Avoid a second large dump in the
                 // same binder call; the next sample will report deltas from this transition point.
@@ -519,9 +594,28 @@ class SystemHostTelemetrySource(
             return FrameReading(frameBackend, 0, layer, 0, null, null, null, true, if (result.timedOut) "surfaceflinger_timeout" else "surfaceflinger_command_failed")
         }
         val window = HostTelemetryParsers.surfaceLatency(result.stdout)
-        val sessionFrames = window.presentedNanos.filter { it >= frameSessionStartedNanos }
-        val recent = HostTelemetryParsers.rollingPresentedNanos(sessionFrames)
-        val newFrames = recent.count { it > lastPresentedNanos }
+        val now = clock.nanoTime()
+        val oldRefresh = refreshPeriodNanos
+        if (oldRefresh != null && window.refreshPeriodNanos != null &&
+            kotlin.math.abs(window.refreshPeriodNanos - oldRefresh) > oldRefresh / 100L
+        ) {
+            measurementEpoch++
+            onFrequencyChange()
+        }
+        refreshPeriodNanos = window.refreshPeriodNanos
+        val sessionFrames = window.presentedNanos.filter { it >= frameSessionStartedNanos && it <= now }
+        val added = sessionFrames.filter { it > lastPresentedNanos }
+        // No overlap with an existing history means SurfaceFlinger's bounded ring may have
+        // overwritten unseen frames. Do not invent a continuous interval across that gap.
+        val overrun = presentedHistory.isNotEmpty() && added.isNotEmpty() &&
+            sessionFrames.firstOrNull()?.let { it > lastPresentedNanos } == true
+        if (overrun) presentedHistory.clear()
+        presentedHistory += if (presentedHistory.isEmpty()) sessionFrames else added
+        val cutoff = (now - 2_000_000_000L).coerceAtLeast(frameSessionStartedNanos)
+        presentedHistory.removeAll { it < cutoff }
+        if (presentedHistory.size > 512) presentedHistory.subList(0, presentedHistory.size - 512).clear()
+        val recent = presentedHistory
+        val newFrames = added.size
         val latest = recent.lastOrNull()
         if (latest != null && latest > lastPresentedNanos) lastPresentedNanos = latest
         val fpsMilli = if (recent.size >= 2) {
@@ -532,14 +626,22 @@ class SystemHostTelemetrySource(
         val p95 = intervals.sorted().let { sorted ->
             if (sorted.isEmpty()) null else sorted[(ceil(sorted.size * 0.95).toInt() - 1).coerceIn(0, sorted.lastIndex)]
         }
-        val targetPeriod = targetFps.takeIf { it > 0 }
-            ?.let { (1_000_000_000L / it).coerceAtLeast(1L) }
-        val slowRatio = targetPeriod?.let { budget ->
-            if (intervals.isEmpty()) null else (intervals.count { it > budget + budget / 2L } * 1000 / intervals.size)
+        val slowRatio = targetFps.takeIf { it > 0 }?.let { target ->
+            val limit = FramePacing.slowIntervalNanos(target, refreshPeriodNanos)
+            if (intervals.isEmpty()) null else (intervals.count { it > limit } * 1000 / intervals.size)
         }
-        val stale = newFrames == 0
+        val latestAge = latest?.let { now - it }
+        val stale = newFrames == 0 || latestAge == null || latestAge > 1_000_000_000L
         staleFrameSamples = if (stale) staleFrameSamples + 1 else 0
-        return FrameReading("surfaceflinger-latency", 1000, layer, newFrames, fpsMilli, p95, slowRatio, stale)
+        val span = if (recent.size >= 2) recent.last() - recent.first() else 0L
+        val complete = !stale && span >= 1_800_000_000L &&
+            intervals.size >= (targetFps / 2).coerceIn(2, 12)
+        return FrameReading(
+            "surfaceflinger-latency", if (complete) 1000 else 500, layer, newFrames,
+            fpsMilli, p95, slowRatio, stale,
+            reason = if (overrun) "frame_history_overrun" else null,
+            windowStartNanos = recent.firstOrNull(), windowEndNanos = latest, windowComplete = complete,
+        )
     }
 
     private fun sampleTimeStats(targetPackage: String): FrameReading {
@@ -547,6 +649,12 @@ class SystemHostTelemetrySource(
             ?: return FrameReading("surfaceflinger-timestats", 250, frameLayer, 0, null, null, null, true, "surfaceflinger_timestats_failed")
         val sampleTimestampNanos = clock.nanoTime()
         val layers = HostTelemetryParsers.matchingTimeStatsLayers(dump, targetPackage)
+        if (resetTimeStatsBaseline) {
+            previousTimeStats = layers.associate { it.layerName to it.counters() }
+            previousTimeStatsSampleNanos = sampleTimestampNanos
+            resetTimeStatsBaseline = false
+            return FrameReading("surfaceflinger-timestats", 500, frameLayer, 0, null, null, null, true)
+        }
         val layer = layers.maxWithOrNull(
             compareBy<HostTimeStatsLayer> { candidate ->
                 counterDelta(candidate.frameCounter(), previousTimeStats[candidate.layerName]?.frameCounter) ?: 0L
@@ -555,18 +663,35 @@ class SystemHostTelemetrySource(
                 .thenBy { candidate -> candidate.frameCounter() ?: -1L },
         )
             ?: return FrameReading("surfaceflinger-timestats", 250, frameLayer, 0, null, null, null, true, "surface_layer_unavailable")
+        val layerChanged = frameLayer != layer.layerName
+        if (layerChanged) measurementEpoch++
         frameLayer = layer.layerName
         val previous = previousTimeStats[layer.layerName]
         val frameDelta = counterDelta(layer.frameCounter(), previous?.frameCounter)
         val frames = frameDelta?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt() ?: 0
         val timelineDelta = counterDelta(layer.totalTimelineFrames, previous?.totalTimelineFrames)
         val jankyDelta = counterDelta(layer.jankyFrames, previous?.jankyFrames)
-        val slow = if (timelineDelta != null && timelineDelta > 0L && jankyDelta != null) {
+        val jank = if (timelineDelta != null && timelineDelta > 0L && jankyDelta != null) {
             ((jankyDelta.coerceAtMost(timelineDelta) * 1000L) / timelineDelta).toInt()
         } else {
             null
         }
         val elapsed = previousTimeStatsSampleNanos?.let { sampleTimestampNanos - it }
+        val histogram = histogramDelta(layer.presentHistogram, previous?.presentHistogram)
+        val histogramCount = histogram?.values?.sum()?.takeIf { it > 0L }
+        val p95 = histogramCount?.let { count ->
+            val required = ceil(count * 0.95).toLong()
+            var cumulative = 0L
+            histogram!!.toSortedMap().entries.firstOrNull { (_, amount) ->
+                cumulative += amount
+                cumulative >= required
+            }?.key?.toLong()?.times(1_000_000L)
+        }
+        val slow = if (histogramCount != null && targetFps > 0) {
+            val limit = FramePacing.slowIntervalNanos(targetFps, refreshPeriodNanos)
+            (histogram!!.filterKeys { it * 1_000_000L > limit }.values.sum() * 1000L / histogramCount).toInt()
+        } else null
+        val windowStart = previousTimeStatsSampleNanos
         val fpsMilli = if (frames > 0 && elapsed != null && elapsed > 0L) {
             (frames.toDouble() * 1_000_000_000_000.0 / elapsed.toDouble())
                 .roundToInt()
@@ -578,14 +703,19 @@ class SystemHostTelemetrySource(
         previousTimeStatsSampleNanos = sampleTimestampNanos
         return FrameReading(
             backend = "surfaceflinger-timestats",
-            confidencePermille = 500,
+            confidencePermille = if (histogramCount != null) 750 else 500,
             layer = layer.layerName,
             newFrames = frames,
             fpsMilli = fpsMilli,
-            p95Nanos = null,
+            p95Nanos = p95,
             slowRatioPermille = slow,
             stale = frames == 0,
             reason = if (frames > 0 && fpsMilli == null) "timestats_fps_unavailable" else null,
+            windowStartNanos = windowStart,
+            windowEndNanos = sampleTimestampNanos,
+            windowComplete = !layerChanged && frames > 0 && elapsed != null && elapsed >= 900_000_000L &&
+                histogramCount != null && histogramCount >= (targetFps / 2).coerceIn(2, 12),
+            timelineJankRatioPermille = jank,
         )
     }
 
@@ -619,6 +749,8 @@ class SystemHostTelemetrySource(
         if (!enableTimeStats()) return false
         frameLayer = existing.firstOrNull()?.layerName ?: fallbackLayers.firstOrNull()
         frameBackend = "surfaceflinger-timestats"
+        measurementEpoch++
+        presentedHistory.clear()
         previousTimeStats = existing.associate { it.layerName to it.counters() }
         previousTimeStatsSampleNanos = if (existing.isEmpty()) clock.nanoTime() else dumpTimestampNanos
         staleFrameSamples = 0
@@ -644,6 +776,7 @@ class SystemHostTelemetrySource(
         val frameCounter: Long?,
         val totalTimelineFrames: Long?,
         val jankyFrames: Long?,
+        val presentHistogram: Map<Int, Long>?,
     )
 
     private fun HostTimeStatsLayer.frameCounter(): Long? = totalFrames ?: totalTimelineFrames
@@ -652,7 +785,16 @@ class SystemHostTelemetrySource(
         frameCounter = frameCounter(),
         totalTimelineFrames = totalTimelineFrames,
         jankyFrames = jankyFrames,
+        presentHistogram = presentHistogram,
     )
+
+    private fun histogramDelta(current: Map<Int, Long>?, previous: Map<Int, Long>?): Map<Int, Long>? {
+        if (current == null || previous == null) return null
+        val buckets = current.keys + previous.keys
+        val delta = buckets.associateWith { (current[it] ?: 0L) - (previous[it] ?: 0L) }
+        if (delta.values.any { it < 0L || it > 100_000L } || delta.values.sum() > 100_000L) return null
+        return delta
+    }
 
     private fun counterDelta(current: Long?, previous: Long?): Long? =
         if (current != null && previous != null && current >= previous) current - previous else null

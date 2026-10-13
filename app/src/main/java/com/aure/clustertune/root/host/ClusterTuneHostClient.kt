@@ -628,6 +628,13 @@ class ClusterTuneHostClient(
         }
         val unsupportedCount = readCount(parcel, HostProtocol.MAX_UNSUPPORTED_METRICS, "unsupported metrics")
         val unsupported = List(unsupportedCount) { readRequiredString(parcel, "unsupported metric") }
+        val refresh = readOptionalLong(parcel, "refresh period")?.also { require(it in 1L..1_000_000_000L) }
+        val windowStart = readOptionalLong(parcel, "frame window start")?.also { require(it >= 0L) }
+        val windowEnd = readOptionalLong(parcel, "frame window end")?.also { require(it >= 0L) }
+        require(windowStart == null || windowEnd == null || windowEnd >= windowStart) { "invalid frame window" }
+        val windowComplete = readBoolean(parcel, "frame window completeness")
+        val measurementEpoch = parcel.readLong().also { require(it >= 0L) }
+        val timelineJank = readOptionalInt(parcel, "timeline jank ratio")?.also { require(it in 0..1000) }
         return HostAutoTelemetry(
             sequence = sequence,
             timestampNanos = timestamp,
@@ -645,6 +652,12 @@ class ClusterTuneHostClient(
             gpuClockHz = gpuClock,
             thermal = thermal,
             unsupportedMetrics = unsupported,
+            refreshPeriodNanos = refresh,
+            frameWindowStartNanos = windowStart,
+            frameWindowEndNanos = windowEnd,
+            frameWindowComplete = windowComplete,
+            frameMeasurementEpoch = measurementEpoch,
+            timelineJankRatioPermille = timelineJank,
         )
     }
 

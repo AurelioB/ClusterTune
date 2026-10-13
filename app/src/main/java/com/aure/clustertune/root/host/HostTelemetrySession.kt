@@ -305,6 +305,12 @@ class HostTelemetrySessionController(
         },
         unsupportedMetrics = unsupportedMetrics.map { it.take(HostProtocol.MAX_METADATA_LENGTH) }
             .distinct().take(HostProtocol.MAX_UNSUPPORTED_METRICS),
+        refreshPeriodNanos = refreshPeriodNanos,
+        frameWindowStartNanos = frameWindowStartNanos,
+        frameWindowEndNanos = frameWindowEndNanos,
+        frameWindowComplete = frameWindowComplete,
+        frameMeasurementEpoch = frameMeasurementEpoch,
+        timelineJankRatioPermille = timelineJankRatioPermille,
     )
 
     private fun deadline(now: Long, timeoutNanos: Long): Long =

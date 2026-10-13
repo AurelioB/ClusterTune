@@ -3,7 +3,7 @@ package com.aure.clustertune.root.host
 /** Private wire contract between ClusterTune and its persistent privileged host. */
 object HostProtocol {
     const val DESCRIPTOR = "com.aure.clustertune.root.host.IClusterTuneHost"
-    const val VERSION = 13
+    const val VERSION = 14
     const val SERVICE_PREFIX = "clustertune.host."
     const val PING = 1
     const val HOST_IDENTITY = 2
@@ -201,6 +201,14 @@ data class HostAutoTelemetry(
     val gpuClockHz: Long?,
     val thermal: List<HostThermalReading>,
     val unsupportedMetrics: List<String> = emptyList(),
+    /** These metrics describe displayed output, including any generated frames. */
+    val refreshPeriodNanos: Long? = null,
+    val frameWindowStartNanos: Long? = null,
+    val frameWindowEndNanos: Long? = null,
+    val frameWindowComplete: Boolean = false,
+    val frameMeasurementEpoch: Long = 0L,
+    /** Android scheduler/compositor jank, independent of the selected FPS budget. */
+    val timelineJankRatioPermille: Int? = null,
 )
 
 /** Returned by every session command so stale IDs and unsupported devices remain typed. */

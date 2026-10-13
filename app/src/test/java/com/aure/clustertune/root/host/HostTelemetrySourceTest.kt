@@ -2,6 +2,7 @@ package com.aure.clustertune.root.host
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -40,9 +41,11 @@ class HostTelemetrySourceTest {
                 else -> error("unexpected command: $arguments")
             }
         }
-        val source = source(runner, FakeClock(1_000L))
+        val clock = FakeClock(1_000L)
+        val source = source(runner, clock)
 
         source.begin("com.game", Int.MAX_VALUE).getOrThrow()
+        clock.now = 1_001L
         val sample = source.sample()
 
         assertEquals(0, sample.slowFrameRatioPermille)
@@ -120,7 +123,8 @@ class HostTelemetrySourceTest {
         assertEquals("surfaceflinger-timestats", recovered.frameBackend)
         assertEquals(6, recovered.frameCount)
         assertEquals(6_000, recovered.fpsMilli)
-        assertEquals(166, recovered.slowFrameRatioPermille)
+        assertEquals(166, recovered.timelineJankRatioPermille)
+        assertNull(recovered.slowFrameRatioPermille)
         assertFalse(recovered.frameStale)
     }
 
@@ -244,7 +248,8 @@ class HostTelemetrySourceTest {
         assertTrue(sample.frameLayer.orEmpty().contains("Game"))
         assertEquals(50, sample.frameCount)
         assertEquals(50_000, sample.fpsMilli)
-        assertEquals(200, sample.slowFrameRatioPermille)
+        assertEquals(200, sample.timelineJankRatioPermille)
+        assertNull(sample.slowFrameRatioPermille)
         assertFalse(sample.frameStale)
     }
 
@@ -286,7 +291,8 @@ class HostTelemetrySourceTest {
 
         assertEquals(4, sample.frameCount)
         assertEquals(4_000, sample.fpsMilli)
-        assertEquals(250, sample.slowFrameRatioPermille)
+        assertEquals(250, sample.timelineJankRatioPermille)
+        assertNull(sample.slowFrameRatioPermille)
     }
 
     @Test
@@ -318,6 +324,145 @@ class HostTelemetrySourceTest {
 
         assertEquals(300, sample.gpuBusyPermille)
     }
+
+    @Test
+    fun `45 fps on 60 hz has no slow frames from refresh quantization`() {
+        val clock = FakeClock(SECOND)
+        val layer = "com.game/com.game.Main#1"
+        val frames = (0..90).map { SECOND + kotlin.math.ceil(it * 60.0 / 45).toLong() * SECOND / 60 }
+        val source = source(latencyRunner(layer) { latency(*frames.toLongArray()) }, clock)
+        source.begin("com.game", 45).getOrThrow()
+        clock.now = 3 * SECOND
+
+        val sample = source.sample()
+        assertEquals(45_000, sample.fpsMilli)
+        assertEquals(0, sample.slowFrameRatioPermille)
+        assertTrue(sample.frameWindowComplete)
+        assertEquals(1000, sample.frameConfidencePermille)
+    }
+
+    @Test
+    fun `polls accumulate two seconds beyond the surfaceflinger ring`() {
+        val clock = FakeClock(SECOND)
+        val runner = latencyRunner("com.game/com.game.Main#1") {
+            val frames = (0..((clock.now - SECOND) * 120 / SECOND).toInt())
+                .map { SECOND + it * SECOND / 120 }.takeLast(127)
+            latency(*frames.toLongArray())
+        }
+        val source = source(runner, clock)
+        source.begin("com.game", 120).getOrThrow()
+        clock.now = 2 * SECOND
+        assertFalse(source.sample().frameWindowComplete)
+        clock.now = 3 * SECOND
+        val complete = source.sample()
+        assertTrue(complete.frameWindowComplete)
+        assertEquals(120_000, complete.fpsMilli)
+        assertTrue(complete.frameWindowEndNanos!! - complete.frameWindowStartNanos!! > 1_900_000_000L)
+
+        clock.now = 6 * SECOND
+        val overrun = source.sample()
+        assertFalse(overrun.frameWindowComplete)
+        assertTrue("frame_history_overrun" in overrun.unsupportedMetrics)
+    }
+
+    @Test
+    fun `newly discovered old frames are stale and future frames are excluded`() {
+        val clock = FakeClock(SECOND)
+        var frames = listOf(SECOND)
+        val source = source(latencyRunner("com.game/com.game.Main#1") { latency(*frames.toLongArray()) }, clock)
+        source.begin("com.game", 60).getOrThrow()
+        frames = listOf(SECOND + 20_000_000L, SECOND + 40_000_000L, 4 * SECOND)
+        clock.now = 3 * SECOND
+        val sample = source.sample()
+        assertTrue(sample.frameStale)
+        assertEquals(2, sample.frameCount)
+        assertTrue(sample.frameWindowEndNanos == null || sample.frameWindowEndNanos!! <= clock.now)
+    }
+
+    @Test
+    fun `verified frequency change excludes earlier presentation history`() {
+        val clock = FakeClock(SECOND)
+        val runner = latencyRunner("com.game/com.game.Main#1") {
+            latency(*(0..((clock.now - SECOND) * 60 / SECOND).toInt()).map { SECOND + it * SECOND / 60 }.toLongArray())
+        }
+        val source = source(runner, clock)
+        source.begin("com.game", 60).getOrThrow()
+        clock.now = 3 * SECOND
+        val before = source.sample()
+        assertTrue(before.frameWindowComplete)
+        source.onFrequencyChange()
+        clock.now = 4 * SECOND
+        val after = source.sample()
+        assertFalse(after.frameWindowComplete)
+        assertTrue(after.frameWindowStartNanos!! >= 3 * SECOND)
+        assertEquals(before.frameMeasurementEpoch, after.frameMeasurementEpoch)
+    }
+
+    @Test
+    fun `display mode change starts a new measurement epoch`() {
+        val clock = FakeClock(SECOND)
+        var refresh = 16_666_666L
+        val source = source(latencyRunner("com.game/com.game.Main#1") {
+            "$refresh\n1 ${clock.now} 1\n"
+        }, clock)
+        source.begin("com.game", 60).getOrThrow()
+        clock.now = 2 * SECOND
+        val before = source.sample()
+        refresh = 8_333_333L
+        clock.now = 3 * SECOND
+        val after = source.sample()
+        assertTrue(after.frameMeasurementEpoch > before.frameMeasurementEpoch)
+        assertFalse(after.frameWindowComplete)
+        assertEquals(refresh, after.refreshPeriodNanos)
+    }
+
+    @Test
+    fun `timestats presentation histogram measures pacing independently of jank`() {
+        val clock = FakeClock(SECOND)
+        var total = 10
+        val runner = RecordingRunner { arguments ->
+            when {
+                arguments.last() == "--list" -> success("")
+                arguments.last() == "-enable" -> success("")
+                arguments.last() == "-dump" -> success(timeStats("""
+                    layerName = com.game/com.game.Main#1
+                    totalFrames = $total
+                    totalTimelineFrames = $total
+                    jankyFrames = $total
+                    present2present histogram is as below:
+                    17ms=$total 34ms=0
+                """))
+                else -> error("unexpected command: $arguments")
+            }
+        }
+        val source = source(runner, clock)
+        source.begin("com.game", 60).getOrThrow()
+        total = 70
+        clock.now = 2 * SECOND
+        val sample = source.sample()
+        assertEquals(60_000, sample.fpsMilli)
+        assertEquals(17_000_000L, sample.frameTimeP95Nanos)
+        assertEquals(0, sample.slowFrameRatioPermille)
+        assertEquals(1000, sample.timelineJankRatioPermille)
+        assertTrue(sample.frameWindowComplete)
+        assertEquals(750, sample.frameConfidencePermille)
+
+        total = 1 // External TimeStats reset must not create negative interval counts.
+        clock.now = 3 * SECOND
+        val reset = source.sample()
+        assertNull(reset.frameTimeP95Nanos)
+        assertFalse(reset.frameWindowComplete)
+    }
+
+    private fun latencyRunner(layer: String, dump: () -> String) = RecordingRunner { arguments ->
+        when {
+            arguments.last() == "--list" -> success(layer)
+            "--latency" in arguments -> success(dump())
+            else -> error("unexpected command: $arguments")
+        }
+    }
+
+    private val SECOND = 1_000_000_000L
 
     private fun source(
         runner: HostCommandRunner,

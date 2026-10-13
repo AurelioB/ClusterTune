@@ -181,7 +181,7 @@ class HostTelemetrySessionTest {
 
     @Test
     fun `protocol exposes telemetry transactions with the current host generation`() {
-        assertEquals(13, HostProtocol.VERSION)
+        assertEquals(14, HostProtocol.VERSION)
         assertEquals(17, HostProtocol.START_TELEMETRY_SESSION)
         assertEquals(18, HostProtocol.READ_TELEMETRY_SESSION)
         assertEquals(19, HostProtocol.STOP_TELEMETRY_SESSION)

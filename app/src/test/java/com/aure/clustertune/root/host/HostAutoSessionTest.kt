@@ -8,6 +8,21 @@ import org.junit.Test
 
 class HostAutoSessionTest {
     @Test
+    fun `only a verified changed ceiling starts a new telemetry window`() {
+        val fixture = fixture()
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        fixture.controller.applyStep(started.sessionId!!, started.hostEpoch, request(cpu = 800))
+        assertEquals(0, fixture.telemetry.frequencyChanges)
+        fixture.controller.applyStep(started.sessionId, started.hostEpoch, request(cpu = 600))
+        assertEquals(1, fixture.telemetry.frequencyChanges)
+        fixture.controller.applyStep(started.sessionId, started.hostEpoch, request(cpu = 600))
+        assertEquals(1, fixture.telemetry.frequencyChanges)
+        fixture.fs.failNextWrites("max", count = 1)
+        fixture.controller.applyStep(started.sessionId, started.hostEpoch, request(cpu = 400))
+        assertEquals(1, fixture.telemetry.frequencyChanges)
+    }
+
+    @Test
     fun `checkpoint restores exact values and modes with maxima first`() {
         val fs = FakeFs(
             values = mutableMapOf("min" to "200", "max" to "800", "gmin" to "300", "gmax" to "900"),
@@ -2440,6 +2455,8 @@ class HostAutoSessionTest {
         private val hasGpu: Boolean,
         private val beginFailure: Throwable? = null,
     ) : HostTelemetrySource {
+        var frequencyChanges = 0
+        override fun onFrequencyChange() { frequencyChanges++ }
         var beginCount = 0
         var endCount = 0
         var onBegin: (() -> Unit)? = null
