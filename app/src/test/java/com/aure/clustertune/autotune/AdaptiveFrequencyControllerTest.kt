@@ -521,16 +521,17 @@ class AdaptiveFrequencyControllerTest {
         startSecond: Long,
         cpuLoad: Map<Int, Double?> = emptyMap(),
         gpuBusy: Double? = null,
+        targetFps: Int = 60,
     ): AdaptiveTuneDecision.Apply {
         val trim = assertApply(
-            controller.step(sample(startSecond, frame(60.0), cpuLoad = cpuLoad, gpuBusy = gpuBusy)),
+            controller.step(sample(startSecond, frame(targetFps.toDouble(), targetFps), cpuLoad = cpuLoad, gpuBusy = gpuBusy)),
         )
         assertEquals(AdaptiveTuneReason.EFFICIENCY_TRIM, trim.reason)
         assertEquals(
             AdaptiveTuneReason.TRIAL_WATCH,
             assertHold(
                 controller.step(
-                    sample(startSecond + 1, frame(60.0), cpuLoad = cpuLoad, gpuBusy = gpuBusy),
+                    sample(startSecond + 1, frame(targetFps.toDouble(), targetFps), cpuLoad = cpuLoad, gpuBusy = gpuBusy),
                 ),
             ).reason,
         )
@@ -538,11 +539,76 @@ class AdaptiveFrequencyControllerTest {
             AdaptiveTuneReason.TRIAL_ACCEPTED,
             assertHold(
                 controller.step(
-                    sample(startSecond + 2, frame(60.0), cpuLoad = cpuLoad, gpuBusy = gpuBusy),
+                    sample(startSecond + 2, frame(targetFps.toDouble(), targetFps), cpuLoad = cpuLoad, gpuBusy = gpuBusy),
                 ),
             ).reason,
         )
         return trim
+    }
+
+    @Test
+    fun `refresh quantized target rates qualify for trimming`() {
+        listOf(45 to 60, 40 to 60, 90 to 120, 30 to 60).forEach { (target, refresh) ->
+            val period = 1_000_000_000L / refresh
+            val longest = kotlin.math.ceil(refresh.toDouble() / target) * 1000 / refresh
+            val metrics = frame(target.toDouble(), target, p95 = longest, slow = 0.0)
+                .copy(refreshPeriodNanos = period)
+            val controller = controller(targetFps = target, warmup = 0)
+            assertEquals(AdaptiveTuneReason.EFFICIENCY_TRIM, assertApply(controller.step(sample(1, metrics))).reason)
+        }
+    }
+
+    @Test
+    fun `missing pacing or low confidence cannot qualify a trim but can recover`() {
+        val controller = controller(warmup = 0)
+        listOf(
+            frame(60.0).copy(confidence = 0.5),
+            frame(60.0).copy(windowComplete = false),
+            frame(60.0).copy(p95FrameTimeMillis = null),
+            frame(60.0).copy(slowFrameRatio = null),
+        ).forEachIndexed { index, metrics ->
+            assertEquals(AdaptiveTuneReason.FRAME_DATA_INCOMPLETE, assertHold(controller.step(sample(index + 1L, metrics))).reason)
+        }
+        settleHealthyTrim(controller, startSecond = 5)
+        val recovery = assertApply(controller.step(sample(8, frame(40.0).copy(confidence = 0.5, windowComplete = false))))
+        assertEquals(AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY, recovery.reason)
+    }
+
+    @Test
+    fun `trial waits for a complete window produced after its frequency change`() {
+        val controller = controller(warmup = 0)
+        assertApply(controller.step(sample(2, frame(60.0).copy(windowStartNanos = SECOND, windowEndNanos = 2 * SECOND))))
+        val mixed = frame(60.0).copy(windowStartNanos = SECOND, windowEndNanos = 3 * SECOND)
+        assertEquals(AdaptiveTuneReason.FRAME_DATA_INCOMPLETE, assertHold(controller.step(sample(3, mixed))).reason)
+        val incomplete = frame(60.0).copy(windowStartNanos = 2 * SECOND, windowEndNanos = 4 * SECOND, windowComplete = false)
+        assertEquals(AdaptiveTuneReason.FRAME_DATA_INCOMPLETE, assertHold(controller.step(sample(4, incomplete))).reason)
+        val complete = frame(60.0).copy(windowStartNanos = 2 * SECOND, windowEndNanos = 5 * SECOND)
+        assertEquals(AdaptiveTuneReason.TRIAL_WATCH, assertHold(controller.step(sample(5, complete))).reason)
+        assertEquals(AdaptiveTuneReason.TRIAL_ACCEPTED, assertHold(controller.step(sample(6, complete.copy(windowEndNanos = 6 * SECOND)))).reason)
+    }
+
+    @Test
+    fun `a changed measurement source or refresh mode undoes an unproven trim`() {
+        listOf(
+            frame(60.0).copy(measurementEpoch = 2),
+            frame(60.0).copy(measurementEpoch = 1, refreshPeriodNanos = 8_333_333L),
+        ).forEach { changed ->
+            val controller = controller(warmup = 0)
+            assertApply(controller.step(sample(1, frame(60.0).copy(measurementEpoch = 1))))
+            val rollback = assertApply(controller.step(sample(2, changed)))
+            assertEquals(AdaptiveTuneReason.FRAME_MEASUREMENT_CHANGED, rollback.reason)
+            assertEquals(400L, rollback.change.toCeiling)
+        }
+    }
+
+    @Test
+    fun `an unattainable display target holds without masking lower throughput`() {
+        val controller = controller(targetFps = 90, warmup = 0)
+        settleHealthyTrim(controller, startSecond = 1, targetFps = 90)
+        val capped = frame(60.0, targetFps = 90, p95 = 16.67).copy(refreshPeriodNanos = 16_666_666L)
+        assertEquals(AdaptiveTuneReason.DISPLAY_RATE_LIMIT, assertHold(controller.step(sample(4, capped))).reason)
+        assertEquals(300L, controller.currentCeilings().cpuKHz.getValue(0))
+        assertEquals(AdaptiveTuneReason.CPU_BOTTLENECK_RECOVERY, assertApply(controller.step(sample(5, capped.copy(fps = 40.0), cpu0 = 0.95))).reason)
     }
 
     private fun controller(

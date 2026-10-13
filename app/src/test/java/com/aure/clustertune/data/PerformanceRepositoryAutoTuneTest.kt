@@ -30,6 +30,27 @@ import org.junit.Test
 
 class PerformanceRepositoryAutoTuneTest {
     @Test
+    fun `controller receives the host measurement quality and frame window`() {
+        val wire = telemetry().copy(
+            frameConfidencePermille = 750,
+            refreshPeriodNanos = 16_666_666L,
+            frameWindowStartNanos = 10L,
+            frameWindowEndNanos = 20L,
+            frameWindowComplete = true,
+            frameMeasurementEpoch = 4L,
+            timelineJankRatioPermille = 900,
+        )
+        val frames = wire.toAdaptiveTuneSample(listOf(cpuPolicy(0))).frames!!
+        assertEquals(0.75, frames.confidence, 0.0)
+        assertEquals(16_666_666L, frames.refreshPeriodNanos)
+        assertEquals(10L, frames.windowStartNanos)
+        assertEquals(20L, frames.windowEndNanos)
+        assertTrue(frames.windowComplete)
+        assertEquals(4L, frames.measurementEpoch)
+        assertEquals(wire.slowFrameRatioPermille!! / 1000.0, frames.slowFrameRatio!!, 0.0)
+    }
+
+    @Test
     fun `adaptive envelope uses live base caps and choices strictly above live minimums`() {
         val policies = listOf(
             cpuPolicy(id = 0, supported = listOf(300, 600, 900, 1_200)),

@@ -34,6 +34,7 @@ class AdaptiveFrequencyController(
         val domain: DomainState,
         val previousIndex: Int,
         val baseline: FrameHealth,
+        val startedAtNanos: Long,
         val observedSamples: Int = 0,
         val consecutiveRegressions: Int = 0,
         val totalSamples: Long = 0L,
@@ -74,6 +75,7 @@ class AdaptiveFrequencyController(
     private var trial: Trial? = null
     private var stoppedReason: AdaptiveTuneReason? = null
     private var recoverySamplesSeen = 0
+    private var lastMeasurementIdentity: Pair<Long, Long?>? = null
     private val trimFrozenUntil = mutableMapOf<AdaptiveActuator, Long>()
 
     fun currentCeilings(): AdaptiveFrequencyCeilings = ceilings()
@@ -109,6 +111,17 @@ class AdaptiveFrequencyController(
             return hold(AdaptiveTuneStatus.WAITING_FOR_FRAMES, AdaptiveTuneReason.FRAME_DATA_STALE)
         }
 
+        val metrics = sample.frames!!
+        val identity = metrics.measurementEpoch to metrics.refreshPeriodNanos
+        val measurementChanged = lastMeasurementIdentity != null && identity != lastMeasurementIdentity
+        lastMeasurementIdentity = identity
+        if (measurementChanged) {
+            warmupSamplesSeen = 0
+            healthyQualificationSamplesSeen = 0
+            recoverySamplesSeen = 0
+            trial?.let { return rollbackTrim(it, sample, AdaptiveTuneReason.FRAME_MEASUREMENT_CHANGED) }
+        }
+
         if (warmupSamplesSeen < config.warmupSampleCount) {
             warmupSamplesSeen += 1
             healthyQualificationSamplesSeen = 0
@@ -122,7 +135,26 @@ class AdaptiveFrequencyController(
 
         trial?.let { active ->
             healthyQualificationSamplesSeen = 0
+            if (!isReliableForTrim(metrics) ||
+                metrics.windowStartNanos?.let { it < active.startedAtNanos } == true
+            ) {
+                // Do not accept a ceiling reduction using mixed before/after frames, a truncated
+                // history, or FPS-only fallback data. Genuine performance loss can still undo it.
+                if (frame.state == HealthState.UNHEALTHY) {
+                    return rollbackTrim(active, sample)
+                }
+                return hold(AdaptiveTuneStatus.WATCHING_TRIAL, AdaptiveTuneReason.FRAME_DATA_INCOMPLETE)
+            }
             return evaluateTrimTrial(active, frame, sample)
+        }
+
+        val displayFps = metrics.refreshPeriodNanos?.takeIf { it in 1_000_000L..1_000_000_000L }
+            ?.let { 1_000_000_000.0 / it }
+        if (displayFps != null && config.targetFps > displayFps * 1.01 &&
+            frame.fps >= displayFps * config.recoveryFpsRatio
+        ) {
+            healthyQualificationSamplesSeen = 0
+            return hold(AdaptiveTuneStatus.MONITORING, AdaptiveTuneReason.DISPLAY_RATE_LIMIT)
         }
 
         if (frame.state != HealthState.UNHEALTHY) recoverySamplesSeen = 0
@@ -132,7 +164,12 @@ class AdaptiveFrequencyController(
                 healthyQualificationSamplesSeen = 0
                 recover(sample)
             }
-            HealthState.HEALTHY -> qualifyHealthyThenTrim(frame, sample)
+            HealthState.HEALTHY -> {
+                if (!isReliableForTrim(metrics)) {
+                    healthyQualificationSamplesSeen = 0
+                    hold(AdaptiveTuneStatus.MONITORING, AdaptiveTuneReason.FRAME_DATA_INCOMPLETE)
+                } else qualifyHealthyThenTrim(frame, sample)
+            }
             HealthState.NEUTRAL -> {
                 healthyQualificationSamplesSeen = 0
                 hold(AdaptiveTuneStatus.MONITORING, AdaptiveTuneReason.WITHIN_TARGET_BAND)
@@ -220,6 +257,7 @@ class AdaptiveFrequencyController(
             domain = domain,
             targetIndex = domain.currentIndex - 1,
             baseline = frame,
+            startedAtNanos = sample.timestampNanos,
             status = AdaptiveTuneStatus.OPTIMIZING,
             reason = AdaptiveTuneReason.EFFICIENCY_TRIM,
         )
@@ -268,6 +306,7 @@ class AdaptiveFrequencyController(
     private fun rollbackTrim(
         active: Trial,
         sample: AdaptiveTuneSample,
+        reason: AdaptiveTuneReason = AdaptiveTuneReason.TRIAL_REGRESSION,
     ): AdaptiveTuneDecision.Apply {
         trial = null
         trimFrozenUntil[active.domain.actuator] = freezeDeadline(sample.timestampNanos)
@@ -275,7 +314,7 @@ class AdaptiveFrequencyController(
             domain = active.domain,
             targetIndex = active.previousIndex,
             status = AdaptiveTuneStatus.FROZEN,
-            reason = AdaptiveTuneReason.TRIAL_REGRESSION,
+            reason = reason,
         )
     }
 
@@ -325,6 +364,7 @@ class AdaptiveFrequencyController(
         domain: DomainState,
         targetIndex: Int,
         baseline: FrameHealth,
+        startedAtNanos: Long,
         status: AdaptiveTuneStatus,
         reason: AdaptiveTuneReason,
     ): AdaptiveTuneDecision.Apply {
@@ -334,6 +374,7 @@ class AdaptiveFrequencyController(
             domain = domain,
             previousIndex = previousIndex,
             baseline = baseline,
+            startedAtNanos = startedAtNanos,
         )
         return decision
     }
@@ -366,7 +407,10 @@ class AdaptiveFrequencyController(
     private fun frameHealth(frame: AdaptiveFrameMetrics): FrameHealth {
         val p95 = frame.p95FrameTimeMillis?.takeIf { it.isFinite() && it > 0.0 }
         val slowRatio = frame.slowFrameRatio?.takeIf { it.isFinite() && it in 0.0..1.0 }
-        val p95Healthy = p95?.let { it <= frameBudgetMillis() * config.healthyP95BudgetMultiplier } != false
+        val p95Budget = FramePacing.healthyP95Nanos(
+            config.targetFps, frame.refreshPeriodNanos, config.healthyP95BudgetMultiplier,
+        ) / 1_000_000.0
+        val p95Healthy = p95?.let { it <= p95Budget } != false
         val slowRatioHealthy = slowRatio?.let { it <= config.healthySlowFrameRatio } != false
         val pacingHealthy = p95Healthy && slowRatioHealthy
         val pacingUnhealthy = slowRatio?.let { it > config.recoverySlowFrameRatio } == true
@@ -381,7 +425,13 @@ class AdaptiveFrequencyController(
     }
 
     private fun isFreshFrame(frame: AdaptiveFrameMetrics): Boolean =
-        !frame.isStale && frame.fps.isFinite() && frame.fps > 0.0
+        !frame.isStale && frame.fps.isFinite() && frame.fps > 0.0 &&
+            frame.confidence.isFinite() && frame.confidence >= 0.25
+
+    private fun isReliableForTrim(frame: AdaptiveFrameMetrics): Boolean =
+        frame.windowComplete && frame.confidence >= config.minimumTrimConfidence &&
+            frame.p95FrameTimeMillis?.let { it.isFinite() && it > 0.0 } == true &&
+            frame.slowFrameRatio?.let { it.isFinite() && it in 0.0..1.0 } == true
 
     private fun isRegression(baseline: FrameHealth, current: FrameHealth): Boolean {
         if (baseline.state != HealthState.UNHEALTHY && current.state == HealthState.UNHEALTHY) return true
@@ -399,8 +449,6 @@ class AdaptiveFrequencyController(
         }
         return false
     }
-
-    private fun frameBudgetMillis(): Double = 1_000.0 / config.targetFps
 
     private fun expireFreezes(timestampNanos: Long) {
         trimFrozenUntil.entries.removeAll { (_, until) -> until <= timestampNanos }

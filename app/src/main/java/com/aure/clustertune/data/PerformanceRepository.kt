@@ -1977,6 +1977,12 @@ internal fun HostAutoTelemetry.toAdaptiveTuneSample(
             p95FrameTimeMillis = frameTimeP95Nanos?.takeIf { it > 0L }?.div(1_000_000.0),
             slowFrameRatio = slowFrameRatioPermille?.coerceIn(0, 1000)?.div(1_000.0),
             isStale = frameStale || frameConfidencePermille < 250,
+            confidence = frameConfidencePermille / 1_000.0,
+            refreshPeriodNanos = refreshPeriodNanos,
+            windowStartNanos = frameWindowStartNanos,
+            windowEndNanos = frameWindowEndNanos,
+            windowComplete = frameWindowComplete,
+            measurementEpoch = frameMeasurementEpoch,
         )
     }
     val cpu = policies.mapIndexed { index, policy ->
