@@ -1,5 +1,9 @@
 package com.aure.clustertune.root.host
 
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.aure.clustertune.autotune.AdaptiveActuator
@@ -158,6 +162,7 @@ class ExternalGameAutoTuneTraceTest {
                 var maximumFpsMilli: Int? = null
                 var expectedFrameBackend: String? = null
                 var expectedFrameLayer: String? = null
+                var expectedMeasurementEpoch: Long? = null
                 var pendingTrialReason: AdaptiveTuneReason? = null
                 var minimumClampSamples = 0
                 var unhealthySamples = 0
@@ -230,10 +235,17 @@ class ExternalGameAutoTuneTraceTest {
                         val backend = requireNotNull(telemetry.frameBackend) { "usable frames lack a backend" }
                         val layer = requireNotNull(telemetry.frameLayer) { "usable frames lack a layer" }
                         check(packageName in layer) { "telemetry selected a non-target layer: $layer" }
-                        expectedFrameBackend?.let { check(it == backend) { "frame backend changed from $it to $backend" } }
-                        expectedFrameLayer?.let { check(it == layer) { "frame layer changed from $it to $layer" } }
+                        if (expectedFrameBackend != null && (expectedFrameBackend != backend || expectedFrameLayer != layer)) {
+                            check(telemetry.frameMeasurementEpoch > requireNotNull(expectedMeasurementEpoch)) {
+                                "frame source changed without a new measurement epoch"
+                            }
+                            emit(JSONObject().put("event", "measurement_changed")
+                                .put("frameBackend", backend).put("frameLayer", layer)
+                                .put("frameMeasurementEpoch", telemetry.frameMeasurementEpoch))
+                        }
                         expectedFrameBackend = backend
                         expectedFrameLayer = layer
+                        expectedMeasurementEpoch = telemetry.frameMeasurementEpoch
                     } else {
                         staleSamples++
                     }
@@ -354,7 +366,9 @@ class ExternalGameAutoTuneTraceTest {
                         }
                         pendingTrialReason = null
                     }
-                    if (decision.reason == AdaptiveTuneReason.TRIAL_REGRESSION) {
+                    if (decision.reason == AdaptiveTuneReason.TRIAL_REGRESSION ||
+                        decision.reason == AdaptiveTuneReason.FRAME_MEASUREMENT_CHANGED
+                    ) {
                         pendingTrialReason = null
                     }
                     val reachedPhysicalHealthyFloor =
@@ -369,6 +383,7 @@ class ExternalGameAutoTuneTraceTest {
                             .put("index", index + 1)
                             .put("wallTimeMillis", System.currentTimeMillis())
                             .put("telemetry", telemetry.toJson())
+                            .put("battery", batteryTelemetry(context))
                             .put("observedState", observedState.toJson())
                             .put("intendedCeilingsBeforeSample", intendedBeforeSample.toJson())
                             .put("upwardResetDomains", JSONArray(upwardResetDomains.toList()))
@@ -616,6 +631,12 @@ class ExternalGameAutoTuneTraceTest {
                 p95FrameTimeMillis = frameTimeP95Nanos?.takeIf { it > 0L }?.div(1_000_000.0),
                 slowFrameRatio = slowFrameRatioPermille?.coerceIn(0, 1_000)?.div(1_000.0),
                 isStale = frameStale || frameConfidencePermille < 250,
+                confidence = frameConfidencePermille / 1_000.0,
+                refreshPeriodNanos = refreshPeriodNanos,
+                windowStartNanos = frameWindowStartNanos,
+                windowEndNanos = frameWindowEndNanos,
+                windowComplete = frameWindowComplete,
+                measurementEpoch = frameMeasurementEpoch,
             )
         }
         return AdaptiveTuneSample(
@@ -733,6 +754,13 @@ class ExternalGameAutoTuneTraceTest {
         .putNullable("fpsMilli", fpsMilli)
         .putNullable("frameTimeP95Nanos", frameTimeP95Nanos)
         .putNullable("slowFrameRatioPermille", slowFrameRatioPermille)
+        .put("fpsMeasurement", "displayed-output")
+        .putNullable("refreshPeriodNanos", refreshPeriodNanos)
+        .putNullable("frameWindowStartNanos", frameWindowStartNanos)
+        .putNullable("frameWindowEndNanos", frameWindowEndNanos)
+        .put("frameWindowComplete", frameWindowComplete)
+        .put("frameMeasurementEpoch", frameMeasurementEpoch)
+        .putNullable("timelineJankRatioPermille", timelineJankRatioPermille)
         .put("frameStale", frameStale)
         .put("cpuLoadPermille", nullableArray(cpuLoadPermille))
         .put("cpuClockKHz", nullableArray(cpuClockKHz))
@@ -785,7 +813,33 @@ class ExternalGameAutoTuneTraceTest {
         if (isStale || !fps.isFinite() || fps <= 0.0) return false
         val slowRatio = slowFrameRatio?.takeIf { it.isFinite() && it in 0.0..1.0 }
         val pacingUnhealthy = slowRatio?.let { it > config.recoverySlowFrameRatio } == true
+        val displayFps = refreshPeriodNanos?.takeIf { it > 0L }?.let { 1_000_000_000.0 / it }
+        if (!pacingUnhealthy && displayFps != null && config.targetFps > displayFps * 1.01 &&
+            fps >= displayFps * config.recoveryFpsRatio
+        ) return false
         return fps < config.targetFps * config.recoveryFpsRatio || pacingUnhealthy
+    }
+
+    private fun batteryTelemetry(context: Context): JSONObject {
+        val battery = runCatching {
+            context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        }.getOrNull()
+        val currentMicroamps = runCatching {
+            context.getSystemService(BatteryManager::class.java)
+                ?.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW)
+                ?.takeUnless { it == Int.MIN_VALUE }
+        }.getOrNull()
+        val voltageMillivolts = battery?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1)?.takeIf { it > 0 }
+        val temperatureTenths = battery?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE)
+            ?.takeUnless { it == Int.MIN_VALUE }
+        val discharging = battery?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) == BatteryManager.BATTERY_STATUS_DISCHARGING
+        val powerWatts = if (discharging && currentMicroamps != null && voltageMillivolts != null) {
+            kotlin.math.abs(currentMicroamps.toDouble()) * voltageMillivolts / 1_000_000_000.0
+        } else null
+        return JSONObject().putNullable("currentMicroamps", currentMicroamps)
+            .putNullable("voltageMillivolts", voltageMillivolts)
+            .putNullable("temperatureCelsius", temperatureTenths?.div(10.0))
+            .put("discharging", discharging).putNullable("dischargePowerWatts", powerWatts)
     }
 
     private fun AdaptiveFrequencyCeilings.hasHeadroom(

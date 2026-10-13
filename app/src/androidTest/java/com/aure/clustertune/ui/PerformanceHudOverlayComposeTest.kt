@@ -87,7 +87,7 @@ class PerformanceHudOverlayComposeTest {
             .assertIsDisplayed()
             .assertWidthIsEqualTo(72.dp)
             .assertHeightIsEqualTo(16.dp)
-            .assertContentDescriptionEquals("FPS history")
+            .assertContentDescriptionEquals("Displayed FPS history")
         composeRule.onNodeWithTag(PerformanceHudTestTags.CPU_GRAPH)
             .assertIsDisplayed()
             .assertContentDescriptionEquals("CPU usage history")

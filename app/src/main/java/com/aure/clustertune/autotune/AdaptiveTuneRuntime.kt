@@ -23,6 +23,8 @@ data class AdaptiveTuneRuntimeState(
     val thermalMilliCelsius: Map<String, Long> = emptyMap(),
     val frameConfidence: Double? = null,
     val slowFrameRatio: Double? = null,
+    val timelineJankRatio: Double? = null,
+    val displayRefreshHz: Double? = null,
     val frameStale: Boolean = false,
     /** Monotonic identity of the latest published host sample. */
     val sampleTimestampNanos: Long? = null,

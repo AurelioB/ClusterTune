@@ -191,7 +191,7 @@ fun PerformanceHudOverlay(
                             ),
                             graphColor = HudFrameGraph,
                             graphTestTag = PerformanceHudTestTags.FRAME_GRAPH,
-                            graphContentDescription = "FPS history",
+                            graphContentDescription = "Displayed FPS history",
                         )
                         PerformanceHudTestTags.CPU_ROW -> HudRow(
                             row = row,

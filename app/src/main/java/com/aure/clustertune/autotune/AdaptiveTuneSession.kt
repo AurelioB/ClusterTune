@@ -27,6 +27,7 @@ data class AdaptiveTuneObservation(
     val frameConfidence: Double? = null,
     val slowFrameRatio: Double? = null,
     val frameStale: Boolean = false,
+    val timelineJankRatio: Double? = null,
 )
 
 enum class AdaptiveTuneTermination {
@@ -262,6 +263,8 @@ class AdaptiveTuneSessionRunner(
                 thermalMilliCelsius = observation.thermalMilliCelsius,
                 frameConfidence = observation.frameConfidence,
                 slowFrameRatio = observation.slowFrameRatio,
+                timelineJankRatio = observation.timelineJankRatio,
+                displayRefreshHz = frames?.refreshPeriodNanos?.takeIf { it > 0L }?.let { 1_000_000_000.0 / it },
                 frameStale = observation.frameStale,
                 sampleTimestampNanos = observation.sample.timestampNanos,
                 ceilings = decision.ceilings,

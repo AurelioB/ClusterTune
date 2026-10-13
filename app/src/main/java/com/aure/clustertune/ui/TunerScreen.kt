@@ -1398,7 +1398,7 @@ internal fun autoTuneRuntimePresentation(
     val measuredFps = runtime.measuredFps?.takeIf { it.isFinite() && it >= 0.0 }
     val p95FrameTimeMillis = runtime.p95FrameTimeMillis?.takeIf { it.isFinite() && it >= 0.0 }
     val frameMetrics = buildList {
-        measuredFps?.let { add("${formatOneDecimal(it)} FPS") }
+        measuredFps?.let { add("${formatOneDecimal(it)} displayed FPS") }
         p95FrameTimeMillis?.let { add("P95 ${formatOneDecimal(it)} ms") }
     }.joinToString(" · ").ifEmpty { null }
     val utilization = buildList {
@@ -1529,7 +1529,7 @@ internal fun AutoTuneRuntimeStatusCard(
             }
             presentation.frameBackend?.let { backend ->
                 Text(
-                    text = "Frames · $backend",
+                    text = "Displayed frames · $backend",
                     style = MaterialTheme.typography.labelSmall,
                     color = colorScheme.onSurfaceVariant.copy(alpha = 0.78f),
                     maxLines = 1,

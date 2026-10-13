@@ -520,6 +520,7 @@ class PerformanceRepository(
                 ?.coerceIn(0, 1_000)
                 ?.div(1_000.0),
             frameStale = telemetry.frameStale,
+            timelineJankRatio = telemetry.timelineJankRatioPermille?.div(1_000.0),
         )
     }
 

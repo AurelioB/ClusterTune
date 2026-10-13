@@ -22,7 +22,7 @@ class AutoTuneRuntimeStatusCardTest {
                     presentation = AutoTuneRuntimePresentation(
                         appAndTarget = "Example Game · Target 60 FPS",
                         status = "Recovering",
-                        frameMetrics = "57.3 FPS · P95 20.6 ms",
+                        frameMetrics = "57.3 displayed FPS · P95 20.6 ms",
                         utilization = "CPU C0 41% · CPU C6 82% · GPU 67%",
                         message = "Raising a CPU ceiling",
                         frameBackend = "surfaceflinger-latency",
@@ -35,9 +35,9 @@ class AutoTuneRuntimeStatusCardTest {
         composeRule.onNodeWithText("Auto Tune").assertIsDisplayed()
         composeRule.onNodeWithText("Recovering").assertIsDisplayed()
         composeRule.onNodeWithText("Example Game · Target 60 FPS").assertIsDisplayed()
-        composeRule.onNodeWithText("57.3 FPS · P95 20.6 ms").assertIsDisplayed()
+        composeRule.onNodeWithText("57.3 displayed FPS · P95 20.6 ms").assertIsDisplayed()
         composeRule.onNodeWithText("CPU C0 41% · CPU C6 82% · GPU 67%").assertIsDisplayed()
         composeRule.onNodeWithText("Raising a CPU ceiling").assertIsDisplayed()
-        composeRule.onNodeWithText("Frames · surfaceflinger-latency").assertIsDisplayed()
+        composeRule.onNodeWithText("Displayed frames · surfaceflinger-latency").assertIsDisplayed()
     }
 }

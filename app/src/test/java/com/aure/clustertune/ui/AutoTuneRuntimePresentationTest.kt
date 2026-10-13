@@ -50,7 +50,7 @@ class AutoTuneRuntimePresentationTest {
         assertTrue(presentation.active)
         assertEquals("Example Game · Target 60 FPS", presentation.appAndTarget)
         assertEquals("Recovering", presentation.status)
-        assertEquals("57.3 FPS · P95 20.6 ms", presentation.frameMetrics)
+        assertEquals("57.3 displayed FPS · P95 20.6 ms", presentation.frameMetrics)
         assertEquals("CPU C0 41% · CPU C6 82% · GPU 67%", presentation.utilization)
         assertEquals("Raising a CPU ceiling", presentation.message)
         assertEquals("surfaceflinger-latency", presentation.frameBackend)
@@ -74,7 +74,7 @@ class AutoTuneRuntimePresentationTest {
         assertFalse(presentation.active)
         assertEquals("example.game · Target 120 FPS", presentation.appAndTarget)
         assertEquals("Stopped", presentation.status)
-        assertEquals("118.0 FPS", presentation.frameMetrics)
+        assertEquals("118.0 displayed FPS", presentation.frameMetrics)
         assertEquals("Stopped when the app left the foreground", presentation.message)
     }
 
