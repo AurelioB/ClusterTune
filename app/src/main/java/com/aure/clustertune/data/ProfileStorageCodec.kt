@@ -3,6 +3,7 @@ package com.aure.clustertune.data
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileSwitchHistoryEntry
+import com.aure.clustertune.model.HistoryEventType
 import com.aure.clustertune.model.ProfileSource
 import com.aure.clustertune.model.EffectiveProfileSource
 import com.aure.clustertune.model.EffectiveProfileState
@@ -182,6 +183,8 @@ object ProfileStorageCodec {
                     profileId = entry.profileId,
                     profileName = entry.profileName,
                     trigger = entry.trigger,
+                    eventType = entry.eventType.name,
+                    isProfileSwitch = entry.isProfileSwitch,
                 )
             },
         )
@@ -200,6 +203,9 @@ object ProfileStorageCodec {
                         profileId = entry.profileId,
                         profileName = profileName,
                         trigger = trigger,
+                        eventType = HistoryEventType.entries.firstOrNull { it.name == entry.eventType }
+                            ?: HistoryEventType.PROFILE,
+                        isProfileSwitch = entry.isProfileSwitch,
                     )
                 }
                 .sortedByDescending { it.timestampMillis }
@@ -239,6 +245,8 @@ object ProfileStorageCodec {
         val profileId: String? = null,
         val profileName: String,
         val trigger: String,
+        val eventType: String = HistoryEventType.PROFILE.name,
+        val isProfileSwitch: Boolean = true,
     )
 
     @Serializable

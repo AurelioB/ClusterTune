@@ -1,0 +1,71 @@
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.LetterControlsDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.apps.LetterControlsDeviceTest:
+INSTRUMENTATION_STATUS: test=actualTileOverlayAndUpdateControls
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=
+Letter controls: 04_real_recents_selects_letter_A
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter controls: 32_tile_SHOW_DIALOG
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter controls: 32_tile_TOGGLE_PERFORMANCE_HUD
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter controls: 32_tile_SHOW_PROFILE_PICKER
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter controls: 32_tile_CYCLE_PROFILES
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter controls: 32_tile_OPEN_APP
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter controls: 31_picker_apply_by_touch
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter controls: 33_invisible_edge_handle_swipe
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter controls: 42_update_check_download_installer_handoff
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter controls: 37_missing_overlay_access_message
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter controls: 42_support_screen_and_link
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter controls: overlay_rapid_dismiss_restart
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.LetterControlsDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=actualTileOverlayAndUpdateControls
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 44.6
+
+OK (1 test)
+
+
+INSTRUMENTATION_CODE: -1

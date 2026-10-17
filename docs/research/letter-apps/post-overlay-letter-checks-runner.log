@@ -1,0 +1,43 @@
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.LetterAppsDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.apps.LetterAppsDeviceTest:
+INSTRUMENTATION_STATUS: test=pserverFunctions
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=
+Letter apps (pserver-stdout): 31_quick_tuner_and_picker_over_A_B
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (pserver-stdout): 33_edge_handle_settings_and_window
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (pserver-stdout): 34_hud_tracks_A_B_and_closes
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (pserver-stdout): 39_host_reconnect_with_A_visible
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (pserver-stdout): 39b_reconnect_with_simultaneous_clock_reads
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.LetterAppsDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=pserverFunctions
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 20.866
+
+OK (1 test)
+
+
+INSTRUMENTATION_CODE: -1

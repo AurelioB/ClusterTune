@@ -1,0 +1,56 @@
+{
+  "android_tuner.preferences_pb": {
+    "changedRawKeys": [
+      "effective_profile_state",
+      "profile_switch_history"
+    ]
+  },
+  "android_tuner_settings.preferences_pb": {
+    "changedRawKeys": []
+  },
+  "restored": {
+    "autoTuneEnabled": false,
+    "sleepProfileEnabled": false,
+    "assignmentCount": 3,
+    "executionMethod": "pserver-stdout",
+    "normalCpuValues": "{\"0\":1459200,\"3\":1785600,\"7\":1843200}",
+    "normalGpuValue": "680000000",
+    "selectedProfile": "bundled_qcs8550_aggressive",
+    "lastAppliedDisplayProfile": "bundled_qcs8550_aggressive",
+    "originalProfilesAndAssignmentsPreserved": true,
+    "historyChangedOnlyByCleanup": true
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 56
+  },
+  "deviceSettings": {
+    "minRefreshRate": "60.0",
+    "peakRefreshRate": "60.0",
+    "timeout": "600000",
+    "vendorMode": "0",
+    "persistentAdbPort": "",
+    "overlayAppOp": "SYSTEM_ALERT_WINDOW: allow; time=+11s71ms ago; rejectTime=+39m43s293ms ago (running)",
+    "notificationsAppOp": "No operations.\nDefault mode: allow",
+    "primaryPreferredMode": "User preferred display mode: null",
+    "secondaryPreferredMode": "User preferred display mode: null"
+  },
+  "hardware": {
+    "cpuMax": [
+      1459200,
+      1785600,
+      1843200
+    ],
+    "cpuMin": [
+      307200,
+      499200,
+      595200
+    ],
+    "minimumPermissions": [
+      "440",
+      "440",
+      "440"
+    ],
+    "gpuMax": 680000000
+  }
+}

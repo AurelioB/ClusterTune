@@ -33,7 +33,7 @@ fun PermissionCheckDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
         modifier = Modifier.widthIn(max = 680.dp).fillMaxWidth(0.94f),
         title = { Text(stringResource(
-            if (AppAccess.ACCESSIBILITY_SERVICE in missingAccess) R.string.permission_dialog_service_title
+            if (AppAccess.APP_DETECTION in missingAccess) R.string.permission_dialog_service_title
             else R.string.permission_dialog_title,
         )) },
         text = {
@@ -43,7 +43,7 @@ fun PermissionCheckDialog(
             ) {
                 Text(
                     text = stringResource(
-                        if (AppAccess.ACCESSIBILITY_SERVICE in missingAccess) R.string.permission_dialog_service_explanation
+                        if (AppAccess.APP_DETECTION in missingAccess) R.string.permission_dialog_service_explanation
                         else R.string.permission_dialog_explanation,
                     ),
                     style = MaterialTheme.typography.bodyMedium,
@@ -91,9 +91,7 @@ fun PermissionCheckDialog(
 private fun AppAccess.title(): String = stringResource(
     when (this) {
         AppAccess.OVERLAY -> R.string.permission_dialog_overlay_title
-        AppAccess.ACCESSIBILITY -> R.string.permission_dialog_accessibility_title
-        AppAccess.ACCESSIBILITY_SERVICE -> R.string.permission_dialog_accessibility_title
-        AppAccess.USAGE -> R.string.permission_dialog_usage_title
+        AppAccess.APP_DETECTION -> R.string.settings_app_detection
         AppAccess.NOTIFICATIONS -> R.string.permission_dialog_notifications_title
     },
 )
@@ -102,9 +100,7 @@ private fun AppAccess.title(): String = stringResource(
 private fun AppAccess.purpose(): String = stringResource(
     when (this) {
         AppAccess.OVERLAY -> R.string.settings_overlay_access_description
-        AppAccess.ACCESSIBILITY -> R.string.settings_app_profile_accessibility_description
-        AppAccess.ACCESSIBILITY_SERVICE -> R.string.settings_app_profile_accessibility_description
-        AppAccess.USAGE -> R.string.settings_usage_access_description
+        AppAccess.APP_DETECTION -> R.string.settings_app_detection_description
         AppAccess.NOTIFICATIONS -> R.string.settings_notifications_description
     },
 )
@@ -113,9 +109,7 @@ private fun AppAccess.purpose(): String = stringResource(
 private fun AppAccess.instructions(): String = stringResource(
     when (this) {
         AppAccess.OVERLAY -> R.string.permission_dialog_overlay_instructions
-        AppAccess.ACCESSIBILITY -> R.string.permission_dialog_accessibility_instructions
-        AppAccess.ACCESSIBILITY_SERVICE -> R.string.permission_dialog_accessibility_restart_instructions
-        AppAccess.USAGE -> R.string.permission_dialog_usage_instructions
+        AppAccess.APP_DETECTION -> R.string.permission_dialog_app_detection_instructions
         AppAccess.NOTIFICATIONS -> R.string.permission_dialog_notifications_instructions
     },
 )

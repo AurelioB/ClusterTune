@@ -1,0 +1,18 @@
+{
+  "name": "37_missing_notifications_actual_runtime_permission",
+  "originalPermission": "android.permission.POST_NOTIFICATIONS: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]",
+  "deniedPermission": "android.permission.POST_NOTIFICATIONS: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]",
+  "visibleTexts": [
+    "Permissions needed",
+    "Some features are unavailable until you grant the following access.",
+    "Notifications",
+    "Shows background status for overlays and automation while they run.",
+    "Open settings, then allow notifications for ClusterTune.",
+    "Fix",
+    "You can review these permissions later in Settings.",
+    "Not now"
+  ],
+  "status": "passed",
+  "restoredPermission": "android.permission.POST_NOTIFICATIONS: granted=true, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]",
+  "originalGrantAndFlagsRestored": true
+}

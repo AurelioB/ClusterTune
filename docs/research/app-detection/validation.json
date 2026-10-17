@@ -1,0 +1,757 @@
+{
+  "date": "2026-10-15",
+  "hostProtocol": 14,
+  "unitTests": {
+    "tests": 546,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 56
+  },
+  "runs": [
+    {
+      "name": "thor-hardware",
+      "note": "Android 13 physical device; production PServer and app-facing su; targeted host, detection, profile, and notification tests.",
+      "counts": {
+        "passed": 20,
+        "failed": 0,
+        "error": 0,
+        "skipped": 1,
+        "ignored": 0
+      },
+      "seconds": 68.294,
+      "cases": [
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "appDoesNotDeclareAnAccessibilityService",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "detectedAppAppliesItsAssignmentAndLeavingRestoresTheNormalProfile",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "screenOffClearsAppsAndWakeObtainsAFreshObservation",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "foregroundServiceReconnectsAfterPrivilegedHostStops",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.notifications.SharedForegroundNotificationTest",
+          "test": "stoppingOverlay_keepsSleepNotification",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.notifications.SharedForegroundNotificationTest",
+          "test": "stoppingSleep_keepsOverlayNotification",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "watchdogRestoresCeilingsWhenClientStopsHeartbeating",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "rootShellHostBinderHandoff_roundTripsWhenAvailable",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "privilegedHostBinderHandoff_roundTripsThroughProductionClient",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "pServerAutoTune_preservesOwnedMinimumProtection",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: got: <false>, expected: is <true>"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "pServerHostBinderHandoff_roundTripsWhenAvailable",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "realRootShellReceivesTaskNotifications",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "taskNotificationsFollowAppExitWithoutAccessibility",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "visibleAppsOnBothPhysicalDisplaysAreReported",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "transientReadFailureClearsOwnershipAndRecoversWithoutAnotherEvent",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "deniedRegistrationIsReportedAndCleansUpTheAttemptedListener",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "wireRejectsOversizedSnapshotsAndInvalidDisplayIds",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "healthyIdleDoesNotPollApps",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "unsubscribeCancelsSettlingSamplesAndUnregistersFrameworkListener",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "aBlockedQueryDoesNotPreventUnsubscribeOrPublishAfterItWasRetired",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "persistentReadFailuresStopRetryingAndANewEventCanRecover",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "thor-final-recheck",
+      "note": "Final APK after unknown-refresh-rate handling; app profile transitions, reconnect, sleep/wake, PServer, su, and both screens.",
+      "counts": {
+        "passed": 7,
+        "failed": 0,
+        "error": 0,
+        "skipped": 0,
+        "ignored": 0
+      },
+      "seconds": 20.407,
+      "cases": [
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "appDoesNotDeclareAnAccessibilityService",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "detectedAppAppliesItsAssignmentAndLeavingRestoresTheNormalProfile",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "screenOffClearsAppsAndWakeObtainsAFreshObservation",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "foregroundServiceReconnectsAfterPrivilegedHostStops",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "realRootShellReceivesTaskNotifications",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "taskNotificationsFollowAppExitWithoutAccessibility",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "visibleAppsOnBothPhysicalDisplaysAreReported",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "android-14-regression",
+      "note": "Full instrumentation suite; emulator root host launched by the documented shell bridge; app-facing root manager and physical-only fixtures unavailable.",
+      "counts": {
+        "passed": 77,
+        "failed": 0,
+        "error": 0,
+        "skipped": 16,
+        "ignored": 0
+      },
+      "seconds": 60.34,
+      "cases": [
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "appDoesNotDeclareAnAccessibilityService",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "detectedAppAppliesItsAssignmentAndLeavingRestoresTheNormalProfile",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: privileged execution unavailable"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "screenOffClearsAppsAndWakeObtainsAFreshObservation",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: privileged execution unavailable"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "foregroundServiceReconnectsAfterPrivilegedHostStops",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: privileged execution unavailable"
+        },
+        {
+          "class": "com.aure.clustertune.data.ExperimentalAutoTuneSettingTest",
+          "test": "settingPersistsAndDisabledBackendRejectsStartsAndNewAssignments",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.data.ExperimentalHudSettingTest",
+          "test": "disablingExperimentalFeaturesClosesHudAndRejectsDirectLaunch",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: got: <false>, expected: is <true>"
+        },
+        {
+          "class": "com.aure.clustertune.notifications.SharedForegroundNotificationTest",
+          "test": "stoppingOverlay_keepsSleepNotification",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: got: <false>, expected: is <true>"
+        },
+        {
+          "class": "com.aure.clustertune.notifications.SharedForegroundNotificationTest",
+          "test": "stoppingSleep_keepsOverlayNotification",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: got: <false>, expected: is <true>"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.ExternalGameAutoTuneTraceTest",
+          "test": "traceExternalGameUntilBoundaryOrTimeout",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: externalPackage was not supplied"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "realRootShellReceivesTaskNotifications",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: app-facing root shell unavailable"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "taskNotificationsFollowAppExitWithoutAccessibility",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "visibleAppsOnBothPhysicalDisplaysAreReported",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: requires two awake displays"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "transientReadFailureClearsOwnershipAndRecoversWithoutAnotherEvent",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "deniedRegistrationIsReportedAndCleansUpTheAttemptedListener",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "wireRejectsOversizedSnapshotsAndInvalidDisplayIds",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "healthyIdleDoesNotPollApps",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "unsubscribeCancelsSettlingSamplesAndUnregistersFrameworkListener",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "aBlockedQueryDoesNotPreventUnsubscribeOrPublishAfterItWasRetired",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "persistentReadFailuresStopRetryingAndANewEventCanRecover",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.MinimumProtectionInstrumentationTest",
+          "test": "prepareClientDeathFixture",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: got: <false>, expected: is <true>"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.MinimumProtectionInstrumentationTest",
+          "test": "protectedProfiles_releaseOnStockStopAndRecoverAfterHostKill",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: got: <false>, expected: is <true>"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "watchdogRestoresCeilingsWhenClientStopsHeartbeating",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: privileged execution unavailable"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "rootShellHostBinderHandoff_roundTripsWhenAvailable",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: root shell unavailable: Cannot run program \"su\": error=13, Permission denied"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "privilegedHostBinderHandoff_roundTripsThroughProductionClient",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: privileged execution unavailable"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "pServerAutoTune_preservesOwnedMinimumProtection",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: got: <false>, expected: is <true>"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "pServerHostBinderHandoff_roundTripsWhenAvailable",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: PServer unavailable: PServerBinder not available"
+        },
+        {
+          "class": "com.aure.clustertune.ui.AutoTuneRuntimeStatusCardTest",
+          "test": "cardDisplaysRuntimeSummary",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "tunerMode_marksOnlyNamedApplyingChip",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "autoTunePicker_restoresArbitraryAssignedTarget",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "disabledExperimentalSetting_hidesEntireAutoTuneTabAndTarget",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "autoTunePicker_tracksRefreshModeWithoutRewritingUnsavedTarget",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "customAssignment_isRepresentedAsCustomInTunerMode",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "assigningAutoTune_replacesFixedAssignmentOnlyAfterExplicitAction",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "profilesMode_marksMatchingProfileAsApplying",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "constrainedTuner_keepsHeaderAndActionsVisible_whileControlsScroll",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "profileSelection_appliesImmediately_andCarriesEnabledAppProfileState",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "autoTunePicker_capsSelectionToCurrentDisplayRefreshRate",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "tunerPresetSelection_isStagedUntilApply_andCancelOnlyDismisses",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "matchingOffscreenProfile_isHighlightedAndScrolledIntoView",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "nonMatchingValues_selectCustomAndScrollCustomIntoView",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "savedCustomAssignment_applyUsesSnapshotWithoutNamedProfile",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "assignmentMode_hidesAppProfileToggle_butProfileSelectionStillApplies",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "autoTuneMode_exposesAssignedTargetControlsToAccessibility",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "profilesWithoutAppContextHideAssignmentToggleAndApplyGlobally",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "autoTunePicker_savesArbitraryTargetOnlyFromExplicitAction",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "disablingAppProfile_inTunerModeRemovesAssignmentImmediately",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "sharedHeader_isPresentInBothModes_andModeButtonSwitchesContent",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "autoTuneWithoutAppContextShowsGuidanceAndCannotCreateAssignment",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "disablingExperimentalSetting_whileDialogOpenRemovesAutoTuneTab",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "inspectingAutoTune_preservesFixedSelectionAndDisabledAppProfileToggle",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "autoTunePicker_resetsDraftWhenForegroundPackageChanges",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "appPickerFrame_usesSharedOverlayHostGeometry",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.CompactOverlayScreenTest",
+          "test": "tunerMode_stripsUnderclockSuffix_butProfilesModeKeepsName",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PerformanceHudOverlayComposeTest",
+          "test": "unsupportedGraphHistoryIsOmitted",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PerformanceHudOverlayComposeTest",
+          "test": "emptyTelemetryShowsWaiting_whileKeepingContext",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PerformanceHudOverlayComposeTest",
+          "test": "fixedProfileRendersAvailableRows_withoutInteractiveControl",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PerformanceHudOverlayComposeTest",
+          "test": "autoTuneSliderAccessibilityProgressCommitsRoundedFps",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PerformanceHudOverlayComposeTest",
+          "test": "autoTuneSliderCommitsOnlyAfterGestureFinishes",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PerformanceHudOverlayComposeTest",
+          "test": "hudTileOptionFollowsExperimentalSetting",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "disconnectedService_explainsRecoveryWithoutClaimingPermissionWasRevoked",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "fixButtons_returnTheirCorrespondingAccess_inStableOrder",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "notNow_dismissesDialog",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "dialog_rendersOnlySuppliedAccess_withPurposeAndExactInstructions",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.SupportScreenTest",
+          "test": "headerTitle_andDone_shareVerticalCenter",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.SupportScreenTest",
+          "test": "supportContent_andDoneAction_areDisplayed",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.DesignSystemComponentsTest",
+          "test": "switchPreference_exposesOneToggle_andRowClickTogglesIt",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.DesignSystemComponentsTest",
+          "test": "switch_exposesToggleState_andInvokesCallback",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.DesignSystemComponentsTest",
+          "test": "slider_exposesProgressSemantics_andRetainsInteractionHeight",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.DesignSystemComponentsTest",
+          "test": "numericField_filtersNonDigits_andRetainsCompactTouchHeight",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.LeafComponentsTest",
+          "test": "selectableRow_exposesSelectedState",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.LeafComponentsTest",
+          "test": "icon_exposesCallerOwnedDescription",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.LeafComponentsTest",
+          "test": "rowSurface_selectedStateIsExposed",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.LeafComponentsTest",
+          "test": "statePanel_rendersCallerTitle",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.LeafComponentsTest",
+          "test": "appIdentity_rendersCallerOwnedLabelAndSubtitle",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.LeafComponentsTest",
+          "test": "statePanel_rendersMessageAndActionForErrorState",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.LeafComponentsTest",
+          "test": "selectableRow_hasRadioSemanticsAndTarget",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.LeafComponentsTest",
+          "test": "selectionIndicator_exposesOneRadioActionAndTarget",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.LeafComponentsTest",
+          "test": "selectionIndicator_exposesApplyingDescription",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.LeafComponentsTest",
+          "test": "divider_acceptsCallerModifier",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.LeafComponentsTest",
+          "test": "sectionAndDashedCards_renderSlottedContent",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.LeafComponentsTest",
+          "test": "preferenceRow_disabledStateIsExposed",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest",
+          "test": "overlayFrame_dismissesOutsideButIsolatesPanelTaps",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest",
+          "test": "overlayFrame_keepsPanelContentVisible",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest",
+          "test": "confirmationDialog_dismissButtonInvokesCallback",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest",
+          "test": "modalScaffold_rendersHeaderBodyAndFooterSlots",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest",
+          "test": "overlayFrame_resolvesFractionAgainstAvailableWidthBeforeMaximum",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest",
+          "test": "overlayFrame_canIgnoreOutsideTaps",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest",
+          "test": "overlayFrame_capsFractionalHeightAtMaximum",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest",
+          "test": "confirmationDialog_confirmInvokesCallback",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.ModalOverlayComponentsTest",
+          "test": "overlayFrame_wrapsContentWhenNoHeightFractionIsGiven",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.ThemeIntegrationTest",
+          "test": "themeProvidesMaterialAndSemanticColorsToContent",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.component.CompactSettingsFieldTest",
+          "test": "numericField_keepsValueVisibleAtCompactHeight_andFiltersDigits",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.designsystem.component.CompactSettingsFieldTest",
+          "test": "compactDropdownField_keepsWhileAsleepTextVisibleAtCompactHeight",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "android-16-detection",
+      "note": "Root task adapter and fault injection; emulator shell bridge; physical dual-display and app-facing su tests skipped.",
+      "counts": {
+        "passed": 8,
+        "failed": 0,
+        "error": 0,
+        "skipped": 2,
+        "ignored": 0
+      },
+      "seconds": 12.186,
+      "cases": [
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "realRootShellReceivesTaskNotifications",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: app-facing root shell unavailable"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "taskNotificationsFollowAppExitWithoutAccessibility",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "visibleAppsOnBothPhysicalDisplaysAreReported",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: requires two awake displays"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "transientReadFailureClearsOwnershipAndRecoversWithoutAnotherEvent",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "deniedRegistrationIsReportedAndCleansUpTheAttemptedListener",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "wireRejectsOversizedSnapshotsAndInvalidDisplayIds",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "healthyIdleDoesNotPollApps",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "unsubscribeCancelsSettlingSamplesAndUnregistersFrameworkListener",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "aBlockedQueryDoesNotPreventUnsubscribeOrPublishAfterItWasRetired",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorRecoveryTest",
+          "test": "persistentReadFailuresStopRetryingAndANewEventCanRecover",
+          "status": "passed"
+        }
+      ]
+    }
+  ],
+  "installedUiCheck": {
+    "appDetection": "Running. Profiles and pickers can follow your apps.",
+    "foregroundNotificationId": 41,
+    "accessibilityServiceDeclared": false,
+    "restoredProfile": "Large Underclock",
+    "cpuMinimumModes": [
+      "0440",
+      "0440",
+      "0440"
+    ]
+  }
+}

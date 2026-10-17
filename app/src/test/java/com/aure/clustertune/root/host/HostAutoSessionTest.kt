@@ -4,9 +4,29 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class HostAutoSessionTest {
+    @Test
+    fun `session deadlines exist only while tuning or unfinished restoration owns hardware`() {
+        val fixture = fixture()
+        assertNull(fixture.controller.nextMaintenanceDeadlineNanos())
+        val started = fixture.controller.start(AutoSessionRequest("com.game", 60, 5_000))
+        val firstDeadline = fixture.clock.now + 5_000_000_000L
+        assertEquals(firstDeadline, fixture.controller.nextMaintenanceDeadlineNanos())
+        fixture.clock.now += 1_000_000_000L
+        fixture.controller.heartbeat(started.sessionId!!, started.hostEpoch)
+        assertEquals(firstDeadline + 1_000_000_000L, fixture.controller.nextMaintenanceDeadlineNanos())
+        fixture.controller.applyStep(started.sessionId, started.hostEpoch, request(cpu = 600))
+        fixture.fs.failNextWrites("max", count = 1)
+        assertEquals(HostAutoSessionStatus.RESTORE_FAILED, fixture.controller.stop(started.sessionId, started.hostEpoch).status)
+        assertEquals(fixture.clock.now + 1_000_000_000L, fixture.controller.nextMaintenanceDeadlineNanos())
+        fixture.controller.expireIfNeeded()
+        assertNull(fixture.controller.nextMaintenanceDeadlineNanos())
+        assertEquals("800", fixture.fs.values["max"])
+    }
+
     @Test
     fun `checkpoint restores exact values and modes with maxima first`() {
         val fs = FakeFs(

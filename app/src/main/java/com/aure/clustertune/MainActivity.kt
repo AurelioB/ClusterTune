@@ -3,12 +3,9 @@ package com.aure.clustertune
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.database.ContentObserver
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
@@ -41,10 +38,9 @@ import com.aure.clustertune.overlay.OverlayHostService
 import com.aure.clustertune.overlay.OverlayPermission
 import com.aure.clustertune.permissions.AppAccess
 import com.aure.clustertune.permissions.AppAccessStatus
-import com.aure.clustertune.permissions.AppProfileAccessibilityAccess
-import com.aure.clustertune.permissions.UsageStatsAccess
+import com.aure.clustertune.apps.AppDetectionService
+import com.aure.clustertune.apps.AppDetectionState
 import com.aure.clustertune.permissions.missingAppAccess
-import com.aure.clustertune.permissions.accessibilityServiceNeedsRestart
 import com.aure.clustertune.sleep.SleepProfileMonitorService
 import com.aure.clustertune.tile.QuickSettingsTileAddResult
 import com.aure.clustertune.tile.QuickSettingsTilePrompt
@@ -64,7 +60,6 @@ import com.aure.clustertune.update.UpdateCheckPolicy
 import com.aure.clustertune.update.UpdateCheckResult
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
 
@@ -107,6 +102,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         maybeAutoDetectPrivilegedExecutionOnFirstRun()
         maybeCheckForUpdatesOnLaunch()
+        AppDetectionService.start(this)
         maybeStartSleepProfileMonitor()
 
         setContent {
@@ -133,39 +129,12 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         lifecycle.addObserver(observer)
-                        val accessObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
-                            override fun onChange(selfChange: Boolean) { permissionRefresh++ }
-                        }
-                        contentResolver.registerContentObserver(
-                            Settings.Secure.getUriFor(Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES),
-                            false,
-                            accessObserver,
-                        )
-                        onDispose {
-                            lifecycle.removeObserver(observer)
-                            contentResolver.unregisterContentObserver(accessObserver)
-                        }
+                        onDispose { lifecycle.removeObserver(observer) }
                     }
                     val canDrawOverlays = remember(permissionRefresh) {
                         OverlayPermission.canDrawOverlays(this@MainActivity)
                     }
-                    val hasUsageAccess = remember(permissionRefresh) {
-                        UsageStatsAccess.isEnabled(this@MainActivity)
-                    }
-                    val hasAppProfileAccessibilityAccess = remember(permissionRefresh) {
-                        AppProfileAccessibilityAccess.isEnabled(this@MainActivity)
-                    }
-                    val accessibilityConnected by AppProfileAccessibilityAccess.isConnected.collectAsStateWithLifecycle()
-                    val accessibilityHealthy by AppProfileAccessibilityAccess.isHealthy.collectAsStateWithLifecycle()
-                    var accessibilityBindingGraceElapsed by remember(permissionRefresh, accessibilityConnected, accessibilityHealthy) {
-                        mutableStateOf(false)
-                    }
-                    LaunchedEffect(permissionRefresh, accessibilityConnected, accessibilityHealthy, hasAppProfileAccessibilityAccess) {
-                        if (hasAppProfileAccessibilityAccess && (!accessibilityConnected || !accessibilityHealthy)) {
-                            delay(3_000L)
-                            accessibilityBindingGraceElapsed = true
-                        }
-                    }
+                    val detectionStatus by AppDetectionState.status.collectAsStateWithLifecycle()
                     val hasNotificationAccess = remember(permissionRefresh) {
                         NotificationManagerCompat.from(this@MainActivity)
                             .areNotificationsEnabled()
@@ -176,12 +145,8 @@ class MainActivity : ComponentActivity() {
                     val missingAccess = missingAppAccess(
                         AppAccessStatus(
                             overlayGranted = canDrawOverlays,
-                            accessibilityGranted = hasAppProfileAccessibilityAccess,
-                            usageGranted = hasUsageAccess,
                             notificationsGranted = hasNotificationAccess,
-                            accessibilityServiceDisconnected = accessibilityServiceNeedsRestart(
-                                hasAppProfileAccessibilityAccess, accessibilityConnected && accessibilityHealthy, accessibilityBindingGraceElapsed,
-                            ),
+                            appDetectionUnavailable = detectionStatus.error != null,
                         ),
                     )
                     var showPermissionDialog by rememberSaveable { mutableStateOf(true) }
@@ -236,14 +201,6 @@ class MainActivity : ComponentActivity() {
                             onOpenOverlayPermissionSettings = {
                                 startActivity(OverlayPermission.createSettingsIntent(this@MainActivity))
                             },
-                            hasUsageAccess = hasUsageAccess,
-                            onOpenUsageAccessSettings = {
-                                startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-                            },
-                            hasAppProfileAccessibilityAccess = hasAppProfileAccessibilityAccess,
-                            onOpenAppProfileAccessibilitySettings = {
-                                startActivity(AppProfileAccessibilityAccess.settingsIntent())
-                            },
                             hasNotificationAccess = hasNotificationAccess,
                             onOpenNotificationSettings = {
                                 startActivity(
@@ -273,14 +230,6 @@ class MainActivity : ComponentActivity() {
                                             startActivity(
                                                 OverlayPermission.createSettingsIntent(this@MainActivity),
                                             )
-                                        }
-                                        !hasAppProfileAccessibilityAccess -> {
-                                            SingleToast.show(
-                                                this@MainActivity,
-                                                "Enable accessibility access for app profiles",
-                                                Toast.LENGTH_LONG,
-                                            )
-                                            startActivity(AppProfileAccessibilityAccess.settingsIntent())
                                         }
                                         else -> OverlayHostService.showEdgeHandle(this@MainActivity)
                                     }
@@ -362,12 +311,8 @@ class MainActivity : ComponentActivity() {
                                         startActivity(OverlayPermission.createSettingsIntent(this@MainActivity))
                                     }
 
-                                    AppAccess.ACCESSIBILITY, AppAccess.ACCESSIBILITY_SERVICE -> {
-                                        startActivity(AppProfileAccessibilityAccess.settingsIntent())
-                                    }
-
-                                    AppAccess.USAGE -> {
-                                        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                                    AppAccess.APP_DETECTION -> {
+                                        AppDetectionService.start(this@MainActivity, retry = true)
                                     }
 
                                     AppAccess.NOTIFICATIONS -> {
@@ -454,8 +399,7 @@ class MainActivity : ComponentActivity() {
             val settings = container.settingsStorage.settings.first()
             if (
                 settings.leftEdgeProfilePickerEnabled &&
-                OverlayPermission.canDrawOverlays(this@MainActivity) &&
-                AppProfileAccessibilityAccess.isEnabled(this@MainActivity)
+                OverlayPermission.canDrawOverlays(this@MainActivity)
             ) {
                 OverlayHostService.showEdgeHandle(this@MainActivity)
             } else if (settings.leftEdgeProfilePickerEnabled) {

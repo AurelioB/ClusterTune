@@ -1,0 +1,338 @@
+{
+  "cases": [
+    {
+      "name": "15_swap_physical_screens",
+      "samples": [
+        {
+          "epoch": 3418405269632,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "B+A",
+          "timeMs": 1792135796979,
+          "settleMs": 302,
+          "launchMs": 200,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3418405269632,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "gpuMax": 680000000,
+          "label": "B+C",
+          "timeMs": 1792135797238,
+          "settleMs": 199,
+          "launchMs": 58,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3418405269632,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "gpuMax": 680000000,
+          "label": "D+C",
+          "timeMs": 1792135797578,
+          "settleMs": 292,
+          "launchMs": 41,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.d",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792135795941,
+      "status": "passed",
+      "finishedAtMs": 1792135797581,
+      "history": [
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible: com.aure.clustertune.fixture.c, com.aure.clustertune.fixture.d",
+          "timeMs": 1792135797468
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b) · com.aure.clustertune.fixture.b on display 0",
+          "timeMs": 1792135797228
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "Visible apps: A, B · com.aure.clustertune.fixture.b on display 0, com.aure.clustertune.fixture.a on display 4",
+          "timeMs": 1792135796881
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a) · com.aure.clustertune.fixture.a on display 4",
+          "timeMs": 1792135796675
+        }
+      ]
+    },
+    {
+      "name": "39_host_reconnect_with_A_visible",
+      "samples": [
+        {
+          "epoch": 3418405269632,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792135798201,
+          "settleMs": 304,
+          "launchMs": 32,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3423886347287,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            902400,
+            1651200,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "reconnected-with-A",
+          "timeMs": 1792135800580,
+          "settleMs": 14,
+          "launchMs": 32,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3423886347287,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792135801411,
+          "settleMs": 737,
+          "launchMs": 89,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3423886347287,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792135801898,
+          "settleMs": 422,
+          "launchMs": 62,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792135797590,
+      "status": "passed",
+      "finishedAtMs": 1792135801901,
+      "history": [
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible: com.aure.clustertune.fixture.c, rip.moth.cocoonshell",
+          "timeMs": 1792135801786
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b) · com.aure.clustertune.fixture.b on display 0",
+          "timeMs": 1792135801295
+        },
+        {
+          "profile": "App detection connected",
+          "trigger": "App profiles can follow visible apps.",
+          "timeMs": 1792135800467
+        },
+        {
+          "profile": "Connecting app detection",
+          "trigger": "Connecting to the privileged service.",
+          "timeMs": 1792135799871
+        },
+        {
+          "profile": "App detection unavailable",
+          "trigger": "App profiles are paused; reconnection is automatic · Privileged service disconnected",
+          "timeMs": 1792135799371
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a) · com.aure.clustertune.fixture.a on display 0",
+          "timeMs": 1792135798091
+        }
+      ]
+    }
+  ],
+  "method": "pserver-stdout",
+  "startedAtMs": 1792135793270,
+  "initial": {
+    "epoch": 3416744422133,
+    "cpuMax": [
+      1459200,
+      1785600,
+      1843200
+    ],
+    "cpuMin": [
+      902400,
+      1651200,
+      1843200
+    ],
+    "gpuMax": 680000000
+  },
+  "displays": [
+    0,
+    4
+  ],
+  "profiles": {
+    "normal": "Medium Underclock",
+    "a": "Large Underclock",
+    "b": "Small Underclock"
+  },
+  "restored": {
+    "epoch": 3423886347287,
+    "cpuMax": [
+      1459200,
+      1785600,
+      1843200
+    ],
+    "cpuMin": [
+      672000,
+      1536000,
+      595200
+    ],
+    "gpuMax": 680000000
+  },
+  "finishedAtMs": 1792135804245
+}

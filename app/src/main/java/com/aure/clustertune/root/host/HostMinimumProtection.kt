@@ -120,15 +120,20 @@ class HostMinimumProtection internal constructor(
                     ?: error("no supported minimum for ${cpu.id}")
                 val existing = owned[cpu.id]
                 if (existing != null) {
-                    check(fs.mode(cpu.minPath) == protectedMode(existing.originalMode)) {
-                        "CPU minimum protection changed externally for ${cpu.id}; release the profile before retrying"
+                    val mode = fs.mode(cpu.minPath)
+                    if (mode == protectedMode(existing.originalMode)) return@forEach
+                    // Firmware may recreate/reset the node to its original writable mode.
+                    // Keep the durable original mode and reacquire this already-owned node.
+                    check(mode == existing.originalMode || mode == (existing.originalMode or OWNER_WRITE)) {
+                        "CPU minimum permissions changed for ${cpu.id}; apply Stock before retrying"
                     }
-                    return@forEach
+                } else {
+                    val mode = fs.mode(cpu.minPath) ?: error("cannot read minimum permissions for ${cpu.id}")
+                    check(mode and WRITE_BITS != 0) { "${cpu.id} minimum is protected by another owner" }
+                    owned[cpu.id] = ProtectedMinimum(cpu.id, mode)
+                    persist() // Must reach disk before even the first chmod/write.
                 }
-                val mode = fs.mode(cpu.minPath) ?: error("cannot read minimum permissions for ${cpu.id}")
-                check(mode and WRITE_BITS != 0) { "${cpu.id} minimum is protected by another owner" }
-                owned[cpu.id] = ProtectedMinimum(cpu.id, mode)
-                persist() // Must reach disk before even the first chmod/write.
+                val mode = owned.getValue(cpu.id).originalMode
                 check(fs.mutate(listOf(
                     HostMutation.Chmod(cpu.minPath, mode or OWNER_WRITE),
                     HostMutation.WriteCandidatesNoReadback(cpu.minPath, listOf(floor.toString())),

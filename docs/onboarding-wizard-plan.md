@@ -78,12 +78,15 @@ then deduplicated into the following access steps.
 | Feature | What the user gets | Requirements |
 | --- | --- | --- |
 | Quick Settings tile | Profile controls without opening the main app | No Android permission for the tile itself; profile-picker overlays require Overlay access |
-| In-game/left-edge picker | Swipe from the left to choose a profile over the current game | Overlay access and Usage access |
-| App profiles | Apply a saved profile when its app becomes active | Usage access and at least one app assignment; Notifications make the service status visible |
+| In-game/left-edge picker | Swipe from the left to choose a profile over the current game | Overlay access and working privileged app detection |
+| App profiles | Apply a saved profile when its app becomes active | Working privileged app detection and at least one app assignment; Notifications make the service status visible |
 | Sleep profile | Apply one profile while the screen is off and restore on wake | Verified execution and a selected profile; Notifications make the service status visible |
 
 The Quick Settings tile can be recommended by default. The other features should
 be opt-in.
+
+App detection and recent-app sorting use the verified PServer/Root service. Neither
+Accessibility nor Usage Access belongs in the permission flow.
 
 ### 4. Grant relevant access
 
@@ -97,14 +100,6 @@ Suggested explanation: “Display ClusterTune controls over games.”
 Open the app-scoped overlay settings screen. When ClusterTune resumes, check
 `Settings.canDrawOverlays()` and show **Allowed** or **Not allowed**. A refusal
 leaves overlay-dependent features disabled but does not stop the wizard.
-
-#### Usage access
-
-Suggested explanation: “Identify the foreground game for app profiles and the
-edge picker. App activity is processed locally.”
-
-Open Android's Usage Access screen. On resume, re-check AppOps through the existing
-usage-access helper. Do not persist the grant as truth.
 
 #### Notifications
 
@@ -129,9 +124,9 @@ Activation happens after access is granted, not when a feature card is selected.
   `NOT_ADDED` or `ERROR`. On Android 12/12L, show concise manual tile-editor
   instructions.
 - **Left-edge picker:** persist enabled and start the overlay service only after
-  both Overlay and Usage access are present.
-- **App profiles:** Usage access alone is not an active profile. Offer **Set up
-  first app**, routing to the Apps tab, or **Assign later** with a “Ready” state.
+  Overlay access is present and privileged app detection reports ready.
+- **App profiles:** verify privileged app detection, then offer **Set up first
+  app**, routing to the Apps tab, or **Assign later** with a “Ready” state.
 - **Sleep profile:** require the user to choose an existing profile before
   persisting the feature as enabled and starting its service.
 

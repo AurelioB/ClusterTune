@@ -1,0 +1,2159 @@
+{
+  "cases": [
+    {
+      "name": "01_forward_A_B_C_A",
+      "samples": [
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792135636949,
+          "settleMs": 267,
+          "launchMs": 190,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792135637474,
+          "settleMs": 341,
+          "launchMs": 181,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792135637875,
+          "settleMs": 251,
+          "launchMs": 148,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792135638224,
+          "settleMs": 286,
+          "launchMs": 60,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792135636488,
+      "status": "passed",
+      "finishedAtMs": 1792135638227,
+      "history": [
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a) · com.aure.clustertune.fixture.a on display 0",
+          "timeMs": 1792135638208
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible: com.aure.clustertune.fixture.c, rip.moth.cocoonshell",
+          "timeMs": 1792135637855
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b) · com.aure.clustertune.fixture.b on display 0",
+          "timeMs": 1792135637355
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a) · com.aure.clustertune.fixture.a on display 0",
+          "timeMs": 1792135636921
+        }
+      ]
+    },
+    {
+      "name": "02_reverse_A_C_B_A",
+      "samples": [
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792135638285,
+          "settleMs": 11,
+          "launchMs": 39,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792135638862,
+          "settleMs": 10,
+          "launchMs": 562,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792135639347,
+          "settleMs": 415,
+          "launchMs": 67,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792135639850,
+          "settleMs": 428,
+          "launchMs": 64,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792135638233,
+      "status": "passed",
+      "finishedAtMs": 1792135639854,
+      "history": [
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a) · com.aure.clustertune.fixture.a on display 0",
+          "timeMs": 1792135639711
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b) · com.aure.clustertune.fixture.b on display 0",
+          "timeMs": 1792135639225
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible: com.aure.clustertune.fixture.c, rip.moth.cocoonshell",
+          "timeMs": 1792135638626
+        }
+      ]
+    },
+    {
+      "name": "13_two_screens_A_B",
+      "samples": [
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "gpuMax": 680000000,
+          "label": "A+B",
+          "timeMs": 1792135640218,
+          "settleMs": 275,
+          "launchMs": 30,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792135639863,
+      "status": "passed",
+      "finishedAtMs": 1792135640221,
+      "history": [
+        {
+          "profile": "Small Underclock",
+          "trigger": "Visible apps: A, B · com.aure.clustertune.fixture.a on display 0, com.aure.clustertune.fixture.b on display 4",
+          "timeMs": 1792135640114
+        }
+      ]
+    },
+    {
+      "name": "13b_crossed_cpu_gpu_requests",
+      "samples": [
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "crossed-A+B",
+          "timeMs": 1792135640508,
+          "settleMs": 183,
+          "launchMs": 32,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 401000000,
+          "label": "remove-crossed-B",
+          "timeMs": 1792135641037,
+          "settleMs": 375,
+          "launchMs": 151,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.d",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Custom",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1459200,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "remove-crossed-A",
+          "timeMs": 1792135641558,
+          "settleMs": 396,
+          "launchMs": 77,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Custom",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "standard-A+B",
+          "timeMs": 1792135642119,
+          "settleMs": 438,
+          "launchMs": 42,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792135640225,
+      "status": "passed",
+      "finishedAtMs": 1792135642123,
+      "history": [
+        {
+          "profile": "Small Underclock",
+          "trigger": "Visible apps: A, B · com.aure.clustertune.fixture.a on display 0, com.aure.clustertune.fixture.b on display 4",
+          "timeMs": 1792135641998
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b) · com.aure.clustertune.fixture.b on display 4",
+          "timeMs": 1792135641738
+        },
+        {
+          "profile": "Custom",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b) · com.aure.clustertune.fixture.b on display 4",
+          "timeMs": 1792135641538
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "Visible apps: A, B · com.aure.clustertune.fixture.a on display 0, com.aure.clustertune.fixture.b on display 4",
+          "timeMs": 1792135641293
+        },
+        {
+          "profile": "Custom",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a) · com.aure.clustertune.fixture.a on display 0",
+          "timeMs": 1792135640928
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "Visible apps: A, B · com.aure.clustertune.fixture.a on display 0, com.aure.clustertune.fixture.b on display 4",
+          "timeMs": 1792135640659
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "Visible apps: A, B · com.aure.clustertune.fixture.a on display 0, com.aure.clustertune.fixture.b on display 4",
+          "timeMs": 1792135640504
+        }
+      ]
+    },
+    {
+      "name": "14_independent_unassigned_C_D",
+      "samples": [
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "C+B",
+          "timeMs": 1792135642608,
+          "settleMs": 393,
+          "launchMs": 82,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "gpuMax": 680000000,
+          "label": "C+D",
+          "timeMs": 1792135642958,
+          "settleMs": 261,
+          "launchMs": 79,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.d",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "A+D",
+          "timeMs": 1792135643409,
+          "settleMs": 365,
+          "launchMs": 82,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "com.aure.clustertune.fixture.d",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "gpuMax": 680000000,
+          "label": "A+B-again",
+          "timeMs": 1792135643743,
+          "settleMs": 263,
+          "launchMs": 68,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792135642130,
+      "status": "passed",
+      "finishedAtMs": 1792135643745,
+      "history": [
+        {
+          "profile": "Small Underclock",
+          "trigger": "Visible apps: A, B · com.aure.clustertune.fixture.a on display 0, com.aure.clustertune.fixture.b on display 4",
+          "timeMs": 1792135643639
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a) · com.aure.clustertune.fixture.a on display 0",
+          "timeMs": 1792135643307
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible: com.aure.clustertune.fixture.c, com.aure.clustertune.fixture.d",
+          "timeMs": 1792135642846
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b) · com.aure.clustertune.fixture.b on display 4",
+          "timeMs": 1792135642488
+        }
+      ]
+    },
+    {
+      "name": "15_swap_physical_screens",
+      "samples": [
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "gpuMax": 680000000,
+          "label": "failure-state",
+          "timeMs": 1792135644064,
+          "launchMs": 40,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792135643749,
+      "status": "failed",
+      "error": "java.lang.AssertionError: B+A expected Combined with [a, b]; visible=VisibleAppSnapshot(windowsByDisplay={0=[VisibleAppWindow(packageName=com.aure.clustertune.fixture.c, displayId=0, isFocused=false, isActive=true)], 4=[VisibleAppWindow(packageName=com.aure.clustertune.fixture.a, displayId=4, isFocused=false, isActive=true)]}, isInteractive=true, recentPackageByDisplay={0=com.aure.clustertune.fixture.c, 4=com.aure.clustertune.fixture.a}, mostRecentAppIdentity=RecentAppIdentity(displayId=0, packageName=com.aure.clustertune.fixture.c), refreshRateFpsByDisplay={0=120, 4=120}, pickerPackageByDisplay={0=com.aure.clustertune.fixture.c, 4=com.aure.clustertune.fixture.a})\n\tat org.junit.Assert.fail(Assert.java:89)\n\tat org.junit.Assert.assertTrue(Assert.java:42)\n\tat com.aure.clustertune.apps.LetterAppsDeviceTest.await(LetterAppsDeviceTest.kt:753)\n\tat com.aure.clustertune.apps.LetterAppsDeviceTest.access$await(LetterAppsDeviceTest.kt:37)\n\tat com.aure.clustertune.apps.LetterAppsDeviceTest$await$1.invokeSuspend(Unknown Source:18)\n\tat kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)\n\tat kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:102)\n\tat kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)\n\tat kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)\n\tat kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)\n\tat kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)\n\tat kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)\n\tat kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)\n\tat com.aure.clustertune.apps.LetterAppsDeviceTest.pserverFunctions(LetterAppsDeviceTest.kt:70)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)\n\tat org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)\n\tat org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)\n\tat org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)\n\tat org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\n\tat org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)\n\tat org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)\n\tat org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)\n\tat org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)\n\tat org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)\n\tat org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)\n\tat org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)\n\tat org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)\n\tat org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)\n\tat org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\n\tat org.junit.runners.ParentRunner.run(ParentRunner.java:413)\n\tat androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)\n\tat org.junit.runners.Suite.runChild(Suite.java:128)\n\tat org.junit.runners.Suite.runChild(Suite.java:27)\n\tat org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)\n\tat org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)\n\tat org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)\n\tat org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)\n\tat org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)\n\tat org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\n\tat org.junit.runners.ParentRunner.run(ParentRunner.java:413)\n\tat org.junit.runner.JUnitCore.run(JUnitCore.java:137)\n\tat org.junit.runner.JUnitCore.run(JUnitCore.java:115)\n\tat androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:67)\n\tat androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:58)\n\tat androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:446)\n\tat android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2367)\n",
+      "lastLaunchOutput": "Starting: Intent { flg=0x30020000 cmp=com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity (has extras) }\nWarning: Activity not started, intent has been delivered to currently running top-most instance.\nStatus: ok\nLaunchState: UNKNOWN (0)\nActivity: com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity\nTotalTime: 0\nWaitTime: 11\nComplete\n",
+      "detector": "AppDetectionStatus(available=true, error=null)",
+      "runtime": "AdaptiveTuneRuntimeState(active=false, sessionGeneration=null, packageName=null, appLabel=null, targetFps=null, status=null, reason=null, measuredFps=null, p95FrameTimeMillis=null, cpuLoad={}, cpuClockKHz={}, gpuBusy=null, gpuClockHz=null, thermalMilliCelsius={}, frameConfidence=null, slowFrameRatio=null, frameStale=false, sampleTimestampNanos=null, ceilings=null, frameBackend=null, message=null)",
+      "detectionRunning": true,
+      "threads": "FinalizerDaemon\njava.lang.Object.wait(Native Method)\njava.lang.Object.wait(Object.java:442)\njava.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:203)\njava.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:224)\njava.lang.Daemons$FinalizerDaemon.runInternal(Daemons.java:300)\njava.lang.Daemons$Daemon.run(Daemons.java:140)\njava.lang.Thread.run(Thread.java:1012)\n\nDefaultDispatcher-worker-2\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nbinder:25264_4\n\n\nDefaultDispatcher-worker-10\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-24\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-16\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nSignal Catcher\n\n\nDefaultDispatcher-worker-6\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nUiAutomation\nandroid.os.MessageQueue.nativePollOnce(Native Method)\nandroid.os.MessageQueue.next(MessageQueue.java:335)\nandroid.os.Looper.loopOnce(Looper.java:161)\nandroid.os.Looper.loop(Looper.java:288)\nandroid.os.HandlerThread.run(HandlerThread.java:67)\n\nDefaultDispatcher-worker-1\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-25\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nJit thread pool worker thread 0\n\n\nDefaultDispatcher-worker-7\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-23\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-21\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-11\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nInstr: androidx.test.runner.AndroidJUnitRunner\ndalvik.system.VMStack.getThreadStackTrace(Native Method)\njava.lang.Thread.getStackTrace(Thread.java:1841)\njava.lang.Thread.getAllStackTraces(Thread.java:1909)\ncom.aure.clustertune.apps.LetterAppsDeviceTest.scenario(LetterAppsDeviceTest.kt:727)\ncom.aure.clustertune.apps.LetterAppsDeviceTest.access$scenario(LetterAppsDeviceTest.kt:37)\ncom.aure.clustertune.apps.LetterAppsDeviceTest$scenario$1.invokeSuspend(Unknown Source:15)\nkotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)\nkotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:102)\nkotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)\nkotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)\nkotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)\nkotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)\nkotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)\nkotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)\ncom.aure.clustertune.apps.LetterAppsDeviceTest.pserverFunctions(LetterAppsDeviceTest.kt:70)\njava.lang.reflect.Method.invoke(Native Method)\norg.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)\norg.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)\norg.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)\norg.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)\norg.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\norg.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)\norg.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)\norg.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)\norg.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)\norg.junit.runners.ParentRunner$4.run(ParentRunner.java:331)\norg.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)\norg.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)\norg.junit.runners.ParentRunner.access$100(ParentRunner.java:66)\norg.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)\norg.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\norg.junit.runners.ParentRunner.run(ParentRunner.java:413)\nandroidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)\norg.junit.runners.Suite.runChild(Suite.java:128)\norg.junit.runners.Suite.runChild(Suite.java:27)\norg.junit.runners.ParentRunner$4.run(ParentRunner.java:331)\norg.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)\norg.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)\norg.junit.runners.ParentRunner.access$100(ParentRunner.java:66)\norg.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)\norg.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\norg.junit.runners.ParentRunner.run(ParentRunner.java:413)\norg.junit.runner.JUnitCore.run(JUnitCore.java:137)\norg.junit.runner.JUnitCore.run(JUnitCore.java:115)\nandroidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:67)\nandroidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:58)\nandroidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:446)\nandroid.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2367)\n\nDefaultDispatcher-worker-14\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-19\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-26\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-27\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nmain\nandroid.os.MessageQueue.nativePollOnce(Native Method)\nandroid.os.MessageQueue.next(MessageQueue.java:335)\nandroid.os.Looper.loopOnce(Looper.java:161)\nandroid.os.Looper.loop(Looper.java:288)\nandroid.app.ActivityThread.main(ActivityThread.java:8195)\njava.lang.reflect.Method.invoke(Native Method)\ncom.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)\ncom.android.internal.os.ZygoteInit.main(ZygoteInit.java:942)\n\nProfile Saver\n\n\nDefaultDispatcher-worker-8\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nbinder:25264_3\n\n\nDefaultDispatcher-worker-18\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-15\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nbinder:25264_2\n\n\nbinder:25264_1\n\n\nDefaultDispatcher-worker-22\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-12\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-3\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-5\nlibcore.io.BlockGuardOs.lseek(BlockGuardOs.java:242)\nlibcore.io.ForwardingOs.lseek(ForwardingOs.java:469)\njava.io.RandomAccessFile.seek(RandomAccessFile.java:617)\nokio.JvmFileHandle.protectedWrite(JvmFileHandle.kt:68)\nokio.FileHandle.writeNoCloseCheck(FileHandle.kt:375)\nokio.FileHandle.access$writeNoCloseCheck(FileHandle.kt:35)\nokio.FileHandle$FileHandleSink.write(FileHandle.kt:396)\nokio.RealBufferedSink.emitCompleteSegments(RealBufferedSink.kt:256)\nokio.RealBufferedSink$outputStream$1.write(RealBufferedSink.kt:118)\nandroidx.datastore.preferences.protobuf.CodedOutputStream$OutputStreamEncoder.write(CodedOutputStream.java:2984)\nandroidx.datastore.preferences.protobuf.CodedOutputStream$OutputStreamEncoder.writeLazy(CodedOutputStream.java:2992)\nandroidx.datastore.preferences.protobuf.CodedOutputStream$OutputStreamEncoder.writeStringNoTag(CodedOutputStream.java:2904)\nandroidx.datastore.preferences.protobuf.CodedOutputStream$OutputStreamEncoder.writeString(CodedOutputStream.java:2748)\nandroidx.datastore.preferences.protobuf.CodedOutputStreamWriter.writeString(CodedOutputStreamWriter.java:125)\nandroidx.datastore.preferences.protobuf.MessageSchema.writeString(MessageSchema.java:5779)\nandroidx.datastore.preferences.protobuf.MessageSchema.writeFieldsInAscendingOrderProto2(MessageSchema.java:2905)\nandroidx.datastore.preferences.protobuf.MessageSchema.writeTo(MessageSchema.java:2586)\nandroidx.datastore.preferences.protobuf.GeneratedMessageLite.writeTo(GeneratedMessageLite.java:338)\nandroidx.datastore.preferences.protobuf.CodedOutputStream$OutputStreamEncoder.writeMessageNoTag(CodedOutputStream.java:2834)\nandroidx.datastore.preferences.protobuf.FieldSet.writeElementNoTag(FieldSet.java:678)\nandroidx.datastore.preferences.protobuf.FieldSet.writeElement(FieldSet.java:634)\nandroidx.datastore.preferences.protobuf.MapEntryLite.writeTo(MapEntryLite.java:110)\nandroidx.datastore.preferences.protobuf.CodedOutputStreamWriter.writeMap(CodedOutputStreamWriter.java:594)\nandroidx.datastore.preferences.protobuf.MessageSchema.writeMapHelper(MessageSchema.java:3876)\nandroidx.datastore.preferences.protobuf.MessageSchema.writeFieldsInAscendingOrderProto2(MessageSchema.java:2861)\nandroidx.datastore.preferences.protobuf.MessageSchema.writeTo(MessageSchema.java:2586)\nandroidx.datastore.preferences.protobuf.GeneratedMessageLite.writeTo(GeneratedMessageLite.java:338)\nandroidx.datastore.preferences.protobuf.AbstractMessageLite.writeTo(AbstractMessageLite.java:83)\nandroidx.datastore.preferences.core.PreferencesSerializer.writeTo(PreferencesSerializer.jvm.kt:67)\nandroidx.datastore.preferences.core.PreferencesSerializer.writeTo(PreferencesSerializer.jvm.kt:36)\nandroidx.datastore.core.okio.OkioWriteScope.writeData(OkioStorage.kt:211)\nandroidx.datastore.core.DataStoreImpl$writeData$2.invokeSuspend(DataStoreImpl.kt:361)\nandroidx.datastore.core.DataStoreImpl$writeData$2.invoke(Unknown Source:8)\nandroidx.datastore.core.DataStoreImpl$writeData$2.invoke(Unknown Source:4)\nandroidx.datastore.core.okio.OkioStorageConnection.writeScope(OkioStorage.kt:137)\nandroidx.datastore.core.DataStoreImpl.writeData$datastore_core_release(DataStoreImpl.kt:356)\nandroidx.datastore.core.DataStoreImpl$transformAndWrite$2.invokeSuspend(DataStoreImpl.kt:345)\nkotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)\nkotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:104)\nkotlinx.coroutines.internal.LimitedDispatcher$Worker.run(LimitedDispatcher.kt:111)\nkotlinx.coroutines.scheduling.TaskImpl.run(Tasks.kt:99)\nkotlinx.coroutines.scheduling.CoroutineScheduler.runSafely(CoroutineScheduler.kt:584)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.executeTask(CoroutineScheduler.kt:811)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:715)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nFinalizerWatchdogDaemon\njava.lang.Thread.sleep(Native Method)\njava.lang.Thread.sleep(Thread.java:450)\njava.lang.Thread.sleep(Thread.java:355)\njava.lang.Daemons$FinalizerWatchdogDaemon.sleepForNanos(Daemons.java:438)\njava.lang.Daemons$FinalizerWatchdogDaemon.waitForProgress(Daemons.java:480)\njava.lang.Daemons$FinalizerWatchdogDaemon.runInternal(Daemons.java:369)\njava.lang.Daemons$Daemon.run(Daemons.java:140)\njava.lang.Thread.run(Thread.java:1012)\n\nDefaultDispatcher-worker-4\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-9\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nqueued-work-looper\nandroid.os.MessageQueue.nativePollOnce(Native Method)\nandroid.os.MessageQueue.next(MessageQueue.java:335)\nandroid.os.Looper.loopOnce(Looper.java:161)\nandroid.os.Looper.loop(Looper.java:288)\nandroid.os.HandlerThread.run(HandlerThread.java:67)\n\nDefaultDispatcher-worker-17\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-13\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nprocess reaper\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:234)\njava.util.concurrent.SynchronousQueue$TransferStack.awaitFulfill(SynchronousQueue.java:463)\njava.util.concurrent.SynchronousQueue$TransferStack.transfer(SynchronousQueue.java:361)\njava.util.concurrent.SynchronousQueue.poll(SynchronousQueue.java:939)\njava.util.concurrent.ThreadPoolExecutor.getTask(ThreadPoolExecutor.java:1062)\njava.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1123)\njava.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:637)\njava.lang.Thread.run(Thread.java:1012)\n\nReferenceQueueDaemon\njava.lang.Object.wait(Native Method)\njava.lang.Object.wait(Object.java:442)\njava.lang.Object.wait(Object.java:568)\njava.lang.Daemons$ReferenceQueueDaemon.runInternal(Daemons.java:232)\njava.lang.Daemons$Daemon.run(Daemons.java:140)\njava.lang.Thread.run(Thread.java:1012)\n\nHeapTaskDaemon\n\n\nInstrumentationConnectionThread\nandroid.os.MessageQueue.nativePollOnce(Native Method)\nandroid.os.MessageQueue.next(MessageQueue.java:335)\nandroid.os.Looper.loopOnce(Looper.java:161)\nandroid.os.Looper.loop(Looper.java:288)\nandroid.os.HandlerThread.run(HandlerThread.java:67)\n\nDefaultDispatcher-worker-20\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)",
+      "actualTasks": "  * Task{63078e7 #25518 type=standard A=10180:com.aure.clustertune.fixture.b U=0 visible=true visibleRequested=true mode=fullscreen translucent=false sz=1}\n    topResumedActivity=ActivityRecord{6a6a33d u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25518}\n    * Hist  #0: ActivityRecord{6a6a33d u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25518}\n      packageName=com.aure.clustertune.fixture.b processName=com.aure.clustertune.fixture.b\n      app=ProcessRecord{8de4732 25519:com.aure.clustertune.fixture.b\/u0a180}\n      Intent { flg=0x30020000 cmp=com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity (has extras) }\n      rootOfTask=true task=Task{63078e7 #25518 type=standard A=10180:com.aure.clustertune.fixture.b}\n      taskAffinity=10180:com.aure.clustertune.fixture.b\n      mActivityComponent=com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity\n      baseDir=\/data\/app\/~~2m0Uw0NDfKt3WcPSlD_X4A==\/com.aure.clustertune.fixture.b-xIwKAwHHA4ovnaTF-katdA==\/base.apk\n      dataDir=\/data\/user\/0\/com.aure.clustertune.fixture.b\n      windows=[Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}]\n  * Task{5b32725 #25519 type=standard A=10213:com.aure.clustertune.fixture.c U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}\n    mLastPausedActivity: ActivityRecord{f4d66ab u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity} t25519}\n    * Hist  #0: ActivityRecord{f4d66ab u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity} t25519}\n      packageName=com.aure.clustertune.fixture.c processName=com.aure.clustertune.fixture.c\n      app=ProcessRecord{c7f0108 25572:com.aure.clustertune.fixture.c\/u0a213}\n      Intent { flg=0x30020000 cmp=com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity (has extras) }\n      rootOfTask=true task=Task{5b32725 #25519 type=standard A=10213:com.aure.clustertune.fixture.c}\n      taskAffinity=10213:com.aure.clustertune.fixture.c\n      mActivityComponent=com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity\n      baseDir=\/data\/app\/~~iQ0AvNM4fgKq439eEFGFcg==\/com.aure.clustertune.fixture.c-FVnlS0hwNvBS4Jta0_EJQQ==\/base.apk\n      dataDir=\/data\/user\/0\/com.aure.clustertune.fixture.c\n      windows=[Window{53387b u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity}]\n    Resumed: ActivityRecord{6a6a33d u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25518}\n  * Task{c1bd41e #25517 type=standard A=10167:com.aure.clustertune.fixture.a U=0 visible=true visibleRequested=true mode=fullscreen translucent=false sz=1}\n    topResumedActivity=ActivityRecord{fdc22cc u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25517}\n    * Hist  #0: ActivityRecord{fdc22cc u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25517}\n      packageName=com.aure.clustertune.fixture.a processName=com.aure.clustertune.fixture.a\n      app=ProcessRecord{91d2915 25465:com.aure.clustertune.fixture.a\/u0a167}\n      Intent { flg=0x30020000 cmp=com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity (has extras) }\n      rootOfTask=true task=Task{c1bd41e #25517 type=standard A=10167:com.aure.clustertune.fixture.a}\n      taskAffinity=10167:com.aure.clustertune.fixture.a\n      mActivityComponent=com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity\n      baseDir=\/data\/app\/~~hRPGqWGweQnbhtXg91CxOw==\/com.aure.clustertune.fixture.a-oVEBi0KBWfFUsHmeZ8tDpQ==\/base.apk\n      dataDir=\/data\/user\/0\/com.aure.clustertune.fixture.a\n      windows=[Window{d2730a3 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}]\n  * Task{b148305 #25520 type=standard A=10226:com.aure.clustertune.fixture.d U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}\n    mLastPausedActivity: ActivityRecord{940d58b u0 com.aure.clustertune.fixture.d\/com.aure.clustertune.testapps.LetterActivity} t25520}\n    * Hist  #0: ActivityRecord{940d58b u0 com.aure.clustertune.fixture.d\/com.aure.clustertune.testapps.LetterActivity} t25520}\n      packageName=com.aure.clustertune.fixture.d processName=com.aure.clustertune.fixture.d\n      app=ProcessRecord{62d7668 25804:com.aure.clustertune.fixture.d\/u0a226}\n      Intent { flg=0x30020000 cmp=com.aure.clustertune.fixture.d\/com.aure.clustertune.testapps.LetterActivity (has extras) }\n      rootOfTask=true task=Task{b148305 #25520 type=standard A=10226:com.aure.clustertune.fixture.d}\n      taskAffinity=10226:com.aure.clustertune.fixture.d\n      mActivityComponent=com.aure.clustertune.fixture.d\/com.aure.clustertune.testapps.LetterActivity\n      baseDir=\/data\/app\/~~Au4K3R6rf9ix0OrrUxMjrQ==\/com.aure.clustertune.fixture.d-VTYuspyrxP_thh3VBblliQ==\/base.apk\n      dataDir=\/data\/user\/0\/com.aure.clustertune.fixture.d\n      windows=[Window{fad0f5b u0 com.aure.clustertune.fixture.d\/com.aure.clustertune.testapps.LetterActivity}]\n    Resumed: ActivityRecord{fdc22cc u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25517}\n    Task{5b32725 #25519 type=standard A=10213:com.aure.clustertune.fixture.c}\n      Stop #1: ActivityRecord{f4d66ab u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity} t25519}\n    Task{b148305 #25520 type=standard A=10226:com.aure.clustertune.fixture.d}\n      Stop #0: ActivityRecord{940d58b u0 com.aure.clustertune.fixture.d\/com.aure.clustertune.testapps.LetterActivity} t25520}\n  ResumedActivity: ActivityRecord{6a6a33d u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25518}\n  topDisplayFocusedRootTask=Task{63078e7 #25518 type=standard A=10180:com.aure.clustertune.fixture.b}\n  mCurrentFocus=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n  mFocusedApp=ActivityRecord{6a6a33d u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25518}\n  mHoldScreenWindow=Window{53387b u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity}\n  mLastWakeLockHoldingWindow=Window{d2730a3 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n      mPreferredTopFocusableRootTask=Task{63078e7 #25518 type=standard A=10180:com.aure.clustertune.fixture.b}\n      mLastFocusedRootTask=Task{63078e7 #25518 type=standard A=10180:com.aure.clustertune.fixture.b}\n      * Task{63078e7 #25518 type=standard A=10180:com.aure.clustertune.fixture.b U=0 visible=true visibleRequested=true mode=fullscreen translucent=false sz=1}\n        * ActivityRecord{6a6a33d u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25518}\n      * Task{5b32725 #25519 type=standard A=10213:com.aure.clustertune.fixture.c U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}\n        * ActivityRecord{f4d66ab u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity} t25519}\n    mFocusedWindow=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n    mTopFullscreenOpaqueWindowState=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n    mSystemBarColorApps={ActivityRecord{6a6a33d u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25518}}\n      Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n      ITYPE_IME -> Window{53387b u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity}\n      ITYPE_NAVIGATION_BAR -> Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n      ITYPE_STATUS_BAR -> Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n        mControlTarget=Window{53387b u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity}\n        mControlTarget=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n        mControlTarget=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n  mCurrentFocus=Window{d2730a3 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n  mFocusedApp=ActivityRecord{fdc22cc u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25517}\n  mHoldScreenWindow=Window{fad0f5b u0 com.aure.clustertune.fixture.d\/com.aure.clustertune.testapps.LetterActivity}\n  mLastWakeLockHoldingWindow=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n      mPreferredTopFocusableRootTask=Task{c1bd41e #25517 type=standard A=10167:com.aure.clustertune.fixture.a}\n      mLastFocusedRootTask=Task{c1bd41e #25517 type=standard A=10167:com.aure.clustertune.fixture.a}\n      * Task{c1bd41e #25517 type=standard A=10167:com.aure.clustertune.fixture.a U=0 visible=true visibleRequested=true mode=fullscreen translucent=false sz=1}\n        * ActivityRecord{fdc22cc u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25517}\n      * Task{b148305 #25520 type=standard A=10226:com.aure.clustertune.fixture.d U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}\n        * ActivityRecord{940d58b u0 com.aure.clustertune.fixture.d\/com.aure.clustertune.testapps.LetterActivity} t25520}\n    mFocusedWindow=Window{d2730a3 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n    mTopFullscreenOpaqueWindowState=Window{d2730a3 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n      ITYPE_NAVIGATION_BAR -> Window{d2730a3 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n        mPendingControlTarget=Window{d2730a3 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n        mControlTarget=Window{d2730a3 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n        (fullscreen) Task{c1bd41e #25517 type=standard A=10167:com.aure.clustertune.fixture.a}\n        (fullscreen) Task{63078e7 #25518 type=standard A=10180:com.aure.clustertune.fixture.b}\n        (fullscreen) Task{5b32725 #25519 type=standard A=10213:com.aure.clustertune.fixture.c}\n        (fullscreen) Task{b148305 #25520 type=standard A=10226:com.aure.clustertune.fixture.d}\n  VisibleActivityProcess:[ ProcessRecord{8de4732 25519:com.aure.clustertune.fixture.b\/u0a180} ProcessRecord{91d2915 25465:com.aure.clustertune.fixture.a\/u0a167}]",
+      "finishedAtMs": 1792135644733,
+      "history": [
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible: rip.moth.cocoonshell",
+          "timeMs": 1792135644615
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "Visible apps: A, B · com.aure.clustertune.fixture.b on display 0, com.aure.clustertune.fixture.a on display 4",
+          "timeMs": 1792135644198
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b) · com.aure.clustertune.fixture.b on display 4",
+          "timeMs": 1792135644054
+        }
+      ]
+    },
+    {
+      "name": "16_sleep_disabled",
+      "samples": [
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792135645226,
+          "settleMs": 371,
+          "launchMs": 44,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            672000,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "wake-with-sleep-off",
+          "timeMs": 1792135646361,
+          "settleMs": 398,
+          "launchMs": 44,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "wake-with-sleep-off",
+          "timeMs": 1792135647277,
+          "settleMs": 210,
+          "launchMs": 44,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792135644741,
+      "status": "passed",
+      "finishedAtMs": 1792135647281,
+      "history": [
+        {
+          "profile": "Device sleeping",
+          "trigger": "The screen turned off.",
+          "timeMs": 1792135647227
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a) · com.aure.clustertune.fixture.a on display 0",
+          "timeMs": 1792135646346
+        },
+        {
+          "profile": "Device awake",
+          "trigger": "Screen on; checking app profiles again.",
+          "timeMs": 1792135646287
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible: all assigned apps closed",
+          "timeMs": 1792135646207
+        },
+        {
+          "profile": "Device sleeping",
+          "trigger": "The screen turned off.",
+          "timeMs": 1792135646184
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a) · com.aure.clustertune.fixture.a on display 0",
+          "timeMs": 1792135645111
+        },
+        {
+          "profile": "App detection connected",
+          "trigger": "App profiles can follow visible apps.",
+          "timeMs": 1792135644793
+        }
+      ]
+    },
+    {
+      "name": "17_sleep_profile_then_assigned_app",
+      "samples": [
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792135647336,
+          "settleMs": 13,
+          "launchMs": 32,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "sleep",
+          "timeMs": 1792135649454,
+          "launchMs": 32,
+          "visible": [],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "wake-restores-assigned-A",
+          "timeMs": 1792135650080,
+          "settleMs": 551,
+          "launchMs": 32,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792135647288,
+      "status": "passed",
+      "finishedAtMs": 1792135650105,
+      "history": [
+        {
+          "profile": "Large Underclock",
+          "trigger": "Device wake",
+          "timeMs": 1792135649981
+        },
+        {
+          "profile": "Device awake",
+          "trigger": "Screen on; checking app profiles again.",
+          "timeMs": 1792135649698
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "Device sleep",
+          "timeMs": 1792135649469
+        },
+        {
+          "profile": "Device sleeping",
+          "trigger": "The screen turned off.",
+          "timeMs": 1792135649002
+        },
+        {
+          "profile": "Device awake",
+          "trigger": "Screen on; checking app profiles again.",
+          "timeMs": 1792135647496
+        }
+      ]
+    },
+    {
+      "name": "18_repeated_sleep_wake_switches",
+      "samples": [
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792135651034,
+          "settleMs": 402,
+          "launchMs": 91,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "gpuMax": 680000000,
+          "label": "cycle-0",
+          "timeMs": 1792135652989,
+          "settleMs": 402,
+          "launchMs": 91,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792135653349,
+          "settleMs": 250,
+          "launchMs": 108,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792135653817,
+          "settleMs": 391,
+          "launchMs": 72,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "cycle-1",
+          "timeMs": 1792135655917,
+          "settleMs": 578,
+          "launchMs": 72,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792135656400,
+          "settleMs": 395,
+          "launchMs": 77,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792135656873,
+          "settleMs": 415,
+          "launchMs": 53,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "cycle-2",
+          "timeMs": 1792135658943,
+          "settleMs": 490,
+          "launchMs": 53,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792135659313,
+          "settleMs": 280,
+          "launchMs": 77,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792135650122,
+      "status": "passed",
+      "finishedAtMs": 1792135659344,
+      "history": [
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible: com.aure.clustertune.fixture.c, rip.moth.cocoonshell",
+          "timeMs": 1792135659298
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "Device wake",
+          "timeMs": 1792135658826
+        },
+        {
+          "profile": "Device awake",
+          "trigger": "Screen on; checking app profiles again.",
+          "timeMs": 1792135658660
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "Device sleep",
+          "timeMs": 1792135658383
+        },
+        {
+          "profile": "Device sleeping",
+          "trigger": "The screen turned off.",
+          "timeMs": 1792135657997
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b) · com.aure.clustertune.fixture.b on display 0",
+          "timeMs": 1792135656758
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible: com.aure.clustertune.fixture.c, rip.moth.cocoonshell",
+          "timeMs": 1792135656280
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "Device wake",
+          "timeMs": 1792135655798
+        },
+        {
+          "profile": "Device awake",
+          "trigger": "Screen on; checking app profiles again.",
+          "timeMs": 1792135655534
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "Device sleep",
+          "timeMs": 1792135655279
+        },
+        {
+          "profile": "Device sleeping",
+          "trigger": "The screen turned off.",
+          "timeMs": 1792135654885
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b) · com.aure.clustertune.fixture.b on display 0",
+          "timeMs": 1792135653699
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible: com.aure.clustertune.fixture.c",
+          "timeMs": 1792135653233
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "Device wake",
+          "timeMs": 1792135652889
+        },
+        {
+          "profile": "Device awake",
+          "trigger": "Screen on; checking app profiles again.",
+          "timeMs": 1792135652748
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "Device sleep",
+          "timeMs": 1792135652522
+        },
+        {
+          "profile": "Device sleeping",
+          "trigger": "The screen turned off.",
+          "timeMs": 1792135652128
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b) · com.aure.clustertune.fixture.b on display 0",
+          "timeMs": 1792135650921
+        }
+      ]
+    },
+    {
+      "name": "23_disabled_autotune_assignment_dormant",
+      "samples": [
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "gpuMax": 680000000,
+          "label": "show-d",
+          "timeMs": 1792135659529,
+          "settleMs": 122,
+          "launchMs": 38,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.d",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792135659350,
+      "status": "passed",
+      "finishedAtMs": 1792135661034,
+      "history": [
+        {
+          "profile": "App profile inactive",
+          "trigger": "com.aure.clustertune.fixture.d: Auto Tune is disabled, so its app profile was not applied.",
+          "timeMs": 1792135659469
+        }
+      ]
+    },
+    {
+      "name": "25_auto_fixed_unassigned_auto",
+      "samples": [
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "auto-a-30",
+          "timeMs": 1792135662559,
+          "launchMs": 70,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Auto Tune · 30 FPS",
+          "autoTuneActive": true
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "auto-A",
+          "timeMs": 1792135667578,
+          "launchMs": 70,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Auto Tune · 30 FPS",
+          "autoTuneActive": true
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792135668098,
+          "settleMs": 421,
+          "launchMs": 92,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792135668451,
+          "settleMs": 286,
+          "launchMs": 62,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "auto-a-30",
+          "timeMs": 1792135669324,
+          "launchMs": 57,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Auto Tune · 30 FPS",
+          "autoTuneActive": true
+        }
+      ],
+      "startedAtMs": 1792135661041,
+      "status": "passed",
+      "finishedAtMs": 1792135669337,
+      "history": [
+        {
+          "profile": "Auto Tune · 30 FPS",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792135669159
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible: com.aure.clustertune.fixture.c, rip.moth.cocoonshell",
+          "timeMs": 1792135668440
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b) · com.aure.clustertune.fixture.b on display 0",
+          "timeMs": 1792135667978
+        },
+        {
+          "profile": "Auto Tune stopped",
+          "trigger": "No automatic app owns the device",
+          "timeMs": 1792135667705
+        },
+        {
+          "profile": "Auto Tune · 30 FPS",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792135662312
+        },
+        {
+          "profile": "Auto Tune stopped",
+          "trigger": "A different app now owns Auto Tune",
+          "timeMs": 1792135661674
+        }
+      ]
+    },
+    {
+      "name": "26_two_autotune_targets",
+      "samples": [
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "auto-b-45",
+          "timeMs": 1792135670343,
+          "launchMs": 71,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Auto Tune · 45 FPS",
+          "autoTuneActive": true
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "auto-a-30",
+          "timeMs": 1792135671261,
+          "launchMs": 89,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Auto Tune · 30 FPS",
+          "autoTuneActive": true
+        }
+      ],
+      "startedAtMs": 1792135669345,
+      "status": "passed",
+      "finishedAtMs": 1792135671290,
+      "history": [
+        {
+          "profile": "Auto Tune · 30 FPS",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792135671112
+        },
+        {
+          "profile": "Auto Tune stopped",
+          "trigger": "A different app now owns Auto Tune",
+          "timeMs": 1792135670474
+        },
+        {
+          "profile": "Auto Tune · 45 FPS",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792135670150
+        },
+        {
+          "profile": "Auto Tune stopped",
+          "trigger": "A different app now owns Auto Tune",
+          "timeMs": 1792135669480
+        }
+      ]
+    },
+    {
+      "name": "27_manual_override_and_restart",
+      "samples": [
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "auto-a-30",
+          "timeMs": 1792135671350,
+          "launchMs": 45,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Auto Tune · 30 FPS",
+          "autoTuneActive": true
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792135673338,
+          "settleMs": 120,
+          "launchMs": 100,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "auto-a-30",
+          "timeMs": 1792135674223,
+          "launchMs": 68,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Auto Tune · 30 FPS",
+          "autoTuneActive": true
+        }
+      ],
+      "startedAtMs": 1792135671299,
+      "status": "passed",
+      "finishedAtMs": 1792135674229,
+      "history": [
+        {
+          "profile": "Auto Tune · 30 FPS",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792135674080
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "Auto Tune was superseded for A",
+          "timeMs": 1792135672285
+        }
+      ]
+    },
+    {
+      "name": "28_disable_active_autotune",
+      "samples": [],
+      "startedAtMs": 1792135674237,
+      "status": "passed",
+      "finishedAtMs": 1792135674590,
+      "history": [
+        {
+          "profile": "Auto Tune stopped",
+          "trigger": "No automatic app owns the device",
+          "timeMs": 1792135674291
+        },
+        {
+          "profile": "App profile inactive",
+          "trigger": "com.aure.clustertune.fixture.a: Auto Tune is disabled, so its app profile was not applied.",
+          "timeMs": 1792135674260
+        }
+      ]
+    },
+    {
+      "name": "39_host_reconnect_with_A_visible",
+      "samples": [
+        {
+          "epoch": 3258982269120,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792135675530,
+          "settleMs": 618,
+          "launchMs": 50,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3301222681136,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "reconnected-with-A",
+          "timeMs": 1792135677928,
+          "settleMs": 23,
+          "launchMs": 50,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3301222681136,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            902400,
+            1651200,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "failure-state",
+          "timeMs": 1792135690056,
+          "launchMs": 70,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792135674613,
+      "status": "failed",
+      "error": "java.lang.AssertionError: show-b expected Small Underclock with [b]; visible=VisibleAppSnapshot(windowsByDisplay={0=[VisibleAppWindow(packageName=com.aure.clustertune.fixture.a, displayId=0, isFocused=false, isActive=true)], 4=[VisibleAppWindow(packageName=rip.moth.cocoonshell, displayId=4, isFocused=false, isActive=true)]}, isInteractive=true, recentPackageByDisplay={0=com.aure.clustertune.fixture.a, 4=rip.moth.cocoonshell}, mostRecentAppIdentity=RecentAppIdentity(displayId=4, packageName=rip.moth.cocoonshell), refreshRateFpsByDisplay={0=120, 4=120}, pickerPackageByDisplay={0=com.aure.clustertune.fixture.a, 4=rip.moth.cocoonshell})\n\tat org.junit.Assert.fail(Assert.java:89)\n\tat org.junit.Assert.assertTrue(Assert.java:42)\n\tat com.aure.clustertune.apps.LetterAppsDeviceTest.await(LetterAppsDeviceTest.kt:753)\n\tat com.aure.clustertune.apps.LetterAppsDeviceTest.access$await(LetterAppsDeviceTest.kt:37)\n\tat com.aure.clustertune.apps.LetterAppsDeviceTest$await$1.invokeSuspend(Unknown Source:18)\n\tat kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)\n\tat kotlinx.coroutines.DispatchedTaskKt.resume(DispatchedTask.kt:231)\n\tat kotlinx.coroutines.DispatchedTaskKt.dispatch(DispatchedTask.kt:164)\n\tat kotlinx.coroutines.CancellableContinuationImpl.dispatchResume(CancellableContinuationImpl.kt:466)\n\tat kotlinx.coroutines.CancellableContinuationImpl.resumeImpl(CancellableContinuationImpl.kt:500)\n\tat kotlinx.coroutines.CancellableContinuationImpl.resumeImpl$default(CancellableContinuationImpl.kt:489)\n\tat kotlinx.coroutines.CancellableContinuationImpl.resumeUndispatched(CancellableContinuationImpl.kt:587)\n\tat kotlinx.coroutines.EventLoopImplBase$DelayedResumeTask.run(EventLoop.common.kt:490)\n\tat kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)\n\tat kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)\n\tat kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)\n\tat kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)\n\tat kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)\n\tat kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)\n\tat com.aure.clustertune.apps.LetterAppsDeviceTest.pserverFunctions(LetterAppsDeviceTest.kt:70)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)\n\tat org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)\n\tat org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)\n\tat org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)\n\tat org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\n\tat org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)\n\tat org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)\n\tat org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)\n\tat org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)\n\tat org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)\n\tat org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)\n\tat org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)\n\tat org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)\n\tat org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)\n\tat org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\n\tat org.junit.runners.ParentRunner.run(ParentRunner.java:413)\n\tat androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)\n\tat org.junit.runners.Suite.runChild(Suite.java:128)\n\tat org.junit.runners.Suite.runChild(Suite.java:27)\n\tat org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)\n\tat org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)\n\tat org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)\n\tat org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)\n\tat org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)\n\tat org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\n\tat org.junit.runners.ParentRunner.run(ParentRunner.java:413)\n\tat org.junit.runner.JUnitCore.run(JUnitCore.java:137)\n\tat org.junit.runner.JUnitCore.run(JUnitCore.java:115)\n\tat androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:67)\n\tat androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:58)\n\tat androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:446)\n\tat android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2367)\n",
+      "lastLaunchOutput": "Starting: Intent { flg=0x30020000 cmp=com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity (has extras) }\nWarning: Activity not started, its current task has been brought to the front\nStatus: ok\nLaunchState: HOT\nActivity: com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity\nTotalTime: 27\nWaitTime: 32\nComplete\n",
+      "detector": "AppDetectionStatus(available=true, error=null)",
+      "runtime": "AdaptiveTuneRuntimeState(active=false, sessionGeneration=null, packageName=null, appLabel=null, targetFps=null, status=null, reason=null, measuredFps=null, p95FrameTimeMillis=null, cpuLoad={}, cpuClockKHz={}, gpuBusy=null, gpuClockHz=null, thermalMilliCelsius={}, frameConfidence=null, slowFrameRatio=null, frameStale=false, sampleTimestampNanos=null, ceilings=null, frameBackend=null, message=null)",
+      "detectionRunning": true,
+      "threads": "FinalizerDaemon\njava.lang.Object.wait(Native Method)\njava.lang.Object.wait(Object.java:442)\njava.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:203)\njava.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:224)\njava.lang.Daemons$FinalizerDaemon.runInternal(Daemons.java:300)\njava.lang.Daemons$Daemon.run(Daemons.java:140)\njava.lang.Thread.run(Thread.java:1012)\n\nDefaultDispatcher-worker-2\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nbinder:25264_4\n\n\nDefaultDispatcher-worker-10\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-24\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-28\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-16\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nSignal Catcher\n\n\nDefaultDispatcher-worker-6\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nUiAutomation\nandroid.os.MessageQueue.nativePollOnce(Native Method)\nandroid.os.MessageQueue.next(MessageQueue.java:335)\nandroid.os.Looper.loopOnce(Looper.java:161)\nandroid.os.Looper.loop(Looper.java:288)\nandroid.os.HandlerThread.run(HandlerThread.java:67)\n\nDefaultDispatcher-worker-1\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-25\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nJit thread pool worker thread 0\n\n\nDefaultDispatcher-worker-7\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-23\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-21\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-29\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-11\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nInstr: androidx.test.runner.AndroidJUnitRunner\ndalvik.system.VMStack.getThreadStackTrace(Native Method)\njava.lang.Thread.getStackTrace(Thread.java:1841)\njava.lang.Thread.getAllStackTraces(Thread.java:1909)\ncom.aure.clustertune.apps.LetterAppsDeviceTest.scenario(LetterAppsDeviceTest.kt:727)\ncom.aure.clustertune.apps.LetterAppsDeviceTest.access$scenario(LetterAppsDeviceTest.kt:37)\ncom.aure.clustertune.apps.LetterAppsDeviceTest$scenario$1.invokeSuspend(Unknown Source:15)\nkotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)\nkotlinx.coroutines.DispatchedTaskKt.resume(DispatchedTask.kt:231)\nkotlinx.coroutines.DispatchedTaskKt.dispatch(DispatchedTask.kt:164)\nkotlinx.coroutines.CancellableContinuationImpl.dispatchResume(CancellableContinuationImpl.kt:466)\nkotlinx.coroutines.CancellableContinuationImpl.resumeImpl(CancellableContinuationImpl.kt:500)\nkotlinx.coroutines.CancellableContinuationImpl.resumeImpl$default(CancellableContinuationImpl.kt:489)\nkotlinx.coroutines.CancellableContinuationImpl.resumeUndispatched(CancellableContinuationImpl.kt:587)\nkotlinx.coroutines.EventLoopImplBase$DelayedResumeTask.run(EventLoop.common.kt:490)\nkotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)\nkotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)\nkotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)\nkotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)\nkotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)\nkotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)\ncom.aure.clustertune.apps.LetterAppsDeviceTest.pserverFunctions(LetterAppsDeviceTest.kt:70)\njava.lang.reflect.Method.invoke(Native Method)\norg.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)\norg.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)\norg.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)\norg.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)\norg.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\norg.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)\norg.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)\norg.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)\norg.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)\norg.junit.runners.ParentRunner$4.run(ParentRunner.java:331)\norg.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)\norg.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)\norg.junit.runners.ParentRunner.access$100(ParentRunner.java:66)\norg.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)\norg.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\norg.junit.runners.ParentRunner.run(ParentRunner.java:413)\nandroidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)\norg.junit.runners.Suite.runChild(Suite.java:128)\norg.junit.runners.Suite.runChild(Suite.java:27)\norg.junit.runners.ParentRunner$4.run(ParentRunner.java:331)\norg.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)\norg.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)\norg.junit.runners.ParentRunner.access$100(ParentRunner.java:66)\norg.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)\norg.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\norg.junit.runners.ParentRunner.run(ParentRunner.java:413)\norg.junit.runner.JUnitCore.run(JUnitCore.java:137)\norg.junit.runner.JUnitCore.run(JUnitCore.java:115)\nandroidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:67)\nandroidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:58)\nandroidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:446)\nandroid.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2367)\n\nDefaultDispatcher-worker-14\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-19\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-26\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-27\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nmain\nandroid.os.MessageQueue.nativePollOnce(Native Method)\nandroid.os.MessageQueue.next(MessageQueue.java:335)\nandroid.os.Looper.loopOnce(Looper.java:161)\nandroid.os.Looper.loop(Looper.java:288)\nandroid.app.ActivityThread.main(ActivityThread.java:8195)\njava.lang.reflect.Method.invoke(Native Method)\ncom.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)\ncom.android.internal.os.ZygoteInit.main(ZygoteInit.java:942)\n\nProfile Saver\n\n\nDefaultDispatcher-worker-8\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nbinder:25264_3\n\n\nDefaultDispatcher-worker-18\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-15\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nbinder:25264_2\n\n\nbinder:25264_1\n\n\nbinder:25264_5\n\n\nDefaultDispatcher-worker-22\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-12\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-3\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-5\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nFinalizerWatchdogDaemon\njava.lang.Object.wait(Native Method)\njava.lang.Object.wait(Object.java:442)\njava.lang.Object.wait(Object.java:568)\njava.lang.Daemons$FinalizerWatchdogDaemon.sleepUntilNeeded(Daemons.java:385)\njava.lang.Daemons$FinalizerWatchdogDaemon.runInternal(Daemons.java:365)\njava.lang.Daemons$Daemon.run(Daemons.java:140)\njava.lang.Thread.run(Thread.java:1012)\n\nDefaultDispatcher-worker-4\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-9\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nqueued-work-looper\nandroid.os.MessageQueue.nativePollOnce(Native Method)\nandroid.os.MessageQueue.next(MessageQueue.java:335)\nandroid.os.Looper.loopOnce(Looper.java:161)\nandroid.os.Looper.loop(Looper.java:288)\nandroid.os.HandlerThread.run(HandlerThread.java:67)\n\nDefaultDispatcher-worker-17\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-13\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nprocess reaper\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:234)\njava.util.concurrent.SynchronousQueue$TransferStack.awaitFulfill(SynchronousQueue.java:463)\njava.util.concurrent.SynchronousQueue$TransferStack.transfer(SynchronousQueue.java:361)\njava.util.concurrent.SynchronousQueue.poll(SynchronousQueue.java:939)\njava.util.concurrent.ThreadPoolExecutor.getTask(ThreadPoolExecutor.java:1062)\njava.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1123)\njava.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:637)\njava.lang.Thread.run(Thread.java:1012)\n\nReferenceQueueDaemon\njava.lang.Object.wait(Native Method)\njava.lang.Object.wait(Object.java:442)\njava.lang.Object.wait(Object.java:568)\njava.lang.Daemons$ReferenceQueueDaemon.runInternal(Daemons.java:232)\njava.lang.Daemons$Daemon.run(Daemons.java:140)\njava.lang.Thread.run(Thread.java:1012)\n\nHeapTaskDaemon\n\n\nInstrumentationConnectionThread\nandroid.os.MessageQueue.nativePollOnce(Native Method)\nandroid.os.MessageQueue.next(MessageQueue.java:335)\nandroid.os.Looper.loopOnce(Looper.java:161)\nandroid.os.Looper.loop(Looper.java:288)\nandroid.os.HandlerThread.run(HandlerThread.java:67)\n\nDefaultDispatcher-worker-20\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)",
+      "actualTasks": "  * Task{63078e7 #25518 type=standard A=10180:com.aure.clustertune.fixture.b U=0 visible=true visibleRequested=true mode=fullscreen translucent=false sz=1}\n    topResumedActivity=ActivityRecord{6a6a33d u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25518}\n    * Hist  #0: ActivityRecord{6a6a33d u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25518}\n      packageName=com.aure.clustertune.fixture.b processName=com.aure.clustertune.fixture.b\n      app=ProcessRecord{8de4732 25519:com.aure.clustertune.fixture.b\/u0a180}\n      Intent { flg=0x30020000 cmp=com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity (has extras) }\n      rootOfTask=true task=Task{63078e7 #25518 type=standard A=10180:com.aure.clustertune.fixture.b}\n      taskAffinity=10180:com.aure.clustertune.fixture.b\n      mActivityComponent=com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity\n      baseDir=\/data\/app\/~~2m0Uw0NDfKt3WcPSlD_X4A==\/com.aure.clustertune.fixture.b-xIwKAwHHA4ovnaTF-katdA==\/base.apk\n      dataDir=\/data\/user\/0\/com.aure.clustertune.fixture.b\n      windows=[Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}]\n  * Task{c1bd41e #25517 type=standard A=10167:com.aure.clustertune.fixture.a U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}\n    mLastPausedActivity: ActivityRecord{fdc22cc u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25517}\n    * Hist  #0: ActivityRecord{fdc22cc u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25517}\n      packageName=com.aure.clustertune.fixture.a processName=com.aure.clustertune.fixture.a\n      app=ProcessRecord{91d2915 25465:com.aure.clustertune.fixture.a\/u0a167}\n      Intent { flg=0x30020000 cmp=com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity (has extras) }\n      rootOfTask=true task=Task{c1bd41e #25517 type=standard A=10167:com.aure.clustertune.fixture.a}\n      taskAffinity=10167:com.aure.clustertune.fixture.a\n      mActivityComponent=com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity\n      baseDir=\/data\/app\/~~hRPGqWGweQnbhtXg91CxOw==\/com.aure.clustertune.fixture.a-oVEBi0KBWfFUsHmeZ8tDpQ==\/base.apk\n      dataDir=\/data\/user\/0\/com.aure.clustertune.fixture.a\n      windows=[Window{d2730a3 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}]\n  * Task{5b32725 #25519 type=standard A=10213:com.aure.clustertune.fixture.c U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}\n    mLastPausedActivity: ActivityRecord{f4d66ab u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity} t25519}\n    * Hist  #0: ActivityRecord{f4d66ab u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity} t25519}\n      packageName=com.aure.clustertune.fixture.c processName=com.aure.clustertune.fixture.c\n      app=ProcessRecord{c7f0108 25572:com.aure.clustertune.fixture.c\/u0a213}\n      Intent { flg=0x30020000 cmp=com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity (has extras) }\n      rootOfTask=true task=Task{5b32725 #25519 type=standard A=10213:com.aure.clustertune.fixture.c}\n      taskAffinity=10213:com.aure.clustertune.fixture.c\n      mActivityComponent=com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity\n      baseDir=\/data\/app\/~~iQ0AvNM4fgKq439eEFGFcg==\/com.aure.clustertune.fixture.c-FVnlS0hwNvBS4Jta0_EJQQ==\/base.apk\n      dataDir=\/data\/user\/0\/com.aure.clustertune.fixture.c\n      windows=[Window{53387b u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity}]\n  * Task{b148305 #25520 type=standard A=10226:com.aure.clustertune.fixture.d U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}\n    mLastPausedActivity: ActivityRecord{940d58b u0 com.aure.clustertune.fixture.d\/com.aure.clustertune.testapps.LetterActivity} t25520}\n    * Hist  #0: ActivityRecord{940d58b u0 com.aure.clustertune.fixture.d\/com.aure.clustertune.testapps.LetterActivity} t25520}\n      packageName=com.aure.clustertune.fixture.d processName=com.aure.clustertune.fixture.d\n      app=ProcessRecord{62d7668 25804:com.aure.clustertune.fixture.d\/u0a226}\n      Intent { flg=0x30020000 cmp=com.aure.clustertune.fixture.d\/com.aure.clustertune.testapps.LetterActivity (has extras) }\n      rootOfTask=true task=Task{b148305 #25520 type=standard A=10226:com.aure.clustertune.fixture.d}\n      taskAffinity=10226:com.aure.clustertune.fixture.d\n      mActivityComponent=com.aure.clustertune.fixture.d\/com.aure.clustertune.testapps.LetterActivity\n      baseDir=\/data\/app\/~~Au4K3R6rf9ix0OrrUxMjrQ==\/com.aure.clustertune.fixture.d-VTYuspyrxP_thh3VBblliQ==\/base.apk\n      dataDir=\/data\/user\/0\/com.aure.clustertune.fixture.d\n      windows=[Window{fad0f5b u0 com.aure.clustertune.fixture.d\/com.aure.clustertune.testapps.LetterActivity}]\n    Resumed: ActivityRecord{6a6a33d u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25518}\n    topResumedActivity=ActivityRecord{e464ba3 u0 rip.moth.cocoonshell\/.ExternalDisplayActivity} t25521}\n  ResumedActivity: ActivityRecord{6a6a33d u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25518}\n  topDisplayFocusedRootTask=Task{63078e7 #25518 type=standard A=10180:com.aure.clustertune.fixture.b}\n  mCurrentFocus=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n  mFocusedApp=ActivityRecord{6a6a33d u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25518}\n  mHoldScreenWindow=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n  mObscuringWindow=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n  mLastWakeLockHoldingWindow=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n      mPreferredTopFocusableRootTask=Task{63078e7 #25518 type=standard A=10180:com.aure.clustertune.fixture.b}\n      mLastFocusedRootTask=Task{63078e7 #25518 type=standard A=10180:com.aure.clustertune.fixture.b}\n      * Task{63078e7 #25518 type=standard A=10180:com.aure.clustertune.fixture.b U=0 visible=true visibleRequested=true mode=fullscreen translucent=false sz=1}\n        * ActivityRecord{6a6a33d u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25518}\n      * Task{c1bd41e #25517 type=standard A=10167:com.aure.clustertune.fixture.a U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}\n        * ActivityRecord{fdc22cc u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25517}\n      * Task{5b32725 #25519 type=standard A=10213:com.aure.clustertune.fixture.c U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}\n        * ActivityRecord{f4d66ab u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity} t25519}\n      * Task{b148305 #25520 type=standard A=10226:com.aure.clustertune.fixture.d U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}\n        * ActivityRecord{940d58b u0 com.aure.clustertune.fixture.d\/com.aure.clustertune.testapps.LetterActivity} t25520}\n    mFocusedWindow=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n    mTopFullscreenOpaqueWindowState=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n    mSystemBarColorApps={ActivityRecord{6a6a33d u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25518}}\n      Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n      ITYPE_IME -> Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n      ITYPE_NAVIGATION_BAR -> Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n      ITYPE_STATUS_BAR -> Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n        mControlTarget=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n        mControlTarget=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n        mControlTarget=Window{17dd68e u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}\n        (fullscreen) Task{c1bd41e #25517 type=standard A=10167:com.aure.clustertune.fixture.a}\n        (fullscreen) Task{63078e7 #25518 type=standard A=10180:com.aure.clustertune.fixture.b}\n        (fullscreen) Task{5b32725 #25519 type=standard A=10213:com.aure.clustertune.fixture.c}\n        (fullscreen) Task{b148305 #25520 type=standard A=10226:com.aure.clustertune.fixture.d}\n  VisibleActivityProcess:[ ProcessRecord{8de4732 25519:com.aure.clustertune.fixture.b\/u0a180} ProcessRecord{bd57ee3 3655:rip.moth.cocoonshell\/u0a215}]",
+      "finishedAtMs": 1792135691099,
+      "history": [
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b) · com.aure.clustertune.fixture.b on display 0",
+          "timeMs": 1792135690874
+        },
+        {
+          "profile": "Profile could not be applied",
+          "trigger": "Target: bundled_qcs8550_small; CPU kHz: {0=1785600, 3=2323200, 7=2476800}; GPU Hz: 680000000 · CPU minimum\/profile update failed: verification failed for policy7: expected=2476800 actual=3187200 minimum=595200",
+          "timeMs": 1792135680277
+        },
+        {
+          "profile": "App detection connected",
+          "trigger": "App profiles can follow visible apps.",
+          "timeMs": 1792135677811
+        },
+        {
+          "profile": "Connecting app detection",
+          "trigger": "Connecting to the privileged service.",
+          "timeMs": 1792135677211
+        },
+        {
+          "profile": "App detection unavailable",
+          "trigger": "App profiles are paused; reconnection is automatic · Privileged service disconnected",
+          "timeMs": 1792135676712
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a) · com.aure.clustertune.fixture.a on display 0",
+          "timeMs": 1792135675402
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible: rip.moth.cocoonshell",
+          "timeMs": 1792135675136
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a) · com.aure.clustertune.fixture.a on display 0",
+          "timeMs": 1792135674871
+        }
+      ]
+    },
+    {
+      "name": "39b_reconnect_with_simultaneous_clock_reads",
+      "samples": [
+        {
+          "epoch": 3301222681136,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792135691632,
+          "settleMs": 392,
+          "launchMs": 73,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 3316856262223,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "recovered-with-live-clock-reader",
+          "timeMs": 1792135693995,
+          "settleMs": 16,
+          "launchMs": 73,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792135691107,
+      "status": "passed",
+      "finishedAtMs": 1792135694003,
+      "history": [
+        {
+          "profile": "App detection connected",
+          "trigger": "App profiles can follow visible apps.",
+          "timeMs": 1792135693949
+        },
+        {
+          "profile": "Connecting app detection",
+          "trigger": "Connecting to the privileged service.",
+          "timeMs": 1792135693866
+        },
+        {
+          "profile": "App detection unavailable",
+          "trigger": "App profiles are paused; reconnection is automatic · Privileged service disconnected",
+          "timeMs": 1792135693366
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a) · com.aure.clustertune.fixture.a on display 0",
+          "timeMs": 1792135691624
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible: rip.moth.cocoonshell",
+          "timeMs": 1792135691330
+        },
+        {
+          "profile": "App detection connected",
+          "trigger": "App profiles can follow visible apps.",
+          "timeMs": 1792135691163
+        }
+      ]
+    }
+  ],
+  "method": "pserver-stdout",
+  "startedAtMs": 1792135633941,
+  "initial": {
+    "epoch": 3257426093444,
+    "cpuMax": [
+      1459200,
+      1785600,
+      1843200
+    ],
+    "cpuMin": [
+      902400,
+      1651200,
+      1843200
+    ],
+    "gpuMax": 680000000
+  },
+  "displays": [
+    0,
+    4
+  ],
+  "profiles": {
+    "normal": "Medium Underclock",
+    "a": "Large Underclock",
+    "b": "Small Underclock"
+  },
+  "restored": {
+    "epoch": 3316856262223,
+    "cpuMax": [
+      1459200,
+      1785600,
+      1843200
+    ],
+    "cpuMin": [
+      672000,
+      1536000,
+      595200
+    ],
+    "gpuMax": 680000000
+  },
+  "finishedAtMs": 1792135696396
+}

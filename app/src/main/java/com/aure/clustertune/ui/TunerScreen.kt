@@ -1555,7 +1555,7 @@ private fun AppProfilesSection(
             activeRailBubbleLabel = null
         }
     }
-    // Accessibility can assign a visible package even when it has no launcher
+    // App detection can identify a visible package even when it has no launcher
     // activity. Keep those assignments editable from the full Apps screen.
     val sortedApps = remember(apps, state.appProfileAssignments) {
         (apps + state.appProfileAssignments.map { assignment ->

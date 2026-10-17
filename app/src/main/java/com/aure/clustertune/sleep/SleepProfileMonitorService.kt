@@ -97,7 +97,13 @@ class SleepProfileMonitorService : Service() {
                 val profileId = settings.sleepProfileId
                 if (!settings.sleepProfileEnabled || profileId == null) return@withLock
                 val result = container.repository.applySleepProfile(profileId)
-                if (result.isSuccess) QuickSettingsTileRefresher.requestUpdate(applicationContext)
+                if (result.isSuccess) {
+                    container.historyLogger.recovered("sleep-profile")
+                    QuickSettingsTileRefresher.requestUpdate(applicationContext)
+                } else {
+                    container.historyLogger.failure("sleep-profile", "Sleep profile could not be applied",
+                        result.exceptionOrNull() ?: IllegalStateException("Sleep profile is unavailable"))
+                }
             }
         }
     }
@@ -108,7 +114,12 @@ class SleepProfileMonitorService : Service() {
                 val settings = container.settingsStorage.settings.first()
                 if (!settings.sleepProfileEnabled) return@withLock
                 val result = container.repository.restorePreSleepState()
-                if (result.isSuccess) QuickSettingsTileRefresher.requestUpdate(applicationContext)
+                if (result.isSuccess) {
+                    container.historyLogger.recovered("wake-profile")
+                    QuickSettingsTileRefresher.requestUpdate(applicationContext)
+                } else result.exceptionOrNull()?.takeUnless { it.message == "No valid sleep restore state" }?.let {
+                    container.historyLogger.failure("wake-profile", "Wake profile could not be restored", it)
+                }
             }
         }
     }

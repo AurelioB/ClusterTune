@@ -1,15 +1,15 @@
 package com.aure.clustertune.data
 
-import android.app.AppOpsManager
-import android.app.usage.UsageEvents
-import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.os.Process
+import android.util.Log
 import com.aure.clustertune.model.InstalledAppInfo
 
-class InstalledAppRepository(context: Context) {
+class InstalledAppRepository(
+    context: Context,
+    private val recentPackages: () -> Result<List<String>>,
+) {
     private val appContext = context.applicationContext
     private val packageManager = appContext.packageManager
 
@@ -34,30 +34,17 @@ class InstalledAppRepository(context: Context) {
             .associateBy { appInfo -> appInfo.packageName }
     }
 
-    @Suppress("DEPRECATION")
     fun listRecentActiveApps(limit: Int = RECENT_APPS_LIMIT): List<InstalledAppInfo> {
-        if (!hasUsageStatsPermission()) return emptyList()
-
-        val usageStatsManager = appContext.getSystemService(UsageStatsManager::class.java)
-        val now = System.currentTimeMillis()
-        val events = usageStatsManager.queryEvents(now - RECENT_LOOKBACK_MS, now)
-        val event = UsageEvents.Event()
-        val lastActiveByPackage = linkedMapOf<String, Long>()
-
-        while (events.hasNextEvent()) {
-            events.getNextEvent(event)
-            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED ||
-                event.eventType == UsageEvents.Event.MOVE_TO_FOREGROUND
-            ) {
-                lastActiveByPackage[event.packageName] = event.timeStamp
-            }
+        require(limit >= 0)
+        if (limit == 0) return emptyList()
+        val packages = recentPackages().getOrElse {
+            // Keep the full app picker usable when privileged history is temporarily unavailable.
+            Log.w("InstalledAppRepository", "Unable to read recent apps", it)
+            return emptyList()
         }
-
         val launchableAppsByPackage = launchableAppsByPackage()
-        return lastActiveByPackage.entries
-            .sortedByDescending { it.value }
-            .mapNotNull { (packageName, _) -> launchableAppsByPackage[packageName]?.toInstalledAppInfo() }
-            .distinctBy { it.packageName }
+        return packages.distinct()
+            .mapNotNull { launchableAppsByPackage[it]?.toInstalledAppInfo() }
             .take(limit)
     }
 
@@ -69,18 +56,7 @@ class InstalledAppRepository(context: Context) {
         )
     }
 
-    private fun hasUsageStatsPermission(): Boolean {
-        val appOps = appContext.getSystemService(AppOpsManager::class.java)
-        val mode = appOps.unsafeCheckOpNoThrow(
-            AppOpsManager.OPSTR_GET_USAGE_STATS,
-            Process.myUid(),
-            appContext.packageName,
-        )
-        return mode == AppOpsManager.MODE_ALLOWED
-    }
-
     private companion object {
         private const val RECENT_APPS_LIMIT = 5
-        private const val RECENT_LOOKBACK_MS = 7L * 24L * 60L * 60L * 1_000L
     }
 }

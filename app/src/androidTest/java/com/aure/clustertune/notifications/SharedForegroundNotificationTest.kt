@@ -11,6 +11,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.aure.clustertune.data.SettingsStorage
+import com.aure.clustertune.apps.AppDetectionService
 import com.aure.clustertune.overlay.OverlayHostService
 import com.aure.clustertune.sleep.SleepProfileMonitorService
 import kotlinx.coroutines.flow.first
@@ -36,11 +37,13 @@ class SharedForegroundNotificationTest {
         val activityManager = context.getSystemService(ActivityManager::class.java)
         val overlay = OverlayHostService::class.java
         val sleep = SleepProfileMonitorService::class.java
+        val detection = AppDetectionService::class.java
         fun stop(type: Class<*>) { context.stopService(Intent(context, type)) }
         @Suppress("DEPRECATION")
         fun foreground(type: Class<*>) = activityManager.getRunningServices(100)
             .any { it.service.className == type.name && it.foreground }
         fun sharedCount() = notifications.activeNotifications.count { it.id == AppForegroundNotification.ID }
+        val detectionWasRunning = foreground(detection)
         val scenario = ActivityScenario.launch(ComponentActivity::class.java)
         try {
             storage.persistSleepProfile(true, null)
@@ -61,12 +64,17 @@ class SharedForegroundNotificationTest {
             Thread.sleep(500)
             assertTrue("shared notification must survive", sharedCount() == 1)
             stop(last)
-            await("last service must remove shared notification") { !foreground(last) && sharedCount() == 0 }
+            await("overlay and sleep services must stop") { !foreground(last) }
+            assertTrue("app detection retains the shared notification", foreground(detection) && sharedCount() == 1)
+            stop(detection)
+            await("last service must remove shared notification") { !foreground(detection) && sharedCount() == 0 }
         } finally {
             stop(overlay)
             stop(sleep)
+            stop(detection)
             storage.persistSleepProfile(original.sleepProfileEnabled, original.sleepProfileId)
             scenario.onActivity {
+                if (detectionWasRunning) AppDetectionService.start(it)
                 if (original.sleepProfileEnabled) SleepProfileMonitorService.start(it)
                 if (original.leftEdgeProfilePickerEnabled) OverlayHostService.showEdgeHandle(it)
             }

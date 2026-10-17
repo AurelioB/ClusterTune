@@ -13,9 +13,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 /** app_process entry point. It exposes only the typed ClusterTune protocol. */
 public final class ClusterTuneHostEntry {
@@ -201,9 +198,10 @@ public final class ClusterTuneHostEntry {
         final RealHostFilesystem filesystem;
         final HostApplyEngine engine;
         final HostMinimumProtection minimumProtection;
-        final ScheduledExecutorService watchdog;
+        final HostDeadlineTask maintenance;
         volatile HostAutoSessionController autoController;
         volatile HostTelemetrySessionController telemetryController;
+        HostAppMonitor appMonitor;
         HostCapabilities capabilities;
 
         HostBinder(String name, int owner, long generation, String method) {
@@ -214,12 +212,7 @@ public final class ClusterTuneHostEntry {
             this.filesystem = new RealHostFilesystem();
             this.engine = new HostApplyEngine(filesystem);
             this.minimumProtection = HostMinimumProtection.createIfSupported(filesystem, owner);
-            this.watchdog = Executors.newSingleThreadScheduledExecutor(runnable -> {
-                Thread thread = new Thread(runnable, "ClusterTune-host-watchdog");
-                thread.setDaemon(true);
-                return thread;
-            });
-            this.watchdog.scheduleWithFixedDelay(this::watchdogTick, 1L, 1L, TimeUnit.SECONDS);
+            this.maintenance = new HostDeadlineTask(this, this::maintenanceTick);
             attachInterface(this, HostProtocol.DESCRIPTOR);
         }
 
@@ -320,6 +313,7 @@ public final class ClusterTuneHostEntry {
         /** Caller holds this HostBinder's monitor. */
         private void finishStoppingLocked() {
             lifecycle.finishStopping();
+            maintenance.scheduleAt(null);
             remove(name, this);
             notifyAll();
         }
@@ -336,6 +330,10 @@ public final class ClusterTuneHostEntry {
                 lease = null;
                 leaseDeath = null;
                 lifecycle.leaseLost();
+                if (appMonitor != null) {
+                    appMonitor.close();
+                    appMonitor = null;
+                }
                 try {
                     stopTelemetry(
                             HostTelemetrySessionStatus.STOPPED,
@@ -350,51 +348,82 @@ public final class ClusterTuneHostEntry {
                     }
                 } catch (Throwable throwable) {
                     log("automatic session restore failed after lease death: " + throwable);
+                } finally {
+                    scheduleMaintenanceLocked();
                 }
             }
         }
 
-        private void watchdogTick() {
-            synchronized (this) {
+        /** No periodic task while idle or applying fixed profiles. Caller holds this monitor. */
+        private void scheduleMaintenanceLocked() {
+            Long next = null;
+            if (!lifecycle.isStopping()) {
                 if (lifecycle.isWaitingForLeaseLossRestoration(lease != null)) {
-                    try {
-                        stopTelemetry(
-                                HostTelemetrySessionStatus.STOPPED,
-                                "privileged host lease ended");
-                    } catch (Throwable throwable) {
-                        log("telemetry session watchdog cleanup failed after lease death: " + throwable);
-                    }
-                    try {
-                        HostAutoSessionSnapshot stopped = stopAutoForExternalApply("privileged host lease ended");
-                        if (lifecycle.canFinishLeaseLoss(lease != null, restorationComplete(stopped) && releaseProfileMinimums())) {
-                            finishStoppingLocked();
-                        }
-                    } catch (Throwable throwable) {
-                        log("automatic session watchdog restore failed after lease death: " + throwable);
-                    }
-                    return;
+                    next = System.nanoTime() + 1_000_000_000L;
+                }
+                if (autoController != null) {
+                    Long deadline = autoController.nextMaintenanceDeadlineNanos();
+                    if (deadline != null && (next == null || deadline < next)) next = deadline;
+                }
+                if (telemetryController != null) {
+                    Long deadline = telemetryController.nextMaintenanceDeadlineNanos();
+                    if (deadline != null && (next == null || deadline < next)) next = deadline;
                 }
             }
+            // An unexpected cleanup exception can leave an expired session authoritative.
+            // Back off rather than repeatedly scheduling an already-past deadline at zero delay.
+            long now = System.nanoTime();
+            if (next != null && next <= now) next = now + 1_000_000_000L;
+            maintenance.scheduleAt(next);
+        }
 
-            HostAutoSessionController controller = autoController;
-            if (controller != null) {
+        private void maintenanceTick() {
+            synchronized (this) {
                 try {
-                    controller.expireIfNeeded();
-                } catch (Throwable throwable) {
-                    log("automatic session watchdog failed: " + throwable);
-                }
-            }
-            HostTelemetrySessionController telemetry = telemetryController;
-            if (telemetry != null) {
-                try {
-                    telemetry.expireIfNeeded();
-                } catch (Throwable throwable) {
-                    log("telemetry session watchdog failed: " + throwable);
+                    if (lifecycle.isWaitingForLeaseLossRestoration(lease != null)) {
+                        try {
+                            stopTelemetry(
+                                    HostTelemetrySessionStatus.STOPPED,
+                                    "privileged host lease ended");
+                        } catch (Throwable throwable) {
+                            log("telemetry session cleanup failed after lease death: " + throwable);
+                        }
+                        try {
+                            HostAutoSessionSnapshot stopped = stopAutoForExternalApply("privileged host lease ended");
+                            if (lifecycle.canFinishLeaseLoss(lease != null, restorationComplete(stopped) && releaseProfileMinimums())) {
+                                finishStoppingLocked();
+                            }
+                        } catch (Throwable throwable) {
+                            log("automatic session restoration failed after lease death: " + throwable);
+                        }
+                        return;
+                    }
+                    if (lifecycle.isStopping()) return;
+                    HostAutoSessionController controller = autoController;
+                    if (controller != null) {
+                        try {
+                            controller.expireIfNeeded();
+                        } catch (Throwable throwable) {
+                            log("automatic session timeout cleanup failed: " + throwable);
+                        }
+                    }
+                    HostTelemetrySessionController telemetry = telemetryController;
+                    if (telemetry != null) {
+                        try {
+                            telemetry.expireIfNeeded();
+                        } catch (Throwable throwable) {
+                            log("telemetry session timeout cleanup failed: " + throwable);
+                        }
+                    }
+                } finally {
+                    scheduleMaintenanceLocked();
                 }
             }
         }
 
         private void closeBeforeExit() {
+            maintenance.close();
+            if (appMonitor != null) appMonitor.close();
             try {
                 stopTelemetry(
                         HostTelemetrySessionStatus.STOPPED,
@@ -429,7 +458,6 @@ public final class ClusterTuneHostEntry {
                     SystemClock.sleep(1000L);
                 }
             }
-            watchdog.shutdownNow();
             if (minimumProtection != null) minimumProtection.close();
             IBinder currentLease;
             IBinder.DeathRecipient currentDeath;
@@ -471,6 +499,7 @@ public final class ClusterTuneHostEntry {
 
         @Override
         protected boolean onTransact(int code, Parcel data, Parcel reply, int flags) {
+            boolean authenticated = false;
             try {
                 if (Binder.getCallingUid() != owner) {
                     throw new SecurityException("caller uid is not owner");
@@ -480,12 +509,56 @@ public final class ClusterTuneHostEntry {
                 if (version != HostProtocol.VERSION) {
                     throw new IllegalArgumentException("protocol version");
                 }
+                authenticated = true;
+
+                if (code == HostProtocol.READ_RECENT_APPS) {
+                    synchronized (this) {
+                        if (lifecycle.isStopping()) throw new IllegalStateException("privileged host is stopping");
+                    }
+                    // History queries can be large. Do not hold the hardware/lifecycle lock
+                    // while Android reads them, and do not forward the app's calling identity.
+                    long identity = Binder.clearCallingIdentity();
+                    List<String> packages;
+                    try {
+                        packages = HostRecentApps.read(owner);
+                    } finally {
+                        Binder.restoreCallingIdentity(identity);
+                    }
+                    header(reply, true);
+                    reply.writeStringList(packages);
+                    return true;
+                }
 
                 synchronized (this) {
                     if (lifecycle.isStopping()) {
                         throw new IllegalStateException("privileged host is stopping");
                     }
                     switch (code) {
+                        case HostProtocol.OBSERVE_APP_WINDOWS: {
+                            IBinder callback = data.readStrongBinder();
+                            if (callback == null) throw new IllegalArgumentException("app callback missing");
+                            long identity = Binder.clearCallingIdentity();
+                            try {
+                                if (appMonitor == null) appMonitor = new HostAppMonitor(owner);
+                                appMonitor.subscribe(callback);
+                            } finally {
+                                Binder.restoreCallingIdentity(identity);
+                            }
+                            header(reply, true);
+                            return true;
+                        }
+                        case HostProtocol.STOP_OBSERVING_APP_WINDOWS: {
+                            IBinder callback = data.readStrongBinder();
+                            if (callback == null) throw new IllegalArgumentException("app callback missing");
+                            long identity = Binder.clearCallingIdentity();
+                            try {
+                                if (appMonitor != null) appMonitor.unsubscribe(callback);
+                            } finally {
+                                Binder.restoreCallingIdentity(identity);
+                            }
+                            header(reply, true);
+                            return true;
+                        }
                         case HostProtocol.PING:
                             header(reply, true);
                             reply.writeLong(generation);
@@ -668,6 +741,12 @@ public final class ClusterTuneHostEntry {
             } catch (Throwable throwable) {
                 error(reply, throwable);
                 return true;
+            } finally {
+                if (authenticated) {
+                    synchronized (this) {
+                        scheduleMaintenanceLocked();
+                    }
+                }
             }
         }
 

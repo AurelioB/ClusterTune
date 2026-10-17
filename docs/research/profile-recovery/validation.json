@@ -1,0 +1,152 @@
+{
+  "date": "2026-10-15",
+  "hostProtocol": 15,
+  "fixedProfileRecoveryPolling": false,
+  "hostTimerPolicy": "One-shot deadline only for active Auto Tune/HUD sessions or unfinished cleanup; idle executor/thread released.",
+  "unitTests": {
+    "tests": 558,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 56
+  },
+  "runs": [
+    {
+      "name": "thor-session-deadlines-and-idle",
+      "note": "Android 13. PServer and app-facing root verify actual host has no timer thread at startup, after idle status/capabilities queries, or with fixed profiles. Injected Stock reset remains unchanged until an explicit apply repairs owned minimum permissions. Auto Tune timeout, handoff, protected minimums, feature settings also exercised. Two interactive app-detection checks started asleep and failed; their fixture now explicitly wakes/unlocks before each check.",
+      "seconds": 236.115,
+      "counts": {
+        "passed": 11,
+        "error": 0,
+        "failed": 2,
+        "ignored": 0,
+        "skipped": 0
+      },
+      "cases": [
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "appDoesNotDeclareAnAccessibilityService",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "detectedAppAppliesItsAssignmentAndLeavingRestoresTheNormalProfile",
+          "status": "failed",
+          "reason": "java.lang.AssertionError: App detection did not recover: AppDetectionStatus(available=true, error=null)"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "screenOffClearsAppsAndWakeObtainsAFreshObservation",
+          "status": "failed",
+          "reason": "java.lang.AssertionError: App detection did not recover: AppDetectionStatus(available=true, error=null)"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "foregroundServiceReconnectsAfterPrivilegedHostStops",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.data.ExperimentalHudSettingTest",
+          "test": "disablingExperimentalFeaturesClosesHudAndRejectsDirectLaunch",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostIdleSessionInstrumentationTest",
+          "test": "rootHasNoIdleTimerAndRepairsPermissionsOnlyOnApply",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostIdleSessionInstrumentationTest",
+          "test": "pServerHasNoIdleTimerAndRepairsPermissionsOnlyOnApply",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "watchdogRestoresCeilingsWhenClientStopsHeartbeating",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "rootShellHostBinderHandoff_roundTripsWhenAvailable",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "privilegedHostBinderHandoff_roundTripsThroughProductionClient",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "pServerAutoTune_preservesOwnedMinimumProtection",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.RootHostHandoffInstrumentationTest",
+          "test": "pServerHostBinderHandoff_roundTripsWhenAvailable",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.data.ExperimentalAutoTuneSettingTest",
+          "test": "settingPersistsAndDisabledBackendRejectsStartsAndNewAssignments",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "thor-interactive-lifecycle-final",
+      "note": "Final test fixture explicitly wakes/unlocks the device before each interactive check; app assignment apply/restore, screen off/wake, and reconnect all pass.",
+      "seconds": 13.159,
+      "counts": {
+        "passed": 4,
+        "error": 0,
+        "failed": 0,
+        "ignored": 0,
+        "skipped": 0
+      },
+      "cases": [
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "appDoesNotDeclareAnAccessibilityService",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "detectedAppAppliesItsAssignmentAndLeavingRestoresTheNormalProfile",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "screenOffClearsAppsAndWakeObtainsAFreshObservation",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "foregroundServiceReconnectsAfterPrivilegedHostStops",
+          "status": "passed"
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "No battery-cost claim; fixed-profile polling was removed.",
+    "Controlled permission reset tests do not identify the writer in the original issue report.",
+    "Failed restoration retains a cleanup retry until owned changes are restored; it does not continue FPS sampling or tuning."
+  ],
+  "installedUiCheck": {
+    "restoredProfile": "Large Underclock",
+    "cpuMinimumModes": [
+      "0440",
+      "0440",
+      "0440"
+    ],
+    "displayedCpuCeilingsGHz": [
+      1.46,
+      1.79,
+      1.84
+    ],
+    "displayedGpuCeilingMHz": 680
+  }
+}

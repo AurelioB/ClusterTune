@@ -14,8 +14,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
+import android.content.Intent
+import android.widget.Toast
+import com.aure.clustertune.logging.createHistoryShareIntent
+import com.aure.clustertune.model.HistoryEventType
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -32,19 +45,37 @@ internal fun ProfileSwitchHistorySection(
     modifier: Modifier = Modifier,
 ) {
     val timestampFormatter = remember { SimpleDateFormat("MMM d, h:mm:ss a", Locale.getDefault()) }
-    if (entries.isEmpty()) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                text = "No profile switches logged yet.",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var sharing by remember { mutableStateOf(false) }
+    Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Recent events", modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            TextButton(enabled = entries.isNotEmpty() && !sharing, onClick = {
+                val snapshot = entries.toList()
+                sharing = true
+                scope.launch {
+                    try {
+                        val intent = createHistoryShareIntent(context, snapshot)
+                        context.startActivity(Intent.createChooser(intent, "Share ClusterTune history"))
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        Toast.makeText(context, "Unable to share history", Toast.LENGTH_LONG).show()
+                    } finally { sharing = false }
+                }
+            }) { Text("Share") }
         }
-    } else {
-        LazyColumn(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            itemsIndexed(items = entries, key = { index, entry -> "${entry.timestampMillis}-$index" }) { _, entry ->
-                ProfileSwitchHistoryRow(entry, timestampFormatter.format(Date(entry.timestampMillis)))
+        if (entries.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                Text("No events logged yet.", style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+            }
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                itemsIndexed(items = entries, key = { index, entry -> "${entry.timestampMillis}-$index" }) { _, entry ->
+                    ProfileSwitchHistoryRow(entry, timestampFormatter.format(Date(entry.timestampMillis)))
+                }
             }
         }
     }
@@ -65,10 +96,15 @@ private fun ProfileSwitchHistoryRow(entry: ProfileSwitchHistoryEntry, timestamp:
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(entry.profileName, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface, maxLines = 1)
+                val eventColor = if (entry.eventType == HistoryEventType.ERROR) colorScheme.error else colorScheme.primary
+                Surface(shape = RoundedCornerShape(6.dp), color = eventColor.copy(alpha = 0.12f)) {
+                    Text(entry.eventType.label, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        style = MaterialTheme.typography.labelSmall, color = eventColor)
+                }
+                Text(entry.profileName, modifier = Modifier.weight(1f), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(timestamp, style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant.copy(alpha = 0.84f), textAlign = TextAlign.End, maxLines = 1)
             }
-            Text(entry.trigger, style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant.copy(alpha = 0.84f), maxLines = 2)
+            Text(entry.trigger, style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant.copy(alpha = 0.84f), maxLines = 3, overflow = TextOverflow.Ellipsis)
         }
     }
 }

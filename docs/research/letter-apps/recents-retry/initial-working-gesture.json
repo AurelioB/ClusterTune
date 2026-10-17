@@ -1,0 +1,14 @@
+{
+  "cases": [
+    {
+      "name": "04_real_recents_selects_letter_A",
+      "startedAtMs": 1792128914777,
+      "globalRecentsAccepted": true,
+      "gestureTried": true,
+      "overviewActivity": "    topResumedActivity=ActivityRecord{f0e23f6 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25465}\n    topResumedActivity=ActivityRecord{93d6e17 u0 rip.moth.cocoonshell\/.ExternalDisplayActivity} t25463}",
+      "status": "passed",
+      "finishedAtMs": 1792128928548
+    }
+  ],
+  "finishedAtMs": 1792128929263
+}

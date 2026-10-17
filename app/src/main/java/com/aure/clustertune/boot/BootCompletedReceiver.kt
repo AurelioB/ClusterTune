@@ -4,9 +4,10 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.aure.clustertune.AppContainer
+import com.aure.clustertune.model.HistoryEventType
 import com.aure.clustertune.overlay.OverlayHostService
 import com.aure.clustertune.overlay.OverlayPermission
-import com.aure.clustertune.permissions.AppProfileAccessibilityAccess
+import com.aure.clustertune.apps.AppDetectionService
 import com.aure.clustertune.sleep.SleepProfileMonitorService
 import com.aure.clustertune.tile.QuickSettingsTileRefresher
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +30,11 @@ class BootCompletedReceiver : BroadcastReceiver() {
             try {
                 val container = AppContainer(context)
                 val settings = container.settingsStorage.settings.first()
+                container.historyLogger.record(HistoryEventType.BOOT, "Device started",
+                    if (settings.applyLastProfileOnBoot) "Restoring the saved normal profile." else "Profile restoration at boot is disabled.")
+                if (settings.leftEdgeProfilePickerEnabled || settings.autoTuneEnabled ||
+                    container.profileStorage.appProfileAssignments.first().isNotEmpty()
+                ) AppDetectionService.start(context)
                 if (settings.applyLastProfileOnBoot) {
                     BootProfileRestoreService.start(context)
                 }
@@ -37,8 +43,7 @@ class BootCompletedReceiver : BroadcastReceiver() {
                 }
                 if (
                     settings.leftEdgeProfilePickerEnabled &&
-                    OverlayPermission.canDrawOverlays(context) &&
-                    AppProfileAccessibilityAccess.isEnabled(context)
+                    OverlayPermission.canDrawOverlays(context)
                 ) {
                     OverlayHostService.showEdgeHandle(context)
                 }
@@ -55,13 +60,16 @@ class BootCompletedReceiver : BroadcastReceiver() {
                 QuickSettingsTileRefresher.requestUpdate(context)
                 val container = AppContainer(context)
                 val settings = container.settingsStorage.settings.first()
+                container.historyLogger.record(HistoryEventType.SERVICE, "ClusterTune updated", "Restarting enabled background features.")
+                if (settings.leftEdgeProfilePickerEnabled || settings.autoTuneEnabled ||
+                    container.profileStorage.appProfileAssignments.first().isNotEmpty()
+                ) AppDetectionService.start(context)
                 if (settings.sleepProfileEnabled) {
                     SleepProfileMonitorService.start(context)
                 }
                 if (
                     settings.leftEdgeProfilePickerEnabled &&
-                    OverlayPermission.canDrawOverlays(context) &&
-                    AppProfileAccessibilityAccess.isEnabled(context)
+                    OverlayPermission.canDrawOverlays(context)
                 ) {
                     OverlayHostService.showEdgeHandle(context)
                 }

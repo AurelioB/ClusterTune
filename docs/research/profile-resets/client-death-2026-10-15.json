@@ -1,0 +1,178 @@
+{
+  "autoTuneEnabled": false,
+  "ready": {
+    "epoch": 102443570653366,
+    "cpuMax": [
+      1459200,
+      1785600,
+      1843200
+    ],
+    "cpuMin": [
+      307200,
+      499200,
+      595200
+    ],
+    "gpuMax": 680000000,
+    "minimumModes": [
+      "440",
+      "440",
+      "440"
+    ],
+    "method": "pserver-stdout"
+  },
+  "beforeForceStop": {
+    "timeMs": 1792123312842,
+    "mode": "0",
+    "cpuMax": [
+      1459200,
+      1785600,
+      1843200
+    ],
+    "cpuMin": [
+      307200,
+      499200,
+      595200
+    ],
+    "minimumModes": [
+      "440",
+      "440",
+      "440"
+    ],
+    "hostPids": [
+      20113
+    ]
+  },
+  "samples": [
+    {
+      "timeMs": 1792123325806,
+      "mode": "0",
+      "cpuMax": [
+        1459200,
+        1785600,
+        1843200
+      ],
+      "cpuMin": [
+        307200,
+        499200,
+        595200
+      ],
+      "minimumModes": [
+        "660",
+        "440",
+        "440"
+      ],
+      "hostPids": [],
+      "secondsAfterForceStop": 12.874
+    },
+    {
+      "timeMs": 1792123337948,
+      "mode": "0",
+      "cpuMax": [
+        1459200,
+        1785600,
+        1843200
+      ],
+      "cpuMin": [
+        902400,
+        1651200,
+        1843200
+      ],
+      "minimumModes": [
+        "660",
+        "660",
+        "660"
+      ],
+      "hostPids": [],
+      "secondsAfterForceStop": 25.016
+    },
+    {
+      "timeMs": 1792123351845,
+      "mode": "0",
+      "cpuMax": [
+        1459200,
+        1785600,
+        1843200
+      ],
+      "cpuMin": [
+        902400,
+        1651200,
+        1843200
+      ],
+      "minimumModes": [
+        "660",
+        "660",
+        "660"
+      ],
+      "hostPids": [],
+      "secondsAfterForceStop": 38.914
+    },
+    {
+      "timeMs": 1792123366106,
+      "mode": "0",
+      "cpuMax": [
+        1459200,
+        1785600,
+        1843200
+      ],
+      "cpuMin": [
+        902400,
+        1651200,
+        1843200
+      ],
+      "minimumModes": [
+        "660",
+        "660",
+        "660"
+      ],
+      "hostPids": [],
+      "secondsAfterForceStop": 53.175
+    },
+    {
+      "timeMs": 1792123380157,
+      "mode": "0",
+      "cpuMax": [
+        1459200,
+        1785600,
+        1843200
+      ],
+      "cpuMin": [
+        902400,
+        1651200,
+        1843200
+      ],
+      "minimumModes": [
+        "660",
+        "660",
+        "660"
+      ],
+      "hostPids": [],
+      "secondsAfterForceStop": 67.226
+    },
+    {
+      "timeMs": 1792123393701,
+      "mode": "0",
+      "cpuMax": [
+        1459200,
+        1785600,
+        1843200
+      ],
+      "cpuMin": [
+        902400,
+        1651200,
+        1843200
+      ],
+      "minimumModes": [
+        "660",
+        "660",
+        "660"
+      ],
+      "hostPids": [],
+      "secondsAfterForceStop": 80.77
+    }
+  ],
+  "termination": "Intentional am force-stop of ClusterTune while its client was alive",
+  "instrumentationExitCode": 0,
+  "underclockPreserved": true,
+  "hostExited": true,
+  "permissionsReleased": true
+}

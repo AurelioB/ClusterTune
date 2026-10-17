@@ -8,6 +8,23 @@ import org.junit.Test
 
 class HostTelemetrySessionTest {
     @Test
+    fun `read-only monitor has no idle deadline and releases it on stop or expiry`() {
+        val fixture = fixture()
+        assertNull(fixture.controller.nextMaintenanceDeadlineNanos())
+        val started = fixture.controller.start(TelemetrySessionRequest(heartbeatTimeoutMs = 5_000))
+        assertEquals(5_000_000_000L, fixture.controller.nextMaintenanceDeadlineNanos())
+        fixture.clock.now = 1_000_000_000L
+        fixture.controller.read(started.sessionId!!, started.hostEpoch)
+        assertEquals(6_000_000_000L, fixture.controller.nextMaintenanceDeadlineNanos())
+        fixture.controller.stop(started.sessionId, started.hostEpoch)
+        assertNull(fixture.controller.nextMaintenanceDeadlineNanos())
+        fixture.controller.start(TelemetrySessionRequest(heartbeatTimeoutMs = 5_000))
+        fixture.clock.now = 6_000_000_000L
+        fixture.controller.expireIfNeeded()
+        assertNull(fixture.controller.nextMaintenanceDeadlineNanos())
+    }
+
+    @Test
     fun `device-only session is active without starting SurfaceFlinger`() {
         val fixture = fixture()
 
@@ -181,7 +198,7 @@ class HostTelemetrySessionTest {
 
     @Test
     fun `protocol exposes telemetry transactions with the current host generation`() {
-        assertEquals(13, HostProtocol.VERSION)
+        assertEquals(15, HostProtocol.VERSION)
         assertEquals(17, HostProtocol.START_TELEMETRY_SESSION)
         assertEquals(18, HostProtocol.READ_TELEMETRY_SESSION)
         assertEquals(19, HostProtocol.STOP_TELEMETRY_SESSION)

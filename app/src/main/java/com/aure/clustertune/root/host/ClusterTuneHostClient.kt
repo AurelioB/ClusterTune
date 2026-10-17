@@ -2,6 +2,7 @@ package com.aure.clustertune.root.host
 
 import android.content.Context
 import android.os.DeadObjectException
+import android.os.Binder
 import android.os.IBinder
 import android.os.Parcel
 import android.os.Process
@@ -9,6 +10,7 @@ import com.aure.clustertune.root.HostLaunchRequest
 import com.aure.clustertune.root.PrivilegedExecutionResolver
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.zip.ZipFile
 import kotlin.math.min
 
@@ -75,6 +77,71 @@ class ClusterTuneHostClient(
     @Volatile private var binder: IBinder? = null
     @Volatile private var attachedMethod: String? = null
     private var death: IBinder.DeathRecipient? = null
+
+    /** On-demand history lookup; the app itself never needs Usage Access. */
+    fun readRecentAppPackages(): Result<List<String>> = call(HostProtocol.READ_RECENT_APPS) { parcel ->
+        val count = readCount(parcel, HostProtocol.MAX_RECENT_APPS, "recent apps")
+        val packages = List(count) {
+            readRequiredString(parcel, "recent app package").also {
+                require(HostTelemetryParsers.isValidPackageName(it)) { "invalid recent app package" }
+            }
+        }
+        require(packages.distinct().size == packages.size) { "duplicate recent app package" }
+        packages
+    }
+
+    /** The subscription belongs to this exact host; closing it must never start another host. */
+    fun observeAppWindows(
+        onObservation: (HostAppObservation) -> Unit,
+        onDisconnected: () -> Unit,
+    ): Result<HostAppSubscription> = runCatching {
+        ensureStarted().getOrThrow()
+        val target = binder ?: error("host unavailable")
+        val closed = AtomicBoolean(false)
+        val subscriptionLock = Any()
+        val callback = object : Binder() {
+            override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
+                if (code != HostProtocol.APP_WINDOWS_CHANGED) return super.onTransact(code, data, reply, flags)
+                if (closed.get()) return true
+                val uid = getCallingUid()
+                check(uid == 0 || uid == 1000) { "unprivileged app observation" }
+                data.enforceInterface(HostProtocol.APP_WINDOWS_DESCRIPTOR)
+                try {
+                    check(data.readInt() == HostProtocol.VERSION) { "app observation protocol mismatch" }
+                    val observation = HostAppObservationWire.read(data)
+                    if (!closed.get()) onObservation(observation)
+                } catch (error: Exception) {
+                    if (!closed.get()) onObservation(HostAppObservation(emptyList(), error.message ?: "Invalid app observation"))
+                }
+                return true
+            }
+        }
+        val recipient = IBinder.DeathRecipient {
+            if (closed.compareAndSet(false, true)) onDisconnected()
+        }
+        target.linkToDeath(recipient, 0)
+        try {
+            transact(target, HostProtocol.OBSERVE_APP_WINDOWS, writer = { it.writeStrongBinder(callback) }) { Unit }
+        } catch (error: Exception) {
+            closed.set(true)
+            target.unlinkToDeath(recipient, 0)
+            throw error
+        }
+        object : HostAppSubscription {
+            override fun refresh(): Result<Unit> = synchronized(subscriptionLock) { runCatching {
+                check(!closed.get()) { "app observation closed" }
+                transact(target, HostProtocol.OBSERVE_APP_WINDOWS, writer = { it.writeStrongBinder(callback) }) { Unit }
+            } }
+
+            override fun close(): Unit = synchronized(subscriptionLock) {
+                closed.set(true)
+                runCatching { target.unlinkToDeath(recipient, 0) }
+                if (target.isBinderAlive) runCatching {
+                    transact(target, HostProtocol.STOP_OBSERVING_APP_WINDOWS, writer = { it.writeStrongBinder(callback) }) { Unit }
+                }
+            }
+        }
+    }
 
     fun ensureStarted(timeoutMs: Long = 3000): Result<Unit> = synchronized(lock) {
         resolver.withStableSelection { selection ->

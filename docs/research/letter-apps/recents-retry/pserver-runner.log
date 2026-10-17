@@ -1,0 +1,39 @@
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.LetterAppsDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.apps.LetterAppsDeviceTest:
+INSTRUMENTATION_STATUS: test=pserverFunctions
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=
+Letter apps (pserver-stdout): 04b_actual_recents_reopen_after_home
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (pserver-stdout): 04c_actual_recents_A_B_C_A
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (pserver-stdout): 04d_actual_recents_cancel_returns_to_A
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (pserver-stdout): 04e_actual_recents_with_B_on_second_screen
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.LetterAppsDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=pserverFunctions
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 296.006
+
+OK (1 test)
+
+
+INSTRUMENTATION_CODE: -1

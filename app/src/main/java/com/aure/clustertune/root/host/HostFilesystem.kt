@@ -617,10 +617,10 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                         maximumMutations += HostMutation.Chmod(cpu.maxPath, finalMode)
                     } else {
                         maximumMutations += HostMutation.Chmod(cpu.maxPath, writableMode(originalModes[index]))
-                        maximumMutations += if (deferMaximumVerification) {
-                            // Auto Tune performs one authoritative verification after the
-                            // complete batch. Avoid a second in-shell read/retry window while
-                            // an OEM worker may legitimately reset this ceiling to Stock.
+                        maximumMutations += if (deferMaximumVerification || (repairMinimums && !cpuStock[index])) {
+                            // Verify after restoring protection, outside the writable window.
+                            // Fixed profiles can then wait for a launch boost to settle;
+                            // Auto Tune performs its authoritative verification in the session.
                             HostMutation.WriteCandidatesNoReadback(cpu.maxPath, listOf(target.toString()))
                         } else if (cpuStock[index]) {
                             val candidates = cpuStockCandidates[index]
@@ -686,7 +686,7 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                             maximumMutations += HostMutation.Chmod(gpu.maxPath, finalMode)
                         } else {
                             maximumMutations += HostMutation.Chmod(gpu.maxPath, writableMode(gpuMode))
-                            maximumMutations += if (deferMaximumVerification) {
+                            maximumMutations += if (deferMaximumVerification || (repairMinimums && !gpuStock)) {
                                 HostMutation.WriteCandidatesNoReadback(gpu.maxPath, listOf(target.toString()))
                             } else if (gpuStock) {
                                 val preferred = stabilizedStockCeiling?.takeIf { it > 0 } ?: gpu.stockMax.takeIf { it > 0 } ?: gpu.selectableMax
@@ -719,7 +719,8 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                 }
                 if (!deferMaximumVerification) {
                     val accepted = if (cpuStock[index]) cpuStockCandidates[index] else listOf(target)
-                    verifiedMaximums[cpu.maxPath] = verifyMax(cpu.id, cpu.maxPath, accepted, finalMode)
+                    verifiedMaximums[cpu.maxPath] = verifyMax(cpu.id, cpu.maxPath, accepted, finalMode,
+                        cpu.minPath.takeIf { repairMinimums })
                 }
                 if (repairMinimums && cpu.id !in managedCpuMinimums &&
                     fs.read(cpu.minPath)?.toLongOrNull()?.let { it > 0 && it <= safetyCeilings[index] } != true) {
@@ -757,7 +758,8 @@ class HostApplyEngine(private val fs: HostFilesystem) {
                         } else {
                             listOf(requested)
                         }
-                        verifiedMaximums[gpu.maxPath] = verifyMax(gpu.id, gpu.maxPath, accepted, finalMode)
+                        verifiedMaximums[gpu.maxPath] = verifyMax(gpu.id, gpu.maxPath, accepted, finalMode,
+                            gpu.minPath.takeIf { repairMinimums })
                     }
                     val actualAcceptedMax = if (repairMinimums) {
                         fs.read(gpu.maxPath)?.toLongOrNull() ?: error("cannot read ${gpu.maxPath}")
@@ -1022,13 +1024,8 @@ class HostApplyEngine(private val fs: HostFilesystem) {
     private fun protectionMode(mode: Int, stock: Boolean): Int =
         if (stock) mode or 0x080 else mode and 0x16d
 
-    private fun verifyMax(id: String, path: String, targets: List<Long>, mode: Int): Long {
-        val actual = fs.read(path)?.toLongOrNull()
-        check(actual != null && actual in targets) { "verification failed for $id: expected=${targets.joinToString("/")} actual=$actual" }
-        val actualMode = fs.mode(path)
-        check(actualMode == mode) { "permission verification failed for $id: expected=$mode actual=$actualMode" }
-        return actual
-    }
+    private fun verifyMax(id: String, path: String, targets: List<Long>, mode: Int, minimumPath: String? = null): Long =
+        verifySettledHostMaximum(fs, id, path, targets, mode, minimumPath)
 
     private fun restoreNode(
         path: String,

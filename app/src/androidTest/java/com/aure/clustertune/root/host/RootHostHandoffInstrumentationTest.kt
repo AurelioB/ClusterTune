@@ -22,14 +22,17 @@ import com.aure.clustertune.data.adaptiveAdjustableCpuPolicyIds
 import com.aure.clustertune.root.PServerExecutionMethod
 import com.aure.clustertune.root.PrivilegedExecutionResolver
 import com.aure.clustertune.root.RootShellExecutionMethod
+import com.aure.clustertune.apps.PauseAppDetectionRule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
+import org.junit.Rule
 import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class RootHostHandoffInstrumentationTest {
+    @get:Rule internal val exclusiveHost = PauseAppDetectionRule()
     @Test
     fun privilegedHostBinderHandoff_roundTripsThroughProductionClient() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext

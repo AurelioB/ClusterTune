@@ -173,6 +173,10 @@ class HostTelemetrySessionController(
         return terminal.takeIf { active !== session }
     }
 
+    /** A visible HUD has its own expiry, without a permanent host polling loop. */
+    @Synchronized
+    fun nextMaintenanceDeadlineNanos(): Long? = active?.deadlineNanos
+
     @Synchronized
     fun current(): HostTelemetrySessionSnapshot {
         expireLocked()

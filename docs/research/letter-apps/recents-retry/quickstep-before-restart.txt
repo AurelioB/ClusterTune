@@ -1,0 +1,299 @@
+SERVICE com.android.launcher3/com.android.quickstep.TouchInteractionService 3730717 pid=3128 user=0
+  Client:
+    DeviceFlags:
+      COLLECT_SEARCH_HISTORY, defaultValue=false, mCurrentValue=false, mDefaultValueInCode=false
+      ENABLE_APP_PREDICTIONS_WHILE_VISIBLE, defaultValue=true, mCurrentValue=true, mDefaultValueInCode=true
+      ENABLE_DEVICE_PROFILE_LOGGING, defaultValue=false, mCurrentValue=false, mDefaultValueInCode=false
+      ENABLE_DEVICE_SEARCH, defaultValue=true, mCurrentValue=true, mDefaultValueInCode=true
+      ENABLE_DEVICE_SEARCH_PERFORMANCE_LOGGING, defaultValue=false, mCurrentValue=false, mDefaultValueInCode=false
+      ENABLE_ENFORCED_ROUNDED_CORNERS, defaultValue=true, mCurrentValue=true, mDefaultValueInCode=true
+      ENABLE_EXPANDING_PAUSE_WORK_BUTTON, defaultValue=false, mCurrentValue=false, mDefaultValueInCode=false
+      ENABLE_HIDE_HEADER, defaultValue=true, mCurrentValue=true, mDefaultValueInCode=true
+      ENABLE_HIDE_HEADER_STATIC, defaultValue=false, mCurrentValue=false, mDefaultValueInCode=false
+      ENABLE_LAUNCHER_ACTIVITY_THEME_CROSSFADE, defaultValue=false, mCurrentValue=false, mDefaultValueInCode=false
+      ENABLE_ONE_SEARCH_MOTION, defaultValue=true, mCurrentValue=true, mDefaultValueInCode=true
+      ENABLE_OVERVIEW_SELECTIONS, defaultValue=true, mCurrentValue=true, mDefaultValueInCode=true
+      ENABLE_SEARCH_RESULT_BACKGROUND_DRAWABLES, defaultValue=false, mCurrentValue=false, mDefaultValueInCode=false
+      ENABLE_SHOW_KEYBOARD_OPTION_IN_ALL_APPS, defaultValue=true, mCurrentValue=true, mDefaultValueInCode=true
+      ENABLE_WIDGET_PICKER_DEPTH, defaultValue=true, mCurrentValue=true, mDefaultValueInCode=true
+      ENABLE_WIDGETS_PICKER_AIAI_SEARCH, defaultValue=true, mCurrentValue=true, mDefaultValueInCode=true
+      INJECT_FALLBACK_APP_CORPUS_RESULTS, defaultValue=false, mCurrentValue=false, mDefaultValueInCode=false
+      POPUP_MATERIAL_U, defaultValue=false, mCurrentValue=false, mDefaultValueInCode=false
+      SCROLL_TOP_TO_RESET, defaultValue=true, mCurrentValue=true, mDefaultValueInCode=true
+      TWO_PREDICTED_ROWS_ALL_APPS_SEARCH, defaultValue=false, mCurrentValue=false, mDefaultValueInCode=false
+    DebugFlags:
+    PluginManager:
+      numEnabledPlugins=0
+      numDisabledPlugins=0
+      enabledPlugins=[]
+      disabledPlugins=[]
+    DeviceState:
+      canStartSystemGesture=true
+      systemUiFlags=268566528
+      systemUiFlagsDesc=|||||||||||||||||allow_gesture|||||||||
+      assistantAvailable=false
+      assistantDisabled=false
+      isUserUnlocked=true
+      isOneHandedModeEnabled=false
+      isSwipeToNotificationEnabled=false
+      deferredGestureRegion=Rect(0, 0 - 0, 0)
+      exclusionRegion=Rect(0, 0 - 0, 0)
+      pipIsActive=false
+    RotationTouchHelper:
+      currentActiveRotation=1
+      displayRotation=1
+    OrientationTouchTransformerState: 
+      currentActiveRotation=1
+      lastTouchedRegion=null
+      multipleRegionsEnabled=true
+      currentTouchableRotations=RectF(0.0, 1006.0, 1920.0, 1080.0) rotation: 1 
+      mNavBarGesturalHeight=74
+      mNavBarLargerGesturalHeight=185
+      mOneHandedModeRegion=RectF(0.0, 895.0, 1920.0, 1080.0)
+    OverviewComponentObserver:
+      isDefaultHome=false
+      isHomeDisabled=false
+      homeAndOverviewSame=false
+      overviewIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.DEFAULT] flg=0x10000000 cmp=com.android.launcher3/com.android.quickstep.RecentsActivity (has extras) }
+      homeIntent=Intent { act=android.intent.action.MAIN cat=[android.intent.category.HOME] flg=0x10000000 cmp=rip.moth.cocoonshell/.MainActivity }
+    OverviewCommandHelper:
+      mPendingCommands=0
+    GestureState:
+      gestureID=-1
+      runningTask=null
+      endTarget=null
+      lastAppearedTaskTargetId=-1
+      lastStartedTaskId=-1
+      isRecentsAnimationRunning=false
+    Input state:
+      mInputMonitorCompat=com.android.systemui.shared.system.InputMonitorCompat@ac9ca7c
+      mInputEventReceiver=com.android.systemui.shared.system.InputChannelCompat$InputEventReceiver@b852f05
+    DisplayController.Info:
+      normalizedDisplayInfo=CachedDisplayInfo{size=Point(1080, 1920), cutout=Rect(0, 0 - 0, 0), rotation=0}
+      rotation=1
+      fontScale=1.0
+      densityDpi=369
+      navigationMode=NO_BUTTON
+      currentSize=Point(1920, 1080)
+      perDisplayBounds - CachedDisplayInfo{size=Point(1920, 1080), cutout=Rect(0, 0 - 0, 0), rotation=0}: [WindowBounds{bounds=Rect(0, 0 - 1920, 1080), insets=Rect(0, 55 - 0, 55), availableSize=Point(1920, 970), rotationHint=0}, WindowBounds{bounds=Rect(0, 0 - 1080, 1920), insets=Rect(0, 55 - 0, 55), availableSize=Point(1080, 1810), rotationHint=1}, WindowBounds{bounds=Rect(0, 0 - 1920, 1080), insets=Rect(0, 55 - 0, 55), availableSize=Point(1920, 970), rotationHint=2}, WindowBounds{bounds=Rect(0, 0 - 1080, 1920), insets=Rect(0, 55 - 0, 55), availableSize=Point(1080, 1810), rotationHint=3}]
+    TouchState:
+      createdOverviewActivity=com.android.quickstep.RecentsActivity@c611ad3
+      resumed=true
+      mConsumer=TYPE_RESET_GESTURE
+    ActiveGestureLog history:
+    	Logs for logId: 101
+    		23:31:26.567-0600  Current running task package name=com.aure.clustertune.fixture.a
+    		23:31:26.567-0600  Current SystemUi state flags=||||navbar_hidden||||||||||||||||||||||
+    		23:31:26.567-0600  setInputConsumer: TYPE_RESET_GESTURE. reason(s):
+    			-> cannot start system gesture and recents animation was not running, trying to use default input consumer; mResetGestureInputConsumer initialized, using ResetGestureInputConsumer
+    		23:31:26.568-0600  onMotionEvent(960, 1079): ACTION_DOWN
+    		23:31:26.577-0600  onMotionEvent: ACTION_MOVE & 21 similar events
+    		23:31:26.930-0600  onMotionEvent(960, 930): ACTION_UP
+    	Logs for logId: 102
+    		23:31:28.035-0600  Current running task package name=com.aure.clustertune.fixture.a
+    		23:31:28.035-0600  Current SystemUi state flags=||||||||||||||||||||||||||
+    		23:31:28.037-0600  setInputConsumer: TYPE_OTHER_ACTIVITY. reason(s):
+    			-> can start system gesture, trying to use base consumer; keyguard is not showing occluded; using OtherActivityInputConsumer
+    		23:31:28.037-0600  onMotionEvent(960, 1079): ACTION_DOWN
+    		23:31:28.038-0600  onMotionEvent: ACTION_MOVE & 6 similar events
+    		23:31:28.138-0600  startRecentsAnimation
+    		23:31:28.156-0600  onMotionEvent: ACTION_MOVE & 1 similar events
+    		23:31:28.260-0600  STATE_LAUNCHER_DRAWN
+    		23:31:28.267-0600  RecentsAnimationCallbacks.onAnimationStart: 1
+    		23:31:28.289-0600  onMotionEvent: ACTION_MOVE & 93 similar events
+    		23:31:29.834-0600  onMotionEvent(960, 500): ACTION_UP
+		23:31:29.835-0600  calculateEndTarget: velocities=(x=1.4599858E-4dp/ms, y=-0.13941841dp/ms), angle=89.94000003706395
+    		23:31:29.835-0600  setEndTarget HOME
+    		23:31:30.440-0600  scroller animation aborted
+    		23:31:30.470-0600  onSettledOnEndTarget HOME
+    		23:31:30.470-0600  onPageEndTransition: current page index updated: 0
+    		23:31:30.478-0600  finishRecentsAnimation: false
+    		23:31:30.479-0600  RecentsAnimationCallbacks.onAnimationFinished
+    		23:31:30.480-0600  cleanUpRecentsAnimation
+    		23:31:30.504-0600  scroller animation aborted
+    	Logs for logId: 103
+    		23:32:17.868-0600  Current running task package name=com.aure.clustertune.fixture.a
+    		23:32:17.868-0600  Current SystemUi state flags=||||navbar_hidden||||||||||||||||||||||
+    		23:32:17.868-0600  setInputConsumer: TYPE_RESET_GESTURE. reason(s):
+    			-> cannot start system gesture and recents animation was not running, trying to use default input consumer; mResetGestureInputConsumer initialized, using ResetGestureInputConsumer
+    		23:32:17.868-0600  onMotionEvent(960, 1079): ACTION_DOWN
+    		23:32:17.868-0600  onMotionEvent: ACTION_MOVE & 18 similar events
+    		23:32:18.165-0600  onMotionEvent(960, 930): ACTION_UP
+    	Logs for logId: 104
+    		23:32:19.081-0600  Current running task package name=com.aure.clustertune.fixture.a
+    		23:32:19.081-0600  Current SystemUi state flags=||||||||||||||||||||||||||
+    		23:32:19.081-0600  setInputConsumer: TYPE_OTHER_ACTIVITY. reason(s):
+    			-> can start system gesture, trying to use base consumer; keyguard is not showing occluded; using OtherActivityInputConsumer
+    		23:32:19.081-0600  onMotionEvent(960, 1075): ACTION_DOWN
+    		23:32:19.155-0600  onMotionEvent: ACTION_MOVE
+    		23:32:19.160-0600  startRecentsAnimation
+    		23:32:19.193-0600  RecentsAnimationCallbacks.onAnimationStart: 1
+    		23:32:19.206-0600  STATE_LAUNCHER_DRAWN
+    		23:32:19.235-0600  onMotionEvent: ACTION_MOVE
+    		23:32:19.236-0600  onMotionPauseChanged, paused=true reason=Pause requires back to back slow speeds
+    		23:32:19.318-0600  onMotionEvent: ACTION_MOVE & 1 similar events
+    		23:32:20.293-0600  onMotionEvent(960, 650): ACTION_UP
+    		23:32:20.294-0600  calculateEndTarget: velocities=(x=0.0dp/ms, y=0.0dp/ms), angle=-0.0
+    		23:32:20.296-0600  setEndTarget RECENTS
+    		23:32:20.296-0600  scroller animation aborted
+    		23:32:20.301-0600  scroller animation aborted
+    		23:32:20.301-0600  onPageEndTransition: current page index updated: 0
+    		23:32:20.652-0600  onSettledOnEndTarget RECENTS
+    		23:32:20.663-0600  scroller animation aborted
+    		23:32:20.665-0600  scroller animation aborted
+    		23:32:26.444-0600  RecentsAnimationCallbacks.onTasksAppeared
+    		23:32:26.811-0600  finishRecentsAnimation: false
+    		23:32:26.811-0600  RecentsAnimationCallbacks.onAnimationFinished
+    		23:32:26.812-0600  cleanUpRecentsAnimation
+    	ActiveGestureErrorDetector:
+    		Error messages for gesture ID: 101
+    			No errors detected.
+    		Error messages for gesture ID: 102
+    			- recents view scroller animation aborted after setting end target HOME, but before settling on end target.
+    		Error messages for gesture ID: 103
+    			No errors detected.
+    		Error messages for gesture ID: 104
+    			- onTasksAppeared called before/without setting end target to new task
+    			- onTasksAppeared was not expected to be called
+    RecentsModel:
+      RecentTasksList:
+        mChangeId=20
+        mResultsUi=[id=-1, tasks=
+        ]
+        rawTasks=[
+          t1: (id=25470; package=no package) t2: (id=-1; package=no package)
+          t1: (id=25465; package=com.aure.clustertune.fixture.a) t2: (id=-1; package=no package)
+          t1: (id=25469; package=com.aure.clustertune.fixture.c) t2: (id=-1; package=no package)
+          t1: (id=25468; package=no package) t2: (id=-1; package=no package)
+          t1: (id=25460; package=no package) t2: (id=-1; package=no package)
+          t1: (id=25059; package=no package) t2: (id=-1; package=no package)
+          t1: (id=25441; package=no package) t2: (id=-1; package=no package)
+          t1: (id=25268; package=no package) t2: (id=-1; package=no package)
+          t1: (id=25266; package=no package) t2: (id=-1; package=no package)
+          t1: (id=25246; package=no package) t2: (id=-1; package=no package)
+          t1: (id=25100; package=no package) t2: (id=-1; package=no package)
+        ]
+    ProtoTrace:
+      file=/data/user/0/com.android.launcher3/files/launcher_trace.pb
+    DeviceProfile:
+    	1 dp = 2.30625 px
+    	isTablet:false
+    	isPhone:true
+    	transposeLayoutWithOrientation:true
+    	isGestureMode:true
+    	isLandscape:true
+    	isMultiWindowMode:false
+    	isTwoPanels:false
+    	windowX: 0.0px (0.0dp)
+    	windowY: 0.0px (0.0dp)
+    	widthPx: 1920.0px (832.52026dp)
+    	heightPx: 1080.0px (468.29266dp)
+    	availableWidthPx: 1920.0px (832.52026dp)
+    	availableHeightPx: 970.0px (420.5962dp)
+    	mInsets.left: 0.0px (0.0dp)
+    	mInsets.top: 55.0px (23.848238dp)
+    	mInsets.right: 0.0px (0.0dp)
+    	mInsets.bottom: 55.0px (23.848238dp)
+    	aspectRatio:1.7777778
+    	isScalableGrid:false
+    	inv.numRows: 4
+    	inv.numColumns: 6
+    	inv.numSearchContainerColumns: 6
+    	minCellSize: PointF(0.0, 0.0)dp
+    	cellWidthPx: 134.0px (58.102978dp)
+    	cellHeightPx: 190.0px (82.38482dp)
+    	getCellSize().x: 273.0px (118.37398dp)
+    	getCellSize().y: 233.0px (101.02981dp)
+    	cellLayoutBorderSpacePx Horizontal: 0.0px (0.0dp)
+    	cellLayoutBorderSpacePx Vertical: 0.0px (0.0dp)
+    	cellLayoutPaddingPx.left: 46.0px (19.945799dp)
+    	cellLayoutPaddingPx.top: 0.0px (0.0dp)
+    	cellLayoutPaddingPx.right: 46.0px (19.945799dp)
+    	cellLayoutPaddingPx.bottom: 35.0px (15.176151dp)
+    	iconSizePx: 133.0px (57.669373dp)
+    	iconTextSizePx: 30.0px (13.008129dp)
+    	iconDrawablePaddingPx: 9.0px (3.9024389dp)
+    	folderCellWidthPx: 146.0px (63.30623dp)
+    	folderCellHeightPx: 169.0px (73.27913dp)
+    	folderChildIconSizePx: 110.0px (47.696476dp)
+    	folderChildTextSizePx: 26.0px (11.273712dp)
+    	folderChildDrawablePaddingPx: 8.0px (3.4688346dp)
+    	folderCellLayoutBorderSpacePx: 0.0px (0.0dp)
+    	folderContentPaddingLeftRight: 18.0px (7.8048778dp)
+    	folderTopPadding: 55.0px (23.848238dp)
+    	folderFooterHeight: 129.0px (55.934956dp)
+    	bottomSheetTopPadding: 90.0px (39.024387dp)
+    	bottomSheetOpenDuration: 267
+    	bottomSheetCloseDuration: 267
+    	bottomSheetWorkspaceScale: 1.0
+    	bottomSheetDepth: 0.0
+    	allAppsShiftRange: 692.0px (300.0542dp)
+    	allAppsTopPadding: 0.0px (0.0dp)
+    	allAppsOpenDuration: 600
+    	allAppsCloseDuration: 300
+    	allAppsIconSizePx: 125.0px (54.20054dp)
+    	allAppsIconTextSizePx: 30.0px (13.008129dp)
+    	allAppsIconDrawablePaddingPx: 18.0px (7.8048778dp)
+    	allAppsCellHeightPx: 277.0px (120.1084dp)
+    	allAppsCellWidthPx: 161.0px (69.810295dp)
+    	allAppsBorderSpacePxX: 37.0px (16.04336dp)
+    	allAppsBorderSpacePxY: 37.0px (16.04336dp)
+    	numShownAllAppsColumns: 6
+    	allAppsLeftRightPadding: 0.0px (0.0dp)
+    	allAppsLeftRightMargin: 0.0px (0.0dp)
+    	hotseatBarSizePx: 225.0px (97.560974dp)
+    	inv.hotseatColumnSpan: 6
+    	hotseatCellHeightPx: 150.0px (65.04065dp)
+    	hotseatBarBottomSpacePx: 111.0px (48.13008dp)
+    	hotseatBarSidePaddingStartPx: 55.0px (23.848238dp)
+    	hotseatBarSidePaddingEndPx: 37.0px (16.04336dp)
+    	hotseatBarEndOffset: 0.0px (0.0dp)
+    	hotseatQsbSpace: 0.0px (0.0dp)
+    	hotseatQsbHeight: 0.0px (0.0dp)
+    	springLoadedHotseatBarTopMarginPx: 104.0px (45.09485dp)
+    	getHotseatLayoutPadding(context).top: 46.0px (19.945799dp)
+    	getHotseatLayoutPadding(context).bottom: 98.0px (42.49322dp)
+    	getHotseatLayoutPadding(context).left: 37.0px (16.04336dp)
+    	getHotseatLayoutPadding(context).right: 55.0px (23.848238dp)
+    	numShownHotseatIcons: 4
+    	hotseatBorderSpace: 0.0px (0.0dp)
+    	isQsbInline: false
+    	hotseatQsbWidth: 0.0px (0.0dp)
+    	isTaskbarPresent:false
+    	isTaskbarPresentInApps:false
+    	taskbarSize: 0.0px (0.0dp)
+    	desiredWorkspaceHorizontalMarginPx: 0.0px (0.0dp)
+    	workspacePadding.left: 9.0px (3.9024389dp)
+    	workspacePadding.top: 0.0px (0.0dp)
+    	workspacePadding.right: 179.0px (77.61517dp)
+    	workspacePadding.bottom: 0.0px (0.0dp)
+    	iconScale: 1.0px (0.43360433dp)
+    	cellScaleToFit : 1.0px (0.43360433dp)
+    	extraSpace: 175.0px (75.88075dp)
+    	unscaled extraSpace: 175.0px (75.88075dp)
+    	maxEmptySpace: 0.0px (0.0dp)
+    	workspaceTopPadding: 0.0px (0.0dp)
+    	workspaceBottomPadding: 0.0px (0.0dp)
+    	overviewTaskMarginPx: 37.0px (16.04336dp)
+    	overviewTaskIconSizePx: 111.0px (48.13008dp)
+    	overviewTaskIconDrawableSizePx: 101.0px (43.794037dp)
+    	overviewTaskIconDrawableSizeGridPx: 0.0px (0.0dp)
+    	overviewTaskThumbnailTopMarginPx: 148.0px (64.17344dp)
+    	overviewActionsTopMarginPx: 28.0px (12.140921dp)
+    	overviewActionsHeight: 111.0px (48.13008dp)
+    	overviewActionsClaimedSpaceBelow: 55.0px (23.848238dp)
+    	overviewActionsButtonSpacing: 83.0px (35.98916dp)
+    	overviewPageSpacing: 37.0px (16.04336dp)
+    	overviewRowSpacing: 0.0px (0.0dp)
+    	overviewGridSideMargin: 0.0px (0.0dp)
+    	dropTargetBarTopMarginPx: 14.0px (6.0704603dp)
+    	dropTargetBarSizePx: 83.0px (35.98916dp)
+    	dropTargetBarBottomMarginPx: 14.0px (6.0704603dp)
+    	getCellLayoutSpringLoadShrunkTop(): 166.0px (71.97832dp)
+    	getCellLayoutSpringLoadShrunkBottom(): 932.0px (404.11923dp)
+    	workspaceSpringLoadedMinNextPageVisiblePx: 55.0px (23.848238dp)
+    	getWorkspaceSpringLoadScale(): 0.78969073px (0.3424133dp)
+    	getCellLayoutHeight(): 970.0px (420.5962dp)
+    	getCellLayoutWidth(): 1732.0px (751.0027dp)
+    TaskbarManager:
+    	TaskbarActivityContext: null

@@ -1,0 +1,31 @@
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.LetterAppsDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.apps.LetterAppsDeviceTest:
+INSTRUMENTATION_STATUS: test=pserverFunctions
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=
+Letter apps (pserver-stdout): 15_swap_physical_screens
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (pserver-stdout): 39_host_reconnect_with_A_visible
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.LetterAppsDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: test=pserverFunctions
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_RESULT: stream=
+
+Time: 12.033
+
+OK (1 test)
+
+
+INSTRUMENTATION_CODE: -1

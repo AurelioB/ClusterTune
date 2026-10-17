@@ -1,0 +1,33 @@
+{
+  "unitTests": 564,
+  "unitFailures": 0,
+  "installedApkMatchesBuiltDebugApk": true,
+  "debugApkSha256": "c2bd06845af70dbae831228e8327fb469879aeedb5e5ee50cbbd031555e22790",
+  "lint": {
+    "app/build/reports/lint-results-debug.xml": {
+      "Error": 0,
+      "Fatal": 0,
+      "Warning": 56
+    },
+    "test-apps/build/reports/lint-results-aDebug.xml": {
+      "Error": 0,
+      "Fatal": 0,
+      "Warning": 4
+    },
+    "test-apps/build/reports/lint-results-bDebug.xml": {
+      "Error": 0,
+      "Fatal": 0,
+      "Warning": 4
+    },
+    "test-apps/build/reports/lint-results-cDebug.xml": {
+      "Error": 0,
+      "Fatal": 0,
+      "Warning": 4
+    },
+    "test-apps/build/reports/lint-results-dDebug.xml": {
+      "Error": 0,
+      "Fatal": 0,
+      "Warning": 4
+    }
+  }
+}

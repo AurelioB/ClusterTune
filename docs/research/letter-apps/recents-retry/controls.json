@@ -1,0 +1,24 @@
+{
+  "cases": [
+    {
+      "name": "04_real_recents_selects_letter_A",
+      "startedAtMs": 1792129811870,
+      "overview": {
+        "gestureAttempts": 1,
+        "fixtureCards": [
+          "ClusterTune Test C",
+          "ClusterTune Test A"
+        ]
+      },
+      "selectedCard": {
+        "letter": "a",
+        "description": "ClusterTune Test A",
+        "cardBounds": "[402,55][1518,831]",
+        "selection": "touch"
+      },
+      "status": "passed",
+      "finishedAtMs": 1792129826071
+    }
+  ],
+  "finishedAtMs": 1792129826821
+}

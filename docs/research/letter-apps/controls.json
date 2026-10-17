@@ -1,0 +1,104 @@
+{
+  "cases": [
+    {
+      "name": "04_real_recents_selects_letter_A",
+      "startedAtMs": 1792127523216,
+      "overviewActivity": "      topResumedActivity=ActivityRecord{c3e25a2 u0 rip.moth.cocoonshell\/.MainActivity} t24693}\n    topResumedActivity=ActivityRecord{c94a625 u0 rip.moth.cocoonshell\/.ExternalDisplayActivity} t25247}",
+      "status": "unavailable",
+      "reason": "This launcher's Overview action did not expose a card for A",
+      "visibleTexts": [
+        "Spyro1Recomp (private test)",
+        "Android App",
+        "30h 22m",
+        "Select",
+        "Social profile",
+        "0",
+        "12",
+        "80%",
+        "11:12 PM"
+      ],
+      "finishedAtMs": 1792127526574
+    },
+    {
+      "name": "32_tile_SHOW_DIALOG",
+      "startedAtMs": 1792127526628,
+      "visibleTexts": [
+        "ClusterTune Test C",
+        "com.aure.clustertune.fixture.c",
+        "App profile",
+        "Custom",
+        "Scanning CPU Clusters",
+        "Scanning CPU clusters...",
+        "Cancel",
+        "Apply"
+      ],
+      "status": "passed",
+      "finishedAtMs": 1792127529227
+    },
+    {
+      "name": "32_tile_TOGGLE_PERFORMANCE_HUD",
+      "startedAtMs": 1792127529251,
+      "status": "passed",
+      "finishedAtMs": 1792127531293
+    },
+    {
+      "name": "32_tile_SHOW_PROFILE_PICKER",
+      "startedAtMs": 1792127531316,
+      "visibleTexts": [],
+      "status": "passed",
+      "finishedAtMs": 1792127533641
+    },
+    {
+      "name": "32_tile_CYCLE_PROFILES",
+      "startedAtMs": 1792127533657,
+      "status": "passed",
+      "finishedAtMs": 1792127535724
+    },
+    {
+      "name": "32_tile_OPEN_APP",
+      "startedAtMs": 1792127535763,
+      "status": "passed",
+      "finishedAtMs": 1792127537953
+    },
+    {
+      "name": "31_picker_apply_by_touch",
+      "startedAtMs": 1792127537981,
+      "status": "passed",
+      "finishedAtMs": 1792127539521
+    },
+    {
+      "name": "33_invisible_edge_handle_swipe",
+      "startedAtMs": 1792127539553,
+      "status": "passed",
+      "finishedAtMs": 1792127540953
+    },
+    {
+      "name": "42_update_check_download_installer_handoff",
+      "startedAtMs": 1792127540987,
+      "release": "v1.3.0",
+      "downloadedBytes": 50133600,
+      "installerResult": "PermissionRequired",
+      "status": "passed",
+      "finishedAtMs": 1792127548049
+    },
+    {
+      "name": "37_missing_overlay_access_message",
+      "startedAtMs": 1792127548063,
+      "status": "passed",
+      "finishedAtMs": 1792127550112
+    },
+    {
+      "name": "42_support_screen_and_link",
+      "startedAtMs": 1792127550136,
+      "status": "passed",
+      "finishedAtMs": 1792127551621
+    },
+    {
+      "name": "overlay_rapid_dismiss_restart",
+      "startedAtMs": 1792127551660,
+      "status": "passed",
+      "finishedAtMs": 1792127564969
+    }
+  ],
+  "finishedAtMs": 1792127565424
+}

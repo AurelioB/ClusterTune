@@ -1,0 +1,4374 @@
+{
+  "cases": [
+    {
+      "name": "01_forward_A_B_C_A",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125404546,
+          "settleMs": 211,
+          "launchMs": 202,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792125404970,
+          "settleMs": 209,
+          "launchMs": 202,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792125405377,
+          "settleMs": 221,
+          "launchMs": 176,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125405758,
+          "settleMs": 294,
+          "launchMs": 77,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125404128,
+      "status": "passed",
+      "finishedAtMs": 1792125405762,
+      "history": [
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125405373
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125404988
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125404545
+        }
+      ]
+    },
+    {
+      "name": "02_reverse_A_C_B_A",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125405809,
+          "settleMs": 5,
+          "launchMs": 36,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792125406377,
+          "settleMs": 7,
+          "launchMs": 558,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792125406885,
+          "settleMs": 400,
+          "launchMs": 100,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125407408,
+          "settleMs": 416,
+          "launchMs": 86,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125405766,
+      "status": "passed",
+      "finishedAtMs": 1792125407413,
+      "history": [
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125406893
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125406249
+        }
+      ]
+    },
+    {
+      "name": "03_twenty_round_trips",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "0-a",
+          "timeMs": 1792125407478,
+          "settleMs": 12,
+          "launchMs": 40,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "0-b",
+          "timeMs": 1792125407967,
+          "settleMs": 388,
+          "launchMs": 88,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "0-c",
+          "timeMs": 1792125408444,
+          "settleMs": 383,
+          "launchMs": 87,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "0-a",
+          "timeMs": 1792125408811,
+          "settleMs": 263,
+          "launchMs": 92,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "1-a",
+          "timeMs": 1792125408874,
+          "settleMs": 3,
+          "launchMs": 51,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "1-b",
+          "timeMs": 1792125409338,
+          "settleMs": 374,
+          "launchMs": 83,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "1-c",
+          "timeMs": 1792125409835,
+          "settleMs": 387,
+          "launchMs": 94,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "1-a",
+          "timeMs": 1792125410308,
+          "settleMs": 374,
+          "launchMs": 79,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "2-a",
+          "timeMs": 1792125410385,
+          "settleMs": 6,
+          "launchMs": 57,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "gpuMax": 680000000,
+          "label": "2-b",
+          "timeMs": 1792125410844,
+          "settleMs": 360,
+          "launchMs": 92,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "2-c",
+          "timeMs": 1792125411332,
+          "settleMs": 402,
+          "launchMs": 77,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "2-a",
+          "timeMs": 1792125411791,
+          "settleMs": 352,
+          "launchMs": 92,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "3-a",
+          "timeMs": 1792125411879,
+          "settleMs": 13,
+          "launchMs": 60,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "3-b",
+          "timeMs": 1792125412380,
+          "settleMs": 386,
+          "launchMs": 101,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "3-c",
+          "timeMs": 1792125412849,
+          "settleMs": 376,
+          "launchMs": 72,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "3-a",
+          "timeMs": 1792125413324,
+          "settleMs": 391,
+          "launchMs": 76,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "4-a",
+          "timeMs": 1792125413403,
+          "settleMs": 13,
+          "launchMs": 50,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "4-b",
+          "timeMs": 1792125413884,
+          "settleMs": 358,
+          "launchMs": 108,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "4-c",
+          "timeMs": 1792125414395,
+          "settleMs": 409,
+          "launchMs": 90,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "4-a",
+          "timeMs": 1792125414933,
+          "settleMs": 364,
+          "launchMs": 160,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "5-a",
+          "timeMs": 1792125415007,
+          "settleMs": 14,
+          "launchMs": 45,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "5-b",
+          "timeMs": 1792125415503,
+          "settleMs": 402,
+          "launchMs": 76,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "5-c",
+          "timeMs": 1792125415977,
+          "settleMs": 383,
+          "launchMs": 74,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "5-a",
+          "timeMs": 1792125416458,
+          "settleMs": 389,
+          "launchMs": 77,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "6-a",
+          "timeMs": 1792125416534,
+          "settleMs": 9,
+          "launchMs": 51,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "gpuMax": 680000000,
+          "label": "6-b",
+          "timeMs": 1792125416905,
+          "settleMs": 251,
+          "launchMs": 112,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "6-c",
+          "timeMs": 1792125417382,
+          "settleMs": 367,
+          "launchMs": 96,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "6-a",
+          "timeMs": 1792125417900,
+          "settleMs": 402,
+          "launchMs": 98,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "7-a",
+          "timeMs": 1792125417963,
+          "settleMs": 9,
+          "launchMs": 36,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "7-b",
+          "timeMs": 1792125418450,
+          "settleMs": 383,
+          "launchMs": 90,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "7-c",
+          "timeMs": 1792125418942,
+          "settleMs": 400,
+          "launchMs": 69,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "7-a",
+          "timeMs": 1792125419420,
+          "settleMs": 375,
+          "launchMs": 96,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "8-a",
+          "timeMs": 1792125419470,
+          "settleMs": 3,
+          "launchMs": 37,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "8-b",
+          "timeMs": 1792125420033,
+          "settleMs": 472,
+          "launchMs": 86,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "8-c",
+          "timeMs": 1792125420623,
+          "settleMs": 480,
+          "launchMs": 103,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "8-a",
+          "timeMs": 1792125421215,
+          "settleMs": 474,
+          "launchMs": 106,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "9-a",
+          "timeMs": 1792125421275,
+          "settleMs": 14,
+          "launchMs": 29,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "9-b",
+          "timeMs": 1792125421774,
+          "settleMs": 385,
+          "launchMs": 96,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "9-c",
+          "timeMs": 1792125422249,
+          "settleMs": 400,
+          "launchMs": 69,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "9-a",
+          "timeMs": 1792125422727,
+          "settleMs": 366,
+          "launchMs": 93,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "10-a",
+          "timeMs": 1792125422792,
+          "settleMs": 10,
+          "launchMs": 43,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "10-b",
+          "timeMs": 1792125423396,
+          "settleMs": 463,
+          "launchMs": 123,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "10-c",
+          "timeMs": 1792125423886,
+          "settleMs": 387,
+          "launchMs": 90,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "10-a",
+          "timeMs": 1792125424365,
+          "settleMs": 400,
+          "launchMs": 73,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "11-a",
+          "timeMs": 1792125424423,
+          "settleMs": 9,
+          "launchMs": 38,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "11-b",
+          "timeMs": 1792125424924,
+          "settleMs": 380,
+          "launchMs": 100,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "11-c",
+          "timeMs": 1792125425389,
+          "settleMs": 388,
+          "launchMs": 69,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            787200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "failure-state",
+          "timeMs": 1792125437544,
+          "launchMs": 75,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125407422,
+      "status": "failed",
+      "error": "java.lang.AssertionError: 11-a expected Large Underclock with [a]; visible=VisibleAppSnapshot(windowsByDisplay={0=[VisibleAppWindow(packageName=com.aure.clustertune.fixture.c, displayId=0, isFocused=true, isActive=true)], 4=[VisibleAppWindow(packageName=rip.moth.cocoonshell, displayId=4, isFocused=false, isActive=true)]}, isInteractive=true, recentPackageByDisplay={0=com.aure.clustertune.fixture.c, 4=rip.moth.cocoonshell}, mostRecentAppIdentity=RecentAppIdentity(displayId=0, packageName=com.aure.clustertune.fixture.c), refreshRateFpsByDisplay={0=60, 4=60}, pickerPackageByDisplay={0=com.aure.clustertune.fixture.c, 4=rip.moth.cocoonshell})\n\tat org.junit.Assert.fail(Assert.java:89)\n\tat org.junit.Assert.assertTrue(Assert.java:42)\n\tat com.aure.clustertune.apps.LetterAppsDeviceTest.await(LetterAppsDeviceTest.kt:533)\n\tat com.aure.clustertune.apps.LetterAppsDeviceTest.access$await(LetterAppsDeviceTest.kt:36)\n\tat com.aure.clustertune.apps.LetterAppsDeviceTest$await$1.invokeSuspend(Unknown Source:18)\n\tat kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)\n\tat kotlinx.coroutines.DispatchedTaskKt.resume(DispatchedTask.kt:231)\n\tat kotlinx.coroutines.DispatchedTaskKt.dispatch(DispatchedTask.kt:164)\n\tat kotlinx.coroutines.CancellableContinuationImpl.dispatchResume(CancellableContinuationImpl.kt:466)\n\tat kotlinx.coroutines.CancellableContinuationImpl.resumeImpl(CancellableContinuationImpl.kt:500)\n\tat kotlinx.coroutines.CancellableContinuationImpl.resumeImpl$default(CancellableContinuationImpl.kt:489)\n\tat kotlinx.coroutines.CancellableContinuationImpl.resumeUndispatched(CancellableContinuationImpl.kt:587)\n\tat kotlinx.coroutines.EventLoopImplBase$DelayedResumeTask.run(EventLoop.common.kt:490)\n\tat kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)\n\tat kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)\n\tat kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)\n\tat kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)\n\tat kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)\n\tat kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)\n\tat com.aure.clustertune.apps.LetterAppsDeviceTest.rootAppSwitching(LetterAppsDeviceTest.kt:58)\n\tat java.lang.reflect.Method.invoke(Native Method)\n\tat org.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)\n\tat org.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)\n\tat org.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)\n\tat org.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)\n\tat org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\n\tat org.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)\n\tat org.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)\n\tat org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)\n\tat org.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)\n\tat org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)\n\tat org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)\n\tat org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)\n\tat org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)\n\tat org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)\n\tat org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\n\tat org.junit.runners.ParentRunner.run(ParentRunner.java:413)\n\tat androidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)\n\tat org.junit.runners.Suite.runChild(Suite.java:128)\n\tat org.junit.runners.Suite.runChild(Suite.java:27)\n\tat org.junit.runners.ParentRunner$4.run(ParentRunner.java:331)\n\tat org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)\n\tat org.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)\n\tat org.junit.runners.ParentRunner.access$100(ParentRunner.java:66)\n\tat org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)\n\tat org.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\n\tat org.junit.runners.ParentRunner.run(ParentRunner.java:413)\n\tat org.junit.runner.JUnitCore.run(JUnitCore.java:137)\n\tat org.junit.runner.JUnitCore.run(JUnitCore.java:115)\n\tat androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:67)\n\tat androidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:58)\n\tat androidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:446)\n\tat android.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2367)\n",
+      "lastLaunchOutput": "Starting: Intent { flg=0x30020000 cmp=com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity (has extras) }\nWarning: Activity not started, its current task has been brought to the front\nStatus: ok\nLaunchState: HOT\nActivity: com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity\nTotalTime: 45\nWaitTime: 55\nComplete\n",
+      "detector": "AppDetectionStatus(available=true, error=null)",
+      "runtime": "AdaptiveTuneRuntimeState(active=false, sessionGeneration=null, packageName=null, appLabel=null, targetFps=null, status=null, reason=null, measuredFps=null, p95FrameTimeMillis=null, cpuLoad={}, cpuClockKHz={}, gpuBusy=null, gpuClockHz=null, thermalMilliCelsius={}, frameConfidence=null, slowFrameRatio=null, frameStale=false, sampleTimestampNanos=null, ceilings=null, frameBackend=null, message=null)",
+      "detectionRunning": true,
+      "threads": "binder:19246_1\n\n\nDefaultDispatcher-worker-29\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nJit thread pool worker thread 0\n\n\nbinder:19246_4\n\n\nDefaultDispatcher-worker-20\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-25\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-15\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-19\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-14\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-17\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nmain\nandroid.os.MessageQueue.nativePollOnce(Native Method)\nandroid.os.MessageQueue.next(MessageQueue.java:335)\nandroid.os.Looper.loopOnce(Looper.java:161)\nandroid.os.Looper.loop(Looper.java:288)\nandroid.app.ActivityThread.main(ActivityThread.java:8195)\njava.lang.reflect.Method.invoke(Native Method)\ncom.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)\ncom.android.internal.os.ZygoteInit.main(ZygoteInit.java:942)\n\nSignal Catcher\n\n\nDefaultDispatcher-worker-23\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nHeapTaskDaemon\n\n\nqueued-work-looper\nandroid.os.MessageQueue.nativePollOnce(Native Method)\nandroid.os.MessageQueue.next(MessageQueue.java:335)\nandroid.os.Looper.loopOnce(Looper.java:161)\nandroid.os.Looper.loop(Looper.java:288)\nandroid.os.HandlerThread.run(HandlerThread.java:67)\n\nInstrumentationConnectionThread\nandroid.os.MessageQueue.nativePollOnce(Native Method)\nandroid.os.MessageQueue.next(MessageQueue.java:335)\nandroid.os.Looper.loopOnce(Looper.java:161)\nandroid.os.Looper.loop(Looper.java:288)\nandroid.os.HandlerThread.run(HandlerThread.java:67)\n\nDefaultDispatcher-worker-5\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nInstr: androidx.test.runner.AndroidJUnitRunner\ndalvik.system.VMStack.getThreadStackTrace(Native Method)\njava.lang.Thread.getStackTrace(Thread.java:1841)\njava.lang.Thread.getAllStackTraces(Thread.java:1909)\ncom.aure.clustertune.apps.LetterAppsDeviceTest.scenario(LetterAppsDeviceTest.kt:507)\ncom.aure.clustertune.apps.LetterAppsDeviceTest.access$scenario(LetterAppsDeviceTest.kt:36)\ncom.aure.clustertune.apps.LetterAppsDeviceTest$scenario$1.invokeSuspend(Unknown Source:15)\nkotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)\nkotlinx.coroutines.DispatchedTaskKt.resume(DispatchedTask.kt:231)\nkotlinx.coroutines.DispatchedTaskKt.dispatch(DispatchedTask.kt:164)\nkotlinx.coroutines.CancellableContinuationImpl.dispatchResume(CancellableContinuationImpl.kt:466)\nkotlinx.coroutines.CancellableContinuationImpl.resumeImpl(CancellableContinuationImpl.kt:500)\nkotlinx.coroutines.CancellableContinuationImpl.resumeImpl$default(CancellableContinuationImpl.kt:489)\nkotlinx.coroutines.CancellableContinuationImpl.resumeUndispatched(CancellableContinuationImpl.kt:587)\nkotlinx.coroutines.EventLoopImplBase$DelayedResumeTask.run(EventLoop.common.kt:490)\nkotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)\nkotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)\nkotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)\nkotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)\nkotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)\nkotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)\ncom.aure.clustertune.apps.LetterAppsDeviceTest.rootAppSwitching(LetterAppsDeviceTest.kt:58)\njava.lang.reflect.Method.invoke(Native Method)\norg.junit.runners.model.FrameworkMethod$1.runReflectiveCall(FrameworkMethod.java:59)\norg.junit.internal.runners.model.ReflectiveCallable.run(ReflectiveCallable.java:12)\norg.junit.runners.model.FrameworkMethod.invokeExplosively(FrameworkMethod.java:56)\norg.junit.internal.runners.statements.InvokeMethod.evaluate(InvokeMethod.java:17)\norg.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\norg.junit.runners.BlockJUnit4ClassRunner$1.evaluate(BlockJUnit4ClassRunner.java:100)\norg.junit.runners.ParentRunner.runLeaf(ParentRunner.java:366)\norg.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:103)\norg.junit.runners.BlockJUnit4ClassRunner.runChild(BlockJUnit4ClassRunner.java:63)\norg.junit.runners.ParentRunner$4.run(ParentRunner.java:331)\norg.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)\norg.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)\norg.junit.runners.ParentRunner.access$100(ParentRunner.java:66)\norg.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)\norg.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\norg.junit.runners.ParentRunner.run(ParentRunner.java:413)\nandroidx.test.ext.junit.runners.AndroidJUnit4.run(AndroidJUnit4.java:162)\norg.junit.runners.Suite.runChild(Suite.java:128)\norg.junit.runners.Suite.runChild(Suite.java:27)\norg.junit.runners.ParentRunner$4.run(ParentRunner.java:331)\norg.junit.runners.ParentRunner$1.schedule(ParentRunner.java:79)\norg.junit.runners.ParentRunner.runChildren(ParentRunner.java:329)\norg.junit.runners.ParentRunner.access$100(ParentRunner.java:66)\norg.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:293)\norg.junit.runners.ParentRunner$3.evaluate(ParentRunner.java:306)\norg.junit.runners.ParentRunner.run(ParentRunner.java:413)\norg.junit.runner.JUnitCore.run(JUnitCore.java:137)\norg.junit.runner.JUnitCore.run(JUnitCore.java:115)\nandroidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:67)\nandroidx.test.internal.runner.TestExecutor.execute(TestExecutor.java:58)\nandroidx.test.runner.AndroidJUnitRunner.onStart(AndroidJUnitRunner.java:446)\nandroid.app.Instrumentation$InstrumentationThread.run(Instrumentation.java:2367)\n\nDefaultDispatcher-worker-11\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-12\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-1\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nprocess reaper\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:234)\njava.util.concurrent.SynchronousQueue$TransferStack.awaitFulfill(SynchronousQueue.java:463)\njava.util.concurrent.SynchronousQueue$TransferStack.transfer(SynchronousQueue.java:361)\njava.util.concurrent.SynchronousQueue.poll(SynchronousQueue.java:939)\njava.util.concurrent.ThreadPoolExecutor.getTask(ThreadPoolExecutor.java:1062)\njava.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1123)\njava.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:637)\njava.lang.Thread.run(Thread.java:1012)\n\nbinder:19246_3\n\n\nDefaultDispatcher-worker-26\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-18\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-8\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-3\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-10\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-21\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-6\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-13\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nFinalizerWatchdogDaemon\njava.lang.Object.wait(Native Method)\njava.lang.Object.wait(Object.java:442)\njava.lang.Object.wait(Object.java:568)\njava.lang.Daemons$FinalizerWatchdogDaemon.sleepUntilNeeded(Daemons.java:385)\njava.lang.Daemons$FinalizerWatchdogDaemon.runInternal(Daemons.java:365)\njava.lang.Daemons$Daemon.run(Daemons.java:140)\njava.lang.Thread.run(Thread.java:1012)\n\nProfile Saver\n\n\nDefaultDispatcher-worker-7\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-24\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nReferenceQueueDaemon\njava.lang.Object.wait(Native Method)\njava.lang.Object.wait(Object.java:442)\njava.lang.Object.wait(Object.java:568)\njava.lang.Daemons$ReferenceQueueDaemon.runInternal(Daemons.java:232)\njava.lang.Daemons$Daemon.run(Daemons.java:140)\njava.lang.Thread.run(Thread.java:1012)\n\nDefaultDispatcher-worker-4\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-22\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-28\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-9\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nbinder:19246_2\n\n\nUiAutomation\nandroid.os.MessageQueue.nativePollOnce(Native Method)\nandroid.os.MessageQueue.next(MessageQueue.java:335)\nandroid.os.Looper.loopOnce(Looper.java:161)\nandroid.os.Looper.loop(Looper.java:288)\nandroid.os.HandlerThread.run(HandlerThread.java:67)\n\nFinalizerDaemon\njava.lang.Object.wait(Native Method)\njava.lang.Object.wait(Object.java:442)\njava.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:203)\njava.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:224)\njava.lang.Daemons$FinalizerDaemon.runInternal(Daemons.java:300)\njava.lang.Daemons$Daemon.run(Daemons.java:140)\njava.lang.Thread.run(Thread.java:1012)\n\nDefaultDispatcher-worker-27\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-30\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-16\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)\n\nDefaultDispatcher-worker-2\njdk.internal.misc.Unsafe.park(Native Method)\njava.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:357)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.park(CoroutineScheduler.kt:856)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.tryPark(CoroutineScheduler.kt:801)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.runWorker(CoroutineScheduler.kt:749)\nkotlinx.coroutines.scheduling.CoroutineScheduler$Worker.run(CoroutineScheduler.kt:702)",
+      "actualTasks": "  * Task{77cf915 #25215 type=standard A=10167:com.aure.clustertune.fixture.a U=0 visible=true visibleRequested=true mode=fullscreen translucent=false sz=1}\n    topResumedActivity=ActivityRecord{d3ee21b u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25215}\n    * Hist  #0: ActivityRecord{d3ee21b u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25215}\n      packageName=com.aure.clustertune.fixture.a processName=com.aure.clustertune.fixture.a\n      app=ProcessRecord{5f84f7 19684:com.aure.clustertune.fixture.a\/u0a167}\n      Intent { flg=0x30020000 cmp=com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity (has extras) }\n      rootOfTask=true task=Task{77cf915 #25215 type=standard A=10167:com.aure.clustertune.fixture.a}\n      taskAffinity=10167:com.aure.clustertune.fixture.a\n      mActivityComponent=com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity\n      baseDir=\/data\/app\/~~0xEoiAbOvcQdb86iMB38FA==\/com.aure.clustertune.fixture.a-EYG21WtfgJ-DLNCQqVtLwg==\/base.apk\n      dataDir=\/data\/user\/0\/com.aure.clustertune.fixture.a\n      windows=[Window{12807d2 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}]\n  * Task{ebd8f3e #25217 type=standard A=10213:com.aure.clustertune.fixture.c U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}\n    mLastPausedActivity: ActivityRecord{90322ec u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity} t25217}\n    * Hist  #0: ActivityRecord{90322ec u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity} t25217}\n      packageName=com.aure.clustertune.fixture.c processName=com.aure.clustertune.fixture.c\n      app=ProcessRecord{a7f614a 19813:com.aure.clustertune.fixture.c\/u0a213}\n      Intent { flg=0x30020000 cmp=com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity (has extras) }\n      rootOfTask=true task=Task{ebd8f3e #25217 type=standard A=10213:com.aure.clustertune.fixture.c}\n      taskAffinity=10213:com.aure.clustertune.fixture.c\n      mActivityComponent=com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity\n      baseDir=\/data\/app\/~~ndlMm5SPNwQaIRfOXHxsRA==\/com.aure.clustertune.fixture.c-tf2G01yUsyc8YEdXmLc_FQ==\/base.apk\n      dataDir=\/data\/user\/0\/com.aure.clustertune.fixture.c\n      windows=[Window{eb3ab77 u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity}]\n  * Task{9971c94 #25216 type=standard A=10180:com.aure.clustertune.fixture.b U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}\n    mLastPausedActivity: ActivityRecord{7afd732 u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25216}\n    * Hist  #0: ActivityRecord{7afd732 u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25216}\n      packageName=com.aure.clustertune.fixture.b processName=com.aure.clustertune.fixture.b\n      app=ProcessRecord{c1c0c83 19754:com.aure.clustertune.fixture.b\/u0a180}\n      Intent { flg=0x30020000 cmp=com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity (has extras) }\n      rootOfTask=true task=Task{9971c94 #25216 type=standard A=10180:com.aure.clustertune.fixture.b}\n      taskAffinity=10180:com.aure.clustertune.fixture.b\n      mActivityComponent=com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity\n      baseDir=\/data\/app\/~~9jvzwfArjYrdFRsrOIrDsw==\/com.aure.clustertune.fixture.b-sKmu-eNOPz1UmGszvYjolQ==\/base.apk\n      dataDir=\/data\/user\/0\/com.aure.clustertune.fixture.b\n      windows=[Window{6f620db u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity}]\n    Resumed: ActivityRecord{d3ee21b u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25215}\n    topResumedActivity=ActivityRecord{ae4f4a5 u0 rip.moth.cocoonshell\/.ExternalDisplayActivity} t25214}\n  ResumedActivity: ActivityRecord{d3ee21b u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25215}\n  topDisplayFocusedRootTask=Task{77cf915 #25215 type=standard A=10167:com.aure.clustertune.fixture.a}\n  mCurrentFocus=Window{12807d2 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n  mFocusedApp=ActivityRecord{d3ee21b u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25215}\n  mHoldScreenWindow=Window{12807d2 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n  mObscuringWindow=Window{12807d2 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n  mLastWakeLockHoldingWindow=Window{12807d2 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n      mPreferredTopFocusableRootTask=Task{77cf915 #25215 type=standard A=10167:com.aure.clustertune.fixture.a}\n      mLastFocusedRootTask=Task{77cf915 #25215 type=standard A=10167:com.aure.clustertune.fixture.a}\n      * Task{77cf915 #25215 type=standard A=10167:com.aure.clustertune.fixture.a U=0 visible=true visibleRequested=true mode=fullscreen translucent=false sz=1}\n        * ActivityRecord{d3ee21b u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25215}\n      * Task{ebd8f3e #25217 type=standard A=10213:com.aure.clustertune.fixture.c U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}\n        * ActivityRecord{90322ec u0 com.aure.clustertune.fixture.c\/com.aure.clustertune.testapps.LetterActivity} t25217}\n      * Task{9971c94 #25216 type=standard A=10180:com.aure.clustertune.fixture.b U=0 visible=false visibleRequested=false mode=fullscreen translucent=true sz=1}\n        * ActivityRecord{7afd732 u0 com.aure.clustertune.fixture.b\/com.aure.clustertune.testapps.LetterActivity} t25216}\n    mFocusedWindow=Window{12807d2 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n    mTopFullscreenOpaqueWindowState=Window{12807d2 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n    mSystemBarColorApps={ActivityRecord{d3ee21b u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity} t25215}}\n      Window{12807d2 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n      ITYPE_IME -> Window{12807d2 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n      ITYPE_NAVIGATION_BAR -> Window{12807d2 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n      ITYPE_STATUS_BAR -> Window{12807d2 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n        mControlTarget=Window{12807d2 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n        mControlTarget=Window{12807d2 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n        mControlTarget=Window{12807d2 u0 com.aure.clustertune.fixture.a\/com.aure.clustertune.testapps.LetterActivity}\n        (fullscreen) Task{77cf915 #25215 type=standard A=10167:com.aure.clustertune.fixture.a}\n        (fullscreen) Task{9971c94 #25216 type=standard A=10180:com.aure.clustertune.fixture.b}\n        (fullscreen) Task{ebd8f3e #25217 type=standard A=10213:com.aure.clustertune.fixture.c}\n  VisibleActivityProcess:[ ProcessRecord{5f84f7 19684:com.aure.clustertune.fixture.a\/u0a167} ProcessRecord{1a2ee4d 3752:rip.moth.cocoonshell\/u0a215}]",
+      "finishedAtMs": 1792125438506,
+      "history": [
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125438168
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125425399
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125424935
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125424385
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125423885
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125423394
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125422740
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125422263
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125421783
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125421240
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125420636
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125420038
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125419423
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125418946
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125418465
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125417911
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125417388
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125416915
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125416462
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125415984
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125415508
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125414931
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125414392
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125413896
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125413330
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125412857
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125412390
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125411796
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125411338
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125410857
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125410309
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125409845
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125409346
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125408825
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125408455
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125407975
+        }
+      ]
+    },
+    {
+      "name": "04_home_recents_back",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125439116,
+          "settleMs": 515,
+          "launchMs": 82,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "home",
+          "timeMs": 1792125439710,
+          "settleMs": 551,
+          "launchMs": 82,
+          "visible": [
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "recent-task-reopened",
+          "timeMs": 1792125440745,
+          "settleMs": 369,
+          "launchMs": 113,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "back-finishes-task",
+          "timeMs": 1792125441229,
+          "settleMs": 427,
+          "launchMs": 113,
+          "visible": [
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125438515,
+      "status": "passed",
+      "finishedAtMs": 1792125441253,
+      "history": [
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125441237
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125440760
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125439724
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125439122
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125438753
+        }
+      ]
+    },
+    {
+      "name": "05_close_active_assigned_app",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125441836,
+          "settleMs": 8,
+          "launchMs": 565,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "assigned-app-closed",
+          "timeMs": 1792125442344,
+          "settleMs": 442,
+          "launchMs": 565,
+          "visible": [
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125441259,
+      "status": "passed",
+      "finishedAtMs": 1792125442371,
+      "history": [
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125442343
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125441620
+        }
+      ]
+    },
+    {
+      "name": "06_detection_while_clustertune_backgrounded",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792125442871,
+          "settleMs": 378,
+          "launchMs": 104,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792125443389,
+          "settleMs": 390,
+          "launchMs": 103,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125443793,
+          "settleMs": 197,
+          "launchMs": 194,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125442383,
+      "status": "passed",
+      "finishedAtMs": 1792125443804,
+      "history": [
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125443400
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125442870
+        }
+      ]
+    },
+    {
+      "name": "07_same_profile_between_two_apps",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125443881,
+          "settleMs": 6,
+          "launchMs": 46,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792125444127,
+          "settleMs": 103,
+          "launchMs": 132,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125444868,
+          "settleMs": 146,
+          "launchMs": 576,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792125445327,
+          "settleMs": 351,
+          "launchMs": 80,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125445810,
+          "settleMs": 400,
+          "launchMs": 61,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792125446418,
+          "settleMs": 9,
+          "launchMs": 589,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125443812,
+      "status": "passed",
+      "finishedAtMs": 1792125446453,
+      "history": [
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125446278
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125445817
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125445333
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125444871
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125444488
+        }
+      ]
+    },
+    {
+      "name": "08_custom_cpu_gpu_assignment",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 401000000,
+          "label": "show-a",
+          "timeMs": 1792125447095,
+          "settleMs": 511,
+          "launchMs": 97,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792125447567,
+          "settleMs": 376,
+          "launchMs": 82,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125446468,
+      "status": "passed",
+      "finishedAtMs": 1792125447603,
+      "history": [
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125447567
+        },
+        {
+          "profile": "Custom",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125447109
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125446709
+        }
+      ]
+    },
+    {
+      "name": "09_change_assignment_while_visible",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125448088,
+          "settleMs": 402,
+          "launchMs": 72,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "assignment-edited",
+          "timeMs": 1792125448500,
+          "settleMs": 361,
+          "launchMs": 72,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "assignment-restored",
+          "timeMs": 1792125448901,
+          "settleMs": 359,
+          "launchMs": 72,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125447610,
+      "status": "passed",
+      "finishedAtMs": 1792125448921,
+      "history": [
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125448510
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125448101
+        }
+      ]
+    },
+    {
+      "name": "10_remove_visible_assignment",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125448995,
+          "settleMs": 5,
+          "launchMs": 52,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "assignment-removed",
+          "timeMs": 1792125449492,
+          "settleMs": 469,
+          "launchMs": 52,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125448932,
+      "status": "passed",
+      "finishedAtMs": 1792125449535,
+      "history": [
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125449504
+        }
+      ]
+    },
+    {
+      "name": "11_notification_shade_and_overlay",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125449904,
+          "settleMs": 325,
+          "launchMs": 22,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "notification-shade",
+          "timeMs": 1792125450464,
+          "settleMs": 7,
+          "launchMs": 22,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "quick-tuner-over-A",
+          "timeMs": 1792125451124,
+          "settleMs": 89,
+          "launchMs": 22,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125449549,
+      "status": "passed",
+      "finishedAtMs": 1792125451454,
+      "history": [
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125449909
+        }
+      ]
+    },
+    {
+      "name": "12_launchable_and_recent_dummy_apps",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125451584,
+          "settleMs": 8,
+          "launchMs": 63,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792125452081,
+          "settleMs": 377,
+          "launchMs": 106,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792125452570,
+          "settleMs": 382,
+          "launchMs": 80,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125451495,
+      "recentDummyApps": [
+        "com.aure.clustertune.fixture.c",
+        "com.aure.clustertune.fixture.b",
+        "com.aure.clustertune.fixture.a",
+        "com.aure.clustertune.fixture.d"
+      ],
+      "status": "passed",
+      "finishedAtMs": 1792125452771,
+      "history": [
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125452569
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125452089
+        }
+      ]
+    },
+    {
+      "name": "13_two_screens_A_B",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "A+B",
+          "timeMs": 1792125453546,
+          "settleMs": 605,
+          "launchMs": 50,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125452779,
+      "status": "passed",
+      "finishedAtMs": 1792125453570,
+      "history": [
+        {
+          "profile": "Small Underclock",
+          "trigger": "Visible apps: A, B",
+          "timeMs": 1792125453543
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125453159
+        }
+      ]
+    },
+    {
+      "name": "14_independent_unassigned_C_D",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "gpuMax": 680000000,
+          "label": "C+B",
+          "timeMs": 1792125453955,
+          "settleMs": 270,
+          "launchMs": 97,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "gpuMax": 680000000,
+          "label": "C+D",
+          "timeMs": 1792125454160,
+          "settleMs": 11,
+          "launchMs": 184,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.d",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "A+D",
+          "timeMs": 1792125454503,
+          "settleMs": 230,
+          "launchMs": 107,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "com.aure.clustertune.fixture.d",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "gpuMax": 680000000,
+          "label": "A+B-again",
+          "timeMs": 1792125454830,
+          "settleMs": 282,
+          "launchMs": 39,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125453581,
+      "status": "passed",
+      "finishedAtMs": 1792125454844,
+      "history": [
+        {
+          "profile": "Small Underclock",
+          "trigger": "Visible apps: A, B",
+          "timeMs": 1792125454829
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125454506
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125454167
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125453965
+        }
+      ]
+    },
+    {
+      "name": "15_swap_physical_screens",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "gpuMax": 680000000,
+          "label": "B+A",
+          "timeMs": 1792125455776,
+          "settleMs": 142,
+          "launchMs": 48,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "gpuMax": 680000000,
+          "label": "B+C",
+          "timeMs": 1792125456016,
+          "settleMs": 177,
+          "launchMs": 50,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "gpuMax": 680000000,
+          "label": "D+C",
+          "timeMs": 1792125456350,
+          "settleMs": 292,
+          "launchMs": 37,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.d",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125454850,
+      "status": "passed",
+      "finishedAtMs": 1792125456356,
+      "history": [
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125456021
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "Visible apps: A, B",
+          "timeMs": 1792125455789
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125455230
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125455098
+        }
+      ]
+    },
+    {
+      "name": "16_sleep_disabled",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125456850,
+          "settleMs": 179,
+          "launchMs": 46,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "wake-with-sleep-off",
+          "timeMs": 1792125458221,
+          "settleMs": 615,
+          "launchMs": 46,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "wake-with-sleep-off",
+          "timeMs": 1792125459107,
+          "settleMs": 118,
+          "launchMs": 46,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125456375,
+      "status": "passed",
+      "finishedAtMs": 1792125459121,
+      "history": [
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125458231
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125457946
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125456843
+        }
+      ]
+    },
+    {
+      "name": "17_sleep_profile_then_assigned_app",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125459201,
+          "settleMs": 4,
+          "launchMs": 52,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "sleep",
+          "timeMs": 1792125461577,
+          "launchMs": 52,
+          "visible": [],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "wake-restores-assigned-A",
+          "timeMs": 1792125462225,
+          "settleMs": 533,
+          "launchMs": 52,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125459135,
+      "status": "passed",
+      "finishedAtMs": 1792125462263,
+      "history": [
+        {
+          "profile": "Small Underclock",
+          "trigger": "Device sleep",
+          "timeMs": 1792125461593
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125459904
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125459526
+        }
+      ]
+    },
+    {
+      "name": "18_repeated_sleep_wake_switches",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792125463163,
+          "settleMs": 362,
+          "launchMs": 107,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "cycle-0",
+          "timeMs": 1792125465547,
+          "settleMs": 531,
+          "launchMs": 107,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792125466040,
+          "settleMs": 403,
+          "launchMs": 67,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792125466562,
+          "settleMs": 398,
+          "launchMs": 94,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "cycle-1",
+          "timeMs": 1792125468967,
+          "settleMs": 556,
+          "launchMs": 94,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792125469462,
+          "settleMs": 378,
+          "launchMs": 91,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792125469955,
+          "settleMs": 414,
+          "launchMs": 49,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            787200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "cycle-2",
+          "timeMs": 1792125472112,
+          "settleMs": 513,
+          "launchMs": 49,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792125472565,
+          "settleMs": 350,
+          "launchMs": 89,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125462271,
+      "status": "passed",
+      "finishedAtMs": 1792125472619,
+      "history": [
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125472581
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "Device wake",
+          "timeMs": 1792125472119
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "Device sleep",
+          "timeMs": 1792125471526
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125469955
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125469467
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "Device wake",
+          "timeMs": 1792125468982
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "Device sleep",
+          "timeMs": 1792125468331
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125466565
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125466050
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "Device wake",
+          "timeMs": 1792125465558
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "Device sleep",
+          "timeMs": 1792125464931
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125463171
+        }
+      ]
+    },
+    {
+      "name": "38_confirm_selected_privileged_method",
+      "samples": [],
+      "startedAtMs": 1792125472647,
+      "status": "passed",
+      "finishedAtMs": 1792125472654,
+      "history": []
+    },
+    {
+      "name": "39_host_reconnect_with_A_visible",
+      "samples": [
+        {
+          "epoch": 104544308363659,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125473446,
+          "settleMs": 368,
+          "launchMs": 96,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104617166907433,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "reconnected-with-A",
+          "timeMs": 1792125476001,
+          "settleMs": 5,
+          "launchMs": 96,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104617166907433,
+          "cpuMax": [
+            1785600,
+            2323200,
+            2476800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-b",
+          "timeMs": 1792125476799,
+          "settleMs": 631,
+          "launchMs": 132,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.b",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104617166907433,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-c",
+          "timeMs": 1792125477291,
+          "settleMs": 363,
+          "launchMs": 103,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Small Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125472663,
+      "status": "passed",
+      "finishedAtMs": 1792125477329,
+      "history": [
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792125477303
+        },
+        {
+          "profile": "Small Underclock",
+          "trigger": "App visible: B (com.aure.clustertune.fixture.b)",
+          "timeMs": 1792125476807
+        },
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125473452
+        }
+      ]
+    },
+    {
+      "name": "39b_reconnect_with_simultaneous_clock_reads",
+      "samples": [
+        {
+          "epoch": 104617166907433,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "show-a",
+          "timeMs": 1792125478060,
+          "settleMs": 358,
+          "launchMs": 78,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        },
+        {
+          "epoch": 104621342033213,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            787200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "recovered-with-live-clock-reader",
+          "timeMs": 1792125480541,
+          "settleMs": 13,
+          "launchMs": 78,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125477341,
+      "status": "passed",
+      "finishedAtMs": 1792125480571,
+      "history": [
+        {
+          "profile": "Large Underclock",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792125478066
+        }
+      ]
+    },
+    {
+      "name": "40_detection_start_with_existing_A",
+      "samples": [
+        {
+          "epoch": 104621342033213,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ],
+          "cpuMin": [
+            307200,
+            499200,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "detector-started-after-A",
+          "timeMs": 1792125480862,
+          "settleMs": 205,
+          "launchMs": 59,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Large Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792125480584,
+      "status": "passed",
+      "finishedAtMs": 1792125480870,
+      "history": []
+    }
+  ],
+  "method": "root-shell",
+  "startedAtMs": 1792125400038,
+  "initial": {
+    "epoch": 104541417773087,
+    "cpuMax": [
+      1555200,
+      2054400,
+      2092800
+    ],
+    "cpuMin": [
+      902400,
+      1651200,
+      1843200
+    ],
+    "gpuMax": 680000000
+  },
+  "displays": [
+    0,
+    4
+  ],
+  "profiles": {
+    "normal": "Medium Underclock",
+    "a": "Large Underclock",
+    "b": "Small Underclock"
+  },
+  "restored": {
+    "epoch": 104624654651545,
+    "cpuMax": [
+      1555200,
+      2054400,
+      2092800
+    ],
+    "cpuMin": [
+      307200,
+      499200,
+      595200
+    ],
+    "gpuMax": 680000000
+  },
+  "finishedAtMs": 1792125484302
+}

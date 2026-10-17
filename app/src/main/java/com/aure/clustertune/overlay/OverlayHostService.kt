@@ -62,7 +62,7 @@ import com.aure.clustertune.model.AppSettings
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.TunerState
 import com.aure.clustertune.notifications.AppForegroundNotification
-import com.aure.clustertune.permissions.AppProfileAccessibilityAccess
+import com.aure.clustertune.apps.AppDetectionService
 import com.aure.clustertune.quicktuner.PerformanceQuickTunerApplyRepository
 import com.aure.clustertune.quicktuner.QuickTunerApplyHandler
 import com.aure.clustertune.tile.QuickSettingsTileRefresher
@@ -319,6 +319,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
         savedStateController.performRestore(null)
         super.onCreate()
         AppForegroundNotification.start(this)
+        AppDetectionService.start(this)
         registerScreenReceiver()
         lifecycleScope.launch {
             container.settingsStorage.settings
@@ -340,6 +341,9 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+        // A new foreground start can arrive while this existing instance is stopping.
+        // Acknowledge every start, including a dismiss command that immediately stops again.
+        AppForegroundNotification.start(this)
         when (intent?.action) {
             ACTION_SHOW_COMPACT_TUNER -> showCompactTunerOverlay()
             ACTION_SHOW_PROFILE_PICKER -> openProfilePickerForForegroundApp()
@@ -785,8 +789,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
             val settings = container.settingsStorage.settings.first()
             if (
                 !settings.leftEdgeProfilePickerEnabled ||
-                !OverlayPermission.canDrawOverlays(this@OverlayHostService) ||
-                !AppProfileAccessibilityAccess.isEnabled(this@OverlayHostService)
+                !OverlayPermission.canDrawOverlays(this@OverlayHostService)
             ) {
                 keepEdgeHandle = false
                 windowController.removeEdgeHandle()
@@ -1083,7 +1086,7 @@ class OverlayHostService : LifecycleService(), ViewModelStoreOwner, SavedStateRe
                             customMaxFrequencies ?: emptyMap(),
                             state.currentGpuMaxFrequencyHz.takeIf { assignmentProfile == null },
                         )
-                        // The accessibility coordinator is the sole app-profile
+                        // The background coordinator is the sole app-profile
                         // writer. Saving the assignment wakes it immediately and
                         // lets it combine this target with apps on other displays.
                         dismissOverlay(OverlayType.COMPACT_PROFILE_PICKER)

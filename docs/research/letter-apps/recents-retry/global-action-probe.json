@@ -1,0 +1,24 @@
+{
+  "cases": [
+    {
+      "name": "04_real_recents_selects_letter_A",
+      "startedAtMs": 1792128748468,
+      "globalRecentsAccepted": true,
+      "overviewActivity": "      topResumedActivity=ActivityRecord{3779fce u0 rip.moth.cocoonshell\/.MainActivity} t25462}\n    topResumedActivity=ActivityRecord{93d6e17 u0 rip.moth.cocoonshell\/.ExternalDisplayActivity} t25463}",
+      "status": "unavailable",
+      "reason": "This launcher's Overview action did not expose a card for A",
+      "visibleTexts": [
+        "GameCube",
+        "Folder",
+        "Select",
+        "Social profile",
+        "3",
+        "12",
+        "80%",
+        "11:32 PM"
+      ],
+      "finishedAtMs": 1792128752267
+    }
+  ],
+  "finishedAtMs": 1792128752976
+}

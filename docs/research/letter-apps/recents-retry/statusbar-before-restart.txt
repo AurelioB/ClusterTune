@@ -1,0 +1,13 @@
+  displayId=0
+    mDisabled1=0x0
+    mDisabled2=0x0
+  displayId=4
+    mDisabled1=0x0
+    mDisabled2=0x0
+  mDisableRecords.size=1
+    [0] userId=0 what1=0x00000000 what2=0x00000000 pkg=com.android.systemui token=android.os.BinderProxy@29d19a0
+  mCurrentUserId=0
+  mIcons=
+  mCurrentRequestAddTilePackages=[
+  ]
+  TileRequestTracker:

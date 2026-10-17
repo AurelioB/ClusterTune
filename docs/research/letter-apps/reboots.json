@@ -1,0 +1,114 @@
+{
+  "originalPersistentAdbPort": "",
+  "cases": [
+    {
+      "name": "actual_reboot_restore_enabled",
+      "prepared": {
+        "enabled": true,
+        "expectedCpuMax": [
+          1459200,
+          1785600,
+          1843200
+        ],
+        "stockCpuMax": [
+          2016000,
+          2803200,
+          3187200
+        ],
+        "deviceSecure": false,
+        "timeMs": 1792127615731
+      },
+      "expectedCpuMax": [
+        1459200,
+        1785600,
+        1843200
+      ],
+      "bootIdBefore": "309bebaa-9f09-46d9-ab4a-f456b7f04dcb",
+      "samples": [
+        {
+          "secondsSinceReboot": 51.055,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ]
+        },
+        {
+          "secondsSinceReboot": 54.289,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ]
+        },
+        {
+          "secondsSinceReboot": 57.79,
+          "cpuMax": [
+            1459200,
+            1785600,
+            1843200
+          ]
+        }
+      ],
+      "bootIdAfter": "6308d778-96f8-4308-86ea-ab86cc0b9d6d",
+      "observationStartSecondsSinceReboot": 50.927,
+      "status": "passed",
+      "logs": "--------- beginning of crash\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: FATAL EXCEPTION: main\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: Process: com.feralai.o2ptweaks, PID: 3357\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: java.lang.RuntimeException: Unable to create application com.feralai.o2ptweaks.MainApplication: java.lang.IllegalStateException: SharedPreferences in credential encrypted storage are not available until after user is unlocked\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat android.app.ActivityThread.handleBindApplication(ActivityThread.java:7060)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat android.app.ActivityThread.-$$Nest$mhandleBindApplication(Unknown Source:0)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat android.app.ActivityThread$H.handleMessage(ActivityThread.java:2141)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat android.os.Handler.dispatchMessage(Handler.java:106)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat android.os.Looper.loopOnce(Looper.java:201)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat android.os.Looper.loop(Looper.java:288)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat android.app.ActivityThread.main(ActivityThread.java:8195)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat java.lang.reflect.Method.invoke(Native Method)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat com.android.internal.os.ZygoteInit.main(ZygoteInit.java:942)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: Caused by: java.lang.IllegalStateException: SharedPreferences in credential encrypted storage are not available until after user is unlocked\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat android.app.ContextImpl.getSharedPreferences(ContextImpl.java:572)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat android.app.ContextImpl.getSharedPreferences(ContextImpl.java:557)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat android.content.ContextWrapper.getSharedPreferences(ContextWrapper.java:217)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat W1.a.c(Unknown Source:8)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat com.feralai.o2ptweaks.MainApplication.onCreate(Unknown Source:10)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat android.app.Instrumentation.callApplicationOnCreate(Instrumentation.java:1278)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \tat android.app.ActivityThread.handleBindApplication(ActivityThread.java:7055)\n10-15 23:14:05.789  3357  3357 E AndroidRuntime: \t... 9 more\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: FATAL EXCEPTION: [com.google.android.gms.chimera.container.intentoperation.GmsIntentOperationChimeraService-Executor] idle\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: Process: com.google.android.gms, PID: 3556\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: java.lang.SecurityException: isSafetyCenterEnabled requires any of: [android.permission.READ_SAFETY_CENTER_STATUS, android.permission.SEND_SAFETY_CENTER_UPDATE], but none were granted\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat android.os.Parcel.createExceptionOrNull(Parcel.java:3011)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat android.os.Parcel.createException(Parcel.java:2995)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat android.os.Parcel.readException(Parcel.java:2978)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat android.os.Parcel.readException(Parcel.java:2920)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat android.safetycenter.ISafetyCenterManager$Stub$Proxy.isSafetyCenterEnabled(ISafetyCenterManager.java:329)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat android.safetycenter.SafetyCenterManager.isSafetyCenterEnabled(SafetyCenterManager.java:324)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat hkar.a(:com.google.android.gms@263633029@26.36.33 (190400-986028547):19)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat com.google.android.personalsafety.settings.autolock.AutoLockSettingsInitIntentOperation.b(:com.google.android.gms@263633029@26.36.33 (190400-986028547):201)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat bhhu.j(:com.google.android.gms@263633029@26.36.33 (190400-986028547):60)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat bhhu.onHandleIntent(:com.google.android.gms@263633029@26.36.33 (190400-986028547):1)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat com.google.android.chimera.IntentOperation.onHandleIntent(:com.google.android.gms@263633029@26.36.33 (190400-986028547):1)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat bhog.onHandleIntent(:com.google.android.gms@263633029@26.36.33 (190400-986028547):88)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat adys.run(:com.google.android.gms@263633029@26.36.33 (190400-986028547):58)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat adyr.run(:com.google.android.gms@263633029@26.36.33 (190400-986028547):132)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat hpxz.run(:com.google.android.gms@263633029@26.36.33 (190400-986028547):23)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1137)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:637)\n10-15 23:14:16.394  3556  7324 E AndroidRuntime: \tat java.lang.Thread.run(Thread.java:1012)"
+    },
+    {
+      "name": "actual_reboot_restore_disabled",
+      "prepared": {
+        "enabled": false,
+        "expectedCpuMax": [
+          1459200,
+          1785600,
+          1843200
+        ],
+        "stockCpuMax": [
+          2016000,
+          2803200,
+          3187200
+        ],
+        "deviceSecure": false,
+        "timeMs": 1792127684622
+      },
+      "expectedCpuMax": [
+        2016000,
+        2803200,
+        3187200
+      ],
+      "bootIdBefore": "6308d778-96f8-4308-86ea-ab86cc0b9d6d",
+      "samples": [
+        {
+          "secondsSinceReboot": 37.636,
+          "cpuMax": [
+            2016000,
+            2803200,
+            3187200
+          ]
+        },
+        {
+          "secondsSinceReboot": 40.757,
+          "cpuMax": [
+            2016000,
+            2803200,
+            3187200
+          ]
+        },
+        {
+          "secondsSinceReboot": 43.877,
+          "cpuMax": [
+            2016000,
+            2803200,
+            3187200
+          ]
+        }
+      ],
+      "bootIdAfter": "2900e3fd-9a0f-4be5-b2e1-1181da632b66",
+      "observationStartSecondsSinceReboot": 37.507,
+      "status": "passed",
+      "logs": "--------- beginning of crash\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: FATAL EXCEPTION: [com.google.android.gms.chimera.container.intentoperation.GmsIntentOperationChimeraService-Executor] idle\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: Process: com.google.android.gms, PID: 3813\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: java.lang.SecurityException: isSafetyCenterEnabled requires any of: [android.permission.READ_SAFETY_CENTER_STATUS, android.permission.SEND_SAFETY_CENTER_UPDATE], but none were granted\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat android.os.Parcel.createExceptionOrNull(Parcel.java:3011)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat android.os.Parcel.createException(Parcel.java:2995)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat android.os.Parcel.readException(Parcel.java:2978)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat android.os.Parcel.readException(Parcel.java:2920)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat android.safetycenter.ISafetyCenterManager$Stub$Proxy.isSafetyCenterEnabled(ISafetyCenterManager.java:329)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat android.safetycenter.SafetyCenterManager.isSafetyCenterEnabled(SafetyCenterManager.java:324)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat hkar.a(:com.google.android.gms@263633029@26.36.33 (190400-986028547):19)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat com.google.android.personalsafety.settings.autolock.AutoLockSettingsInitIntentOperation.b(:com.google.android.gms@263633029@26.36.33 (190400-986028547):201)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat bhhu.j(:com.google.android.gms@263633029@26.36.33 (190400-986028547):60)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat bhhu.onHandleIntent(:com.google.android.gms@263633029@26.36.33 (190400-986028547):1)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat com.google.android.chimera.IntentOperation.onHandleIntent(:com.google.android.gms@263633029@26.36.33 (190400-986028547):1)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat bhog.onHandleIntent(:com.google.android.gms@263633029@26.36.33 (190400-986028547):88)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat adys.run(:com.google.android.gms@263633029@26.36.33 (190400-986028547):58)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat adyr.run(:com.google.android.gms@263633029@26.36.33 (190400-986028547):132)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat hpxz.run(:com.google.android.gms@263633029@26.36.33 (190400-986028547):23)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1137)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:637)\n10-15 23:15:22.390  3813  6899 E AndroidRuntime: \tat java.lang.Thread.run(Thread.java:1012)"
+    }
+  ],
+  "restoredPersistentAdbPort": ""
+}

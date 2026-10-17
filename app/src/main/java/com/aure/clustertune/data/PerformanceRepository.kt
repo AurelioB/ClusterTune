@@ -22,6 +22,8 @@ import com.aure.clustertune.model.MAX_PROFILE_SWITCH_HISTORY_LIMIT
 import com.aure.clustertune.model.MIN_PROFILE_SWITCH_HISTORY_LIMIT
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileSwitchHistoryEntry
+import com.aure.clustertune.model.HistoryEventType
+import com.aure.clustertune.logging.HistoryLogger
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.model.ProfileSource
 import com.aure.clustertune.model.TunerState
@@ -63,7 +65,6 @@ private data class StorageState(
     val lastValues: Map<Int, Int>,
     val lastGpuValue: Int?,
     val appProfileAssignments: List<AppProfileAssignment>,
-    val profileSwitchHistory: List<ProfileSwitchHistoryEntry>,
     val selectedProfileId: String?,
     val lastAppliedDisplayProfileId: String?,
 )
@@ -75,7 +76,6 @@ private data class PartialStorageState(
     val lastValues: Map<Int, Int>,
     val lastGpuValue: Int?,
     val appProfileAssignments: List<AppProfileAssignment>,
-    val profileSwitchHistory: List<ProfileSwitchHistoryEntry>,
 )
 
 internal data class ResolvedPerformanceTarget(val values: Map<Int, Int>, val profileId: String?, val isReset: Boolean, val gpuValue: Int? = null)
@@ -99,6 +99,8 @@ class PerformanceRepository(
     private val gpuDetector: GpuPolicyDetector? = null,
     private val hostClient: ClusterTuneHostClient,
 ) : AdaptiveTuneBackend {
+    val historyLogger = HistoryLogger(profileStorage, settingsStorage)
+
     class SupersededManualApplyException : Exception("Manual apply superseded")
 
     companion object {
@@ -169,18 +171,10 @@ class PerformanceRepository(
                 lastValues = lastValues,
                 lastGpuValue = null,
                 appProfileAssignments = appProfileAssignments,
-                profileSwitchHistory = emptyList(),
             )
         }
-        val storageState = combine(
-            storageBaseState,
-            profileStorage.profileSwitchHistory,
-            profileStorage.lastGpuValue,
-        ) { storage, profileSwitchHistory, lastGpuValue ->
-            storage.copy(
-                profileSwitchHistory = profileSwitchHistory,
-                lastGpuValue = lastGpuValue,
-            )
+        val storageState = combine(storageBaseState, profileStorage.lastGpuValue) { storage, lastGpuValue ->
+            storage.copy(lastGpuValue = lastGpuValue)
         }
         val completeStorageState = combine(
             storageState,
@@ -194,7 +188,6 @@ class PerformanceRepository(
                 lastValues = partial.lastValues,
                 lastGpuValue = partial.lastGpuValue,
                 appProfileAssignments = partial.appProfileAssignments,
-                profileSwitchHistory = partial.profileSwitchHistory,
                 selectedProfileId = selectedProfileId,
                 lastAppliedDisplayProfileId = lastAppliedDisplayProfileId,
             )
@@ -304,12 +297,12 @@ class PerformanceRepository(
                                 assignments = storage.appProfileAssignments,
                                 realProfiles = orderedRealProfiles,
                             ),
-                            profileSwitchHistory = storage.profileSwitchHistory,
                         ),
                     ),
                 )
             }
             .flowOn(Dispatchers.IO)
+            .withHistory(profileStorage.profileSwitchHistory)
     }
 
     override suspend fun start(
@@ -767,7 +760,12 @@ class PerformanceRepository(
                 val actualGpu = appliedState.gpuMax?.toIntChecked()
                 ApplyOutcome(actual, true, null, actualGpu)
             } }
-            val outcome = hostResult.getOrElse { return Result.failure(it) }
+            val outcome = hostResult.getOrElse {
+                historyLogger.failure("profile-apply", "Profile could not be applied", it,
+                    "Target: ${appliedDisplayProfileId ?: "custom"}; CPU kHz: $filtered; GPU Hz: $effectiveGpuTarget")
+                return Result.failure(it)
+            }
+            historyLogger.recovered("profile-apply")
             refreshLiveValues()
             if (manualRequestToken == null || isLatestManualRequest(manualRequestToken)) {
                 onHardwareApplied?.invoke(outcome)
@@ -948,6 +946,7 @@ class PerformanceRepository(
                 profileId = sleepProfile.id,
                 profileName = sleepProfile.name,
                 trigger = "Device sleep",
+                eventType = HistoryEventType.SLEEP,
                 effectiveSource = EffectiveProfileSource.SLEEP,
             )
         }
@@ -1023,6 +1022,7 @@ class PerformanceRepository(
                 profileId = persistedEffective?.id ?: restoreProfileId ?: ProfileStateResolver.MANUAL_PROFILE_ID,
                 profileName = restoreProfileName,
                 trigger = "Device wake",
+                eventType = HistoryEventType.WAKE,
                 effectiveSource = persistedEffective?.source ?: when (restoreProfileId) {
                     ProfileStateResolver.STOCK_PROFILE_ID -> EffectiveProfileSource.STOCK
                     ProfileStateResolver.MANUAL_PROFILE_ID, null -> EffectiveProfileSource.MANUAL
@@ -1087,16 +1087,16 @@ class PerformanceRepository(
         }
         if (result.isSuccess) {
             val (id, name) = effectiveIdentity ?: (ProfileStateResolver.MANUAL_PROFILE_ID to "Manual")
-            profileStorage.persistEffectiveProfileState(
-                EffectiveProfileState(
-                    id = id,
-                    name = name,
-                    source = when (id) {
-                        ProfileStateResolver.STOCK_PROFILE_ID -> EffectiveProfileSource.STOCK
-                        ProfileStateResolver.MANUAL_PROFILE_ID -> EffectiveProfileSource.MANUAL
-                        else -> EffectiveProfileSource.NORMAL
-                    },
-                ),
+            logProfileSwitch(
+                profileId = id,
+                profileName = name,
+                trigger = "Device boot: restored the saved normal profile",
+                eventType = HistoryEventType.BOOT,
+                effectiveSource = when (id) {
+                    ProfileStateResolver.STOCK_PROFILE_ID -> EffectiveProfileSource.STOCK
+                    ProfileStateResolver.MANUAL_PROFILE_ID -> EffectiveProfileSource.MANUAL
+                    else -> EffectiveProfileSource.NORMAL
+                },
             )
         }
         return result
@@ -1457,6 +1457,7 @@ class PerformanceRepository(
                     profileId = identity.profileId,
                     profileName = identity.profileName,
                     trigger = trigger,
+                    eventType = HistoryEventType.AUTO_TUNE,
                     effectiveSource = identity.source,
                 )
                 Result.success(identity)
@@ -1515,6 +1516,7 @@ class PerformanceRepository(
         trigger: String,
         effectiveSource: EffectiveProfileSource? = null,
         contributingPackageNames: List<String> = emptyList(),
+        eventType: HistoryEventType = HistoryEventType.PROFILE,
     ) {
         val source = effectiveSource ?: when (profileId) {
             ProfileStateResolver.STOCK_PROFILE_ID -> EffectiveProfileSource.STOCK
@@ -1529,16 +1531,14 @@ class PerformanceRepository(
                 contributingPackageNames = contributingPackageNames,
             ),
         )
-        val limit = settingsStorage.settings.first().profileSwitchHistoryLimit
-            .coerceIn(MIN_PROFILE_SWITCH_HISTORY_LIMIT, MAX_PROFILE_SWITCH_HISTORY_LIMIT)
-        profileStorage.appendProfileSwitchHistory(
+        historyLogger.append(
             ProfileSwitchHistoryEntry(
                 timestampMillis = System.currentTimeMillis(),
                 profileId = profileId,
                 profileName = profileName,
                 trigger = trigger,
+                eventType = eventType,
             ),
-            limit = limit,
         )
     }
 
@@ -1696,7 +1696,7 @@ internal fun resolveNormalProfileIdentity(
         EffectiveProfileSource.STOCK -> "Stock"
         EffectiveProfileSource.MANUAL -> "Manual"
         else -> storedProfiles.firstOrNull { it.id == profileId }?.name
-            ?: history.firstOrNull { it.profileId == profileId }?.profileName
+            ?: history.firstOrNull { it.isProfileSwitch && it.profileId == profileId }?.profileName
             ?: "Previous profile"
     }
     return PerformanceRepository.NormalProfileIdentity(profileId, profileName, source)

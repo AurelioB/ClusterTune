@@ -3,7 +3,7 @@ package com.aure.clustertune.root.host
 /** Private wire contract between ClusterTune and its persistent privileged host. */
 object HostProtocol {
     const val DESCRIPTOR = "com.aure.clustertune.root.host.IClusterTuneHost"
-    const val VERSION = 13
+    const val VERSION = 15
     const val SERVICE_PREFIX = "clustertune.host."
     const val PING = 1
     const val HOST_IDENTITY = 2
@@ -22,6 +22,14 @@ object HostProtocol {
     const val START_TELEMETRY_SESSION = 17
     const val READ_TELEMETRY_SESSION = 18
     const val STOP_TELEMETRY_SESSION = 19
+    const val OBSERVE_APP_WINDOWS = 20
+    const val STOP_OBSERVING_APP_WINDOWS = 21
+    const val READ_RECENT_APPS = 22
+    const val MAX_RECENT_APPS = 512
+
+    const val APP_WINDOWS_DESCRIPTOR = "com.aure.clustertune.root.host.IAppWindowsCallback"
+    const val APP_WINDOWS_CHANGED = 1
+    const val MAX_APP_WINDOWS = 512
 
     const val MAX_PACKAGE_LENGTH = 255
     const val MAX_SESSION_ID_LENGTH = 64

@@ -54,6 +54,36 @@ class HostMinimumProtectionTest {
         assertEquals(listOf("policy3"), store.record!!.nodes.map { it.policyId })
     }
 
+    @Test fun `firmware restoring original minimum permissions is repaired without losing the original mode`() {
+        val fs = FakeFs(); val store = Store(); val manager = manager(fs, store)
+        manager.applyOrThrow(HostApplyEngine(fs), caps, request())
+        fs.modes["policy0/min"] = 432
+        fs.values["policy0/min"] = "500"
+        manager.applyOrThrow(HostApplyEngine(fs), caps, request(200))
+        assertEquals("100", fs.values["policy0/min"])
+        assertEquals(288, fs.modes["policy0/min"])
+        assertEquals(432, store.record!!.nodes.single().originalMode)
+        manager.releaseOrThrow(caps)
+        assertEquals(432, fs.modes["policy0/min"])
+    }
+
+    @Test fun `interrupted owner-write mode is recoverable but unrelated permission changes are preserved`() {
+        val fs = FakeFs().apply { modes["policy0/min"] = 304 }; val manager = manager(fs)
+        manager.applyOrThrow(HostApplyEngine(fs), caps, request())
+        fs.modes["policy0/min"] = 432 // 0660: original 0460 plus our temporary owner-write bit.
+        manager.applyOrThrow(HostApplyEngine(fs), caps, request(200))
+        assertEquals(288, fs.modes["policy0/min"])
+        fs.modes["policy0/min"] = 420 // 0644: unrelated new read permissions.
+        fs.operations.clear()
+        assertThrows(HostApplyFailure::class.java) {
+            manager.applyOrThrow(HostApplyEngine(fs), caps, request())
+        }
+        assertTrue(fs.operations.isEmpty())
+        assertEquals(420, fs.modes["policy0/min"])
+        manager.releaseOrThrow(caps)
+        assertEquals(420, fs.modes["policy0/min"])
+    }
+
     @Test fun `maximum-only path does not acquire or release minimum protection`() {
         val fs = FakeFs(); val manager = manager(fs)
         manager.applyOrThrow(HostApplyEngine(fs), caps, request())

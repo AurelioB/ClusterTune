@@ -56,14 +56,14 @@ class PermissionCheckDialogTest {
         composeRule.setContent {
             MaterialTheme {
                 PermissionCheckDialog(
-                    missingAccess = listOf(AppAccess.OVERLAY, AppAccess.USAGE, AppAccess.NOTIFICATIONS),
+                    missingAccess = listOf(AppAccess.OVERLAY, AppAccess.APP_DETECTION, AppAccess.NOTIFICATIONS),
                     onFixAccess = { fixed += it },
                     onDismiss = {},
                 )
             }
         }
 
-        val expected = listOf(AppAccess.OVERLAY, AppAccess.USAGE, AppAccess.NOTIFICATIONS)
+        val expected = listOf(AppAccess.OVERLAY, AppAccess.APP_DETECTION, AppAccess.NOTIFICATIONS)
         composeRule.onAllNodesWithText("Fix").assertCountEquals(expected.size)
         expected.forEachIndexed { index, access ->
             composeRule.onAllNodesWithText("Fix")[index].performScrollTo().performClick()
@@ -76,15 +76,15 @@ class PermissionCheckDialogTest {
         composeRule.setContent {
             MaterialTheme {
                 PermissionCheckDialog(
-                    missingAccess = listOf(AppAccess.ACCESSIBILITY_SERVICE),
+                    missingAccess = listOf(AppAccess.APP_DETECTION),
                     onFixAccess = {},
                     onDismiss = {},
                 )
             }
         }
         composeRule.onNodeWithText("App automation needs attention").assertIsDisplayed()
-        composeRule.onNodeWithText("Accessibility access is enabled", substring = true).assertIsDisplayed()
-        composeRule.onNodeWithText("turn its app profile service off and on", substring = true)
+        composeRule.onNodeWithText("App detection is unavailable", substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText("Tap Fix to reconnect", substring = true)
             .performScrollTo().assertIsDisplayed()
         composeRule.onAllNodesWithText("Permissions needed").assertCountEquals(0)
     }
@@ -95,7 +95,7 @@ class PermissionCheckDialogTest {
         composeRule.setContent {
             MaterialTheme {
                 PermissionCheckDialog(
-                    missingAccess = listOf(AppAccess.USAGE),
+                    missingAccess = listOf(AppAccess.OVERLAY),
                     onFixAccess = {},
                     onDismiss = { dismissed = true },
                 )

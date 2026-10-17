@@ -1,0 +1,127 @@
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.LetterAppsDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.aure.clustertune.apps.LetterAppsDeviceTest:
+INSTRUMENTATION_STATUS: test=rootAppSwitching
+INSTRUMENTATION_STATUS_CODE: 1
+INSTRUMENTATION_STATUS: stream=
+Letter apps (root-shell): 01_forward_A_B_C_A
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (root-shell): 02_reverse_A_C_B_A
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (root-shell): 13_two_screens_A_B
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (root-shell): 13b_crossed_cpu_gpu_requests
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (root-shell): 14_independent_unassigned_C_D
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (root-shell): 15_swap_physical_screens
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (root-shell): 16_sleep_disabled
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (root-shell): 17_sleep_profile_then_assigned_app
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (root-shell): 18_repeated_sleep_wake_switches
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (root-shell): 39_host_reconnect_with_A_visible
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: stream=
+Letter apps (root-shell): 39b_reconnect_with_simultaneous_clock_reads
+
+INSTRUMENTATION_STATUS_CODE: 2
+INSTRUMENTATION_STATUS: class=com.aure.clustertune.apps.LetterAppsDeviceTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS: id=AndroidJUnitRunner
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: Failed scenarios: [15_swap_physical_screens, 16_sleep_disabled]; see letter-apps-root-shell.json
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.aure.clustertune.apps.LetterAppsDeviceTest.suite(LetterAppsDeviceTest.kt:335)
+	at com.aure.clustertune.apps.LetterAppsDeviceTest.access$suite(LetterAppsDeviceTest.kt:37)
+	at com.aure.clustertune.apps.LetterAppsDeviceTest$suite$1.invokeSuspend(Unknown Source:16)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.UndispatchedCoroutine.afterResume(CoroutineContext.kt:266)
+	at kotlinx.coroutines.AbstractCoroutine.resumeWith(AbstractCoroutine.kt:99)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:46)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:104)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at com.aure.clustertune.apps.LetterAppsDeviceTest.rootAppSwitching(LetterAppsDeviceTest.kt:71)
+
+INSTRUMENTATION_STATUS: stream=
+Error in rootAppSwitching(com.aure.clustertune.apps.LetterAppsDeviceTest):
+java.lang.AssertionError: Failed scenarios: [15_swap_physical_screens, 16_sleep_disabled]; see letter-apps-root-shell.json
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.aure.clustertune.apps.LetterAppsDeviceTest.suite(LetterAppsDeviceTest.kt:335)
+	at com.aure.clustertune.apps.LetterAppsDeviceTest.access$suite(LetterAppsDeviceTest.kt:37)
+	at com.aure.clustertune.apps.LetterAppsDeviceTest$suite$1.invokeSuspend(Unknown Source:16)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.UndispatchedCoroutine.afterResume(CoroutineContext.kt:266)
+	at kotlinx.coroutines.AbstractCoroutine.resumeWith(AbstractCoroutine.kt:99)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:46)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:104)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at com.aure.clustertune.apps.LetterAppsDeviceTest.rootAppSwitching(LetterAppsDeviceTest.kt:71)
+
+INSTRUMENTATION_STATUS: test=rootAppSwitching
+INSTRUMENTATION_STATUS_CODE: -2
+INSTRUMENTATION_RESULT: stream=
+
+Time: 39.689
+There was 1 failure:
+1) rootAppSwitching(com.aure.clustertune.apps.LetterAppsDeviceTest)
+java.lang.AssertionError: Failed scenarios: [15_swap_physical_screens, 16_sleep_disabled]; see letter-apps-root-shell.json
+	at org.junit.Assert.fail(Assert.java:89)
+	at org.junit.Assert.assertTrue(Assert.java:42)
+	at com.aure.clustertune.apps.LetterAppsDeviceTest.suite(LetterAppsDeviceTest.kt:335)
+	at com.aure.clustertune.apps.LetterAppsDeviceTest.access$suite(LetterAppsDeviceTest.kt:37)
+	at com.aure.clustertune.apps.LetterAppsDeviceTest$suite$1.invokeSuspend(Unknown Source:16)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.UndispatchedCoroutine.afterResume(CoroutineContext.kt:266)
+	at kotlinx.coroutines.AbstractCoroutine.resumeWith(AbstractCoroutine.kt:99)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:46)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:104)
+	at kotlinx.coroutines.EventLoopImplBase.processNextEvent(EventLoop.common.kt:277)
+	at kotlinx.coroutines.BlockingCoroutine.joinBlocking(Builders.kt:95)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking(Builders.kt:69)
+	at kotlinx.coroutines.BuildersKt.runBlocking(Unknown Source:1)
+	at kotlinx.coroutines.BuildersKt__BuildersKt.runBlocking$default(Builders.kt:48)
+	at kotlinx.coroutines.BuildersKt.runBlocking$default(Unknown Source:1)
+	at com.aure.clustertune.apps.LetterAppsDeviceTest.rootAppSwitching(LetterAppsDeviceTest.kt:71)
+
+FAILURES!!!
+Tests run: 1,  Failures: 1
+
+
+INSTRUMENTATION_CODE: -1

@@ -1,0 +1,30 @@
+ClusterTune history
+App version: 1.3.0
+Device: AYN AYN Thor
+Android: 13
+Entries: 8 (newest first)
+
+2026-10-16 01:31:26 -0600 [Error] Profile could not be applied
+Example · CPU limit verification failed; the previous profile was retained.
+
+2026-10-16 01:30:26 -0600 [Service] App detection connected
+Example · PServer reconnected; app profiles can follow visible apps.
+
+2026-10-16 01:29:26 -0600 [Auto Tune] Auto Tune stopped
+Example · App A closed; restored the normal profile.
+
+2026-10-16 01:28:26 -0600 [Boot] Medium Underclock
+Example · Device started; restored the saved normal profile.
+
+2026-10-16 01:27:26 -0600 [Wake] Medium Underclock
+Example · Screen on; restored the previous profile.
+
+2026-10-16 01:26:26 -0600 [Sleep] Large Underclock
+Example · Screen off; applied the sleep profile.
+
+2026-10-16 01:25:26 -0600 [App switch] Medium Underclock
+Example · App C has no assigned profile; restored the normal profile.
+
+2026-10-16 01:24:26 -0600 [Profile] Large Underclock
+Example · Selected manually in Profiles.
+

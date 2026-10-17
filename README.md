@@ -46,6 +46,8 @@ Version 1.0 adds support for rooted devices, expanding compatibility beyond AYN 
 
 Detection tries PServer first, then Root. The Odin 2 Mini must use Root. If neither method is available, tuning cannot be applied.
 
+App detection uses Android task-change notifications inside the same privileged service. Automatic profiles, Auto Tune, the HUD, and app pickers do not require Accessibility or Usage Access. Detection checks visible apps after events, startup, reconnect, and screen/display changes; it does not continuously poll apps. Recent-app sorting reads the past week's history through PServer or Root when the app list is loaded or refreshed. See the [implementation and validation](docs/privileged-app-detection-2026-10-15.md).
+
 ## Install
 
 Download [v1.3.0](https://github.com/AurelioB/ClusterTune/releases/tag/v1.3.0) and install `ClusterTune-v1.3.0.apk`.
@@ -59,15 +61,17 @@ Execution method detection runs on first launch. Approve the `su` request if Roo
 | Access | Purpose |
 | --- | --- |
 | **Display over other apps** | Opens profile controls over the current app. |
-| **Accessibility** | Detects visible apps immediately for automatic profiles. |
 | **Notifications** | Keeps app profile and sleep automation active. |
-| **Usage access** (optional) | Improves recent app sorting when choosing an app. |
 
-Background features share one persistent **ClusterTune is tuning your clusters** notification. It remains while any overlay, HUD, sleep-monitoring, or boot-restoration service is active.
+Background features share one persistent **ClusterTune is tuning your clusters** notification. It remains while app detection, an overlay, the HUD, sleep monitoring, or boot restoration is active.
+
+History records profile changes and the events that explain them: relevant app switches, sleep/wake, boot, Auto Tune start/stop, service connections, and failures. It uses the existing history entry limit, suppresses repeated identical failures until recovery, and adds no monitoring timer or extra hardware reads. **Share** exports the retained entries as a `.txt` file through Android's share sheet; the export is created only when requested.
 
 Choose a bundled profile or create one. **Stock** restores the device's normal maximum frequencies.
 
 On compatible devices, manual CPU underclocks also protect the lowest supported minimum frequency against system services overwriting it. Protection requires a root-owned privileged host, supported CPU frequency controls, and access to manage their permissions; it is not restricted by device model or firmware fingerprint. Returning a cluster to **Stock** restores its maximum and releases minimum write protection. The system can then reapply its chosen minimum; devices without a service that does this retain the lowest supported floor until it is changed. ClusterTune does not replay a captured effective minimum, which could include a temporary boost. Closing the main window keeps the background services and protection active. Protection is released if the app process actually ends or the privileged host is explicitly stopped. If the privileged service is forcibly killed, its replacement recovers the original permissions when ClusterTune reconnects; reboot also resets them. Independent system boosts can still raise the effective minimum. Physical validation so far used an AYN Thor; see the [implementation and device test results](docs/minimum-frequency-research-2026-10-02.md#production-integration).
+
+Fixed profiles have no background recovery poll. If firmware restores an owned minimum node's original writable permissions, the next intentional profile apply can reacquire it. Auto Tune samples FPS and applies clock changes in one loop only while enabled and running. Its privileged host keeps a separate session timeout for stalled-client cleanup; no recurring watchdog or timer thread runs while the host is idle or only a fixed profile is active. See the [permission repair and session timeout checks](docs/profile-reset-recovery-2026-10-15.md).
 
 Auto Tune is experimental and disabled by default. Turn on **Enable autotune settings (experimental)** in Settings to show the Auto Tune tab in app-profile dialogs and the overlay, and the Performance HUD option for the Quick Settings tile. Turning it off hides both options, closes an open HUD, stops active automatic tuning with the usual frequency restoration, and keeps saved Auto Tune assignments inactive until re-enabled. If the tile was set to the HUD, it opens the quick tuner while the option is disabled; re-enabling restores the saved HUD choice.
 
@@ -93,8 +97,8 @@ Auto Tune waits through static menus or loading screens that produce no fresh fr
 
 * No execution method found: confirm that PServer is available or that the root manager provides `su`, then run detection again from Settings.
 * Profile controls missing: check Display over other apps.
-* Assigned app not switching profiles: confirm its assignment, Accessibility, and Notifications.
-* **App automation needs attention**: accessibility access is still enabled, but the service is disconnected or its app-detection worker is unhealthy. In Accessibility settings, turn ClusterTune's app profile service off and on. If it recurs after closing the app, check the device's background activity or battery restrictions. ClusterTune retries transient window/storage failures and waits briefly before showing this message. See the [accessibility audit](docs/accessibility-audit-2026-10-02.md) for tested recovery paths and remaining limits.
+* Assigned app not switching profiles: confirm its assignment, the selected PServer/Root execution method, and Notifications.
+* **App automation needs attention**: app detection could not connect to the privileged service. ClusterTune retries automatically. Check the execution method and background activity restrictions if it continues. History records connection and failure events; use **Share** to include them with an issue report.
 * Auto Tune stops while an app is open: check the Auto Tune status card. Some vendor builds do not expose usable SurfaceFlinger frame statistics or GPU telemetry; include the reported frame backend and error when filing an issue.
 
 For help, open a [GitHub issue](https://github.com/AurelioB/ClusterTune/issues) with your device model, Android version, execution method, and the relevant log details. Please do not include private data.
@@ -104,12 +108,16 @@ For help, open a [GitHub issue](https://github.com/AurelioB/ClusterTune/issues) 
 Building uses the configured JDK 21 daemon toolchain and Android SDK 34 (the app targets Java 17 bytecode):
 
 ```bash
-./gradlew testDebugUnitTest
-./gradlew lintDebug
-./gradlew assembleDebug
+./gradlew :app:testDebugUnitTest
+./gradlew :app:lintDebug
+./gradlew :app:assembleDebug
 ```
 
 The debug APK is written to `app/build/outputs/apk/debug/`.
+
+The separate [letter test apps](test-apps/README.md) provide A, B, C, and D on black
+backgrounds for repeatable app-switching and two-screen tests. They are not included in
+ClusterTune. See the [physical-device test scenarios and results](docs/letter-app-device-tests-2026-10-15.md).
 
 ## License and attribution
 

@@ -35,7 +35,7 @@ class AppContainer(context: Context) : AutoCloseable {
     }
 
     val installedAppRepository: InstalledAppRepository by lazy {
-        InstalledAppRepository(appContext)
+        InstalledAppRepository(appContext, hostClient::readRecentAppPackages)
     }
 
     val profileStorage: ProfileStorage by lazy {
@@ -62,6 +62,8 @@ class AppContainer(context: Context) : AutoCloseable {
             hostClient = hostClient,
         )
     }
+
+    val historyLogger get() = repository.historyLogger
 
     /** Owners with a finite lifecycle release the settings observer without stopping the shared host. */
     override fun close() { appScope.cancel() }

@@ -1,0 +1,324 @@
+{
+  "date": "2026-10-15",
+  "hostProtocol": 15,
+  "unitTests": {
+    "tests": 551,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 56
+  },
+  "runs": [
+    {
+      "name": "thor-regression",
+      "note": "Android 13 physical Thor; history through both PServer and app-facing root with app Usage Access denied, permission screens, detection lifecycle, assignment and recovery.",
+      "counts": {
+        "passed": 14,
+        "failed": 0,
+        "error": 0,
+        "skipped": 0,
+        "ignored": 0
+      },
+      "seconds": 26.284,
+      "cases": [
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "appDoesNotDeclareAnAccessibilityService",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "detectedAppAppliesItsAssignmentAndLeavingRestoresTheNormalProfile",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "screenOffClearsAppsAndWakeObtainsAFreshObservation",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.apps.AppDetectionLifecycleTest",
+          "test": "foregroundServiceReconnectsAfterPrivilegedHostStops",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "disconnectedService_explainsRecoveryWithoutClaimingPermissionWasRevoked",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "fixButtons_returnTheirCorrespondingAccess_inStableOrder",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "notNow_dismissesDialog",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "dialog_rendersOnlySuppliedAccess_withPurposeAndExactInstructions",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "recentListKeepsHostOrderAndFiltersUninstalledAppsBeforeApplyingTheLimit",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "rootHistoryWorksWhileAppUsageAccessIsDenied",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "privilegedHistoryWorksWhileAppUsageAccessIsDenied",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "pServerHistoryWorksWhileAppUsageAccessIsDenied",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "failedHistoryLeavesTheFullAppPickerAvailableAndZeroLimitDoesNotQuery",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "usageAccessIsNotDeclaredByTheApp",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "thor-final-denied-access",
+      "note": "Final test APK additionally verifies ordinary app history reads are denied while PServer and app-facing root return history.",
+      "counts": {
+        "passed": 6,
+        "failed": 0,
+        "error": 0,
+        "skipped": 0,
+        "ignored": 0
+      },
+      "seconds": 7.602,
+      "cases": [
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "recentListKeepsHostOrderAndFiltersUninstalledAppsBeforeApplyingTheLimit",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "rootHistoryWorksWhileAppUsageAccessIsDenied",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "privilegedHistoryWorksWhileAppUsageAccessIsDenied",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "pServerHistoryWorksWhileAppUsageAccessIsDenied",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "failedHistoryLeavesTheFullAppPickerAvailableAndZeroLimitDoesNotQuery",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "usageAccessIsNotDeclaredByTheApp",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "android-14",
+      "note": "Emulator root host through shell bridge; recent history, denied ordinary app reads, task transitions, permission screens. Physical-only and app-facing execution fixtures conditional.",
+      "counts": {
+        "passed": 9,
+        "failed": 0,
+        "error": 0,
+        "skipped": 4,
+        "ignored": 0
+      },
+      "seconds": 8.455,
+      "cases": [
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "disconnectedService_explainsRecoveryWithoutClaimingPermissionWasRevoked",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "fixButtons_returnTheirCorrespondingAccess_inStableOrder",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "notNow_dismissesDialog",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "dialog_rendersOnlySuppliedAccess_withPurposeAndExactInstructions",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "realRootShellReceivesTaskNotifications",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: app-facing root shell unavailable"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "taskNotificationsFollowAppExitWithoutAccessibility",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "visibleAppsOnBothPhysicalDisplaysAreReported",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: requires two awake displays"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "recentListKeepsHostOrderAndFiltersUninstalledAppsBeforeApplyingTheLimit",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "rootHistoryWorksWhileAppUsageAccessIsDenied",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: app-facing root shell unavailable"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "privilegedHistoryWorksWhileAppUsageAccessIsDenied",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "pServerHistoryWorksWhileAppUsageAccessIsDenied",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: PServer unavailable"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "failedHistoryLeavesTheFullAppPickerAvailableAndZeroLimitDoesNotQuery",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "usageAccessIsNotDeclaredByTheApp",
+          "status": "passed"
+        }
+      ]
+    },
+    {
+      "name": "android-16",
+      "note": "Same coverage as Android 14, including denied default permission mode when no Usage Access permission is declared.",
+      "counts": {
+        "passed": 9,
+        "failed": 0,
+        "error": 0,
+        "skipped": 4,
+        "ignored": 0
+      },
+      "seconds": 18.86,
+      "cases": [
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "disconnectedService_explainsRecoveryWithoutClaimingPermissionWasRevoked",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "fixButtons_returnTheirCorrespondingAccess_inStableOrder",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "notNow_dismissesDialog",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.ui.PermissionCheckDialogTest",
+          "test": "dialog_rendersOnlySuppliedAccess_withPurposeAndExactInstructions",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "realRootShellReceivesTaskNotifications",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: app-facing root shell unavailable"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "taskNotificationsFollowAppExitWithoutAccessibility",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostAppMonitorInstrumentationTest",
+          "test": "visibleAppsOnBothPhysicalDisplaysAreReported",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: requires two awake displays"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "recentListKeepsHostOrderAndFiltersUninstalledAppsBeforeApplyingTheLimit",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "rootHistoryWorksWhileAppUsageAccessIsDenied",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: app-facing root shell unavailable"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "privilegedHistoryWorksWhileAppUsageAccessIsDenied",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "pServerHistoryWorksWhileAppUsageAccessIsDenied",
+          "status": "skipped",
+          "reason": "org.junit.AssumptionViolatedException: PServer unavailable"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "failedHistoryLeavesTheFullAppPickerAvailableAndZeroLimitDoesNotQuery",
+          "status": "passed"
+        },
+        {
+          "class": "com.aure.clustertune.root.host.HostRecentAppsInstrumentationTest",
+          "test": "usageAccessIsNotDeclaredByTheApp",
+          "status": "passed"
+        }
+      ]
+    }
+  ],
+  "earlierAttempts": [
+    "The first Thor UI run started asleep: two Compose UI assertions failed; all six history checks passed. Waking the device and rerunning the complete focused selection passed all 14 checks.",
+    "The first Android 16 run required ignored app-op mode exactly, but the framework retained default for the unrequested permission. The final test accepts denied default permission mode and also directly verifies ordinary app history is inaccessible."
+  ],
+  "installedUiCheck": {
+    "usageAccessEntryPresent": false,
+    "restoredProfile": "Large Underclock",
+    "cpuMinimumModes": [
+      "0440",
+      "0440",
+      "0440"
+    ],
+    "appDetection": "Running. Profiles and pickers can follow your apps."
+  }
+}

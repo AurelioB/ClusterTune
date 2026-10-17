@@ -884,6 +884,13 @@ class HostAutoSessionController(
         return terminal
     }
 
+    /** Scheduling metadata only: no telemetry sampling or hardware reads. */
+    @Synchronized
+    fun nextMaintenanceDeadlineNanos(): Long? = when {
+        pendingRestoration != null -> deadline(clock.nanoTime(), 1_000_000_000L)
+        else -> active?.deadlineNanos
+    }
+
     @Synchronized
     fun current(): HostAutoSessionSnapshot = active?.let { activeSnapshot(it, telemetry = it.latestTelemetry) }
         ?: terminal

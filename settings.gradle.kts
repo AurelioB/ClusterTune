@@ -19,3 +19,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ClusterTune"
 include(":app")
+include(":test-apps")

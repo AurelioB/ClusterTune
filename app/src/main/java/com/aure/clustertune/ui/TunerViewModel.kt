@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
 import java.util.concurrent.atomic.AtomicLong
 
 class TunerViewModel(
@@ -116,7 +117,7 @@ class TunerViewModel(
     }
 
     fun refreshInstalledApps() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             installedApps.value = installedAppRepository.listLaunchableApps()
             recentApps.value = installedAppRepository.listRecentActiveApps()
         }

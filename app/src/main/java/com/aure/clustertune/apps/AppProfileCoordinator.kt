@@ -15,6 +15,7 @@ import com.aure.clustertune.data.retryTransientReads
 import com.aure.clustertune.model.AppProfileAssignment
 import com.aure.clustertune.model.EffectiveProfileSource
 import com.aure.clustertune.model.EffectiveProfileState
+import com.aure.clustertune.model.HistoryEventType
 import com.aure.clustertune.model.PerformanceProfile
 import com.aure.clustertune.model.ProfileStateResolver
 import com.aure.clustertune.tile.QuickSettingsTileRefresher
@@ -32,6 +33,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -81,6 +83,7 @@ class AppProfileCoordinator(
     private var pausedAutoTuneSignature: AutoTuneSignature? = null
     private var sleepPauseActive = false
     private var nextAutoTuneRunId = 0L
+    private var inactiveAutoTunePackages: Set<String> = emptySet()
 
     fun start() {
         if (started || terminated) return
@@ -121,6 +124,9 @@ class AppProfileCoordinator(
                     Log.w(TAG, "Profile input unavailable; pausing Auto Tune before retry", error)
                     reconcileMutex.withLock { stopAutoTune("Profile input temporarily unavailable") }
                 }
+                // Applying a profile can suspend during a system boost. Process only the
+                // newest pending app/configuration state once that apply completes.
+                .conflate()
                 .collect { input ->
                     try {
                         reconcileMutex.withLock { reconcile(input) }
@@ -191,6 +197,13 @@ class AppProfileCoordinator(
             return
         }
 
+        if (!input.visibleApps.hasAppObservation) {
+            // Wake refresh is asynchronous. Unknown apps must not be mistaken for a
+            // confirmed empty task list and restore the normal profile in between.
+            stopAutoTune("Waiting for fresh app information")
+            return
+        }
+
         val assignments = input.configuration.assignments.assignments
         val assignmentsByPackage = assignments.associateBy { it.packageName }
         val visiblePackages = input.visibleApps.packages
@@ -200,6 +213,16 @@ class AppProfileCoordinator(
             excludedPackages = excludedPackages,
             autoTuneEnabled = input.configuration.autoTuneEnabled,
         )
+
+        val inactivePackages = if (input.configuration.autoTuneEnabled) emptySet() else
+            assignments.filter { it.isAutoTune && it.packageName in visiblePackages }.mapTo(sortedSetOf()) { it.packageName }
+        if (inactivePackages != inactiveAutoTunePackages) {
+            inactiveAutoTunePackages = inactivePackages
+            if (inactivePackages.isNotEmpty()) repository.historyLogger.record(
+                HistoryEventType.APP, "App profile inactive",
+                "${inactivePackages.joinToString()}: Auto Tune is disabled, so its app profile was not applied.",
+            )
+        }
 
         val desiredAutoTuneSignature = plan.autoTuneAssignment?.toAutoTuneSignature(
             effectiveTargetFps = requireNotNull(plan.effectiveAutoTuneTargetFps),
@@ -261,7 +284,7 @@ class AppProfileCoordinator(
                     .filter { it.id in relevantProfileIds },
             )
             if (!appOverrideActive || lastAppliedSignature != signature) {
-                applyVisibleProfiles(visibleAssignments, signature)
+                applyVisibleProfiles(visibleAssignments, signature, input.visibleApps)
             }
             legacyEffectiveStateUnknown = false
             return
@@ -283,7 +306,7 @@ class AppProfileCoordinator(
         if ((positiveUnassignedApp || visiblePackages.isEmpty()) &&
             (appOverrideActive || legacyEffectiveStateUnknown)
         ) {
-            restoreNormalProfile()
+            restoreNormalProfile("No assigned app visible: ${visiblePackages.sorted().joinToString().ifEmpty { "all assigned apps closed" }}")
             legacyEffectiveStateUnknown = false
         }
     }
@@ -349,10 +372,12 @@ class AppProfileCoordinator(
                 autoTuneCleanupPending = false
                 autoTuneCleanupSignature = null
                 AdaptiveTuneRuntime.clearInactiveIfCoordinatorCurrent(lease)
+                repository.historyLogger.recovered("auto-tune-cleanup")
+                repository.historyLogger.record(HistoryEventType.AUTO_TUNE, "Auto Tune stopped", reason)
                 true
             },
             onFailure = { error ->
-                Log.e(TAG, "Unable to stop Auto Tune cleanly", error)
+                repository.historyLogger.failure("auto-tune-cleanup", "Auto Tune cleanup failed", error, reason)
                 autoTuneCleanupSignature?.let { signature ->
                     if (!terminated) {
                         scheduleAutoTuneCleanupRetry(
@@ -402,6 +427,7 @@ class AppProfileCoordinator(
             }
             if (active.confirmed) return
             active.confirmed = true
+            repository.historyLogger.recovered("auto-tune")
             val signature = active.signature
             val profileName = "Auto Tune · ${signature.targetFps} FPS"
             appOverrideActive = true
@@ -411,6 +437,7 @@ class AppProfileCoordinator(
                 trigger = "App visible: ${signature.appLabel} (${signature.packageName})",
                 effectiveSource = EffectiveProfileSource.APP,
                 contributingPackageNames = listOf(signature.packageName),
+                eventType = HistoryEventType.AUTO_TUNE,
             )
             if (terminated || !isCoordinatorCurrent()) return
             QuickSettingsTileRefresher.requestUpdate(appContext)
@@ -439,6 +466,8 @@ class AppProfileCoordinator(
                 AdaptiveTuneTermination.FAILED -> "Auto Tune failed"
             }
             if (result.termination == AdaptiveTuneTermination.FAILED) {
+                repository.historyLogger.failure("auto-tune", "Auto Tune failed",
+                    IllegalStateException(result.message ?: "Unable to start tuning"), run.signature.packageName)
                 showProfileToast("Auto Tune failed: ${result.message ?: "Unable to start tuning"}")
             }
             val cleanup = repository.ensureAutoTuneStopped(cleanupReason, lease)
@@ -601,6 +630,7 @@ class AppProfileCoordinator(
     private suspend fun applyVisibleProfiles(
         assignments: List<AppProfileAssignment>,
         signature: AppTargetSignature,
+        snapshot: VisibleAppSnapshot,
     ) {
         if (terminated || !isCoordinatorCurrent()) return
         repository.applyVisibleAppProfilesTemporarily(assignments)
@@ -614,9 +644,12 @@ class AppProfileCoordinator(
                         "Visible apps: ${assignments.joinToString { it.appLabel }}"
                     } else {
                         "App visible: ${assignments.single().appLabel} (${assignments.single().packageName})"
-                    },
+                    } + " · " + snapshot.windowsByDisplay.values.flatten()
+                        .filter { window -> assignments.any { it.packageName == window.packageName } }
+                        .joinToString { "${it.packageName} on display ${it.displayId}" },
                     effectiveSource = source,
                     contributingPackageNames = applied.contributingPackages,
+                    eventType = HistoryEventType.APP,
                 )
                 if (terminated || !isCoordinatorCurrent()) return@onSuccess
                 appOverrideActive = true
@@ -627,7 +660,7 @@ class AppProfileCoordinator(
             .onFailure { error -> Log.e(TAG, "Unable to apply visible app profiles", error) }
     }
 
-    private suspend fun restoreNormalProfile() {
+    private suspend fun restoreNormalProfile(reason: String = "No assigned app visible") {
         if (terminated || !isCoordinatorCurrent()) return
         repository.restoreNormalProfileTemporarilyWithIdentity()
             .onSuccess { restored ->
@@ -640,7 +673,8 @@ class AppProfileCoordinator(
                 repository.logProfileSwitch(
                     profileId = restored.profileId,
                     profileName = restored.profileName,
-                    trigger = "No assigned app visible",
+                    trigger = reason,
+                    eventType = HistoryEventType.APP,
                     effectiveSource = source,
                 )
                 if (terminated || !isCoordinatorCurrent()) return@onSuccess

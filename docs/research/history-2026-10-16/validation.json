@@ -1,0 +1,39 @@
+{
+  "unitTests": {
+    "tests": 570,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "device": {
+    "pserver": {
+      "passed": 16,
+      "failed": 0
+    },
+    "root": {
+      "passed": 11,
+      "failed": 0
+    },
+    "unknownWake": "passed",
+    "historyAndAndroidShareSheet": "passed"
+  },
+  "sampleScreenshotEntries": true,
+  "sampleEntriesRestored": true,
+  "resourceLimits": {
+    "defaultEntries": 100,
+    "maximumEntries": 1000,
+    "maximumTitleCharacters": 160,
+    "maximumDetailCharacters": 800,
+    "maximumFailureKeys": 32,
+    "newPollingTimers": 0,
+    "newLoggingWorkers": 0,
+    "historyUpdatesRefreshHardware": false,
+    "exportCacheFiles": 1
+  },
+  "initialIntermittentCpuVerificationFailureRetained": true,
+  "lint": {
+    "errors": 0,
+    "warnings": 56
+  },
+  "restoration": "restoration.json"
+}

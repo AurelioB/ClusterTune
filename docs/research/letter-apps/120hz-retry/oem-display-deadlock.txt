@@ -1,0 +1,54 @@
+Subject: Blocked in monitor com.android.server.power.PowerManagerService on foreground thread (android.fg), Blocked in handler on main thread (main), Blocked in handler on ui thread (android.ui), Blocked in handler on display thread (android.display)
+
+"binder:2241_1" prio=5 tid=9 Blocked
+  | group="main" sCount=1 ucsCount=0 flags=1 obj=0x12e40438 self=0xb4000071ad23c760
+  | sysTid=2259 nice=-4 cgrp=foreground sched=0/0 handle=0x701c5cdcb0
+  | state=S schedstat=( 4881445223 4038446422 26702 ) utm=271 stm=216 core=3 HZ=100
+  | stack=0x701c4d6000-0x701c4d8000 stackSize=991KB
+  | held mutexes=
+  at com.android.server.display.DisplayModeDirector$AppRequestObserver.setAppRequest(DisplayModeDirector.java:1584)
+  - waiting to lock <0x0b5620c4> (a java.lang.Object) held by thread 14
+  at com.android.server.display.DisplayManagerService.setDisplayPropertiesInternal(DisplayManagerService.java:2067)
+  - locked <0x0d3fdbad> (a com.android.server.display.DisplayManagerService$SyncRoot)
+  at com.android.server.display.DisplayManagerService.-$$Nest$msetDisplayPropertiesInternal(unavailable:0)
+  at com.android.server.display.DisplayManagerService$LocalService.setDisplayProperties(DisplayManagerService.java:3832)
+  at com.android.server.wm.DisplayContent.applySurfaceChangesTransaction(DisplayContent.java:4951)
+  at com.android.server.wm.RootWindowContainer.applySurfaceChangesTransaction(RootWindowContainer.java:1032)
+  at com.android.server.wm.RootWindowContainer.performSurfacePlacementNoTrace(RootWindowContainer.java:834)
+  at com.android.server.wm.RootWindowContainer.performSurfacePlacement(RootWindowContainer.java:794)
+  at com.android.server.wm.WindowSurfacePlacer.performSurfacePlacementLoop(WindowSurfacePlacer.java:177)
+  at com.android.server.wm.WindowSurfacePlacer.performSurfacePlacement(WindowSurfacePlacer.java:126)
+  at com.android.server.wm.WindowManagerService.relayoutWindow(WindowManagerService.java:2994)
+  - locked <0x0ff5eefb> (a com.android.server.wm.WindowManagerGlobalLock)
+  at com.android.server.wm.Session.relayout(Session.java:253)
+  at com.android.server.wm.Session.relayoutAsync(Session.java:267)
+  at android.view.IWindowSession$Stub.onTransact(IWindowSession.java:757)
+  at com.android.server.wm.Session.onTransact(Session.java:178)
+  at android.os.Binder.execTransactInternal(Binder.java:1285)
+  at android.os.Binder.execTransact(Binder.java:1244)
+
+"android.display" prio=5 tid=14 Blocked
+  | group="main" sCount=1 ucsCount=0 flags=1 obj=0x12e48950 self=0xb4000071ad245270
+  | sysTid=2279 nice=-3 cgrp=top-app sched=0/0 handle=0x6f9f0b2cb0
+  | state=S schedstat=( 5365507508 4935339660 28980 ) utm=326 stm=210 core=2 HZ=100
+  | stack=0x6f9efaf000-0x6f9efb1000 stackSize=1039KB
+  | held mutexes=
+  at com.android.server.display.DisplayManagerService$BinderService.getBrightnessInfo(DisplayManagerService.java:3435)
+  - waiting to lock <0x0d3fdbad> (a com.android.server.display.DisplayManagerService$SyncRoot) held by thread 9
+  at android.hardware.display.DisplayManagerGlobal.getBrightnessInfo(DisplayManagerGlobal.java:706)
+  at android.view.Display.getBrightnessInfo(Display.java:759)
+  at com.android.server.display.DisplayModeDirector$RealInjector.getBrightnessInfo(DisplayModeDirector.java:3218)
+  at com.android.server.display.DisplayModeDirector$SettingsObserver.updateRefreshRateSettingLockedForX6(DisplayModeDirector.java:1339)
+  at com.android.server.display.DisplayModeDirector$SettingsObserver.onChange(DisplayModeDirector.java:1319)
+  - locked <0x0b5620c4> (a java.lang.Object)
+  at android.database.ContentObserver.onChange(ContentObserver.java:188)
+  at android.database.ContentObserver.onChange(ContentObserver.java:210)
+  at android.database.ContentObserver.onChange(ContentObserver.java:222)
+  at android.database.ContentObserver.lambda$dispatchChange$0$android-database-ContentObserver(ContentObserver.java:304)
+  at android.database.ContentObserver$$ExternalSyntheticLambda0.run(unavailable:10)
+  at android.os.Handler.handleCallback(Handler.java:942)
+  at android.os.Handler.dispatchMessage(Handler.java:99)
+  at android.os.Looper.loopOnce(Looper.java:201)
+  at android.os.Looper.loop(Looper.java:288)
+  at android.os.HandlerThread.run(HandlerThread.java:67)
+  at com.android.server.ServiceThread.run(ServiceThread.java:44)

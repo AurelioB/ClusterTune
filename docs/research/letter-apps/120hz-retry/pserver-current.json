@@ -1,0 +1,494 @@
+{
+  "cases": [
+    {
+      "name": "29b_current_refresh_mode_targets_and_frames",
+      "samples": [
+        {
+          "epoch": 3006178997706,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "auto-a-120",
+          "timeMs": 1792130703794,
+          "launchMs": 177,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Auto Tune · 120 FPS",
+          "autoTuneActive": true
+        },
+        {
+          "epoch": 3006178997706,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "auto-a-60",
+          "timeMs": 1792130708021,
+          "launchMs": 35,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Auto Tune · 60 FPS",
+          "autoTuneActive": true
+        },
+        {
+          "epoch": 3006178997706,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "auto-a-120",
+          "timeMs": 1792130712356,
+          "launchMs": 31,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 0,
+              "focused": true
+            },
+            {
+              "package": "rip.moth.cocoonshell",
+              "display": 4,
+              "focused": false
+            }
+          ],
+          "effectiveProfile": "Auto Tune · 120 FPS",
+          "autoTuneActive": true
+        },
+        {
+          "epoch": 3006178997706,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "auto-a-120",
+          "timeMs": 1792130716961,
+          "launchMs": 49,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Auto Tune · 120 FPS",
+          "autoTuneActive": true
+        },
+        {
+          "epoch": 3006178997706,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "auto-a-60",
+          "timeMs": 1792130721199,
+          "launchMs": 26,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Auto Tune · 60 FPS",
+          "autoTuneActive": true
+        },
+        {
+          "epoch": 3006178997706,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "auto-a-120",
+          "timeMs": 1792130725439,
+          "launchMs": 27,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Auto Tune · 120 FPS",
+          "autoTuneActive": true
+        },
+        {
+          "epoch": 3006178997706,
+          "cpuMax": [
+            1555200,
+            2054400,
+            2092800
+          ],
+          "cpuMin": [
+            672000,
+            1536000,
+            595200
+          ],
+          "gpuMax": 680000000,
+          "label": "refresh-mode-disable-restores-normal",
+          "timeMs": 1792130729132,
+          "settleMs": 189,
+          "launchMs": 27,
+          "visible": [
+            {
+              "package": "com.aure.clustertune.fixture.c",
+              "display": 0,
+              "focused": false
+            },
+            {
+              "package": "com.aure.clustertune.fixture.a",
+              "display": 4,
+              "focused": true
+            }
+          ],
+          "effectiveProfile": "Medium Underclock",
+          "autoTuneActive": false
+        }
+      ],
+      "startedAtMs": 1792130702479,
+      "checks": [
+        {
+          "displayId": 0,
+          "physicalHz": 120.00001,
+          "apiHz": 120.00001,
+          "savedTarget": 120,
+          "runtimeTarget": 120,
+          "frames": [
+            {
+              "sampleNanos": 3009537297184,
+              "fps": 120.054,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            },
+            {
+              "sampleNanos": 3010670708225,
+              "fps": 120.052,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            },
+            {
+              "sampleNanos": 3011800756766,
+              "fps": 120.047,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            }
+          ]
+        },
+        {
+          "displayId": 0,
+          "physicalHz": 120.00001,
+          "apiHz": 120.00001,
+          "savedTarget": 60,
+          "runtimeTarget": 60,
+          "frames": [
+            {
+              "sampleNanos": 3013818407599,
+              "fps": 120.025,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            },
+            {
+              "sampleNanos": 3014943605203,
+              "fps": 120.044,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            },
+            {
+              "sampleNanos": 3016084767181,
+              "fps": 120.037,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            }
+          ]
+        },
+        {
+          "displayId": 0,
+          "physicalHz": 120.00001,
+          "apiHz": 120.00001,
+          "savedTarget": 240,
+          "runtimeTarget": 120,
+          "frames": [
+            {
+              "sampleNanos": 3018128284316,
+              "fps": 120.038,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            },
+            {
+              "sampleNanos": 3019274503222,
+              "fps": 120.033,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            },
+            {
+              "sampleNanos": 3020399729680,
+              "fps": 120.045,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            }
+          ]
+        },
+        {
+          "displayId": 4,
+          "physicalHz": 120.00001,
+          "apiHz": 120.00001,
+          "savedTarget": 120,
+          "runtimeTarget": 120,
+          "frames": [
+            {
+              "sampleNanos": 3022685561345,
+              "fps": 120.046,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            },
+            {
+              "sampleNanos": 3023810367074,
+              "fps": 120.053,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            },
+            {
+              "sampleNanos": 3024939482022,
+              "fps": 120.054,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            }
+          ]
+        },
+        {
+          "displayId": 4,
+          "physicalHz": 120.00001,
+          "apiHz": 120.00001,
+          "savedTarget": 60,
+          "runtimeTarget": 60,
+          "frames": [
+            {
+              "sampleNanos": 3026946620250,
+              "fps": 120.055,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            },
+            {
+              "sampleNanos": 3028070942906,
+              "fps": 120.045,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            },
+            {
+              "sampleNanos": 3029218133426,
+              "fps": 120.054,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            }
+          ]
+        },
+        {
+          "displayId": 4,
+          "physicalHz": 120.00001,
+          "apiHz": 120.00001,
+          "savedTarget": 240,
+          "runtimeTarget": 120,
+          "frames": [
+            {
+              "sampleNanos": 3031154672540,
+              "fps": 120.031,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            },
+            {
+              "sampleNanos": 3032291782956,
+              "fps": 120.052,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            },
+            {
+              "sampleNanos": 3033435357435,
+              "fps": 120.066,
+              "backend": "surfaceflinger-latency",
+              "status": "WARMING_UP",
+              "confidence": 1
+            }
+          ]
+        }
+      ],
+      "status": "passed",
+      "finishedAtMs": 1792130729648,
+      "history": [
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792130729111
+        },
+        {
+          "profile": "Auto Tune · 120 FPS",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792130725197
+        },
+        {
+          "profile": "Auto Tune · 60 FPS",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792130721006
+        },
+        {
+          "profile": "Auto Tune · 120 FPS",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792130716718
+        },
+        {
+          "profile": "Medium Underclock",
+          "trigger": "No assigned app visible",
+          "timeMs": 1792130716054
+        },
+        {
+          "profile": "Auto Tune · 120 FPS",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792130712170
+        },
+        {
+          "profile": "Auto Tune · 60 FPS",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792130707878
+        },
+        {
+          "profile": "Auto Tune · 120 FPS",
+          "trigger": "App visible: A (com.aure.clustertune.fixture.a)",
+          "timeMs": 1792130703601
+        }
+      ]
+    }
+  ],
+  "method": "pserver-stdout",
+  "startedAtMs": 1792130699769,
+  "initial": {
+    "epoch": 3004456149113,
+    "cpuMax": [
+      1459200,
+      1785600,
+      1843200
+    ],
+    "cpuMin": [
+      672000,
+      1536000,
+      595200
+    ],
+    "gpuMax": 680000000
+  },
+  "displays": [
+    0,
+    4
+  ],
+  "profiles": {
+    "normal": "Medium Underclock",
+    "a": "Large Underclock",
+    "b": "Small Underclock"
+  },
+  "restored": {
+    "epoch": 3006178997706,
+    "cpuMax": [
+      1459200,
+      1785600,
+      1843200
+    ],
+    "cpuMin": [
+      672000,
+      1536000,
+      595200
+    ],
+    "gpuMax": 680000000
+  },
+  "finishedAtMs": 1792130731623
+}

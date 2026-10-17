@@ -1,0 +1,22 @@
+{
+  "methods": {
+    "pserver": {
+      "passedScenarios": 4,
+      "actualCardSelections": 14
+    },
+    "root": {
+      "passedScenarios": 4,
+      "actualCardSelections": 14
+    }
+  },
+  "actualCardSelections": 28,
+  "standaloneControlPassed": true,
+  "lint": {
+    "Error": 0,
+    "Fatal": 0,
+    "Warning": 56
+  },
+  "navigationMode": "2",
+  "defaultHome": "priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true\nrip.moth.cocoonshell/.MainActivity",
+  "productionCodeChangedForRecentsRetry": false
+}

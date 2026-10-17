@@ -4,7 +4,6 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.IBinder
-import android.util.Log
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import com.aure.clustertune.AppContainer
@@ -45,16 +44,19 @@ class BootProfileRestoreService : Service() {
                 val result = retryBootRestore(
                     attemptDelaysMs = ATTEMPT_DELAYS_MS,
                     wait = { delay(it) },
-                ) { attempt ->
+                ) { _ ->
                     container.repository.applyPersistedLastValuesOnBoot()
                         .onFailure { error ->
-                            Log.w(TAG, "Boot profile restore attempt $attempt failed", error)
+                            container.historyLogger.failure("boot-restore", "Boot profile restoration delayed", error)
                         }
                 }
                 if (result.isSuccess) {
+                    container.historyLogger.recovered("boot-restore")
+                    container.historyLogger.recovered("boot-restore-final")
                     QuickSettingsTileRefresher.requestUpdate(applicationContext)
                 } else {
-                    Log.e(TAG, "Unable to restore the last profile after boot", result.exceptionOrNull())
+                    container.historyLogger.failure("boot-restore-final", "Boot profile restoration failed",
+                        result.exceptionOrNull() ?: IllegalStateException("Profile restoration failed after all attempts"))
                 }
             } finally {
                 ServiceCompat.stopForeground(this@BootProfileRestoreService, ServiceCompat.STOP_FOREGROUND_REMOVE)
@@ -72,8 +74,6 @@ class BootProfileRestoreService : Service() {
     }
 
     companion object {
-        private const val TAG = "BootProfileRestore"
-
         // Covers normal OEM/root startup lag without leaving a persistent worker behind.
         internal val ATTEMPT_DELAYS_MS = listOf(0L, 1_500L, 3_500L, 7_000L, 15_000L)
 
