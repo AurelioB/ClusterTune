@@ -6,7 +6,7 @@
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/AurelioB/ClusterTune/total)
 ![GitHub Release](https://img.shields.io/github/v/release/AurelioB/ClusterTune)
 
-<a href="https://ko-fi.com/J3J518XVKR" target="_blank"><img height="36" style="border:0px;height:36px;" src="https://storage.ko-fi.com/cdn/kofi6.png?v=6" border="0" alt="Buy Me a Coffee at ko-fi.com" /></a>
+[![Support me on Ko-fi](https://img.shields.io/badge/Support_me_on_Ko--fi-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/J3J518XVKR)
 
 ClusterTune sets maximum CPU and GPU frequencies on Android handhelds.
 
