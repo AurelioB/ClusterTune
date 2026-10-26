@@ -91,8 +91,8 @@ Comparison of the remaining application source with O2P Tweaks's main-source fil
 at `8bdeef39df0a7790255eaf960d273db6b81d3f04` and GameNative's power-control package
 at `375785a7f416ff5bcf2da90ca8cc3cf8b29e21f9` found no further substantive matching
 source blocks. Short Android lifecycle and Compose layout boilerplate was shared.
-The existing [Auto Tune audit](autotune-audit-2026-09-07.md) and
-[frame-measurement notes](autotune-frame-measurement.md) record independently
+The existing [Auto Tune audit](autotune-audit-2026-09-07.md) and the initial branch's
+[frame-measurement notes](https://github.com/AurelioB/ClusterTune/blob/dd019bc02442bc95c465525b6f9f8a0d5d6d5196/docs/autotune-frame-measurement.md) record independently
 implemented behavior inspired by other projects. These comparisons support the
 source review; matching-text checks alone do not determine copyright ownership.
 
@@ -103,10 +103,16 @@ contributor's credit are retained; no assignment or relicensing consent is claim
 Historical revisions retain their original license. Current dependency and bundled
 font notices are preserved separately from ClusterTune's MIT grant.
 
-Validation of the transition: all 610 JVM tests passed, Android lint passed, and
+Initial branch validation: all 610 JVM tests passed, Android lint passed, and
 debug, release, and instrumentation APK builds succeeded. On the Thor, the three
 Parcel/probe instrumentation tests and the production PServer host-handoff test
 passed (four tests, no skips). The handoff test exercised live telemetry, a
 controller-driven ceiling reduction, and restoration. Both app APKs were inspected
 for the exact MIT license, Apache 2.0 text, and third-party notices under
 `assets/licenses/`.
+
+Integration onto `main` was limited to the two licensing commits, preserving the
+1.4.0 release changes and leaving the initial branch's frame-measurement work
+separate. All 579 JVM tests, Android lint, debug/release/instrumentation builds,
+and the same four Thor device tests passed on that integration. Both app APKs
+contained the license bundle and no historical `RootExec` class.

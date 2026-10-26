@@ -121,11 +121,28 @@ ClusterTune. See the [physical-device test scenarios and results](docs/letter-ap
 
 ## License and attribution
 
-Distributed under the GNU General Public License v2.0.
+ClusterTune is distributed under the [MIT License](LICENSE). Third-party libraries,
+the bundled Material Symbols font, and the Gradle wrapper retain their own licenses;
+see [third-party notices](THIRD_PARTY_NOTICES). License texts and notices are also
+included in the APK under `assets/licenses/`. Dependency notice resources, when
+supplied, are retained in `META-INF/`.
 
-The RootExec/PServer command execution code is based on [O2P Tweaks](https://github.com/FeralAI/o2ptweaks.app) by FeralAI, also licensed under GPLv2.
+Earlier revisions were distributed under GPLv2 and used RootExec code from
+[O2P Tweaks](https://github.com/FeralAI/o2ptweaks.app) by FeralAI, originally from
+[jdsp4rp5](https://github.com/kokoko3k/jdsp4rp5.app) by kokoko3k. That implementation
+has been replaced with a launch-only PServer client using the documented
+[firmware protocol](docs/execution-methods-plan.md#pserver-protocol-and-implementation-provenance).
+The license change applies to this revision onward; earlier releases and historical
+source revisions retain their original licensing.
+
+Thanks to [Mau0x80](https://github.com/Mau0x80) for contributing and testing the
+QCS8550 Small Underclock frequency values.
 
 The project was inspired by the [Odin 3 CPU Underclock](https://github.com/TheOldTaylor/Odin3-CPU-Underclock) scripts and the original idea shared by Reddit users [u/twoohfive205](https://www.reddit.com/user/twoohfive205/) and [u/JoaozaoS](https://www.reddit.com/user/JoaozaoS/).
+
+Unless explicitly stated otherwise, contributions submitted for inclusion in
+ClusterTune are offered under the project's MIT License. Preserve the license and
+attribution of any third-party material included in a contribution.
 
 ## AI assistance disclosure
 

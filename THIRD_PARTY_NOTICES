@@ -1,0 +1,60 @@
+ClusterTune third-party notices
+==============================
+
+ClusterTune's own source code and documentation are licensed under the MIT
+License in LICENSE. Third-party components retain their own licenses and
+copyright notices. The MIT grant does not replace those terms.
+
+Bundled font
+------------
+app/src/main/res/font/material_symbols_rounded_200.ttf
+Material Symbols Rounded ExtraLight, Google
+Copyright 2026 Google LLC. All Rights Reserved.
+License: Apache License, Version 2.0 (licenses/Apache-2.0.txt).
+Source: https://github.com/google/material-design-icons
+License documentation: https://developers.google.com/fonts/docs/material_symbols
+
+Runtime libraries
+-----------------
+The Android application uses AndroidX (including Compose, Lifecycle and
+DataStore), Kotlin standard libraries, kotlinx.coroutines,
+kotlinx.serialization, Material Components for Android, and ZXing Core.
+Transitive libraries include Okio, Guava ListenableFuture, Error Prone
+annotations and JetBrains annotations.
+These projects are distributed under the Apache License, Version 2.0.
+Their respective contributors retain copyright. See licenses/Apache-2.0.txt.
+Any license/notice resources supplied by resolved dependencies are retained
+in the APK's META-INF directory. Build dependencies and testing tools
+retain the licenses supplied with their own distributions.
+
+AndroidX: https://android.googlesource.com/platform/frameworks/support/
+Kotlin: https://github.com/JetBrains/kotlin
+Coroutines: https://github.com/Kotlin/kotlinx.coroutines
+Serialization: https://github.com/Kotlin/kotlinx.serialization
+Material Components: https://github.com/material-components/material-components-android
+ZXing: https://github.com/zxing/zxing
+Okio: https://github.com/square/okio
+Guava: https://github.com/google/guava
+Error Prone: https://github.com/google/error-prone
+JetBrains annotations: https://github.com/JetBrains/java-annotations
+
+Gradle wrapper
+--------------
+gradlew, gradlew.bat and gradle/wrapper/gradle-wrapper.jar are supplied by
+Gradle under the Apache License, Version 2.0. Existing wrapper copyright
+notices are retained. https://github.com/gradle/gradle
+
+Historical attribution
+----------------------
+Earlier GPLv2 versions of ClusterTune included a RootExec implementation
+adapted from O2P Tweaks by FeralAI, whose implementation originated in
+jdsp4rp5 by Antonio Orefice (kokoko3k). That implementation was removed
+for the MIT transition. This acknowledgment does not relicense the old
+implementation or earlier releases, which retain their original terms.
+
+https://github.com/FeralAI/o2ptweaks.app
+https://github.com/kokoko3k/jdsp4rp5.app
+
+Mau0x80 contributed and tested the QCS8550 Small Underclock frequency
+values. This credit records that contribution; it does not represent
+a copyright assignment or a separate relicensing agreement.
