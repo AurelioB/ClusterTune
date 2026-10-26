@@ -27,6 +27,13 @@ val hasReleaseSigningConfig = listOf(
     signingProperty("ANDROID_KEY_PASSWORD"),
 ).all { it != null }
 
+val prepareLicenseAssets by tasks.registering(Sync::class) {
+    from(rootProject.file("LICENSE"))
+    from(rootProject.file("THIRD_PARTY_NOTICES"))
+    from(rootProject.file("licenses"))
+    into(layout.buildDirectory.dir("generated/licenseAssets/licenses"))
+}
+
 android {
     namespace = "com.aure.clustertune"
     compileSdk = 34
@@ -86,11 +93,22 @@ android {
     buildFeatures {
         compose = true
     }
+    sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/licenseAssets").get().asFile)
     packaging {
         resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            merges += setOf(
+                "META-INF/LICENSE*",
+                "META-INF/NOTICE*",
+                "META-INF/AL2.0",
+                "META-INF/LGPL2.1",
+                "META-INF/licenses/**",
+            )
         }
     }
+}
+
+tasks.named("preBuild") {
+    dependsOn(prepareLicenseAssets)
 }
 
 dependencies {
