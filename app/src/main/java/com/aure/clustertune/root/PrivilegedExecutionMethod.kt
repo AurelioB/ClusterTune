@@ -100,7 +100,7 @@ class PrivilegedExecutionResolver(
         val DEFAULT_AUTO_DETECTION_ORDER = listOf("pserver-stdout", "root-shell")
 
         fun default(context: Context): PrivilegedExecutionResolver = PrivilegedExecutionResolver(
-            listOf(PServerExecutionMethod(RootExec()), RootShellExecutionMethod()),
+            listOf(PServerExecutionMethod(), RootShellExecutionMethod()),
         )
     }
 }
@@ -111,12 +111,12 @@ class PrivilegedExecutionResolver(
  * command or captures stdout.
  */
 internal class PServerExecutionMethod(
-    private val rootExec: PServerHostExecutor = RootExec(),
+    private val executor: PServerHostExecutor = PServerHostLauncher(),
 ) : PrivilegedExecutionMethod {
     override val id = "pserver-stdout"
 
     override fun probe(): ExecutionProbeResult {
-        return if (rootExec.pServerAvailable) ExecutionProbeResult(true)
+        return if (executor.pServerAvailable) ExecutionProbeResult(true)
         else ExecutionProbeResult(false, "PServerBinder not available")
     }
 
@@ -126,7 +126,7 @@ internal class PServerExecutionMethod(
         if (command.toByteArray(Charsets.UTF_8).size > 255) {
             return Result.failure(IllegalArgumentException("PServer host launcher exceeds 255 bytes"))
         }
-        return rootExec.launchHost(command)
+        return executor.launchHost(command)
     }
 }
 

@@ -6,7 +6,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.aure.clustertune.root.PServerExecutionMethod
 import com.aure.clustertune.root.PrivilegedExecutionResolver
-import com.aure.clustertune.root.RootExec
+import com.aure.clustertune.root.PServerHostLauncher
 import java.io.File
 import java.security.MessageDigest
 import org.junit.Assert.*
@@ -129,7 +129,7 @@ class MinimumProtectionInstrumentationTest {
             chmod 644 '${output.path}'
         """.trimIndent())
         try {
-            RootExec().launchHost("sh '${script.path}'").getOrThrow()
+            PServerHostLauncher().launchHost("sh '${script.path}'").getOrThrow()
             repeat(100) { if (!output.exists()) Thread.sleep(100) }
             assertTrue(output.takeIf { it.exists() }?.readText().orEmpty().startsWith("killed "))
         } finally { script.delete(); output.delete() }
